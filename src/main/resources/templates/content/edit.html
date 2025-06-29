@@ -1,0 +1,82 @@
+<div id="category-container">
+
+</div>
+<script>
+	document.addEventListener("DOMContentLoaded", () => {
+	  loadCategoryList();
+	});
+	
+	// 카테고리 목록 불러오기
+	function loadCategoryList() {
+	  fetch("/api/categories")
+	    .then(response => response.json())
+	    .then(categories => {
+	      renderCategories(categories);
+	    })
+	    .catch(error => {
+	      console.error("카테고리 불러오기 실패:", error);
+	      alert("카테고리 데이터를 불러오지 못했습니다.");
+	    });
+	}
+	
+	// 카테고리 전체 렌더링
+	function renderCategories(categories) {
+	  const container = document.getElementById("category-container");
+	  container.innerHTML = ""; // 초기화
+
+	  categories.forEach(category => {
+	    container.appendChild(createCategoryBlock(category));
+	  });
+	}
+	
+	// 단일 카테고리 블록 생성
+	function createCategoryBlock(category) {
+	  const block = document.createElement("div");
+	  block.className = "category-block";
+
+	  const title = document.createElement("div");
+	  title.className = "category-title";
+	  title.textContent = `${category.name} (${category.photoCount} / ${category.pageLimit})`;
+
+	  const slide = document.createElement("div");
+	  slide.className = "slide-container";
+
+	  category.imageUrls.forEach(url => {
+	    slide.appendChild(createImageItem(url));
+	  });
+
+	  if (category.photoCount < category.pageLimit) {
+	    slide.appendChild(createAddButton(category.id));
+	  }
+
+	  block.appendChild(title);
+	  block.appendChild(slide);
+	  return block;
+	}
+	
+	// 이미지 아이템 생성
+	function createImageItem(url) {
+	  const item = document.createElement("div");
+	  item.className = "slide-item";
+
+	  const img = document.createElement("img");
+	  img.src = url;
+	  img.alt = "category photo";
+
+	  item.appendChild(img);
+	  return item;
+	}
+
+	// ✚ 버튼 생성
+	function createAddButton(categoryId) {
+	  const btn = document.createElement("div");
+	  btn.className = "slide-item btn btn-light text-center fw-bold";
+	  btn.textContent = "✚";
+	  btn.style.cursor = "pointer";
+	  btn.onclick = () => {
+	    window.location.href = `/edit/category/${categoryId}`;
+	  };
+	  return btn;
+	}
+	
+</script>
