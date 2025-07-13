@@ -1,8 +1,9 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<%@ page session="true" %>
 <%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
 <title>Contact Us</title>
@@ -190,7 +191,7 @@ textarea {
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
     <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/edit?username=${sessionScope.loginUser.username}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
+    <a href="/edit?userId=${sessionScope.loginUser.userId}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
     <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
     <a href="/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>

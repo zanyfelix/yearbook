@@ -26,15 +26,19 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestParam String username,
+    public String login(@RequestParam String userId,
                         @RequestParam String password,
                         HttpSession session,
                         Model model) {
 
         try {
-            User user = userService.login(username, password);
+            User user = userService.login(userId, password);
             session.setAttribute("loginUser", user);
-            return "redirect:/home?username=" + user.getUsername(); // 로그인 후 편집 화면으로
+            if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+                return "redirect:/admin/home?userId=" + user.getUserId();     // 관리자 전용 페이지
+            } else {
+                return "redirect:/home?userId=" + user.getUserId();  // 일반 사용자
+            }
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
             return "login";

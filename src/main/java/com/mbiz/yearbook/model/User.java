@@ -1,7 +1,11 @@
 package com.mbiz.yearbook.model;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -18,7 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "users")
+@Table(name = "user")
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,9 +32,12 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(nullable = false, unique = true, length = 50)
+    private String userId;  // ex: daegu_es
 
     @Column(nullable = false, unique = true, length = 50)
-    private String username;  // ex: daegu_es
+    private String name;  // ex: daegu_es
 
     @Column(nullable = false, length = 100)
     private String schoolName;
@@ -40,6 +47,20 @@ public class User {
 
     @Column(nullable = false)
     private boolean active = true;
+    
+    @Column(nullable = false)
+    private String role;
+    
+    @Column(nullable = false)
+    private String mail;
+    
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "modified_at", nullable = false)
+    private LocalDateTime modifiedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<YearbookPage> yearbookPages = new ArrayList<>();

@@ -5,7 +5,7 @@
 <head>
     <title>Yearbook 로그인</title>
     <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="<c:url value='/css/bootstrap.min.css'/>" rel="stylesheet">
     <style>
         body {
             background-color: #f0f4f8;
@@ -32,10 +32,10 @@
 
         <form method="post" action="/login">
             <div class="mb-3">
-                <input type="text" class="form-control" id="username" name="username" placeholder="User ID" value="user" required autofocus>
+                <input type="text" class="form-control" id="userId" name="userId" placeholder="User ID" value="admin" required autofocus>
             </div>
             <div class="mb-3">
-                <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="1234" required>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="admin" required>
             </div>
 
             <c:if test="${not empty error}">

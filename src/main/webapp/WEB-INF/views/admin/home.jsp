@@ -89,19 +89,14 @@
 
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
-    <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/edit?username=${sessionScope.loginUser.userId}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
-    <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
-    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
-    <a href="/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
+    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+    <a href="/admin/edit?username=${sessionScope.loginUser.userId}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
+    <a href="/admin/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
+    <a href="/admin/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
+    <a href="/admin/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
 </div>
 
 <div class="content">
-    <div class="top-bar">
-        <span class="badge bg-success text-dark">Yearbook Due: Mar. 31st. 2026 (D-${remainDays} days left)</span>
-        <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
-        <span class="badge bg-success text-dark">Event Photo Page: ${eventProgress}%</span>
-    </div>
     
     <div class="section-box">
         <h5>Yearbook Guidance</h5>

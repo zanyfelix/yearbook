@@ -23,11 +23,11 @@ public class YearbookService {
     /**
      * 특정 사용자의 전체 이어북 페이지 목록 조회
      */
-    public List<YearbookPage> getPagesForUser(String username) {
-        User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + username));
-        return pageRepository.findByUser(user);
-    }
+//    public List<YearbookPage> getPagesForUser(String userId) {
+//        User user = userRepository.findByUserId(userId)
+//            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+//        return pageRepository.findByUser(user);
+//    }
 
     /**
      * 특정 페이지의 편집 데이터를 DTO로 조회

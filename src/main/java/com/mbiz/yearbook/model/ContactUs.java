@@ -19,6 +19,7 @@ public class ContactUs {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String userId;
     private String name;
     private String email;
     private String subject;
@@ -29,4 +30,6 @@ public class ContactUs {
     private LocalDateTime submittedAt;
 
     private String attachmentPath; // 첨부파일 경로
+    
+    private String status;
 }

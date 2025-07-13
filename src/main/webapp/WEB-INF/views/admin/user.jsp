@@ -1,0 +1,176 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<%@ page session="true" %>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>User</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/user.css"/>
+    <script src="<c:url value='/js/admin/user.js'/>"></script>
+</head>
+<body>
+<c:if test="${not empty successMessage}">
+  <div class="alert alert-success">${successMessage}</div>
+</c:if>
+<c:if test="${not empty errorMessage}">
+  <div class="alert alert-warning">${errorMessage}</div>
+</c:if>
+<div class="sidebar">
+    <h5>${sessionScope.loginUser.schoolName}</h5>
+    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+    <a href="/admin/edit?username=${sessionScope.loginUser.userId}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
+    <a href="/admin/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
+    <a href="/admin/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
+    <a href="/admin/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
+</div>
+
+<div class="content">
+	<div class="top-bar">
+	</div>
+	
+	<div class="container-fluid">
+	
+	<!-- 검색 바 -->
+    <form method="get" action="${pageContext.request.contextPath}/admin/user">
+      <select name="type">
+        <option value="userId" ${type=='userId'? 'selected':''}>USER_ID</option>
+        <option value="name" ${type=='name'? 'selected':''}>NAME</option>
+      </select>
+      <input type="text" name="keyword" value="${keyword != null ? keyword : ''}" />
+      <button type="submit">SEARCH</button>
+    </form>
+    
+    <!-- 삭제용 폼 시작 -->
+  	<form id="deleteForm"
+        action="${pageContext.request.contextPath}/admin/user/delete"
+        method="post"
+        onsubmit="return confirm('Are you sure you want to delete the selected users?');">
+    
+    
+    <table>
+      <thead>
+      	<tr>
+	      <th>
+	         <input type="checkbox" id="selectAll" onclick="toggleAll(this)"/>
+	      </th>
+	      <th>No</th>
+	      <th>USER_ID</th>
+	      <th>PASSWORD</th>
+	      <th>NAME</th>
+	      <th>SCHOOL_NAME</th>
+	      <th>MAIL</th>
+	      <th>ROLE</th>
+	      <th>ACTIVE</th>
+	    </tr>
+      </thead>
+      <tbody>
+       <c:forEach var="item" items="${users}" varStatus="st">
+          <tr>
+          	<td>
+	            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
+	        </td>
+            <td>${st.index + 1}</td>
+            <td>${item.userId}</td>
+            <td>${item.password}</td>
+            <td>${item.name}</td>
+            <td>${item.schoolName}</td>
+            <td>${item.mail}</td>
+            <td>${item.role}</td>
+            <td>
+			  <label class="toggle-switch">
+			    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->
+			    <input type="hidden" name="active" value="0"/>
+			    <!-- 체크된 경우에만 value="1" 이 넘어갑니다 -->
+			    <input
+			      type="checkbox"
+			      name="active"
+			      value="1"
+			      data-user-id="${item.id}"
+			      ${item.active == true ? "checked" : ""}
+			    />
+			    <span class="slider"></span>
+			  </label>
+			</td>
+          </tr>
+        </c:forEach>
+      </tbody>
+    </table>
+    
+    <div class="btn-wrapper">
+	    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
+	    <button id="btn-modify" type="button">MODIFY</button>
+	    <button id="btn-delete" type="submit">DELETE</button>
+    </div>
+    </form>
+    
+    
+   <!-- registerModal -->
+<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="registerForm"
+            action="${pageContext.request.contextPath}/admin/user/register"
+            method="post">
+        <div class="modal-header">
+          <!-- 제목은 JS로 바꿔줄 span -->
+          <h5 class="modal-title" id="registerModalLabel">USER REGISTRATION</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- 수정 시 채울 hidden PK -->
+          <input type="hidden" id="userIdHidden" name="id" />
+
+          <div class="mb-3">
+            <label for="userIdInput" class="form-label">USER_ID</label>
+            <input type="text" class="form-control" id="userIdInput" name="userId" required />
+          </div>
+          <div class="mb-3">
+            <label for="passwordInput" class="form-label">PASSWORD</label>
+            <input type="password" class="form-control" id="passwordInput" name="password" required />
+          </div>
+          <div class="mb-3">
+            <label for="nameInput" class="form-label">NAME</label>
+            <input type="text" class="form-control" id="nameInput" name="name" required />
+          </div>
+          <div class="mb-3">
+            <label for="schoolInput" class="form-label">SCHOOL_NAME</label>
+            <input type="text" class="form-control" id="schoolInput" name="schoolName" required />
+          </div>
+          <div class="mb-3">
+            <label for="mailInput" class="form-label">MAIL</label>
+            <input type="email" class="form-control" id="mailInput" name="mail" required />
+          </div>
+          <div class="mb-3">
+            <label for="roleSelect" class="form-label">ROLE</label>
+            <select class="form-select" id="roleSelect" name="role">
+              <option value="admin">admin</option>
+              <option value="user">user</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal">취소</button>
+          <!-- 이 버튼 텍스트도 JS로 바꿔줌 -->
+          <button type="submit"
+                  class="btn btn-primary"
+                  id="registerSubmitBtn">등록</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+    
+</div>
+<script>
+window.contextPath = '${pageContext.request.contextPath}';
+</script>
+<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
+</body>
+</html>
