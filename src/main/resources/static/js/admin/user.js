@@ -38,11 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	    // 2) 나머지 필드 읽어와서 채우기
 	    document.getElementById('userIdInput').value    = row.children[2].textContent.trim();
-	    document.getElementById('passwordInput').value  = ''; // or leave blank for security
-	    document.getElementById('nameInput').value      = row.children[3].textContent.trim();
-	    document.getElementById('schoolInput').value    = row.children[4].textContent.trim();
-	    document.getElementById('mailInput').value      = row.children[5].textContent.trim();
-	    document.getElementById('roleSelect').value     = row.children[6].textContent.trim();
+	    document.getElementById('passwordInput').value  = row.children[3].textContent.trim();
+	    document.getElementById('nameInput').value      = row.children[4].textContent.trim();
+	    document.getElementById('schoolInput').value    = row.children[5].textContent.trim();
+	    document.getElementById('mailInput').value      = row.children[6].textContent.trim();
+	    let roleText = row.children[7].textContent.trim();
+		roleText = roleText.toLowerCase();
+		const roleSelect = document.getElementById('roleSelect');
+		roleSelect.value = roleText;
 		
 	    // 3) 모달 설정 변경
 	    form.action = window.contextPath +'/admin/user/modify';
