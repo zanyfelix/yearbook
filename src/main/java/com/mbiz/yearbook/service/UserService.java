@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.UserRepository;
@@ -77,12 +78,24 @@ public class UserService {
             .orElseThrow(() -> new EntityNotFoundException("User not found: " + userFromForm.getId()));
 
         // 2) 수정할 필드만 덮어쓰기 (active는 건드리지 않음)
-        persisted.setUserId     (userFromForm.getUserId());
-        persisted.setPassword   (userFromForm.getPassword());
-        persisted.setName       (userFromForm.getName());
-        persisted.setSchoolName (userFromForm.getSchoolName());
-        persisted.setMail       (userFromForm.getMail());
-        persisted.setRole       (userFromForm.getRole());
+        if (StringUtils.hasText(userFromForm.getUserId())) {
+            persisted.setUserId(userFromForm.getUserId());
+        }
+        if (StringUtils.hasText(userFromForm.getPassword())) {
+            persisted.setPassword(userFromForm.getPassword());
+        }
+        if (StringUtils.hasText(userFromForm.getName())) {
+            persisted.setName(userFromForm.getName());
+        }
+        if (StringUtils.hasText(userFromForm.getSchoolName())) {
+            persisted.setSchoolName(userFromForm.getSchoolName());
+        }
+        if (StringUtils.hasText(userFromForm.getMail())) {
+            persisted.setMail(userFromForm.getMail());
+        }
+        if (StringUtils.hasText(userFromForm.getRole())) {
+            persisted.setRole(userFromForm.getRole());
+        }
         
     	userRepository.save(persisted);
     }

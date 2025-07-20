@@ -6,47 +6,76 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.service.ContactUsService;
+import com.mbiz.yearbook.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
 
 @Controller
-@RequestMapping("/admin/contact")
+@RequestMapping("/admin")
 public class AdminContactUsController {
 
     @Autowired
     private ContactUsService contactUsService;
+    
+    @Autowired
+    private UserService userService;
 
-    private final String UPLOAD_DIR = "uploads/";
+    @GetMapping("/contactUs")
+    public String showForm(HttpSession session,
+			@RequestParam(value = "type", defaultValue = "userId") String type,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            Model model) {
+		
+	    User user = (User) session.getAttribute("loginUser");
+	    
+	    List<User> admin = userService.getUser("userId", "admin");
+	    model.addAttribute("mail", admin.get(0).getMail());
+    	model.addAttribute("id", admin.get(0).getId());
+	    
+	    //사용자 리스트(항상)
+	    List<ContactUs> allUsers = contactUsService.findAll();
+	    model.addAttribute("allUsers", allUsers);
+	    
+	    List<ContactUs> contacts = contactUsService.getContactUs(type, keyword);
+	    model.addAttribute("type", type);
+        model.addAttribute("keyword", keyword);
+	    model.addAttribute("contacts", contacts);
+	    
+	    model.addAttribute("currentMenu", "contactUs");
 
-    @GetMapping
-    public String showForm(Model model, 
-    		@RequestParam(defaultValue="") String userId,
-            @RequestParam(defaultValue="") String name,
-    		HttpSession session) {
-    	
-    	User admin = (User) session.getAttribute("loginUser");
-    	model.addAttribute("adminEmail", admin.getMail());
-    	
-    	List<ContactUs> results;
-    	if (userId.isEmpty() && name.isEmpty()) {
-            // 전체 조회
-            results = contactUsService.findAll();
+	    return "admin/contactUs";
+	}
+    
+    @PostMapping("/contactUs/apply")
+    public String delete(@RequestParam(value = "ids", required = false) List<Long> ids,
+            			RedirectAttributes attrs) {
+        if (ids == null || ids.isEmpty()) {
+            attrs.addFlashAttribute("errorMessage", "Select the contactUs you want to apply.");
         } else {
-            // userId 또는 name 이 하나라도 들어오면 조건 검색
-            results = contactUsService.getContactUs(userId, name);
+        	int count = contactUsService.markAsRepliedByIds(ids);
+            attrs.addFlashAttribute("successMessage", count + "user has been applied.");
         }
-    	
-        model.addAttribute("contacts", results);
-        
-        model.addAttribute("userId", userId);
-        model.addAttribute("name", name);
-    	
-        return "admin/contact";
+        return "redirect:/admin/contactUs";
+    }
+    
+    @PostMapping("/contactUs/updateAdminEmail")
+    public String updateAdminEmail(@RequestParam String adminEmail,
+    								@RequestParam long id, 
+    								RedirectAttributes ra) {
+    	User user = new User();
+    	user.setId(id);
+    	user.setMail(adminEmail);
+    	userService.update(user);
+        ra.addFlashAttribute("successMessage", "The administrator email has been updated.");
+        return "redirect:/admin/contactUs";
     }
 }

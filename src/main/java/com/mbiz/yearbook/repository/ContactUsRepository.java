@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.mbiz.yearbook.model.ContactUs;
+import com.mbiz.yearbook.model.User;
 
 import jakarta.transaction.Transactional;
 
@@ -21,4 +22,9 @@ public interface ContactUsRepository extends JpaRepository<ContactUs, Long> {
 	@Transactional
     @Query("UPDATE ContactUs c SET c.status = 'Replied' WHERE c.id IN :ids")
     int markAsRepliedByIds(@Param("ids") List<Long> ids);
+	
+	List<ContactUs> findByUserIdContainingIgnoreCase(String userId);
+    List<ContactUs> findByNameContainingIgnoreCase(String name);
+    List<ContactUs> findBySchoolNameContainingIgnoreCase(String schoolName);
+    List<ContactUs> findBySubjectContainingIgnoreCase(String subject);
 }

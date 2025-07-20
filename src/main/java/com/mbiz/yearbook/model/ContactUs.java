@@ -27,9 +27,11 @@ public class ContactUs {
     @Column(columnDefinition = "TEXT")
     private String message;
 
-    private LocalDateTime submittedAt;
+    private LocalDateTime createdAt;
 
     private String attachmentPath; // 첨부파일 경로
     
     private String status;
+    
+    private String schoolName;
 }

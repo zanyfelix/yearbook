@@ -21,28 +21,36 @@ public class ContactUsService {
         return contactUsRepository.findAll();
     }
 
-    public List<ContactUs> getContactUs(String userId, String name) {
-        boolean allUserId   = "All".equalsIgnoreCase(userId);
-        boolean allName = "All".equalsIgnoreCase(name);
-
-        if (!allUserId && allName) {
-            return contactUsRepository.findByUserId(userId);
+    public List<ContactUs> getContactUs(String type, String keyword) {
+    	if (keyword == null || keyword.isBlank()) {
+            return contactUsRepository.findAll();
         }
-        if (allUserId && !allName) {
-            return contactUsRepository.findByName(name);
-        }
-        return contactUsRepository.findByUserIdAndName(userId, name);
+    	
+    	switch (type) {
+        case "userId":
+            return contactUsRepository.findByUserIdContainingIgnoreCase(keyword);
+        case "name":
+            return contactUsRepository.findByNameContainingIgnoreCase(keyword);
+        case "schoolName":
+            return contactUsRepository.findBySchoolNameContainingIgnoreCase(keyword);
+        case "subject":
+            return contactUsRepository.findBySubjectContainingIgnoreCase(keyword);
+        default:
+            return contactUsRepository.findAll();
+    	}    
     }
     
     public void save(ContactUs contact) {
-        contact.setSubmittedAt(LocalDateTime.now());
+        contact.setCreatedAt(LocalDateTime.now());
         contactUsRepository.save(contact);
     }
     
     @Transactional
-    public void markSelectedAsReplied(List<Long> ids) {
-        if (ids != null && !ids.isEmpty()) {
-        	contactUsRepository.markAsRepliedByIds(ids);
+    public int markAsRepliedByIds(List<Long> ids) {
+    	if (ids == null || ids.isEmpty()) {
+            return 0;
         }
+        int count = contactUsRepository.markAsRepliedByIds(ids);
+        return count;
     }
 }
