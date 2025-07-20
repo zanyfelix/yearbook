@@ -32,7 +32,7 @@ import jakarta.servlet.http.HttpSession;
 
 @Controller
 @RequestMapping("/admin")
-public class AdminHomeController {
+public class AdminContentsController {
 	
 	@Autowired
     private UserService userService;
@@ -42,7 +42,7 @@ public class AdminHomeController {
 	
 	private final String UPLOAD_DIR = "uploads/";
 
-	@GetMapping("/home")
+	@GetMapping("/contents")
 	public String showForm(HttpSession session,
             @RequestParam(value = "keyword", required = false) String keyword,
 			Model model) {
@@ -52,9 +52,9 @@ public class AdminHomeController {
 	    List<User> users = userService.getUser("schoolName", keyword);
 	    
 	    model.addAttribute("users", users);
-	    model.addAttribute("currentMenu", "home");
+	    model.addAttribute("currentMenu", "contents");
 
-	    return "admin/home";
+	    return "admin/contents";
 	}
 	
 //	@PostMapping("/home/register")

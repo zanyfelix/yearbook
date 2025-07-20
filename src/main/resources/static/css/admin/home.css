@@ -66,14 +66,6 @@ html, body {
 	padding: 10px 16px;
 }
 
-button.btn-secondary {
-  background-color: #5a6268 !important;
-}
-
-button.btn-primary {
-  background-color: #c82333 !important;
-}
-
 /* ── 검색 바 ── */
 .container-fluid > form {
   display: flex;

@@ -32,6 +32,8 @@ public class UserService {
                 return userRepository.findByUserIdContainingIgnoreCase(keyword);
             case "name":
                 return userRepository.findByNameContainingIgnoreCase(keyword);
+            case "schoolName":
+                return userRepository.findBySchoolNameContainingIgnoreCase(keyword);
             default:
                 return userRepository.findAll();
         }
@@ -41,14 +43,14 @@ public class UserService {
     	User user = userRepository.findByUserId(userId)
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("no user"));
     	
         if (!user.isActive()) {
-            throw new IllegalStateException("관리자에 의해 접근이 제한된 사용자입니다.");
+            throw new IllegalStateException("access to the system has been restricted by an administrator");
         }
 
         if (!user.getPassword().equals(password)) {
-            throw new IllegalArgumentException("비밀번호가 틀렸습니다.");
+            throw new IllegalArgumentException("password is false");
         }
 
         return user;

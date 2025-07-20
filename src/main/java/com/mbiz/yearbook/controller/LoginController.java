@@ -19,6 +19,11 @@ public class LoginController {
     public LoginController(UserService userService) {
         this.userService = userService;
     }
+    
+    @GetMapping("/")
+    public String redirectToLogin() {
+        return "redirect:/login";
+    }
 
     @GetMapping("/login")
     public String loginForm() {
@@ -35,9 +40,9 @@ public class LoginController {
             User user = userService.login(userId, password);
             session.setAttribute("loginUser", user);
             if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-                return "redirect:/admin/home?userId=" + user.getUserId();     // 관리자 전용 페이지
+                return "redirect:/admin/user"; // 관리자 전용 페이지
             } else {
-                return "redirect:/home?userId=" + user.getUserId();  // 일반 사용자
+                return "redirect:/home";  // 일반 사용자
             }
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
@@ -45,7 +50,7 @@ public class LoginController {
         }
     }
 
-    @GetMapping("/logout")
+    @PostMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
         return "redirect:/login";

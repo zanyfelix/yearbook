@@ -1,3 +1,5 @@
+// src/main/resources/static/js/admin/user.js
+
 document.addEventListener('DOMContentLoaded', () => {
   // 전체 선택/해제
   document.getElementById('selectAll')
@@ -13,11 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	  // --- 1) REGISTER 버튼 클릭 ---
 	  document.getElementById('btn-register').addEventListener('click', () => {
-		
-		document.querySelectorAll('.selectBox').forEach(cb => cb.checked = false);
-		const selectAllChk = document.getElementById('selectAll');
-		if (selectAllChk) selectAllChk.checked = false;
-		
 	    form.reset();                       // 폼 초기화
 	    document.getElementById('userIdHidden').value = '';
 	    form.action = window.contextPath +'/admin/user/register';
@@ -30,18 +27,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	  document.getElementById('btn-modify').addEventListener('click', () => {
 	    const checked = document.querySelectorAll('.selectBox:checked');
 	    if (checked.length !== 1) {
-	      alert('Please select only one user to edit.');
+	      alert('수정할 사용자를 하나만 선택하세요.');
 	      return;
 	    }
 	    const row = checked[0].closest('tr');
+
 	    // 1) PK 채우기
 	    const id = checked[0].value;
 	    document.getElementById('userIdHidden').value = id;
 
 	    // 2) 나머지 필드 읽어와서 채우기
 	    document.getElementById('userIdInput').value    = row.children[2].textContent.trim();
-		const passwordInput = row.children[3].querySelector('input[name="password"]');
-	    document.getElementById('passwordInput').value  = passwordInput?.value.trim();
+	    document.getElementById('passwordInput').value  = row.children[3].textContent.trim();
 	    document.getElementById('nameInput').value      = row.children[4].textContent.trim();
 	    document.getElementById('schoolInput').value    = row.children[5].textContent.trim();
 	    document.getElementById('mailInput').value      = row.children[6].textContent.trim();

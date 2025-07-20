@@ -25,21 +25,18 @@ import jakarta.servlet.http.HttpSession;
 
 @Controller
 @RequestMapping("/admin")
-public class AdminUserController {
+public class AdminThemeController {
 	
 	@Autowired
     private UserService userService;
 
-	@GetMapping("/user")
+	@GetMapping("/theme")
 	public String showForm(HttpSession session,
 			@RequestParam(value = "type", defaultValue = "userId") String type,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
 		
 	    User user = (User) session.getAttribute("loginUser");
-	    //사용자 리스트(항상)
-	    List<User> allUsers = userService.findAll();
-	    model.addAttribute("allUsers", allUsers);
 	    
 	    List<User> users = userService.getUser(type, keyword);
 	    model.addAttribute("type", type);
@@ -51,8 +48,8 @@ public class AdminUserController {
 	    return "admin/user";
 	}
 	
-	@PostMapping("/user/register")
-	public String register(@ModelAttribute User user, BindingResult br, Model model, RedirectAttributes redirectAttributes) {
+	@PostMapping("/theme/register")
+	public String register(@ModelAttribute User user, BindingResult br, Model model) {
         if (br.hasErrors()) {
         	model.addAttribute("users", userService.findAll());
             return "admin/user";
@@ -60,7 +57,6 @@ public class AdminUserController {
         
         try {
         	userService.register(user);
-        	redirectAttributes.addFlashAttribute("successMessage", "registration complete");
         } catch (DuplicateUserIdException ex) {
             br.rejectValue("userId", "duplicate", ex.getMessage());
             model.addAttribute("users", userService.findAll());
@@ -70,26 +66,26 @@ public class AdminUserController {
         return "redirect:/admin/user";
     }
 	
-	@PostMapping("/user/modify")
+	@PostMapping("/theme/modify")
 	public String update(@ModelAttribute User user, RedirectAttributes attrs) {
         userService.update(user);
         attrs.addFlashAttribute("successMessage", "사용자 정보가 수정되었습니다.");
         return "redirect:/admin/user";
     }
 	
-	@PostMapping("/user/delete")
+	@PostMapping("/theme/delete")
     public String delete(@RequestParam(value = "ids", required = false) List<Long> ids,
                          RedirectAttributes attrs) {
         if (ids == null || ids.isEmpty()) {
-            attrs.addFlashAttribute("errorMessage", "Select the user you want to delete.");
+            attrs.addFlashAttribute("errorMessage", "삭제할 사용자를 선택하세요.");
         } else {
         	int deleted = userService.deleteUsers(ids);
-            attrs.addFlashAttribute("successMessage", deleted + "user has been deleted.");
+            attrs.addFlashAttribute("successMessage", deleted + "명의 사용자가 삭제되었습니다.");
         }
         return "redirect:/admin/user";
     }
 	
-	@PostMapping("/user/toggle-active")
+	@PostMapping("/theme/toggle-active")
 	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
 		userService.updateActive(dto.getId(), dto.isActive());
         return ResponseEntity.ok().build();

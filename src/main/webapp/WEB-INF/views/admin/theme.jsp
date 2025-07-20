@@ -6,10 +6,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>User</title>
+    <title>Theme</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
-    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/home.css"/>
-    <script src="<c:url value='/js/admin/home.js'/>"></script>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/theme.css"/>
+    <script src="<c:url value='/js/admin/theme.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -44,21 +44,20 @@
 	
 	<!-- 검색 바 -->
     <form method="get" action="${pageContext.request.contextPath}/admin/user">
-    	<select name="type">
-    		<c:forEach var="item" items="${users}" varStatus="st">
-    			<option value="userId" >${item.schoolName}</option>
-	    	</c:forEach>
+      <select name="type">
+        <option value="userId" ${type=='userId'? 'selected':''}>USER_ID</option>
+        <option value="name" ${type=='name'? 'selected':''}>NAME</option>
       </select>
+      <input type="text" name="keyword" value="${keyword != null ? keyword : ''}" />
       <button type="submit">SEARCH</button>
     </form>
-    
-    <button class="btn btn-success mb-3" id="addBtn">REGISTER</button>
     
     <!-- 삭제용 폼 시작 -->
   	<form id="deleteForm"
         action="${pageContext.request.contextPath}/admin/user/delete"
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the selected users?');">
+    
     
     <table>
       <thead>
@@ -117,54 +116,66 @@
     </form>
     
     
-    <!-- registerModal -->
-	<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-	  <div class="modal-dialog modal-lg">
-	    <div class="modal-content">
-	      <form id="registerForm" action="${pageContext.request.contextPath}/admin/home/register" method="post" enctype="multipart/form-data">
-	        <div class="modal-header">
-	          <!-- 제목은 JS로 바꿔줄 span -->
-	          <h5 class="modal-title" id="registerModalLabel">HOME REGISTRATION</h5>
-	          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-	        </div>
-	        <div class="modal-body">
-	          <!-- 수정 시 채울 hidden PK -->
-	          <input type="hidden" id="idHidden" name="id" />
-	
-	          <div class="mb-3">
-	            <label for="titleInput" class="form-label">TITLE</label>
-	            <input type="text" class="form-control" id="titleInput" name="title" required />
-	          </div>
-	          
-	          <div class="mb-3">
-	            <label for="descriptionInput" class="form-label">DESCRIPTION</label>
-	            <textarea class="form-control" id="descriptionInput" name="description" rows="4" required></textarea>
-	          </div>
-	          
-	          <div class="mb-3">
-	            <label for="displayOrderInput" class="form-label">DISPLAY ORDER</label>
-	            <input type="number" class="form-control" id="displayOrderInput" name="displayOrder" min="0" />
-	          </div>
-	
-	          <div class="mb-3">
-	            <label for="fileInput" class="form-label">FILE UPLOAD</label>
-	            <input type="file" class="form-control" id="fileInput" name="uploadFile" />
-	          </div>
-	          
-	        </div>
-	        
-	        <div class="modal-footer">
-	          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-	          <!-- 이 버튼 텍스트도 JS로 바꿔줌 -->
-	          <button type="submit" class="btn btn-primary" id="registerSubmitBtn">등록</button>
-	        </div>
-	        
-	      </form>
-	    </div>
-	  </div>
-	</div>
+   <!-- registerModal -->
+<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="registerForm"
+            action="${pageContext.request.contextPath}/admin/user/register"
+            method="post">
+        <div class="modal-header">
+          <!-- 제목은 JS로 바꿔줄 span -->
+          <h5 class="modal-title" id="registerModalLabel">USER REGISTRATION</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- 수정 시 채울 hidden PK -->
+          <input type="hidden" id="userIdHidden" name="id" />
 
+          <div class="mb-3">
+            <label for="userIdInput" class="form-label">USER_ID</label>
+            <input type="text" class="form-control" id="userIdInput" name="userId" required />
+          </div>
+          <div class="mb-3">
+            <label for="passwordInput" class="form-label">PASSWORD</label>
+            <input type="password" class="form-control" id="passwordInput" name="password" required />
+          </div>
+          <div class="mb-3">
+            <label for="nameInput" class="form-label">NAME</label>
+            <input type="text" class="form-control" id="nameInput" name="name" required />
+          </div>
+          <div class="mb-3">
+            <label for="schoolInput" class="form-label">SCHOOL_NAME</label>
+            <input type="text" class="form-control" id="schoolInput" name="schoolName" required />
+          </div>
+          <div class="mb-3">
+            <label for="mailInput" class="form-label">MAIL</label>
+            <input type="email" class="form-control" id="mailInput" name="mail" required />
+          </div>
+          <div class="mb-3">
+            <label for="roleSelect" class="form-label">ROLE</label>
+            <select class="form-select" id="roleSelect" name="role">
+              <option value="admin">admin</option>
+              <option value="user">user</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal">취소</button>
+          <!-- 이 버튼 텍스트도 JS로 바꿔줌 -->
+          <button type="submit"
+                  class="btn btn-primary"
+                  id="registerSubmitBtn">등록</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
+    
 </div>
 <script>
 window.contextPath = '${pageContext.request.contextPath}';
