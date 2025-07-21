@@ -3,14 +3,13 @@
 <%@ page session="true" %>
 <%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>User</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
-    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/user.css"/>
-    <script src="<c:url value='/js/admin/user.js'/>"></script>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/deadline.css"/>
+    <script src="<c:url value='/js/admin/deadline.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -58,10 +57,10 @@
 	    </form>
     
     	<!-- 삭제용 폼 시작 -->
-  		<form id="deleteForm"
-        action="${pageContext.request.contextPath}/admin/user/delete"
+  		<form id="applyForm"
+        action="${pageContext.request.contextPath}/admin/deadline/apply"
         method="post"
-        onsubmit="return confirm('Are you sure you want to delete the selected users?');">
+        onsubmit="return confirm('Are you sure you want to apply the selected users?');">
     
 	    <table>
 	      <thead>
@@ -75,7 +74,6 @@
 		      <th>NAME</th>
 		      <th>SCHOOL_NAME</th>
 		      <th>MAIL</th>
-		      <th>DEADLINE</th>
 		      <th>ROLE</th>
 		      <th>ACTIVE</th>
 		    </tr>
@@ -96,7 +94,6 @@
 	            <td>${item.name}</td>
 	            <td>${item.schoolName}</td>
 	            <td>${item.mail}</td>
-	            <td><fmt:formatDate value="${item.deadline}" pattern="yyyy-MM-dd"/></td>
 	            <td>${item.role}</td>
 	            <td>
 				  <label class="toggle-switch">
@@ -161,19 +158,11 @@
 		            <label for="mailInput" class="form-label">MAIL</label>
 		            <input type="email" class="form-control" id="mailInput" name="mail" required />
 		          </div>
-		          <%
-					  String today = new java.text.SimpleDateFormat("yyyy-MM-dd")
-					                     .format(new java.util.Date());
-					%>
-		          <div class="mb-3">
-		            <label for="deadlineInput" class="form-label">DEADLINE</label>
-		            <input type="date" class="form-control" id="deadlineInput" name="deadline" value="<%= today %>" required/>
-		          </div>
 		          <div class="mb-3">
 		            <label for="roleSelect" class="form-label">ROLE</label>
 		            <select class="form-select" id="roleSelect" name="role">
 		              <option value="admin">admin</option>
-		              <option value="user" selected>user</option>
+		              <option value="user">user</option>
 		            </select>
 		          </div>
 		        </div>

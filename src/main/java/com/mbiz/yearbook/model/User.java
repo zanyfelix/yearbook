@@ -2,10 +2,12 @@ package com.mbiz.yearbook.model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -61,7 +63,11 @@ public class User {
     @UpdateTimestamp
     @Column(name = "modified_at", nullable = false)
     private LocalDateTime modifiedAt;
-
+    
+    @Column(nullable = true)
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private Date deadline;
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<YearbookPage> yearbookPages = new ArrayList<>();
 }

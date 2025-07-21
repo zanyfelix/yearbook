@@ -1,6 +1,8 @@
 package com.mbiz.yearbook.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -93,6 +95,21 @@ public class UserService {
         if (StringUtils.hasText(userFromForm.getMail())) {
             persisted.setMail(userFromForm.getMail());
         }
+        if (userFromForm.getDeadline() != null) {
+            persisted.setDeadline(userFromForm.getDeadline());
+            
+            LocalDate dlDate = persisted.getDeadline()
+                    .toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            
+            LocalDate today = LocalDate.now();
+
+            // deadline 이 오늘이거나 과거면 active=false
+            if (!dlDate.isAfter(today)) {
+                persisted.setActive(false);
+            }
+        }
         if (StringUtils.hasText(userFromForm.getRole())) {
             persisted.setRole(userFromForm.getRole());
         }
@@ -119,4 +136,16 @@ public class UserService {
         user.setActive(active);
         // save() 불필요 — 트랜잭션 커밋 시점에 JPA가 자동 업데이트합니다.
     }
+    
+//    @Transactional
+//    public int updateApply(List<Long> ids, boolean active) {
+//    	if (ids == null || ids.isEmpty()) {
+//            return 0;
+//        }
+//    	List<User> users = userRepository.findAllById(ids);
+//        for (User user : users) {
+//        	user.setApply(true);
+//        }
+//    	userRepository.saveAll(users);
+//    }
 }

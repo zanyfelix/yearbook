@@ -56,7 +56,7 @@ public class AdminContactUsController {
 	}
     
     @PostMapping("/contactUs/apply")
-    public String delete(@RequestParam(value = "ids", required = false) List<Long> ids,
+    public String apply(@RequestParam(value = "ids", required = false) List<Long> ids,
             			RedirectAttributes attrs) {
         if (ids == null || ids.isEmpty()) {
             attrs.addFlashAttribute("errorMessage", "Select the contactUs you want to apply.");

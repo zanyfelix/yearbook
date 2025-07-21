@@ -45,25 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	    document.getElementById('nameInput').value      = row.children[4].textContent.trim();
 	    document.getElementById('schoolInput').value    = row.children[5].textContent.trim();
 	    document.getElementById('mailInput').value      = row.children[6].textContent.trim();
-		const dateText = row.children[7].textContent.trim();
-		const date = new Date(dateText.replace(' ', 'T')); 
-		const deadlineInput = document.getElementById('deadlineInput');
-		if (deadlineInput.type === 'date') {
-		  // <input type="date"> 의 경우
-		  deadlineInput.valueAsDate = date;
-		}
-		else if (deadlineInput.type === 'datetime-local') {
-		  // <input type="datetime-local"> 은 "YYYY-MM-DDThh:mm" 형식 필요
-		  // toISOString() 은 UTC 기준이므로, 로컬 타임존 오프셋 보정
-		  const tzOffsetMs = date.getTimezoneOffset() * 60000;
-		  const localISO = new Date(date - tzOffsetMs).toISOString().slice(0,16);
-		  deadlineInput.value = localISO;
-		}
-		else {
-		  // 그 외 (text 등) 그냥 문자열 넣기
-		  deadlineInput.value = dateText;
-		}
-	    let roleText = row.children[8].textContent.trim();
+	    let roleText = row.children[7].textContent.trim();
 		roleText = roleText.toLowerCase();
 		const roleSelect = document.getElementById('roleSelect');
 		roleSelect.value = roleText;
@@ -80,25 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const toggleUrl = window.contextPath + '/admin/user/toggle-active';
 	document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach(chk => {
 	  chk.addEventListener('change', function() {
-		
-		  if (this.checked) {
-			  const row = this.closest('tr');
-			  // 0=checkbox,1=index,2=userId,3=password,4=name,5=school,6=mail,7=deadline,...
-			  const deadlineText = row.children[7].textContent.trim();
-			  if (deadlineText) {
-				  const deadlineDate = new Date(`${deadlineText}T00:00:00`);
-				  const today = new Date();
-				  today.setHours(0, 0, 0, 0);
-
-				  if (deadlineDate <= today) {
-					  alert('If the submission deadline is today or a past date, activation is not possible.');
-					  // 체크 원복
-					  this.checked = false;
-					  return;
-				  }
-			  }
-		  }
-		
 	    const payload = {
 	      id:     +this.dataset.userId,
 	      active: this.checked
