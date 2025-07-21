@@ -6,7 +6,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>User</title>
+    <title>Home</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/home.css"/>
     <script src="<c:url value='/js/admin/home.js'/>"></script>

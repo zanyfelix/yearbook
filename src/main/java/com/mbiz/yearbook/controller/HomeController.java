@@ -1,24 +1,42 @@
 package com.mbiz.yearbook.controller;
 
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
 
 @Controller
 public class HomeController {
+	
+	@Autowired
+	UserService userService;
 
 	@GetMapping("/home")
 	public String home(HttpSession session, Model model) {
+		
 	    User user = (User) session.getAttribute("loginUser");
+	    
+	    //사용자 마감일을 yyyy-MM-dd 포맷 문자열로 변환
+	    String deadlineStr = new SimpleDateFormat("yyyy-MM-dd").format(user.getDeadline());
+	    model.addAttribute("deadline", deadlineStr);
 
-	    long remainDays = ChronoUnit.DAYS.between(LocalDate.now(), LocalDate.of(2026, 3, 31));
+	    LocalDate today = LocalDate.now();
+	    LocalDate deadline = user.getDeadline()
+	                             .toInstant()
+	                             .atZone(ZoneId.systemDefault())
+	                             .toLocalDate();
+	    
+	    long remainDays = ChronoUnit.DAYS.between(today, deadline);
 
 	    int groupProgress = 60; // 예시: 실제 DB 조회 필요
 	    int eventProgress = 45;

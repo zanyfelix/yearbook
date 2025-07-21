@@ -5,85 +5,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Yearbook Home</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .sidebar {
-            width: 200px;
-            background-color: #333;
-            color: white;
-            position: fixed;
-            height: 100%;
-            padding-top: 20px;
-        }
-
-        .sidebar h5 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
-        }
-
-        .sidebar a {
-            display: block;
-            padding: 12px 20px;
-            color: white;
-            text-decoration: none;
-        }
-
-        .sidebar a:hover {
-            background-color: #555;
-        }
-
-        .content {
-            margin-left: 200px;
-            padding: 20px 30px;
-        }
-
-        .top-bar {
-            background-color: #d2f4e8;
-            border: 1px solid #ccc;
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .top-bar .badge {
-            font-size: 0.95rem;
-            padding: 10px 16px;
-        }
-
-        .section-box {
-            background-color: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 5px solid #ccc;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-        }
-
-        .section-box h5 {
-            font-weight: bold;
-            margin-bottom: 12px;
-        }
-
-        .section-box ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .sidebar a.active {
-        	background-color: #28a745;
-        	font-weight: bold;
-    	}
-    </style>
+    <title>Home</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/home.css"/>
+    <script src="<c:url value='/js/home.js'/>"></script>
+    <script>
+    	// 서버에서 yyyy-MM-dd 포맷으로 전달된 deadline
+    	var deadlineStr = '${deadline}';
+    </script>
 </head>
 <body>
 
@@ -98,7 +27,7 @@
 
 <div class="content">
     <div class="top-bar">
-        <span class="badge bg-success text-dark">Yearbook Due: Mar. 31st. 2026 (D-${remainDays} days left)</span>
+        <span class="badge bg-success text-dark">Yearbook Due: ${deadline} (D-${remainDays} days left)</span>
         <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
         <span class="badge bg-success text-dark">Event Photo Page: ${eventProgress}%</span>
     </div>
@@ -145,7 +74,25 @@
             <li>Please ensure that all submissions are finalized before the designated deadline, as modifications to any page will not be possible thereafter.</li>
         </ul>
     </div>
+    
+	<!-- 페이지 어디든, body 끝 직전에 위치시켜 주세요 -->
+	<div id="deadlineModalOverlay" class="modal-overlay">
+	  <div class="modal-box">
+	    <div class="modal-header">MBIZ Yearbook</div>
+	    <div class="modal-body">
+	      <p id="deadlineText"></p>
+	      <div class="form-check">
+	        <input class="form-check-input" type="checkbox" id="dontShowCheckbox">
+	        <label class="form-check-label" for="dontShowCheckbox">
+	          Don't show again for the day
+	        </label>
+	      </div>
+	      <button id="modalCloseBtn" class="btn-custom">Close</button>
+	    </div>
+	  </div>
+	</div>
 </div>
 
+<script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
