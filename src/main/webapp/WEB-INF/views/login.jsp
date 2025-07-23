@@ -32,10 +32,10 @@
 
         <form method="post" action="/login">
             <div class="mb-3">
-                <input type="text" class="form-control" id="userId" name="userId" placeholder="User ID" value="admin" required autofocus>
+                <input type="text" class="form-control" id="userId" name="userId" placeholder="User ID" value="test1" required autofocus>
             </div>
             <div class="mb-3">
-                <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="admin" required>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="test1" required>
             </div>
 
             <c:if test="${not empty error}">

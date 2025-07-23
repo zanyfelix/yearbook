@@ -44,7 +44,7 @@ public class ThemeService {
 
     	    UserTheme ut = new UserTheme();
     	    ut.setUserId(id);
-    	    ut.setThemeId(themeId);
+    	    ut.setTheme(theme);
     	    ut.setCategory(category);
     	    ut.setCreatedAt(LocalDateTime.now());
     	    ut.setUpdatedAt(LocalDateTime.now());
@@ -58,7 +58,14 @@ public class ThemeService {
     	return userThemeRepository
                 .findByUserIdAndCategory(userId, category)
                 .stream()
-                .map(UserTheme::getThemeId)
+                .map(ut -> ut.getTheme().getId())  // ✅ theme 객체에서 id 꺼냄
                 .collect(Collectors.toList());
     }
+    
+    public List<UserTheme> findByUserIdAndCategory (Long userId, String category) {
+    	return userThemeRepository.findByUserIdAndCategory(userId, category);
+    }
+    
+    
+    
 }

@@ -8,151 +8,25 @@
     <meta charset="UTF-8">
     <title>Yearbook Home</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-
-        .sidebar {
-            width: 200px;
-            background-color: #333;
-            color: white;
-            position: fixed;
-            height: 100%;
-            padding-top: 20px;
-        }
-
-        .sidebar h5 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
-        }
-
-        .sidebar a {
-            display: block;
-            padding: 12px 20px;
-            color: white;
-            text-decoration: none;
-        }
-
-        .sidebar a:hover {
-            background-color: #555;
-        }
-
-        .content {
-            margin-left: 200px;
-            padding: 20px 30px;
-        }
-
-        .top-bar {
-            background-color: #d2f4e8;
-            border: 1px solid #ccc;
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .top-bar .badge {
-            font-size: 0.95rem;
-            padding: 10px 16px;
-        }
-
-        .section-box {
-            background-color: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 5px solid #ccc;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-        }
-
-        .section-box h5 {
-            font-weight: bold;
-            margin-bottom: 12px;
-        }
-
-        .section-box ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .sidebar a.active {
-        	background-color: #28a745;
-        	font-weight: bold;
-    	}
-    	
-    	.category-section {
-            background-color: #f0f0f0;
-            padding: 20px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-        }
-        .page-card {
-            width: 120px;
-            text-align: center;
-            margin-right: 15px;
-            margin-bottom: 20px;
-        }
-        .page-thumb {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border: 1px solid #ccc;
-            background-color: #eee;
-            margin-bottom: 10px;
-        }
-        .edit-btn {
-            font-weight: bold;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        
-        /* #thumbnail-area img {
-		  transition: transform 0.2s ease;
-		}
-		#thumbnail-area img:hover {
-		  transform: scale(1.05);
-		  cursor: pointer;
-		}
-		.selected-thumbnail {
-		  border: 3px solid #007bff;
-		} */
-		
-		.thumbnail-wrapper {
-		  position: relative;
-		  overflow: hidden;
-		}
-		
-		.thumbnail-wrapper .overlay {
-		  position: absolute;
-		  top: 0; left: 0; right: 0; bottom: 0;
-		  background-color: rgba(0, 0, 0, 0.4); /* 어두운 반투명 배경 */
-		  opacity: 0;
-		  transition: opacity 0.3s ease;
-		}
-		
-		.thumbnail-wrapper:hover .overlay {
-		  opacity: 1;
-		}
-    </style>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/edit.css"/>
+    <script src="<c:url value='/js/edit.js'/>"></script>
 </head>
 <body>
 
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
+    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+		<button type="submit" class="btn btn-secondary w-100">Logout</button>
+	</form>
     <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/edit?username=${sessionScope.loginUser.userId}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
+    <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
     <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
     <a href="/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
 </div>
 
 <div class="content">
+	<input type="hidden" id="id" name="id" value="${sessionScope.loginUser.id}"/>
 	<div class="top-bar">
         <span class="badge bg-success text-dark">Yearbook Due: Mar. 31st. 2026 (D-${remainDays} days left)</span>
         <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
@@ -160,18 +34,27 @@
     </div>
     
     <!-- 각 카테고리별 섹션 -->
-    <c:forEach var="entry" items="${groupedPages}">
+    <c:forEach var="item" items="${list}" varStatus="st">
         <div class="category-section">
-            <h5 class="mb-3">${entry.key} (${fn:length(entry.value)})</h5>
-            <div class="d-flex flex-wrap">
-                <c:forEach var="page" items="${entry.value}">
-                    <div class="page-card">
-                        <img src="${page.thumbnailUrl != null ? page.thumbnailUrl : '/images/placeholder.png'}"
-                             class="page-thumb"
-                             alt="Page Thumbnail" />
-                        <div class="edit-btn" data-bs-toggle="modal" data-bs-target="#editModal">Edit</div>
-                    </div>
-                </c:forEach>
+            <h5 class="mb-3">${item.title} (${item.pages})</h5>
+            
+            <div class="position-relative">
+            	<!-- 왼쪽 버튼 -->
+            	<button class="slide-btn left" onclick="scrollLeft('${st.index}')">&#10094;</button>
+            	
+            	
+            	<!-- 슬라이드 박스 -->
+		        <div class="slide-container" id="slider-${st.index}">
+		            <c:forEach var="i" begin="1" end="${item.pages}" varStatus="st2">
+		                <div class="page-card" draggable="true">
+		                    <img src="/images/placeholder.png" class="page-thumb" alt="Page Thumbnail"/>
+		                    <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+		                </div>
+		            </c:forEach>
+		        </div>
+            	
+            	<!-- 오른쪽 버튼 -->
+            	<button class="slide-btn right" onclick="scrollRight('${st.index}')">&#10095;</button>
             </div>
         </div>
     </c:forEach>
@@ -212,55 +95,9 @@
 	  </div>
 	</div> <!-- modal -->
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.getElementById("btn-background").addEventListener("click", function() {
-    fetch("/sample/background")
-    .then(response => response.json())
-    .then(data => {
-        const area = document.getElementById("thumbnail-area");
-        area.innerHTML = ""; // 초기화
-
-        data.forEach(sample => {
-            // 썸네일 컨테이너
-            const container = document.createElement("div");
-            container.classList.add("col-6", "text-center");
-
-            // 래퍼 div (hover용)
-            const wrapper = document.createElement("div");
-            wrapper.classList.add("thumbnail-wrapper", "position-relative");
-
-            // 이미지
-            const img = document.createElement("img");
-            img.src = sample.imagePath;
-            img.classList.add("img-thumbnail", "preview-img");
-
-            // 오버레이
-            const overlay = document.createElement("div");
-            overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
-
-            // Select 버튼
-            const selectBtn = document.createElement("button");
-            selectBtn.classList.add("btn", "btn-primary", "btn-sm");
-            selectBtn.innerText = "Select";
-            selectBtn.onclick = () => selectSample(sample.imagePath);
-
-            overlay.appendChild(selectBtn);
-            wrapper.appendChild(img);
-            wrapper.appendChild(overlay);
-            container.appendChild(wrapper);
-            area.appendChild(container);
-        });
-    });
-});
-//샘플 이미지 전송
-function selectSample(imagePath) {
-    // 선택 시 미리보기 이미지 변경
-    document.getElementById("page-preview-img").src = imagePath;
-}
-//CLEAR 버튼
-document.getElementById("btn-clear").addEventListener("click", function () {
-    document.getElementById("page-preview-img").src = "/images/placeholder.png";
-});
+const ctx = '${pageContext.request.contextPath}';
 </script>
 </body>
 </html>

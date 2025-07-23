@@ -29,10 +29,6 @@ public class UserTheme extends BaseTimeEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    /** 원시 ID 필드: 조회 전용으로만 사용 */
-    @Column(name = "theme_id", nullable = false)
-    private Long themeId;
-
     @Column(nullable = false)
     private String category;
     
@@ -45,5 +41,9 @@ public class UserTheme extends BaseTimeEntity {
     private LocalDateTime updatedAt;
     
     private List<Long> themeIds;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "theme_id", nullable = false)
+    private Theme theme;
     
 }

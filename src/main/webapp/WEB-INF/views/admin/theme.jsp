@@ -108,7 +108,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='/theme/${item.path}'/>"
+                    <img src="<c:url value='${item.path}'/>"
                          class="img-thumbnail"
                          width="60"/>
                   </td>
@@ -146,7 +146,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='/theme/${item.path}'/>"
+                    <img src="<c:url value='${item.path}'/>"
                          class="img-thumbnail"
                          width="60"/>
                   </td>
@@ -184,7 +184,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='/theme/${item.path}'/>"
+                    <img src="<c:url value='${item.path}'/>"
                          class="img-thumbnail"
                          width="60"/>
                   </td>

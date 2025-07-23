@@ -20,12 +20,9 @@
 </c:if>
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
-		<form id="logoutForm"
-			action="${pageContext.request.contextPath}/logout"
-			method="post" style="margin-bottom: 1rem;">
-			<button type="submit" class="btn btn-secondary w-100">
-				Logout</button>
-		</form>
+	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+		<button type="submit" class="btn btn-secondary w-100">Logout</button>
+	</form>
 	<a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
     <a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
     <a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
