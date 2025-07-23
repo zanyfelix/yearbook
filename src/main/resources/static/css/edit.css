@@ -158,3 +158,25 @@ body {
 
 .slide-btn.left { left: 0; }
 .slide-btn.right { right: 0; }
+
+/* outline-secondary 버튼 hover 시 기본 색상 */
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  background-color: #e2e6ea;   /* Bootstrap 기본 hover 백그라운드 */
+  color: #212529;
+  border-color: #dae0e5;
+}
+
+/* active 상태일 때도 동일하게 */
+.btn-outline-secondary.active {
+  background-color: #e2e6ea;
+  color: #212529;
+  border-color: #dae0e5;
+}
+
+#text-tooltip {
+  pointer-events: auto;
+}
+.text-box.selected {
+  outline: 2px solid #007bff;
+}

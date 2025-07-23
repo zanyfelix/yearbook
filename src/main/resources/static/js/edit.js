@@ -1,5 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
 	
+	const btnBg = document.getElementById('btn-background');
+	const btnFrame = document.getElementById('btn-frame');
+	const btnText = document.getElementById('btn-text');
+
+	const bgPanel = document.getElementById('background-panel');
+	const framePanel = document.getElementById('frame-panel');
+	const textPanel = document.getElementById('text-panel');
+
+	const allBtns = [btnBg, btnFrame, btnText];
+
+	function hideAllPanels() {
+	  bgPanel.classList.add('d-none');
+	  framePanel.classList.add('d-none');
+	  textPanel.classList.add('d-none');
+	}
+
+	function activate(btn) {
+	  [btnBg, btnFrame, btnText].forEach(b => b.classList.remove('active'));
+	  btn.classList.add('active');
+	}
+	
 	const thumbnailArea = document.getElementById('thumbnail-area');
 	
 	document.querySelectorAll('.sortable').forEach(container => {
@@ -32,8 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	//바뀐순서 저장 필요
 	//const order = Array.from(container.children).map(card => card.dataset.pageId);
 	
-	//background 버튼
-	document.getElementById("btn-background").addEventListener("click", function() {
+	/*--------------------백그라운드 패널--------------------*/
+	
+	btnBg.addEventListener("click", function() {
+		
+		activate(btnBg);
+		hideAllPanels();
+		bgPanel.classList.remove('d-none');
+		
 	    fetch(`${ctx}/edit/background` , {
 		      method: 'POST',
 			  headers: { 'Content-Type': 'application/json' },
@@ -44,13 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		    })
 	    .then(response => response.json())
 	    .then(data => {
-	        const area = document.getElementById("thumbnail-area");
-	        area.innerHTML = ""; // 초기화
-
 	        data.forEach(sample => {
 	            // 썸네일 컨테이너
-	            const container = document.createElement("div");
-	            container.classList.add("col-6", "text-center");
+	            const col = document.createElement("div");
+	            col.classList.add("col-6", "text-center");
 
 	            // 래퍼 div (hover용)
 	            const wrapper = document.createElement("div");
@@ -69,21 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
 	            const selectBtn = document.createElement("button");
 	            selectBtn.classList.add("btn", "btn-primary", "btn-sm");
 	            selectBtn.innerText = "Select";
-	            selectBtn.onclick = () => selectSample(sample.theme.path);
-
+				selectBtn.onclick = () => {
+					document.getElementById("page-preview-img").src = sample.theme.path;
+					selectedBackgroundPath = sample.theme.path;
+				};
 	            overlay.appendChild(selectBtn);
-	            wrapper.appendChild(img);
-	            wrapper.appendChild(overlay);
-	            container.appendChild(wrapper);
-	            area.appendChild(container);
+				
+				wrapper.appendChild(img);
+				wrapper.appendChild(overlay);
+				col.appendChild(wrapper);
+				bgPanel.appendChild(col);
 	        });
 	    });
 	});
-	//샘플 이미지 전송
-	function selectSample(imagePath) {
-	    // 선택 시 미리보기 이미지 변경
-	    document.getElementById("page-preview-img").src = imagePath;
-	}
 	//CLEAR 버튼
 	document.getElementById("btn-clear").addEventListener("click", function () {
 		
@@ -144,8 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	const categories = document.getElementById('frame-category-buttons');
 	const items = document.getElementById('frame-item-list');
 	
-	//frame 버튼
-	document.getElementById("btn-frame").addEventListener("click", function() {
+	/*--------------------프레임 패널--------------------*/
+	
+	btnFrame.addEventListener("click", function() {
+		
+		activate(btnFrame);
+		hideAllPanels();
+		framePanel.classList.remove('d-none');
+		
 	    fetch(`${ctx}/edit/mainFrame` , {
 		      method: 'POST',
 			  headers: { 'Content-Type': 'application/json' },
@@ -195,19 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	}
 	
-	const bgPanel = document.getElementById('background-panel');
-	const framePanel = document.getElementById('frame-panel');
-	const textPanel = document.getElementById('text-panel');
-	
-	function showPanel(panel) {
-		[bgPanel, framePanel, textPanel].forEach(p => p.classList.add('d-none'));
-		panel.classList.remove('d-none');
-	}
-	
-	
 	/*--------------------텍스트 패널--------------------*/
 	
-	const btnText      = document.getElementById('btn-text');
 	const addTextBtn   = document.getElementById('add-text-btn');
 	const ctrlColor    = document.getElementById('text-color');
 	const ctrlSize     = document.getElementById('text-size');
@@ -216,88 +233,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	const textCtrls    = document.getElementById('text-controls');
 	const preview      = document.getElementById('page-preview');
 	
-	let selectedTxtEl = null;
+	const tooltip = document.getElementById('text-tooltip');
+	const inColor = document.getElementById('tooltip-color');
+	const inSize = document.getElementById('tooltip-size');
+	const inAlign = document.getElementById('tooltip-align');
+	const btnRemove = document.getElementById('tooltip-remove');
 	
-	// 1) 탭 전환 시 text-panel 보이기
-	btnText.addEventListener('click', () => {
-		showPanel(textPanel);
-		textCtrls.classList.add('d-none');
-	});
+	let selectedBox  = null;
 	
-	// 2) 새 텍스트 박스 추가
-	addTextBtn.addEventListener('click', () => {
-		const div = document.createElement('div');
-		div.className = 'text-box position-absolute';
-		div.contentEditable = 'true';
-		div.innerText = 'Enter text';
-		// 초기 스타일
-		Object.assign(div.style, {
-			left: '50%', top: '50%',
-			transform: 'translate(-50%, -50%)',
-			color: '#000000',
-			fontSize: '16px',
-			textAlign: 'center',
-			minWidth: '80px',
-			padding: '2px',
-			border: '1px dashed #666',
-			cursor: 'move',
-			zIndex: 20
-		});
-		preview.appendChild(div);
-		makeDraggable(div);
-		// 새로 만든 요소 선택
-		selectTextBox(div);
-		div.focus();
-	});
-	
-	// 3) 텍스트 박스 클릭 시 선택
-	preview.addEventListener('click', e => {
-	  if (e.target.classList.contains('text-box')) {
-	    selectTextBox(e.target);
-	  }
-	});
-	
-	function selectTextBox(el) {
-	  // 이전 선택 해제
-	  if (selectedTxtEl) {
-	    selectedTxtEl.style.border = '1px dashed #666';
-	  }
-	  // 새로 선택
-	  selectedTxtEl = el;
-	  selectedTxtEl.style.border = '1px solid #007bff';
-	  // 컨트롤러 보이기 & 상태 동기화
-	  textCtrls.classList.remove('d-none');
-	  ctrlColor.value = rgbToHex(selectedTxtEl.style.color);
-	  ctrlSize.value  = selectedTxtEl.style.fontSize;
-	  ctrlAlign.value = selectedTxtEl.style.textAlign;
-	}
-	
-	// 4) 컨트롤러 변경 시 스타일 적용
-	ctrlColor.addEventListener('input', () => {
-	  if (selectedTxtEl) selectedTxtEl.style.color = ctrlColor.value;
-	});
-	ctrlSize.addEventListener('change', () => {
-	  if (selectedTxtEl) selectedTxtEl.style.fontSize = ctrlSize.value;
-	});
-	ctrlAlign.addEventListener('change', () => {
-	  if (selectedTxtEl) selectedTxtEl.style.textAlign = ctrlAlign.value;
-	});
-	
-	// 5) 삭제 버튼
-	removeTextBtn.addEventListener('click', () => {
-	  if (selectedTxtEl) {
-	    selectedTxtEl.remove();
-	    selectedTxtEl = null;
-	    textCtrls.classList.add('d-none');
-	  }
-	});
-
-	// 유틸: RGB → HEX
-	function rgbToHex(rgb) {
-	  const m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-	  return m ? '#' + [1,2,3].map(i => parseInt(m[i]).toString(16).padStart(2,'0')).join('') : '#000000';
-	}
-
 	// 드래그 기능 (이전 makeDraggable 활용)
 	function makeDraggable(el) {
 	  let offsetX, offsetY;
@@ -310,5 +253,107 @@ document.addEventListener('DOMContentLoaded', () => {
 	    };
 	    document.onmouseup = () => document.onmousemove = null;
 	  };
+	}
+	
+	btnText.addEventListener('click', () => {
+		activate(btnText);
+		hideAllPanels();
+		textPanel.classList.remove('d-none');
+	});
+	
+	preview.addEventListener('click', e => {
+		const box = e.target.closest('.text-box');
+		if (!box) {
+			hideTooltip();
+			return;
+		}
+		selectBox(box);
+	});
+	
+	function selectBox(box) {
+		
+		// 이전 선택 해제
+		if (selectedBox) selectedBox.classList.remove('selected');
+		selectedBox = box;
+		box.classList.add('selected');
+
+		// 컨트롤 초기값 동기화
+		inColor.value = rgbToHex(box.style.color);
+		inSize.value = box.style.fontSize;
+		inAlign.value = box.style.textAlign;
+
+		// 툴팁 위치 계산
+		const rect = box.getBoundingClientRect();
+		tooltip.style.left = `${rect.right + 8 + window.pageXOffset}px`;
+		tooltip.style.top = `${rect.top + window.pageYOffset}px`;
+
+		// 툴팁 보이기
+		tooltip.classList.remove('d-none');
+	}
+	
+	function hideTooltip() {
+	  if (selectedBox) selectedBox.classList.remove('selected');
+	  selectedBox = null;
+	  tooltip.classList.add('d-none');
+	}
+	
+	// 2) 툴팁 입력 변경 시 스타일 적용
+	inColor.addEventListener('input', () => {
+	  if (selectedBox) selectedBox.style.color = inColor.value;
+	});
+	inSize.addEventListener('change', () => {
+	  if (selectedBox) selectedBox.style.fontSize = inSize.value;
+	});
+	inAlign.addEventListener('change', () => {
+	  if (selectedBox) selectedBox.style.textAlign = inAlign.value;
+	});
+	
+	btnRemove.addEventListener('click', () => {
+	  if (selectedBox) {
+	    selectedBox.remove();
+	    hideTooltip();
+	  }
+	});
+	
+	addTextBtn.addEventListener('click', () => {
+
+		const box = document.createElement('div');
+		box.className = 'text-box position-absolute';
+		box.contentEditable = 'true';
+		box.innerText = 'Enter text';
+		Object.assign(box.style, {
+			left: '50%', top: '50%',
+			transform: 'translate(-50%, -50%)',
+			color: '#000', fontSize: '16px',
+			textAlign: 'center', padding: '2px',
+			border: '1px dashed #666', minWidth: '80px',
+			cursor: 'move', zIndex: 20
+		});
+
+		preview.appendChild(box);
+		makeDraggable(box);
+
+		// 클릭해도 툴팁 유지하도록 리스너
+		box.addEventListener('click', e => {
+			selectBox(box);
+			e.stopPropagation();
+		});
+
+		// 생성 직후 자동 선택
+		selectBox(box);
+		box.focus();
+	});
+	
+	document.addEventListener('click', e => {
+	  if (!tooltip.contains(e.target) && !e.target.closest('.text-box')) {
+	    hideTooltip();
+	  }
+	});
+
+	// 유틸: RGB → HEX
+	function rgbToHex(rgb) {
+	  const m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+	  return m ? '#' + [1,2,3].map(i => parseInt(m[i])
+	    .toString(16).padStart(2,'0')).join('') : '#000000';
 	}
 });
