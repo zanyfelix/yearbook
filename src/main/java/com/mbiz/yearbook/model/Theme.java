@@ -32,7 +32,10 @@ public class Theme extends BaseTimeEntity {
     private String category;
 
     @Column(nullable = false)
-    private String path;  // ex) "backgrounds/bg1.jpg"
+    private String path;
+    
+    @Column(name = "parent_id")
+    private Long parentId;
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

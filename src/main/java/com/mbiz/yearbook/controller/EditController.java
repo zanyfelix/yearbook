@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,8 +16,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
+import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.ThemeService;
+import com.mbiz.yearbook.service.YearbookService;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,9 @@ public class EditController {
     
     @Autowired
     private ThemeService themeService;
+    
+    @Autowired
+    private YearbookService yearbookService;
 
     @GetMapping("/edit")
     public String editMain(HttpSession session, @RequestParam Long id, Model model) {
@@ -49,6 +55,29 @@ public class EditController {
         String category = (String) param.get("category");
         return themeService.findByUserIdAndCategory(id, category);
     }
+    
+    @PostMapping("/edit/mainFrame")
+    @ResponseBody
+    public List<UserTheme> mainFrameList(@RequestBody Map<String, Object> param) {
+    	Long id = Long.parseLong(param.get("id").toString());
+        String category = (String) param.get("category");
+        return themeService.findByUserIdAndCategory(id, category);
+    }
+    
+    @PostMapping("/edit/subFrame")
+    @ResponseBody
+    public List<UserTheme> subFrameList(@RequestBody Map<String, Object> param) {
+    	Long id = Long.parseLong(param.get("id").toString());
+        String category = (String) param.get("category");
+        return themeService.findByUserIdAndCategory(id, category);
+    }
+    
+//    @PostMapping("/edit/save")
+//    @ResponseBody
+//    public ResponseEntity<?> saveYearbook(@RequestBody Yearbook yearbook) {
+//    	yearbookService.save(yearbook);
+//        return ResponseEntity.ok(Map.of("status", "success"));
+//    }
 
 //    @PostMapping
 //    public String create(@ModelAttribute Category category) {

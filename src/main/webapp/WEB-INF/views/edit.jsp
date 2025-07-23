@@ -73,9 +73,55 @@
 	
 	        <!-- 중앙 썸네일 선택 영역 -->
 	        <div class="col-5 px-3 overflow-auto border-end" style="max-height: 100%;">
-	          <div class="row row-cols-2 g-3" id="thumbnail-area">
-	            <!-- JS로 채워짐 -->
-	          </div>
+	        
+	        	<!-- 공통 컨테이너 -->
+	        	<div id="thumbnail-area">
+	        		<!-- Background 패널 -->
+	        		<div id="background-panel" class="row row-cols-2 g-3">
+	        		</div>
+	        		
+	        		<!-- Frame 패널 (카테고리 + 아이템) -->
+	        		<div id="frame-panel" class="d-none">
+				      <div id="frame-category-area" class="mb-3">
+				        <div class="row row-cols-3 g-2" id="frame-category-buttons"></div>
+				      </div>
+				      <div id="frame-item-area">
+				        <div class="row row-cols-2 g-3" id="frame-item-list"></div>
+				      </div>
+				    </div>
+	        		
+	        		<!-- Text 패널 -->
+	        		<div id="text-panel" class="d-none">
+	        			<div class="mb-2">
+						  <button id="add-text-btn" class="btn btn-outline-primary btn-sm">Add Text Box</button>
+						</div>
+						<div id="text-controls" class="d-none mb-2">
+						    <label class="me-2">
+						      Color:
+						      <input type="color" id="text-color" />
+						    </label>
+						    <label class="me-2">
+						      Size:
+						      <select id="text-size" class="form-select form-select-sm d-inline-block w-auto">
+						        <option value="12px">12px</option>
+						        <option value="16px" selected>16px</option>
+						        <option value="20px">20px</option>
+						        <option value="24px">24px</option>
+						        <option value="32px">32px</option>
+						      </select>
+						    </label>
+						    <label class="me-2">
+						      Alignment:
+						      <select id="text-align" class="form-select form-select-sm d-inline-block w-auto">
+						        <option value="left">Left</option>
+						        <option value="center" selected>Center</option>
+						        <option value="right">Right</option>
+						      </select>
+						    </label>
+						    <button id="remove-text-btn" class="btn btn-outline-danger btn-sm">Remove</button>
+						  </div>
+	        		</div>
+	        	</div>
 	        </div>
 
 	        <!-- 우측 미리보기 -->

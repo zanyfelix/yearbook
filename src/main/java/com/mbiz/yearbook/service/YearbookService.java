@@ -17,8 +17,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class YearbookService {
 
-    private final YearbookRepository pageRepository;
+    private final YearbookRepository yearbookRepository;
     private final UserRepository userRepository;
+    
+	  public void savePage(Yearbook  yearbook) {
+		  
+		  
+	
+		  yearbookRepository.save(yearbook);
+	}
 
     /**
      * 특정 사용자의 전체 이어북 페이지 목록 조회
