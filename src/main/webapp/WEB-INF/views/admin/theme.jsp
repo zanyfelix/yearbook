@@ -48,14 +48,14 @@
       <form id="themeForm"
             action="<c:url value='/admin/theme'/>"
             method="post">
-        <input type="hidden" name="userIdBySchool" value="${userIdBySchool}" />
+        <input type="hidden" name="userId" value="${userId}" />
 
         <!-- 1) Nav Tabs -->
         <ul class="nav nav-tabs mb-4" role="tablist">
           <li class="nav-item">
             <button
               type="submit"
-              name="categoryType"
+              name="category"
               value="background"
               class="nav-link ${category=='background' ? 'active' : ''}"
             >Background</button>
@@ -63,7 +63,7 @@
           <li class="nav-item">
             <button
               type="submit"
-              name="categoryType"
+              name="category"
               value="frame"
               class="nav-link ${category=='frame' ? 'active' : ''}"
             >Frame</button>
@@ -71,7 +71,7 @@
           <li class="nav-item">
             <button
               type="submit"
-              name="categoryType"
+              name="category"
               value="font"
               class="nav-link ${category=='font' ? 'active' : ''}"
             >Font</button>
@@ -126,25 +126,29 @@
           <table class="table table-striped">
             <thead>
               <tr>
-                <th>No</th><th>Preview</th><th>Filename</th><th>Order</th><th>Select</th>
+                <tr>
+              	<th>
+		           <input type="checkbox" id="selectAll" onclick="toggleAll(this, '${category}')"/>
+		        </th>
+                <th>Filename</th>
+                <th>Preview</th>
               </tr>
             </thead>
             <tbody>
               <c:forEach var="item" items="${frameList}" varStatus="st">
                 <tr>
-                  <td>${st.index + 1}</td>
                   <td>
-                    <img src="${item.filePath}"
+		            <input type="checkbox" class="selectBox" name="themeIds" value="${item.id}" 
+		            	<c:if test="${fn:contains(selectedIds, item.id)}">
+                 			disabled="disabled" title="이미 선택된 프레임입니다."
+               			</c:if>
+		            />
+		          </td> 
+		          <td>${item.filename}</td>														
+                  <td>
+                    <img src="<c:url value='/theme/${item.path}'/>"
                          class="img-thumbnail"
                          width="60"/>
-                  </td>
-                  <td>${item.originalFilename}</td>
-                  <td>${item.orderNo}</td>
-                  <td>
-                    <button
-                      class="btn btn-sm btn-outline-primary"
-                      onclick="selectTheme(${item.id}, 'frame')"
-                    >Select</button>
                   </td>
                 </tr>
               </c:forEach>
@@ -160,25 +164,29 @@
           <table class="table table-striped">
             <thead>
               <tr>
-                <th>No</th><th>Preview</th><th>Filename</th><th>Order</th><th>Select</th>
+                <tr>
+              	<th>
+		           <input type="checkbox" id="selectAll" onclick="toggleAll(this, '${category}')"/>
+		        </th>
+                <th>Filename</th>
+                <th>Preview</th>
               </tr>
             </thead>
             <tbody>
               <c:forEach var="item" items="${fontList}" varStatus="st">
                 <tr>
-                  <td>${st.index + 1}</td>
                   <td>
-                    <img src="${item.filePath}"
+		            <input type="checkbox" class="selectBox" name="themeIds" value="${item.id}" 
+		            	<c:if test="${fn:contains(selectedIds, item.id)}">
+                 			disabled="disabled" title="이미 선택된 폰트입니다."
+               			</c:if>
+		            />
+		          </td> 
+		          <td>${item.filename}</td>														
+                  <td>
+                    <img src="<c:url value='/theme/${item.path}'/>"
                          class="img-thumbnail"
                          width="60"/>
-                  </td>
-                  <td>${item.originalFilename}</td>
-                  <td>${item.orderNo}</td>
-                  <td>
-                    <button
-                      class="btn btn-sm btn-outline-primary"
-                      onclick="selectTheme(${item.id}, 'font')"
-                    >Select</button>
                   </td>
                 </tr>
               </c:forEach>
