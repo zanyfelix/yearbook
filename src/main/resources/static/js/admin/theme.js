@@ -99,14 +99,11 @@ document.addEventListener('DOMContentLoaded', function(){
       return alert('하나 이상 선택해 주세요.');
     }
 
-	
-	console.log(`${ctx}/admin/theme/save`);
-	
     fetch(`${ctx}/admin/theme/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: 1,
+        id: userId,
         category:       category,
         themeIds:       selectedIds
       })

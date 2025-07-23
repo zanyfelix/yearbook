@@ -22,9 +22,9 @@
 <div class="sidebar">
     <div class="mb-3">
 	<form action="<c:url value='/admin/theme' />" method="post">
-		<select name="userIdBySchool" class="form-select" onchange="this.form.submit()">
+		<select name="userId" class="form-select" onchange="this.form.submit()">
 	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-	    		<option value="${item.userId}" ${item.userId == userIdBySchool ? 'selected="selected"' : ''}>${item.schoolName}</option>
+	    		<option value="${item.id}" ${item.id == userId ? 'selected="selected"' : ''}>${item.schoolName}</option>
 	    	</c:forEach>
 	    </select>
 	</form>
@@ -199,7 +199,7 @@
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script>
 const ctx      = '${pageContext.request.contextPath}';
-//const userId   = '${userIdBySchool}';
+const userId   = '${userId}';
 const category = '${category}';
 </script>
 </body>

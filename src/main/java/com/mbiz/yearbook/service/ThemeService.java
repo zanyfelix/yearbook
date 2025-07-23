@@ -45,6 +45,7 @@ public class ThemeService {
     	    UserTheme ut = new UserTheme();
     	    ut.setUserId(id);
     	    ut.setThemeId(themeId);
+    	    ut.setCategory(category);
     	    ut.setCreatedAt(LocalDateTime.now());
     	    ut.setUpdatedAt(LocalDateTime.now());
     	    newMappings.add(ut);
