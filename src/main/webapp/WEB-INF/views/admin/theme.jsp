@@ -21,7 +21,7 @@
 </c:if>
 <div class="sidebar">
     <div class="mb-3">
-	<form action="<c:url value='/admin/theme' />" method="post">
+	<form action="<c:url value='/admin/theme' />" method="get">
 		<select name="userId" class="form-select" onchange="this.form.submit()">
 	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
 	    		<option value="${item.id}" ${item.id == userId ? 'selected="selected"' : ''}>${item.schoolName}</option>
@@ -35,8 +35,8 @@
 	</form>
 		
 	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>	
-    <a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+    <a href="/admin/theme?userId=${userId}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+    <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
     <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
     <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
 </div>

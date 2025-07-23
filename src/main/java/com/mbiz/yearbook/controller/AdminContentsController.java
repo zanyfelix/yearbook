@@ -1,33 +1,24 @@
 package com.mbiz.yearbook.controller;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.mbiz.yearbook.model.ToggleActiveDto;
+import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.service.HomeService;
+import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.UserService;
+import com.mbiz.yearbook.util.DuplicateUserIdException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -38,24 +29,62 @@ public class AdminContentsController {
     private UserService userService;
 	
 	@Autowired
-    private HomeService homeService;
+    private ContentsService contentsService;
 	
-	private final String UPLOAD_DIR = "uploads/";
-
 	@GetMapping("/contents")
-	public String showForm(HttpSession session,
-            @RequestParam(value = "keyword", required = false) String keyword,
-			Model model) {
+	public String showForm(HttpSession session, @RequestParam(required = false) Long userId, Model model) {
 		
-	    User user = (User) session.getAttribute("loginUser");
+		User loginUser = (User) session.getAttribute("loginUser");
+	    model.addAttribute("loginUser", loginUser);
 	    
-	    List<User> users = userService.getUser("schoolName", keyword);
-	    
-	    model.addAttribute("users", users);
+	    List<User> allUsers = userService.findAll();
+	    model.addAttribute("allUsers", allUsers);
+	    model.addAttribute("userId", userId);
 	    model.addAttribute("currentMenu", "contents");
-
+	    
+	    List<Contents> list = contentsService.findByUserId(userId);
+	    model.addAttribute("list", list);
+	    
 	    return "admin/contents";
 	}
+	
+	@PostMapping("/contents/register")
+	public String register(@ModelAttribute Contents contents, BindingResult br, Model model, RedirectAttributes redirectAttributes) {
+        if (br.hasErrors()) {
+        	model.addAttribute("contents", contentsService.findAll());
+            return "admin/contents";
+        }
+        
+        try {
+        	contentsService.register(contents);
+        	redirectAttributes.addFlashAttribute("successMessage", "registration complete");
+        } catch (DuplicateUserIdException ex) {
+            br.rejectValue("userId", "duplicate", ex.getMessage());
+            model.addAttribute("contents", contentsService.findAll());
+            return "admin/contents";
+        }
+        
+        return "redirect:/admin/contents?userId=" + contents.getUserId();
+    }
+	
+	@PostMapping("/contents/modify")
+	public String update(@ModelAttribute Contents contents, RedirectAttributes attrs, Model model) {
+		contentsService.update(contents);
+        attrs.addFlashAttribute("successMessage", "Content information has been modified.");
+        return "redirect:/admin/contents?userId=" + contents.getUserId();
+    }
+	
+	@PostMapping("/contents/delete")
+    public String delete(@RequestParam(value = "ids", required = false) List<Long> ids, @RequestParam(required = false) Long userId, 
+                         RedirectAttributes attrs) {
+        if (ids == null || ids.isEmpty()) {
+            attrs.addFlashAttribute("errorMessage", "Select the contents you want to delete.");
+        } else {
+        	int deleted = contentsService.deleteUsers(ids);
+            attrs.addFlashAttribute("successMessage", deleted + " contents has been deleted.");
+        }
+        return "redirect:/admin/contents?userId=" + userId;
+    }
 	
 //	@PostMapping("/home/register")
 //	public String register(@RequestParam("title") String title,

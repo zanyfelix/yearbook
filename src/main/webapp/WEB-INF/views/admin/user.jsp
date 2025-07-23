@@ -20,7 +20,7 @@
 </c:if>
 <div class="sidebar">
 	<div class="mb-3">
-	<form action="<c:url value='/admin/theme' />" method="post">
+	<form action="<c:url value='/admin/theme' />" method="get">
 	<select name="userId" class="form-select" onchange="this.form.submit()">
 	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
 	    		<option value="${item.id}">${item.schoolName}</option>
@@ -43,9 +43,6 @@
 </div>
 
 <div class="content">
-	<div class="top-bar">
-	</div>
-	
 	<div class="container-fluid">
 	
 		<!-- 검색 바 -->
