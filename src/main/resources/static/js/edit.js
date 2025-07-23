@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const bgPanel = document.getElementById('background-panel');
 	const framePanel = document.getElementById('frame-panel');
 	const textPanel = document.getElementById('text-panel');
+	const photoFrameList = document.getElementById('photoFrameList');
 
 	const allBtns = [btnBg, btnFrame, btnText];
 
@@ -61,20 +62,24 @@ document.addEventListener('DOMContentLoaded', () => {
 		hideAllPanels();
 		bgPanel.classList.remove('d-none');
 		
+		bgPanel.innerHTML = "";
+		
 	    fetch(`${ctx}/edit/background` , {
 		      method: 'POST',
 			  headers: { 'Content-Type': 'application/json' },
 			  body: JSON.stringify({
-			      id: document.getElementById("id").value,
+			      //id: document.getElementById("id").value,
+				  id: 11,
 			      category: "background"
 			  })
 		    })
 	    .then(response => response.json())
 	    .then(data => {
-	        data.forEach(sample => {
+	        data.forEach(result => {
+				
 	            // 썸네일 컨테이너
 	            const col = document.createElement("div");
-	            col.classList.add("col-6", "text-center");
+	            col.classList.add("col-4", "text-center");
 
 	            // 래퍼 div (hover용)
 	            const wrapper = document.createElement("div");
@@ -82,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	            // 이미지
 	            const img = document.createElement("img");
-	            img.src = sample.theme.path;
+	            img.src = result.theme.path;
 	            img.classList.add("img-thumbnail", "preview-img");
 
 	            // 오버레이
@@ -94,8 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	            selectBtn.classList.add("btn", "btn-primary", "btn-sm");
 	            selectBtn.innerText = "Select";
 				selectBtn.onclick = () => {
-					document.getElementById("page-preview-img").src = sample.theme.path;
-					selectedBackgroundPath = sample.theme.path;
+					document.getElementById("page-preview-img").src = result.theme.path;
+					selectedBackgroundPath = result.theme.path;
 				};
 	            overlay.appendChild(selectBtn);
 				
@@ -174,6 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		hideAllPanels();
 		framePanel.classList.remove('d-none');
 		
+		photoFrameList.innerHTML = "";
+		
+		//photo frame 먼저 로드
 	    fetch(`${ctx}/edit/mainFrame` , {
 		      method: 'POST',
 			  headers: { 'Content-Type': 'application/json' },
@@ -184,19 +192,124 @@ document.addEventListener('DOMContentLoaded', () => {
 		    })
 	    .then(response => response.json())
 	    .then(data => {
-			thumbnailArea.innerHTML = '';
+			
 	        data.forEach(result => {
-				const col = document.createElement('div');
-				col.className = 'col';
-				col.innerHTML = `<button class="btn btn-outline-primary w-100">${result.filename}</button>`;
-				const btn = col.querySelector('button');
-				btn.addEventListener('click', () => loadFrameItems(result.id, col));
-				categories.appendChild(col);
+				// 썸네일 컨테이너
+				const col = document.createElement("div");
+				col.classList.add("col-4", "text-center");
+
+				// 래퍼 div (hover용)
+				const wrapper = document.createElement("div");
+				wrapper.classList.add("thumbnail-wrapper", "position-relative");
+
+				// 이미지
+				const img = document.createElement("img");
+				img.src = result.theme.path;
+				img.classList.add("img-thumbnail", "preview-img");
+
+				// 오버레이
+				const overlay = document.createElement("div");
+				overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
+
+				// Select 버튼
+				const selectBtn = document.createElement("button");
+				selectBtn.classList.add("btn", "btn-primary", "btn-sm");
+				selectBtn.innerText = "Select";
+				
+				const frameModalEl = document.getElementById('frameModal');
+				const frameModal = new bootstrap.Modal(frameModalEl);
+				const btnClose = frameModalEl.querySelector('.btn-close');
+				
+				btnClose.addEventListener('click', () => {
+				  frameModal.hide();
+				});
+				
+				selectBtn.onclick = () => {
+					const list = document.getElementById('modalFrameList').innerHTML = '';
+					loadFramesModal();
+					frameModal.show();
+					//document.getElementById("page-preview-img").src = result.theme.path;
+					//selectedBackgroundPath = result.theme.path;
+				};
+				overlay.appendChild(selectBtn);
+
+				wrapper.appendChild(img);
+				wrapper.appendChild(overlay);
+				col.appendChild(wrapper);
+				photoFrameList.appendChild(col);
 	        });
 	    });
 	});
 	
+	// 모달 전용 로드 함수
+	function loadFramesModal() {
+    	const listEl = document.getElementById('modalFrameList');
+		listEl.innerHTML = '';  // 초기화
 		
+		fetch(`${ctx}/edit/mainFrame`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				//id: document.getElementById("id").value,
+				id: 11,
+				category: "frame"
+			})
+		})
+			.then(response => response.json())
+			.then(data => {
+				data.forEach(result => {
+
+					// 썸네일 컨테이너
+					const col = document.createElement("div");
+					col.classList.add("col-4", "text-center");
+
+					// 래퍼 div (hover용)
+					const wrapper = document.createElement("div");
+					wrapper.classList.add("thumbnail-wrapper", "position-relative");
+
+					// 이미지
+					const img = document.createElement("img");
+					img.src = result.theme.path;
+					img.classList.add("img-thumbnail", "preview-img");
+
+					// 오버레이
+					const overlay = document.createElement("div");
+					overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
+
+					// Select 버튼
+					const selectBtn = document.createElement("button");
+					selectBtn.classList.add("btn", "btn-primary", "btn-sm");
+					selectBtn.innerText = "Select";
+					selectBtn.onclick = () => {
+						document.getElementById("page-preview-img").src = result.theme.path;
+						applyFrame(result.theme.path);
+					};
+					overlay.appendChild(selectBtn);
+
+					wrapper.appendChild(img);
+					wrapper.appendChild(overlay);
+					col.appendChild(wrapper);
+					listEl.appendChild(col);
+				});
+			});
+	  
+	  document.getElementById('modalFrameList')
+	    .addEventListener('click', e => {
+	      const item = e.target.closest('.frame-item');
+	      if (!item) return;
+	      const img = item.querySelector('img');
+	      applyFrame(img.src);
+	      frameModal.hide();
+	    });
+	}
+
+	// 프레임 적용 함수 (배경 위 오버레이만 교체)
+	function applyFrame(path) {
+	  const overlay = document.getElementById('frame-overlay');
+	  if (!overlay) return;
+	  overlay.src = path;
+	  overlay.style.display = 'block';
+	}
 	
 	function loadMainFrame() {
 		fetch(`${ctx}/edit/mainFrame`		, {

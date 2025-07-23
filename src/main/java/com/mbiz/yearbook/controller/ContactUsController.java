@@ -22,7 +22,6 @@ import com.mbiz.yearbook.service.ContactUsService;
 import java.nio.file.Path;
 
 @Controller
-@RequestMapping("/contact")
 public class ContactUsController {
 
     @Autowired
@@ -30,10 +29,13 @@ public class ContactUsController {
 
     private final String UPLOAD_DIR = "uploads/";
 
-    @GetMapping
-    public String showForm(Model model) {
+    @GetMapping("/contactUs")
+    public String contactMain(Model model) {
         model.addAttribute("contact", new ContactUs());
-        return "contact";
+        
+        model.addAttribute("currentMenu", "contactUs");
+        
+        return "contactUs";
     }
 
     @PostMapping
@@ -51,6 +53,6 @@ public class ContactUsController {
 
         contactUsService.save(contact);
         redirectAttributes.addFlashAttribute("success", true);
-        return "redirect:/contact";
+        return "redirect:/contactUs";
     }
 }

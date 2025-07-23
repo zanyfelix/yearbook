@@ -38,26 +38,4 @@ public class ContentController {
 //
 //        return "userMain";
 //    }
-    
-    @GetMapping("/submit")
-    public String submit(HttpSession session, Model model) {
-    	 User user = (User) session.getAttribute("user");
-         if (user == null) {
-             return "redirect:/login";
-         }
-         model.addAttribute("user", user);
-
-        return "userMain";
-    }
-    
-    @GetMapping("/contactUs")
-    public String contactUs(HttpSession session, Model model) {
-    	 User user = (User) session.getAttribute("user");
-         if (user == null) {
-             return "redirect:/login";
-         }
-         model.addAttribute("user", user);
-
-        return "userMain";
-    }
 }

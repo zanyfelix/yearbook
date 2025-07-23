@@ -20,9 +20,9 @@
 	</form>
     <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
-    <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
-    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
-    <a href="/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
+    <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Progress Report</a>
+    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submit to MBIZ</a>
+    <a href="/contactUs" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
 </div>
 
 <div class="content">
@@ -82,12 +82,28 @@
 	        		
 	        		<!-- Frame 패널 (카테고리 + 아이템) -->
 	        		<div id="frame-panel" class="d-none">
-				      <div id="frame-category-area" class="mb-3">
-				        <div class="row row-cols-3 g-2" id="frame-category-buttons"></div>
-				      </div>
-				      <div id="frame-item-area">
-				        <div class="row row-cols-2 g-3" id="frame-item-list"></div>
-				      </div>
+						<ul class="nav nav-tabs" id="frameTab" role="tablist">
+							<li class="nav-item" role="presentation">
+								<button class="nav-link active" id="photo-tab"
+									data-bs-toggle="tab" data-bs-target="#photoFrameList"
+									type="button" role="tab">Photo Frame</button>
+							</li>
+							<li class="nav-item" role="presentation">
+								<button class="nav-link" id="text-tab" data-bs-toggle="tab"
+									data-bs-target="#textBoxFrameList" type="button" role="tab">
+									Text Box Frame</button>
+							</li>
+						</ul>
+						
+						<!-- Tab panes -->
+						<div class="tab-content">
+							<div class="tab-pane fade show active" id="photoFrameList" role="tabpanel">
+						      <!-- Photo Frame 썸네일이 여기에 동적으로 로드됩니다 -->
+						    </div>
+						    <div class="tab-pane fade" id="textBoxFrameList" role="tabpanel">
+						      <!-- Text Box Frame 썸네일이 여기에 동적으로 로드됩니다 -->
+						    </div>
+						</div>
 				    </div>
 	        		
 	        		<!-- Text 패널 -->
@@ -95,31 +111,6 @@
 	        			<div class="mb-2">
 						  <button id="add-text-btn" class="btn btn-outline-primary btn-sm">Add Text Box</button>
 						</div>
-						<div id="text-controls" class="d-none mb-2">
-						    <label class="me-2">
-						      Color:
-						      <input type="color" id="text-color" />
-						    </label>
-						    <label class="me-2">
-						      Size:
-						      <select id="text-size" class="form-select form-select-sm d-inline-block w-auto">
-						        <option value="12px">12px</option>
-						        <option value="16px" selected>16px</option>
-						        <option value="20px">20px</option>
-						        <option value="24px">24px</option>
-						        <option value="32px">32px</option>
-						      </select>
-						    </label>
-						    <label class="me-2">
-						      Alignment:
-						      <select id="text-align" class="form-select form-select-sm d-inline-block w-auto">
-						        <option value="left">Left</option>
-						        <option value="center" selected>Center</option>
-						        <option value="right">Right</option>
-						      </select>
-						    </label>
-						    <button id="remove-text-btn" class="btn btn-outline-danger btn-sm">Remove</button>
-						  </div>
 	        		</div>
 	        	</div>
 	        </div>
@@ -159,7 +150,22 @@
 	  <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
 	</div>
 	
-	
+	<!-- 프레임 선택용 모달 -->
+	<div class="modal fade" id="frameModal" tabindex="-1" aria-hidden="true">
+	  <div class="modal-dialog modal-lg modal-dialog-centered">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="frameModalLabel">Frames</h5>
+	        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+	      </div>
+	      <div class="modal-body">
+	        <div id="modalFrameList" class="row gy-3">
+	          <!-- 썸네일(col-4) 아이템이 여기에 로드됩니다 -->
+	        </div>
+	      </div>
+	    </div>
+	  </div>
+	</div>
 	
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

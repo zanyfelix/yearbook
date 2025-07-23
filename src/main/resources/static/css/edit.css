@@ -180,3 +180,23 @@ body {
 .text-box.selected {
   outline: 2px solid #007bff;
 }
+
+#photoFrameList {
+  display: flex;
+  flex-wrap: wrap;      /* 줄 바꿈 허용 */
+  gap: 16px;            /* 아이템 사이 간격 */
+}
+#photoFrameList .thumbnail-wrapper {
+  flex: 0 0 calc(33.333% - 16px); /* 한 줄에 3개 배치 */
+  box-sizing: border-box;
+}
+.modal-body .frame-item img {
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+#frame-overlay {
+  width: 50% !important;
+  height: auto !important;
+}

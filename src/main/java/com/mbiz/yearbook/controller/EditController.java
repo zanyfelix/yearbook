@@ -45,6 +45,8 @@ public class EditController {
 		List<Contents> list = contentsService.findByUserId(id);
         model.addAttribute("list", list);
         
+        model.addAttribute("currentMenu", "edit");
+        
         return "edit";
     }
     
