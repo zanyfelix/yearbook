@@ -18,9 +18,9 @@ public class PhotoService {
         return photoRepository.findAll();
     }
 
-    public List<Photo> findByCategory(Long categoryId) {
-        return photoRepository.findByCategoryId(categoryId);
-    }
+//    public List<Photo> findByCategory(Long categoryId) {
+//        return photoRepository.findByCategoryId(categoryId);
+//    }
 
     public Photo save(Photo photo) {
         return photoRepository.save(photo);

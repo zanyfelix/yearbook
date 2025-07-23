@@ -49,7 +49,9 @@ public class AdminUserController {
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
 		
-	    User user = (User) session.getAttribute("loginUser");
+	    User loginUser = (User) session.getAttribute("loginUser");
+	    model.addAttribute("loginUser", loginUser);
+	    
 	    //사용자 리스트(항상)
 	    List<User> allUsers = userService.findAll();
 	    model.addAttribute("allUsers", allUsers);

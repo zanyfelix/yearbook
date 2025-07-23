@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 
 import com.mbiz.yearbook.model.PageEditDto;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.YearbookPage;
+import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.repository.UserRepository;
-import com.mbiz.yearbook.repository.YearbookPageRepository;
+import com.mbiz.yearbook.repository.YearbookRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class YearbookService {
 
-    private final YearbookPageRepository pageRepository;
+    private final YearbookRepository pageRepository;
     private final UserRepository userRepository;
 
     /**
@@ -32,45 +32,45 @@ public class YearbookService {
     /**
      * 특정 페이지의 편집 데이터를 DTO로 조회
      */
-    public PageEditDto getPageEditDto(Long pageId) {
-        YearbookPage page = pageRepository.findById(pageId)
-            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + pageId));
-
-        return PageEditDto.builder()
-            .pageId(page.getId())
-            .backgroundPath(page.getBackgroundPath())
-            .framesJson(page.getFramesJson())
-            .textsJson(page.getTextsJson())
-            .build();
-    }
-
-    /**
-     * 페이지 저장
-     */
-    public void savePage(PageEditDto dto) {
-        YearbookPage page = pageRepository.findById(dto.getPageId())
-            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + dto.getPageId()));
-
-        page.setBackgroundPath(dto.getBackgroundPath());
-        page.setFramesJson(dto.getFramesJson());
-        page.setTextsJson(dto.getTextsJson());
-        page.setLastSaved(LocalDateTime.now());
-
-        pageRepository.save(page);
-    }
-
-    /**
-     * 페이지 리셋 (모든 편집 정보 초기화)
-     */
-    public void resetPage(Long pageId) {
-        YearbookPage page = pageRepository.findById(pageId)
-            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + pageId));
-
-        page.setBackgroundPath(null);
-        page.setFramesJson("{}");
-        page.setTextsJson("{}");
-        page.setLastSaved(LocalDateTime.now());
-
-        pageRepository.save(page);
-    }
+//    public PageEditDto getPageEditDto(Long pageId) {
+//        Yearbook page = pageRepository.findById(pageId)
+//            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + pageId));
+//
+//        return PageEditDto.builder()
+//            .pageId(page.getId())
+//            .backgroundPath(page.getBackgroundPath())
+//            .framesJson(page.getFramesJson())
+//            .textsJson(page.getTextsJson())
+//            .build();
+//    }
+//
+//    /**
+//     * 페이지 저장
+//     */
+//    public void savePage(PageEditDto dto) {
+//        Yearbook page = pageRepository.findById(dto.getPageId())
+//            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + dto.getPageId()));
+//
+//        page.setBackgroundPath(dto.getBackgroundPath());
+//        page.setFramesJson(dto.getFramesJson());
+//        page.setTextsJson(dto.getTextsJson());
+//        page.setLastSaved(LocalDateTime.now());
+//
+//        pageRepository.save(page);
+//    }
+//
+//    /**
+//     * 페이지 리셋 (모든 편집 정보 초기화)
+//     */
+//    public void resetPage(Long pageId) {
+//        Yearbook page = pageRepository.findById(pageId)
+//            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다: " + pageId));
+//
+//        page.setBackgroundPath(null);
+//        page.setFramesJson("{}");
+//        page.setTextsJson("{}");
+//        page.setLastSaved(LocalDateTime.now());
+//
+//        pageRepository.save(page);
+//    }
 }

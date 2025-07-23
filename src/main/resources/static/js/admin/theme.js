@@ -81,3 +81,53 @@ document.addEventListener('DOMContentLoaded', () => {
 	  });
 	});
 });
+
+document.addEventListener('DOMContentLoaded', function(){
+  const btnSave = document.getElementById('btn-save');
+  if (!btnSave) {
+    console.error('btn-save 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  btnSave.addEventListener('click', function(){
+	const selector = '#'+ category +' .selectBox:checked';
+	const selectedIds = Array.from(
+	  document.querySelectorAll(selector)
+	).map(cb => Number(cb.value));
+
+    if (selectedIds.length === 0) {
+      return alert('하나 이상 선택해 주세요.');
+    }
+
+	
+	console.log(`${ctx}/admin/theme/save`);
+	
+    fetch(`${ctx}/admin/theme/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: 1,
+        category:       category,
+        themeIds:       selectedIds
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
+    })
+	.then(() => {
+	  alert('저장되었습니다.');
+	  // 여기서 새로고침
+	  window.location.reload();
+	})
+    .catch(err => {
+      console.error(err);
+      alert('저장 중 오류 발생: ' + err.message);
+    });
+  });
+});
+
+function toggleAll(source) {
+  document.querySelectorAll(`#${'${categoryType}'} .selectBox`
+  ).forEach(cb => cb.checked = source.checked);
+}

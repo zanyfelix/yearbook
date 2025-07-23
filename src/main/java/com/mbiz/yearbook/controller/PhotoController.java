@@ -24,21 +24,21 @@ public class PhotoController {
     private final PhotoService photoService;
     private final CategoryService categoryService;
 
-    @GetMapping("/category/{categoryId}")
-    public String listByCategory(@PathVariable Long categoryId, Model model) {
-        model.addAttribute("photos", photoService.findByCategory(categoryId));
-        model.addAttribute("category", categoryService.findById(categoryId));
-        return "photo/list";
-    }
-
-    @PostMapping
-    public String create(@RequestParam Long categoryId, @ModelAttribute Photo photo) {
-        Category category = categoryService.findById(categoryId);
-        if (category == null) {
-            throw new IllegalArgumentException("Invalid categoryId");
-        }
-        photo.setCategory(category);
-        photoService.save(photo);
-        return "redirect:/photos/category/" + categoryId;
-    }
+//    @GetMapping("/category/{categoryId}")
+//    public String listByCategory(@PathVariable Long categoryId, Model model) {
+//        model.addAttribute("photos", photoService.findByCategory(categoryId));
+//        model.addAttribute("category", categoryService.findById(categoryId));
+//        return "photo/list";
+//    }
+//
+//    @PostMapping
+//    public String create(@RequestParam Long categoryId, @ModelAttribute Photo photo) {
+//        Category category = categoryService.findById(categoryId);
+//        if (category == null) {
+//            throw new IllegalArgumentException("Invalid categoryId");
+//        }
+//        //photo.setCategory(category);
+//        photoService.save(photo);
+//        return "redirect:/photos/category/" + categoryId;
+//    }
 }

@@ -3,6 +3,7 @@
 <%@ page session="true" %>
 <%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -19,167 +20,187 @@
   <div class="alert alert-warning">${errorMessage}</div>
 </c:if>
 <div class="sidebar">
-    <h5>${sessionScope.loginUser.schoolName}</h5>
-		<form id="logoutForm"
-			action="${pageContext.request.contextPath}/logout"
-			method="post" style="margin-bottom: 1rem;">
-			<button type="submit" class="btn btn-secondary w-100">
-				Logout</button>
-		</form>
-	<a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+    <div class="mb-3">
+	<form action="<c:url value='/admin/theme' />" method="post">
+		<select name="userIdBySchool" class="form-select" onchange="this.form.submit()">
+	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
+	    		<option value="${item.userId}" ${item.userId == userIdBySchool ? 'selected="selected"' : ''}>${item.schoolName}</option>
+	    	</c:forEach>
+	    </select>
+	</form>
+	</div>
+	
+	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+		<button type="submit" class="btn btn-secondary w-100">Logout</button>
+	</form>
+		
+	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>	
     <a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
-    <a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
     <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
     <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
-    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 
 <div class="content">
-	<div class="top-bar">
-	</div>
-	
-	<div class="container-fluid">
-	
-	<!-- 검색 바 -->
-    <form method="get" action="${pageContext.request.contextPath}/admin/user">
-      <select name="type">
-        <option value="userId" ${type=='userId'? 'selected':''}>USER_ID</option>
-        <option value="name" ${type=='name'? 'selected':''}>NAME</option>
-      </select>
-      <input type="text" name="keyword" value="${keyword != null ? keyword : ''}" />
-      <button type="submit">SEARCH</button>
-    </form>
-    
-    <!-- 삭제용 폼 시작 -->
-  	<form id="deleteForm"
-        action="${pageContext.request.contextPath}/admin/user/delete"
-        method="post"
-        onsubmit="return confirm('Are you sure you want to delete the selected users?');">
-    
-    
-    <table>
-      <thead>
-      	<tr>
-	      <th>
-	         <input type="checkbox" id="selectAll" onclick="toggleAll(this)"/>
-	      </th>
-	      <th>No</th>
-	      <th>USER_ID</th>
-	      <th>PASSWORD</th>
-	      <th>NAME</th>
-	      <th>SCHOOL_NAME</th>
-	      <th>MAIL</th>
-	      <th>ROLE</th>
-	      <th>ACTIVE</th>
-	    </tr>
-      </thead>
-      <tbody>
-       <c:forEach var="item" items="${users}" varStatus="st">
-          <tr>
-          	<td>
-	            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
-	        </td>
-            <td>${st.index + 1}</td>
-            <td>${item.userId}</td>
-            <td>${item.password}</td>
-            <td>${item.name}</td>
-            <td>${item.schoolName}</td>
-            <td>${item.mail}</td>
-            <td>${item.role}</td>
-            <td>
-			  <label class="toggle-switch">
-			    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->
-			    <input type="hidden" name="active" value="0"/>
-			    <!-- 체크된 경우에만 value="1" 이 넘어갑니다 -->
-			    <input
-			      type="checkbox"
-			      name="active"
-			      value="1"
-			      data-user-id="${item.id}"
-			      ${item.active == true ? "checked" : ""}
-			    />
-			    <span class="slider"></span>
-			  </label>
-			</td>
-          </tr>
-        </c:forEach>
-      </tbody>
-    </table>
-    
-    <div class="btn-wrapper">
-	    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
-	    <button id="btn-modify" type="button">MODIFY</button>
-	    <button id="btn-delete" type="submit">DELETE</button>
-    </div>
-    </form>
-    
-    
-   <!-- registerModal -->
-<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="registerForm"
-            action="${pageContext.request.contextPath}/admin/user/register"
+    <div class="container-fluid">
+
+      <!-- themeForm: userIdBySchool + categoryType 를 POST -->
+      <form id="themeForm"
+            action="<c:url value='/admin/theme'/>"
             method="post">
-        <div class="modal-header">
-          <!-- 제목은 JS로 바꿔줄 span -->
-          <h5 class="modal-title" id="registerModalLabel">USER REGISTRATION</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <!-- 수정 시 채울 hidden PK -->
-          <input type="hidden" id="userIdHidden" name="id" />
+        <input type="hidden" name="userIdBySchool" value="${userIdBySchool}" />
 
-          <div class="mb-3">
-            <label for="userIdInput" class="form-label">USER_ID</label>
-            <input type="text" class="form-control" id="userIdInput" name="userId" required />
-          </div>
-          <div class="mb-3">
-            <label for="passwordInput" class="form-label">PASSWORD</label>
-            <input type="password" class="form-control" id="passwordInput" name="password" required />
-          </div>
-          <div class="mb-3">
-            <label for="nameInput" class="form-label">NAME</label>
-            <input type="text" class="form-control" id="nameInput" name="name" required />
-          </div>
-          <div class="mb-3">
-            <label for="schoolInput" class="form-label">SCHOOL_NAME</label>
-            <input type="text" class="form-control" id="schoolInput" name="schoolName" required />
-          </div>
-          <div class="mb-3">
-            <label for="mailInput" class="form-label">MAIL</label>
-            <input type="email" class="form-control" id="mailInput" name="mail" required />
-          </div>
-          <div class="mb-3">
-            <label for="roleSelect" class="form-label">ROLE</label>
-            <select class="form-select" id="roleSelect" name="role">
-              <option value="admin">admin</option>
-              <option value="user">user</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button type="button"
-                  class="btn btn-secondary"
-                  data-bs-dismiss="modal">취소</button>
-          <!-- 이 버튼 텍스트도 JS로 바꿔줌 -->
-          <button type="submit"
-                  class="btn btn-primary"
-                  id="registerSubmitBtn">등록</button>
-        </div>
+        <!-- 1) Nav Tabs -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+          <li class="nav-item">
+            <button
+              type="submit"
+              name="categoryType"
+              value="background"
+              class="nav-link ${category=='background' ? 'active' : ''}"
+            >Background</button>
+          </li>
+          <li class="nav-item">
+            <button
+              type="submit"
+              name="categoryType"
+              value="frame"
+              class="nav-link ${category=='frame' ? 'active' : ''}"
+            >Frame</button>
+          </li>
+          <li class="nav-item">
+            <button
+              type="submit"
+              name="categoryType"
+              value="font"
+              class="nav-link ${category=='font' ? 'active' : ''}"
+            >Font</button>
+          </li>
+        </ul>
       </form>
-    </div>
-  </div>
-</div>
 
-    
-</div>
-<script>
-window.contextPath = '${pageContext.request.contextPath}';
-</script>
+      <!-- 2) Tab Content -->
+      <div class="tab-content">
+        <!-- Background -->
+        <div
+          class="tab-pane fade ${category=='background' ? 'show active' : ''}"
+          id="background"
+        >
+          <table class="table table-striped">
+            <thead>
+              <tr>
+              	<th>
+		           <input type="checkbox" id="selectAll" onclick="toggleAll(this, '${category}')"/>
+		        </th>
+                <th>Filename</th>
+                <th>Preview</th>
+              </tr>
+            </thead>
+            <tbody>
+              <c:forEach var="item" items="${backgroundList}" varStatus="st">
+                <tr>
+                  <td>
+		            <input type="checkbox" class="selectBox" name="themeIds" value="${item.id}" 
+		            	<c:if test="${fn:contains(selectedIds, item.id)}">
+                 			disabled="disabled" title="이미 선택된 테마입니다."
+               			</c:if>
+		            />
+		          </td> 
+		          <td>${item.filename}</td>														
+                  <td>
+                    <img src="<c:url value='/theme/${item.path}'/>"
+                         class="img-thumbnail"
+                         width="60"/>
+                  </td>
+                </tr>
+              </c:forEach>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Frame -->
+        <div
+          class="tab-pane fade ${category=='frame' ? 'show active' : ''}"
+          id="frame"
+        >
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>No</th><th>Preview</th><th>Filename</th><th>Order</th><th>Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              <c:forEach var="item" items="${frameList}" varStatus="st">
+                <tr>
+                  <td>${st.index + 1}</td>
+                  <td>
+                    <img src="${item.filePath}"
+                         class="img-thumbnail"
+                         width="60"/>
+                  </td>
+                  <td>${item.originalFilename}</td>
+                  <td>${item.orderNo}</td>
+                  <td>
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      onclick="selectTheme(${item.id}, 'frame')"
+                    >Select</button>
+                  </td>
+                </tr>
+              </c:forEach>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Font -->
+        <div
+          class="tab-pane fade ${category=='font' ? 'show active' : ''}"
+          id="font"
+        >
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>No</th><th>Preview</th><th>Filename</th><th>Order</th><th>Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              <c:forEach var="item" items="${fontList}" varStatus="st">
+                <tr>
+                  <td>${st.index + 1}</td>
+                  <td>
+                    <img src="${item.filePath}"
+                         class="img-thumbnail"
+                         width="60"/>
+                  </td>
+                  <td>${item.originalFilename}</td>
+                  <td>${item.orderNo}</td>
+                  <td>
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      onclick="selectTheme(${item.id}, 'font')"
+                    >Select</button>
+                  </td>
+                </tr>
+              </c:forEach>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /.tab-content -->
+
+      <!-- 3) 저장 버튼 -->
+      <div class="d-flex justify-content-start mt-3">
+        <button id="btn-save" class="btn btn-success">Save</button>
+      </div>
+
+    </div><!-- /.container-fluid -->
+  </div><!-- /.content -->
+
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
+<script>
+const ctx      = '${pageContext.request.contextPath}';
+//const userId   = '${userIdBySchool}';
+const category = '${category}';
+</script>
 </body>
 </html>

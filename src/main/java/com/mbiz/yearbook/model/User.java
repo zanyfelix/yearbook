@@ -69,5 +69,5 @@ public class User {
     private Date deadline;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<YearbookPage> yearbookPages = new ArrayList<>();
+    private List<Yearbook> yearbookPages = new ArrayList<>();
 }
