@@ -369,29 +369,31 @@ $(document).ready(function() {
 			fileInput.trigger('click');
 		});
 
-		// 프레임 선택 기능 (마스크 컨테이너 클릭 시)
-		maskContainer.on('click', function(e) {
-			if (!$(e.target).hasClass('uploaded-photo')) {
-				e.stopPropagation();
-				selectFrame(frameGroup);
-			}
-		});
-
-		// 프레임 전체 선택 기능
-		frameGroup.on('click', function(e) {
-			if (!$(e.target).hasClass('uploaded-photo') && !$(e.target).hasClass('rotate-handle') && !$(e.target).hasClass('selection-handle')) {
-				e.stopPropagation();
-				selectFrame(frameGroup);
-			}
-		});
-
 		// 사진 클릭 시 사진 선택
+		// 이 이벤트가 가장 먼저 발생하고, e.stopPropagation()으로 상위 클릭 이벤트 차단
 		uploadedPhoto.on('click', function(e) {
-			e.stopPropagation();
-			selectPhoto(uploadedPhoto, frameGroup);
+		    selectPhoto(uploadedPhoto, frameGroup);
 		});
 
-		// 사진 드래그 기능
+		// 프레임 그룹 클릭 시 (사진 외 영역 클릭) 프레임 선택
+		frameGroup.on('click', function(e) {
+			
+			if (!$(e.target).hasClass('uploaded-photo') && 
+			    !$(e.target).hasClass('rotate-handle') && 
+			    !$(e.target).hasClass('selection-handle') &&
+			    !$(e.target).hasClass('place-image-here-link')) {
+			    
+			    e.stopPropagation(); // 이벤트를 여기서 멈춰 document 클릭 이벤트로 전달되지 않게 함 (중요!)
+			    selectFrame(frameGroup);
+			} else if ($(e.target).hasClass('uploaded-photo')) {
+			    // 만약 클릭된 타겟이 'uploaded-photo'인데 여기까지 왔다면 (stopPropagation을 제거했으므로),
+			    // 이미 selectPhoto가 호출되었을 것입니다.
+			    // 여기서는 추가적인 selectFrame 호출을 방지합니다.
+			    e.stopPropagation(); 
+			}
+		});
+
+		// 사진 드래그 기능 (makePhotoDraggable 내부에서 stopPropagation 처리됨)
 		makePhotoDraggable(uploadedPhoto, maskContainer);
 	}
 
@@ -405,7 +407,12 @@ $(document).ready(function() {
 
 		frameGroup.on('mousedown', function(e) {
 			// 사진 또는 핸들을 드래그하는 경우 프레임 드래그 방지
-			if ($(e.target).hasClass('uploaded-photo') || $(e.target).hasClass('rotate-handle') || $(e.target).hasClass('selection-handle')) return;
+			if ($(e.target).hasClass('uploaded-photo') || 
+			    $(e.target).hasClass('rotate-handle') || 
+			    $(e.target).hasClass('selection-handle') || 
+			    $(e.target).hasClass('place-image-here-link')) {
+			    return; // 해당 요소들이 클릭/드래그될 때는 프레임 선택을 방지하고, 해당 요소의 드래그 로직으로 넘어감
+			}
 
 			isDragging = true;
 			const frameGroupOffset = frameGroup.offset();
@@ -441,6 +448,7 @@ $(document).ready(function() {
 			});
 
 			e.preventDefault();
+			e.stopPropagation();
 		});
 	}
 
@@ -451,6 +459,8 @@ $(document).ready(function() {
 		let initialPhotoLeft, initialPhotoTop;
 
 		photo.on('mousedown', function(e) {
+			if (e.button !== 0) return; 
+			
 			isDraggingPhoto = true;
 
 			// 사진 선택 (드래그 시작 시)
@@ -497,9 +507,9 @@ $(document).ready(function() {
 				isDraggingPhoto = false;
 				$(document).off('mousemove mouseup');
 			});
-
-			e.preventDefault();
-			e.stopPropagation(); // 프레임 드래그 방지
+			
+			e.preventDefault(); 
+			e.stopPropagation(); 
 		});
 	}
 
@@ -517,8 +527,8 @@ $(document).ready(function() {
 
 		// 프레임 선택 시각적 효과
 		frameGroup.css({
-			'box-shadow': '0 0 0 3px rgba(0, 123, 255, 0.5)',
-			'border': '2px solid #007bff'
+		    'box-shadow': '0 0 0 3px rgba(40, 167, 69, 0.8)', // 진한 녹색 그림자
+		    'border': '2px solid #28a745' // 진한 녹색 테두리
 		});
 
 		// 선택 핸들(크기 조정 점) 추가
@@ -532,6 +542,9 @@ $(document).ready(function() {
 
 	// 사진 선택 기능 추가
 	function selectPhoto(photo, frameGroup) {
+		
+		clearSelection(); 
+		
 		// 기존 선택 해제
 		$('.frame-group').removeClass('selected-frame');
 		$('.uploaded-photo').removeClass('selected-photo');
@@ -543,16 +556,17 @@ $(document).ready(function() {
 		// 사진 선택 효과
 		photo.addClass('selected-photo');
 		photo.css({
-			'box-shadow': '0 0 0 2px rgba(40, 167, 69, 0.8)',
-			'border': '2px solid #28a745'
+		    'box-shadow': '0 0 0 2px rgba(255, 165, 0, 0.8)', // 주황색 그림자
+		    'border': '2px solid #FFA500' // 주황색 테두리
 		});
 
 		// 부모 프레임도 약간의 표시
 		frameGroup.css({
-			'box-shadow': '0 0 0 1px rgba(40, 167, 69, 0.3)'
+		    'box-shadow': '0 0 0 1px rgba(255, 165, 0, 0.3)' // 연한 주황색 그림자
 		});
 
 		selectedPhotoWrapper = photo;
+		selectedFrame = frameGroup;
 
 	}
 
@@ -594,14 +608,14 @@ $(document).ready(function() {
 
 		handles.forEach(position => {
 			const handle = $('<div class="selection-handle">').addClass(`handle-${position}`).css({
-				position: 'absolute',
-				width: '8px',
-				height: '8px',
-				backgroundColor: '#007bff',
-				border: '1px solid white',
-				borderRadius: '50%',
-				cursor: getResizeCursor(position),
-				zIndex: '25' // Ensure handles are above frame
+			    position: 'absolute',
+			    width: '8px',
+			    height: '8px',
+			    backgroundColor: '#28a745', // 녹색으로 변경 (프레임 테두리 색상과 맞춤)
+			    border: '1px solid white',
+			    borderRadius: '50%',
+			    cursor: getResizeCursor(position),
+			    zIndex: '25' // Ensure handles are above frame
 			});
 
 			// 핸들 위치 설정
@@ -1106,4 +1120,35 @@ $(document).ready(function() {
 			console.log('No frame selected');
 		}
 	};
+	
+	// Delete 키로 프레임 삭제
+	$(document).on('keydown', function(e) {
+	    // 46은 Delete 키의 keyCode (또는 'Delete' key.code)
+	    // 8은 Backspace 키의 keyCode (옵션)
+	    if ((e.keyCode === 46 || e.key === 'Delete' || e.keyCode === 8 || e.key === 'Backspace') && selectedFrame) {
+	        // 현재 포커스된 요소가 input, textarea, select 등이 아닌지 확인
+	        // (텍스트를 입력하고 있을 때 Delete 키가 작동하면 안 되기 때문)
+	        const focusedElement = document.activeElement;
+	        if (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'TEXTAREA' || focusedElement.tagName === 'SELECT' || $(focusedElement).is('[contenteditable="true"]')) {
+	            return; // 입력 필드에 포커스되어 있다면 함수 종료
+	        }
+
+	        // 텍스트 박스(contenteditable)가 선택된 상태일 때도 Delete 키는 텍스트 삭제에 사용되어야 함
+	        if (selectedBox && selectedBox.is(focusedElement)) {
+	            return; // 텍스트 박스가 선택되어 있다면 텍스트 편집에 양보
+	        }
+	        
+	        // Backspace 키는 텍스트 박스가 비어있을 때만 삭제하도록 할 수도 있습니다.
+	        // 현재는 selectedBox가 아니면 프레임 삭제를 시도합니다.
+
+	        e.preventDefault(); // 기본 브라우저 동작 (뒤로 가기 등) 방지
+
+	        // 삭제 확인 메시지
+	        if (confirm("Are you sure you want to delete this frame?")) {
+	            selectedFrame.remove();
+	            clearSelection(); // 삭제 후 선택 상태 초기화
+	            console.log("프레임이 Delete/Backspace 키로 삭제되었습니다.");
+	        }
+	    }
+	});
 });
