@@ -34,11 +34,11 @@
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 		
-	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>	
+	<a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Home</a>	
     <a href="/admin/theme?userId=${userId}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
     <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
-    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
 </div>
 
 <div class="content">

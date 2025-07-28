@@ -32,7 +32,19 @@ public class Theme extends BaseTimeEntity {
     private String category;
 
     @Column(nullable = false)
-    private String path;
+    private String editPath;
+    
+    @Column(nullable = false)
+    private String editMaskPath;
+    
+    @Column(nullable = false)
+    private String thumbnailPath;
+    
+    @Column(nullable = false)
+    private String originalPath;
+    
+    @Column(nullable = false)
+    private String originalMaskPath;
     
     @Column(name = "parent_id")
     private Long parentId;

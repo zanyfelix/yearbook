@@ -9,6 +9,7 @@
     <title>Yearbook Home</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/edit.css"/>
+    <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
     <script src="<c:url value='/js/edit.js'/>"></script>
 </head>
 <body>
@@ -59,21 +60,21 @@
         </div>
     </c:forEach>
     
-    <!-- Bootstrap Modal -->
+    <!-- Bootstrap Modal - 전체 화면 크기 -->
 	<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-	  <div class="modal-dialog modal-dialog-scrollable" style="max-width: 90vw; width: 90vw; height: 90vh;">
-	    <div class="modal-content border-0 rounded-3" style="height: 100%;">
-	
-	      <div class="modal-body d-flex p-3" style="height: 100vh; max-height: 90vh;">
-	        <div class="d-grid gap-2">
+	  <div class="modal-dialog" style="max-width: 100vw; width: 100vw; height: 100vh; margin: 0;">
+	    <div class="modal-content border-0 rounded-0" style="height: 100vh;">
+
+	      <div class="modal-body d-flex p-0" style="height: 100vh;">
+	        <!-- 좌측 버튼 영역 (고정 너비) -->
+	        <div class="d-flex flex-column p-3 border-end" style="min-width: 150px;">
               <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
               <button id="btn-frame" class="btn btn-outline-secondary w-100 mb-2">Frame</button>
               <button id="btn-text" class="btn btn-outline-secondary w-100">Text</button>
             </div>
-	
-	        <!-- 중앙 썸네일 선택 영역 -->
-	        <div class="col-5 px-3 overflow-auto border-end" style="max-height: 100%;">
-	        
+
+	        <!-- 중앙 썸네일 선택 영역 (40% - 2/5 비율) -->
+	        <div class="px-3 py-3 overflow-auto border-end" style="width: 40%; max-height: 100vh;">
 	        	<!-- 공통 컨테이너 -->
 	        	<div id="thumbnail-area">
 	        		<!-- Background 패널 -->
@@ -115,40 +116,57 @@
 	        	</div>
 	        </div>
 
-	        <!-- 우측 미리보기 -->
-	        <div class="col px-3 d-flex flex-column justify-content-between">
-	          <div class="d-flex justify-content-end gap-2 mb-2">
+	        <!-- 우측 미리보기 영역 (60% - 3/5 비율) -->
+	        <div class="px-3 py-3 d-flex flex-column" style="width: 60%;">
+	          <!-- 상단 버튼 영역 -->
+	          <div class="d-flex justify-content-end gap-2 mb-3">
 	            <button id="btn-clear" class="btn btn-outline-secondary btn-sm">Clear</button>
 	            <button class="btn btn-primary btn-sm">Save</button>
 	            <button class="btn btn-danger btn-sm" data-bs-dismiss="modal">Close</button>
 	          </div>
-	
-	          <div id="page-preview" class="mx-auto border rounded bg-white" style="width: 221.9mm; height: 285.4mm; position: relative;">
-	            <img id="page-preview-img" src="/images/placeholder.png" class="img-fluid w-100 h-100 rounded" style="object-fit: cover;" />
+
+	          <!-- 미리보기 영역 (남은 공간을 모두 사용) -->
+	          <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0;">
+	            <div id="page-preview" class="border rounded bg-white" style="position: relative; width: 100%; height: 100%; max-width: 100%; max-height: 100%;">
+	              <img id="page-preview-img" src="/images/placeholder.png" class="rounded" style="width: 100%; height: 100%; object-fit: contain;" />
+				  <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+				  <input type="file" id="image-upload-input" accept="image/*" style="display: none;" />
+				  
+				  	<!-- frame 컨트롤 툴팁 -->
+					<div id="frame-controls-tooltip" class="d-none" style="position: absolute; z-index: 99999; background: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; padding: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+					    <div class="d-inline-flex align-items-center">
+					        <label for="frame-rotate-input" class="form-label me-1 mb-0">Rotate:</label>
+					        <input type="number" id="frame-rotate-input" class="form-control form-control-sm w-auto me-1" value="0" min="0" max="360" step="1">
+					        <span>°</span>
+					    </div>
+					    <button id="btn-delete-frame" class="btn btn-danger btn-sm me-2">X</button>
+					</div>
+					
+					<!-- 툴팁 플로팅 컨트롤 (초기엔 hidden) -->
+					<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
+					  <input type="color" id="tooltip-color" title="Color" class="me-1" />
+					  <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto me-1">
+					    <option value="12px">12px</option>
+					    <option value="16px" selected>16px</option>
+					    <option value="20px">20px</option>
+					    <option value="24px">24px</option>
+					    <option value="32px">32px</option>
+					  </select>
+					  <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto me-1">
+					    <option value="left">L</option>
+					    <option value="center">C</option>
+					    <option value="right">R</option>
+					  </select>
+					  <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
+					</div>
+				  
+	            </div>
 	          </div>
 	        </div>
 	      </div> <!-- modal-body -->
 	    </div>
 	  </div>
 	</div> <!-- modal -->
-	
-	<!-- 툴팁 플로팅 컨트롤 (초기엔 hidden) -->
-	<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
-	  <input type="color" id="tooltip-color" title="Color" class="me-1" />
-	  <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto me-1">
-	    <option value="12px">12px</option>
-	    <option value="16px" selected>16px</option>
-	    <option value="20px">20px</option>
-	    <option value="24px">24px</option>
-	    <option value="32px">32px</option>
-	  </select>
-	  <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto me-1">
-	    <option value="left">L</option>
-	    <option value="center">C</option>
-	    <option value="right">R</option>
-	  </select>
-	  <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
-	</div>
 	
 	<!-- 프레임 선택용 모달 -->
 	<div class="modal fade" id="frameModal" tabindex="-1" aria-hidden="true">

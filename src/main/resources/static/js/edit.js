@@ -1,472 +1,1109 @@
-document.addEventListener('DOMContentLoaded', () => {
-	
-	const btnBg = document.getElementById('btn-background');
-	const btnFrame = document.getElementById('btn-frame');
-	const btnText = document.getElementById('btn-text');
+$(document).ready(function() {
 
-	const bgPanel = document.getElementById('background-panel');
-	const framePanel = document.getElementById('frame-panel');
-	const textPanel = document.getElementById('text-panel');
-	const photoFrameList = document.getElementById('photoFrameList');
+	let selectedBox = null;
+	let selectedFrame = null;
+	let selectedPhotoWrapper = null; // 현재 선택된 사진 래퍼
+
+	const btnBg = $('#btn-background');
+	const btnFrame = $('#btn-frame');
+	const btnText = $('#btn-text');
+	const bgPanel = $('#background-panel');
+	const framePanel = $('#frame-panel');
+	const textPanel = $('#text-panel');
+	const photoFrameList = $('#photoFrameList');
+	const thumbnailArea = $('#thumbnail-area');
+	const preview = $('#page-preview');
+	const tooltip = $('#text-tooltip');
+	const inColor = $('#tooltip-color');
+	const inSize = $('#tooltip-size');
+	const inAlign = $('#tooltip-align');
+	const btnRemove = $('#tooltip-remove');
+	const addTextBtn = $('#add-text-btn');
+
+	// NEW: Frame Controls
+	const frameControlsTooltip = $('#frame-controls-tooltip');
+	const btnDeleteFrame = $('#btn-delete-frame');
+	const frameRotateInput = $('#frame-rotate-input');
+
 
 	const allBtns = [btnBg, btnFrame, btnText];
 
 	function hideAllPanels() {
-	  bgPanel.classList.add('d-none');
-	  framePanel.classList.add('d-none');
-	  textPanel.classList.add('d-none');
+		bgPanel.addClass('d-none');
+		framePanel.addClass('d-none');
+		textPanel.addClass('d-none');
 	}
 
 	function activate(btn) {
-	  [btnBg, btnFrame, btnText].forEach(b => b.classList.remove('active'));
-	  btn.classList.add('active');
+		allBtns.forEach(b => b.removeClass('active'));
+		btn.addClass('active');
 	}
-	
-	const thumbnailArea = document.getElementById('thumbnail-area');
-	
-	document.querySelectorAll('.sortable').forEach(container => {
-	    let draggedItem = null;
 
-	    container.addEventListener("dragstart", function (e) {
-	        if (e.target.classList.contains("page-card")) {
-	            draggedItem = e.target;
-	            e.dataTransfer.effectAllowed = "move";
-	        }
-	    });
-
-	    container.addEventListener("dragover", function (e) {
-	        e.preventDefault();
-	        const target = e.target.closest(".page-card");
-	        if (target && target !== draggedItem) {
-	            const bounding = target.getBoundingClientRect();
-	            const offset = bounding.y + bounding.height / 2;
-	            const after = (e.clientY - offset) > 0;
-	            container.insertBefore(draggedItem, after ? target.nextSibling : target);
-	        }
-	    });
-
-	    container.addEventListener("drop", function (e) {
-	        e.preventDefault();
-	        draggedItem = null;
-	    });
-	});
-	
-	//바뀐순서 저장 필요
-	//const order = Array.from(container.children).map(card => card.dataset.pageId);
-	
-	/*--------------------백그라운드 패널--------------------*/
-	
-	btnBg.addEventListener("click", function() {
-		
+	// Background Panel
+	btnBg.on("click", function() {
 		activate(btnBg);
 		hideAllPanels();
-		bgPanel.classList.remove('d-none');
-		
-		bgPanel.innerHTML = "";
-		
-	    fetch(`${ctx}/edit/background` , {
-		      method: 'POST',
-			  headers: { 'Content-Type': 'application/json' },
-			  body: JSON.stringify({
-			      //id: document.getElementById("id").value,
-				  id: 11,
-			      category: "background"
-			  })
-		    })
-	    .then(response => response.json())
-	    .then(data => {
-	        data.forEach(result => {
-				
-	            // 썸네일 컨테이너
-	            const col = document.createElement("div");
-	            col.classList.add("col-4", "text-center");
+		bgPanel.removeClass('d-none');
 
-	            // 래퍼 div (hover용)
-	            const wrapper = document.createElement("div");
-	            wrapper.classList.add("thumbnail-wrapper", "position-relative");
+		bgPanel.empty();
 
-	            // 이미지
-	            const img = document.createElement("img");
-	            img.src = result.theme.path;
-	            img.classList.add("img-thumbnail", "preview-img");
+		$.ajax({
+			url: `${ctx}/edit/background`,
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				id: 11,
+				category: "background"
+			}),
+			success: function(data) {
+				data.forEach(function(result) {
+					const col = $('<div class="col-4 text-center">');
+					const wrapper = $('<div class="thumbnail-wrapper position-relative">');
+					const img = $('<img class="img-thumbnail preview-img">').attr('src', result.theme.thumbnailPath);
+					const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
+					const selectBtn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', function() {
+						$('#page-preview-img').attr('src', result.theme.editPath);
+						selectedBackgroundPath = result.theme.editPath;
+					});
 
-	            // 오버레이
-	            const overlay = document.createElement("div");
-	            overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
-
-	            // Select 버튼
-	            const selectBtn = document.createElement("button");
-	            selectBtn.classList.add("btn", "btn-primary", "btn-sm");
-	            selectBtn.innerText = "Select";
-				selectBtn.onclick = () => {
-					document.getElementById("page-preview-img").src = result.theme.path;
-					selectedBackgroundPath = result.theme.path;
-				};
-	            overlay.appendChild(selectBtn);
-				
-				wrapper.appendChild(img);
-				wrapper.appendChild(overlay);
-				col.appendChild(wrapper);
-				bgPanel.appendChild(col);
-	        });
-	    });
+					overlay.append(selectBtn);
+					wrapper.append(img).append(overlay);
+					col.append(wrapper);
+					bgPanel.append(col);
+				});
+			}
+		});
 	});
-	//CLEAR 버튼
-	document.getElementById("btn-clear").addEventListener("click", function () {
-		
-		if(confirm("All designs on this page will be deleted and reset.\nPlease click \"Confirm\" to proceed.")) {
-			document.getElementById("page-preview-img").src = "/images/placeholder.png";	
-		}
-	});
-	//CLOSE 버튼
-/*	const btnClose = document.getElementById('btn-close');
-	const thumbnailArea = document.getElementById('thumbnail-area');
-	const previewImg = document.getElementById('page-preview-img');
-	
-	btnClose.addEventListener('click', function () {
-		if (thumbnailArea) {
-			thumbnailArea.innerHTML = '';
-		}
-		if (previewImg) {
-			previewImg.src = '/images/placeholder.png'; // 기본 이미지 경로
-			previewImg.style.objectFit = 'cover';       // 필요 시 초기 스타일 복원
-		}
-		const previewContainer = document.getElementById('page-preview');
-		if (previewContainer) {
-			const overlays = previewContainer.querySelectorAll('.overlay, .text-layer, .frame-layer');
-			overlays.forEach(el => el.remove());
-		}
-	});*/
-	//SAVE 버튼
-/*	document.getElementById('btn-save').addEventListener('click', function () {
-		const payload = {
-		    userId: currentUserId, // 전역변수 또는 hidden input 등에서 얻기
-		    category: currentCategory,
-		    pageNo: currentPageNo,
-		    backgroundPath: selectedBackgroundPath,
-		    framesJson: JSON.stringify(getCurrentFrames()),  // 프레임 위치, 크기 등
-		    textsJson: JSON.stringify(getCurrentTexts()),    // 텍스트 내용 및 스타일 등
-		    submitted: false,
-		    lastSaved: new Date().toISOString()
-		  };
-		  
-		  fetch('/admin/yearbook/save', {
-		    method: 'POST',
-		    headers: {
-		      'Content-Type': 'application/json'
-		    },
-		    body: JSON.stringify(payload)
-		  })
-		  .then(res => res.json())
-		  .then(data => {
-		    alert('저장되었습니다!');
-		    // 필요 시 미리보기 썸네일 갱신 등 추가 처리
-		  })
-		  .catch(err => {
-		    console.error('저장 실패', err);
-		    alert('저장 중 오류가 발생했습니다.');
-		  });  
-	});	*/
-	
-	const categories = document.getElementById('frame-category-buttons');
-	const items = document.getElementById('frame-item-list');
-	
-	/*--------------------프레임 패널--------------------*/
-	
-	btnFrame.addEventListener("click", function() {
-		
+
+	// Frame Panel
+	btnFrame.on("click", function() {
 		activate(btnFrame);
 		hideAllPanels();
-		framePanel.classList.remove('d-none');
-		
-		photoFrameList.innerHTML = "";
-		
-		//photo frame 먼저 로드
-	    fetch(`${ctx}/edit/mainFrame` , {
-		      method: 'POST',
-			  headers: { 'Content-Type': 'application/json' },
-			  body: JSON.stringify({
-			      id: 11,
-			      category: "frame"
-			  })
-		    })
-	    .then(response => response.json())
-	    .then(data => {
-			
-	        data.forEach(result => {
-				// 썸네일 컨테이너
-				const col = document.createElement("div");
-				col.classList.add("col-4", "text-center");
+		framePanel.removeClass('d-none');
 
-				// 래퍼 div (hover용)
-				const wrapper = document.createElement("div");
-				wrapper.classList.add("thumbnail-wrapper", "position-relative");
+		photoFrameList.empty();
 
-				// 이미지
-				const img = document.createElement("img");
-				img.src = result.theme.path;
-				img.classList.add("img-thumbnail", "preview-img");
-
-				// 오버레이
-				const overlay = document.createElement("div");
-				overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
-
-				// Select 버튼
-				const selectBtn = document.createElement("button");
-				selectBtn.classList.add("btn", "btn-primary", "btn-sm");
-				selectBtn.innerText = "Select";
-				
-				const frameModalEl = document.getElementById('frameModal');
-				const frameModal = new bootstrap.Modal(frameModalEl);
-				const btnClose = frameModalEl.querySelector('.btn-close');
-				
-				btnClose.addEventListener('click', () => {
-				  frameModal.hide();
-				});
-				
-				selectBtn.onclick = () => {
-					const list = document.getElementById('modalFrameList').innerHTML = '';
-					loadFramesModal();
-					frameModal.show();
-					//document.getElementById("page-preview-img").src = result.theme.path;
-					//selectedBackgroundPath = result.theme.path;
-				};
-				overlay.appendChild(selectBtn);
-
-				wrapper.appendChild(img);
-				wrapper.appendChild(overlay);
-				col.appendChild(wrapper);
-				photoFrameList.appendChild(col);
-	        });
-	    });
-	});
-	
-	// 모달 전용 로드 함수
-	function loadFramesModal() {
-    	const listEl = document.getElementById('modalFrameList');
-		listEl.innerHTML = '';  // 초기화
-		
-		fetch(`${ctx}/edit/mainFrame`, {
+		$.ajax({
+			url: `${ctx}/edit/mainFrame`,
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				//id: document.getElementById("id").value,
+			contentType: 'application/json',
+			data: JSON.stringify({
 				id: 11,
 				category: "frame"
-			})
-		})
-			.then(response => response.json())
-			.then(data => {
-				data.forEach(result => {
+			}),
+			success: function(data) {
+				data.forEach(function(result) {
+					const col = $('<div class="col-4 text-center">');
+					const wrapper = $('<div class="thumbnail-wrapper position-relative">');
+					const img = $('<img class="img-thumbnail preview-img">').attr('src', result.theme.thumbnailPath);
+					const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
+					const selectBtn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', function() {
+						const frameModalEl = $('#frameModal');
+						const frameModal = new bootstrap.Modal(frameModalEl[0]);
+						$('#modalFrameList').empty();
+						loadFramesModal();
+						frameModal.show();
+					});
 
-					// 썸네일 컨테이너
-					const col = document.createElement("div");
-					col.classList.add("col-4", "text-center");
+					overlay.append(selectBtn);
+					wrapper.append(img).append(overlay);
+					col.append(wrapper);
+					photoFrameList.append(col);
+				});
+			}
+		});
+	});
 
-					// 래퍼 div (hover용)
-					const wrapper = document.createElement("div");
-					wrapper.classList.add("thumbnail-wrapper", "position-relative");
+	// Load Frames Modal - 프레임 데이터 로깅 추가
+	function loadFramesModal() {
+		$.ajax({
+			url: `${ctx}/edit/mainFrame`,
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				id: 11,
+				category: "frame"
+			}),
+			success: function(data) {
 
-					// 이미지
-					const img = document.createElement("img");
-					img.src = result.theme.path;
-					img.classList.add("img-thumbnail", "preview-img");
+				const listEl = $('#modalFrameList');
+				listEl.empty();
 
-					// 오버레이
-					const overlay = document.createElement("div");
-					overlay.classList.add("overlay", "d-flex", "justify-content-center", "align-items-center");
+				data.forEach(function(result) {
 
-					// Select 버튼
-					const selectBtn = document.createElement("button");
-					selectBtn.classList.add("btn", "btn-primary", "btn-sm");
-					selectBtn.innerText = "Select";
-					selectBtn.onclick = () => {
-						document.getElementById("page-preview-img").src = result.theme.path;
-						applyFrame(result.theme.path);
-					};
-					overlay.appendChild(selectBtn);
+					const col = $('<div class="col-4 text-center">');
+					const wrapper = $('<div class="thumbnail-wrapper position-relative">');
+					const img = $('<img class="img-thumbnail preview-img">').attr('src', result.theme.thumbnailPath);
+					const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
+					const selectBtn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', function() {
+						applyFrame(result.theme);
+					});
 
-					wrapper.appendChild(img);
-					wrapper.appendChild(overlay);
-					col.appendChild(wrapper);
-					listEl.appendChild(col);
+					overlay.append(selectBtn);
+					wrapper.append(img).append(overlay);
+					col.append(wrapper);
+					listEl.append(col);
+				});
+			}
+		});
+	}
+
+	// 개선된 Frame 적용 함수 - 올바른 레이어 구조와 마스킹
+	function applyFrame(frameTheme) {
+		const frameContainer = $('#frame-container');
+		frameContainer.css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			zIndex: 10
+		});
+
+		// 프레임 그룹 생성 (전체 프레임 컴포넌트를 담는 컨테이너)
+		const frameGroup = $('<div class="frame-group"></div>').css({
+			position: 'absolute',
+			cursor: 'move',
+			zIndex: 15
+		});
+
+		// 1. 마스킹 컨테이너 (사진이 마스크 영역에서만 보이도록)
+		const maskContainer = $('<div class="mask-container"></div>').css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden',
+			zIndex: 16 // 프레임보다 아래
+		});
+
+		// 2. 사진 컨테이너 (실제 사진이 들어갈 공간)
+		const photoContainer = $('<div class="photo-container"></div>').css({
+			position: 'relative',
+			width: '100%',
+			height: '100%',
+			display: 'flex',
+			justifyContent: 'center',
+			alignItems: 'center'
+		});
+
+		// 3. 플레이스홀더
+		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
+			color: '#007bff',
+			textDecoration: 'underline',
+			fontSize: '14px',
+			fontWeight: 'bold',
+			textAlign: 'center',
+			display: 'block'
+		});
+
+		// 4. 업로드된 사진 (마스킹될 대상)
+		const uploadedPhoto = $('<img class="uploaded-photo">').css({
+			display: 'none',
+			position: 'absolute',
+			cursor: 'move',
+			maxWidth: 'none',
+						maxHeight: 'none',
+			objectFit: 'cover'
+		});
+
+		// 5. 프레임 오버레이 (가장 위에 표시될 프레임 테두리)
+		const frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			zIndex: 17, // 가장 위에
+			pointerEvents: 'none' // 클릭 이벤트가 하위 요소로 전달되도록
+		});
+
+		// DOM 구조 조립
+		photoContainer.append(placeholderLink).append(uploadedPhoto);
+		maskContainer.append(photoContainer);
+		frameGroup.append(maskContainer).append(frameOverlay);
+		frameContainer.append(frameGroup);
+
+		// frameTheme 데이터 저장 (나중에 참조용)
+		frameGroup.data('frameTheme', frameTheme);
+
+		// 마스킹 적용 - 프레임 생성 시 한 번만 적용 (복잡한 모양 지원)
+		if (frameTheme.editMaskPath) {
+			applyComplexShapeMasking(maskContainer, frameTheme);
+		} else {
+			console.log('No mask provided for this frame - photos will fill entire frame area');
+		}
+
+		// 프레임 이미지가 로드된 후 위치 및 크기 설정
+		frameOverlay.on('load', function() {
+			setupFramePosition(frameGroup, frameTheme, this);
+			makeFrameDraggable(frameGroup);
+		}).on('error', function() {
+			console.error('Failed to load frame image:', frameTheme.editPath);
+			setupFramePosition(frameGroup, frameTheme, null);
+			makeFrameDraggable(frameGroup);
+		});
+
+		// 이벤트 핸들러 설정
+		setupFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+
+		// 모달 닫기
+		$('#frameModal').modal('hide');
+	}
+
+	// 복잡한 모양 마스킹 적용 함수
+	function applyComplexShapeMasking(maskContainer, frameTheme) {
+
+		if (!frameTheme.editMaskPath) {
+			console.warn('No mask path provided - photo will fill entire frame');
+			return;
+		}
+
+		const maskImg = new Image();
+		maskImg.crossOrigin = 'anonymous';
+
+		maskImg.onload = function() {
+			// CSS mask 적용 - 복잡한 모양 지원을 위한 향상된 설정
+			const maskStyles = {
+				// WebKit 기반 브라우저 (Chrome, Safari, Edge)
+				'-webkit-mask-image': `url(${frameTheme.editMaskPath})`,
+				'-webkit-mask-size': '100% 100%',
+				'-webkit-mask-repeat': 'no-repeat',
+				'-webkit-mask-position': 'center center',
+				'-webkit-mask-origin': 'border-box',
+				'-webkit-mask-clip': 'border-box',
+
+				// 표준 CSS Mask (Firefox, 최신 브라우저)
+				'mask-image': `url(${frameTheme.editMaskPath})`,
+				'mask-size': '100% 100%',
+				'mask-repeat': 'no-repeat',
+				'mask-position': 'center center',
+				'mask-origin': 'border-box',
+				'mask-clip': 'border-box',
+				'mask-mode': 'alpha', // 알파 채널 기반 마스킹
+
+				// 추가 설정
+				'overflow': 'hidden', // 마스크 밖으로 나가는 내용 숨김
+				'isolation': 'isolate' // 스택킹 컨텍스트 생성
+			};
+
+			maskContainer.css(maskStyles);
+		};
+
+		maskImg.onerror = function() {
+			console.error('Failed to load complex shape mask:', frameTheme.editMaskPath);
+
+			// 대체 마스킹 방법 시도
+			applyFallbackMasking(maskContainer, frameTheme);
+		};
+
+		maskImg.src = frameTheme.editMaskPath;
+	}
+
+	// 대체 마스킹 방법
+	function applyFallbackMasking(maskContainer, frameTheme) {
+		console.log('Applying fallback masking method');
+
+		// Canvas 기반 마스킹 시도
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d');
+
+		const maskImg = new Image();
+		maskImg.crossOrigin = 'anonymous';
+
+		maskImg.onload = function() {
+			canvas.width = maskImg.width;
+			canvas.height = maskImg.height;
+			ctx.drawImage(maskImg, 0, 0);
+
+			const maskDataURL = canvas.toDataURL();
+
+			maskContainer.css({
+				'-webkit-mask-image': `url(${maskDataURL})`,
+				'mask-image': `url(${maskDataURL})`,
+				'-webkit-mask-size': '100% 100%',
+				'mask-size': '100% 100%'
+			});
+
+			console.log('Fallback canvas masking applied');
+		};
+
+		maskImg.src = frameTheme.editMaskPath;
+	}
+
+	// 프레임 위치 및 크기 설정
+	function setupFramePosition(frameGroup, frameTheme, frameImage) {
+		const backgroundImage = $('#page-preview-img');
+		const bgDisplayWidth = backgroundImage.width();
+		const bgDisplayHeight = backgroundImage.height();
+
+		// 프레임 크기 결정
+		const frameWidth = frameTheme.width || (frameImage ? frameImage.naturalWidth : 200);
+		const frameHeight = frameTheme.height || (frameImage ? frameImage.naturalHeight : 250);
+
+		// 백그라운드 이미지 중앙에 프레임 배치
+		const initialTop = (bgDisplayHeight - frameHeight) / 2;
+		const initialLeft = (bgDisplayWidth - frameWidth) / 2;
+
+		frameGroup.css({
+			top: `${initialTop}px`,
+			left: `${initialLeft}px`,
+			width: `${frameWidth}px`,
+			height: `${frameHeight}px`
+		});
+	}
+
+	// 프레임 이벤트 핸들러 설정
+	function setupFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
+		// 이미지 업로드 클릭
+		placeholderLink.on('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const fileInput = $('#image-upload-input');
+			fileInput.data('targetFrameGroup', frameGroup);
+			fileInput.data('targetUploadedPhoto', uploadedPhoto);
+			fileInput.data('targetPlaceholderLink', placeholderLink);
+			fileInput.data('targetMaskContainer', maskContainer);
+			fileInput.trigger('click');
+		});
+
+		// 프레임 선택 기능 (마스크 컨테이너 클릭 시)
+		maskContainer.on('click', function(e) {
+			if (!$(e.target).hasClass('uploaded-photo')) {
+				e.stopPropagation();
+				selectFrame(frameGroup);
+			}
+		});
+
+		// 프레임 전체 선택 기능
+		frameGroup.on('click', function(e) {
+			if (!$(e.target).hasClass('uploaded-photo') && !$(e.target).hasClass('rotate-handle') && !$(e.target).hasClass('selection-handle')) {
+				e.stopPropagation();
+				selectFrame(frameGroup);
+			}
+		});
+
+		// 사진 클릭 시 사진 선택
+		uploadedPhoto.on('click', function(e) {
+			e.stopPropagation();
+			selectPhoto(uploadedPhoto, frameGroup);
+		});
+
+		// 사진 드래그 기능
+		makePhotoDraggable(uploadedPhoto, maskContainer);
+	}
+
+	// 개선된 프레임 드래그 기능
+	function makeFrameDraggable(frameGroup) {
+		const backgroundImage = $('#page-preview-img');
+		const bgDisplayWidth = backgroundImage.width();
+		const bgDisplayHeight = backgroundImage.height();
+		let isDragging = false;
+		let startX, startY;
+
+		frameGroup.on('mousedown', function(e) {
+			// 사진 또는 핸들을 드래그하는 경우 프레임 드래그 방지
+			if ($(e.target).hasClass('uploaded-photo') || $(e.target).hasClass('rotate-handle') || $(e.target).hasClass('selection-handle')) return;
+
+			isDragging = true;
+			const frameGroupOffset = frameGroup.offset();
+			const containerOffset = $('#frame-container').offset();
+
+			startX = e.clientX - frameGroupOffset.left;
+			startY = e.clientY - frameGroupOffset.top;
+
+			selectFrame(frameGroup);
+
+			$(document).on('mousemove', function(ev) {
+				if (!isDragging) return;
+
+				let newLeft = ev.clientX - startX - containerOffset.left;
+				let newTop = ev.clientY - startY - containerOffset.top;
+
+				// 배경 영역 내에서만 이동 제한
+				newLeft = Math.max(0, Math.min(newLeft, bgDisplayWidth - frameGroup.width()));
+				newTop = Math.max(0, Math.min(newTop, bgDisplayHeight - frameGroup.height()));
+
+				frameGroup.css({
+					left: `${newLeft}px`,
+					top: `${newTop}px`
+				});
+
+				// Update tooltip position while dragging
+				showFrameControlsTooltip(frameGroup);
+			});
+
+			$(document).on('mouseup', function() {
+				isDragging = false;
+				$(document).off('mousemove mouseup');
+			});
+
+			e.preventDefault();
+		});
+	}
+
+	// 사진 드래그 시 프레임 경계 내에서만 이동하도록 개선된 드래그 기능
+	function makePhotoDraggable(photo, maskContainer) {
+		let isDraggingPhoto = false;
+		let photoStartX, photoStartY;
+		let initialPhotoLeft, initialPhotoTop;
+
+		photo.on('mousedown', function(e) {
+			isDraggingPhoto = true;
+
+			// 사진 선택 (드래그 시작 시)
+			const frameGroup = photo.closest('.frame-group');
+			selectPhoto(photo, frameGroup);
+
+			// 현재 사진의 위치 저장
+			const photoPosition = photo.position();
+			initialPhotoLeft = photoPosition.left;
+			initialPhotoTop = photoPosition.top;
+
+			photoStartX = e.clientX;
+			photoStartY = e.clientY;
+
+			$(document).on('mousemove', function(ev) {
+				if (!isDraggingPhoto) return;
+
+				// 마우스 이동 거리 계산
+				const deltaX = ev.clientX - photoStartX;
+				const deltaY = ev.clientY - photoStartY;
+
+				// 새로운 위치 계산
+				let newLeft = initialPhotoLeft + deltaX;
+				let newTop = initialPhotoTop + deltaY;
+
+				// maskContainer 경계 내에서만 이동 허용
+				const containerWidth = maskContainer.width();
+				const containerHeight = maskContainer.height();
+				const photoWidth = photo.width();
+				const photoHeight = photo.height();
+
+				// 프레임 경계를 벗어나지 않도록 제한 (오버플로우 최소화)
+				const allowOverflow = 20; // 20px까지만 오버플로우 허용
+				newLeft = Math.max(-photoWidth + allowOverflow, Math.min(newLeft, containerWidth - allowOverflow));
+				newTop = Math.max(-photoHeight + allowOverflow, Math.min(newTop, containerHeight - allowOverflow));
+
+				photo.css({
+					left: `${newLeft}px`,
+					top: `${newTop}px`
 				});
 			});
-	  
-	  document.getElementById('modalFrameList')
-	    .addEventListener('click', e => {
-	      const item = e.target.closest('.frame-item');
-	      if (!item) return;
-	      const img = item.querySelector('img');
-	      applyFrame(img.src);
-	      frameModal.hide();
+
+			$(document).on('mouseup', function() {
+				isDraggingPhoto = false;
+				$(document).off('mousemove mouseup');
+			});
+
+			e.preventDefault();
+			e.stopPropagation(); // 프레임 드래그 방지
+		});
+	}
+
+	// 프레임 선택 기능 (개선된 시각적 피드백 포함)
+	function selectFrame(frameGroup) {
+		
+		clearSelection();
+		
+		// 기존 선택 해제
+		$('.frame-group').removeClass('selected-frame');
+		$('.uploaded-photo').removeClass('selected-photo');
+
+		selectedFrame = frameGroup;
+		frameGroup.addClass('selected-frame');
+
+		// 프레임 선택 시각적 효과
+		frameGroup.css({
+			'box-shadow': '0 0 0 3px rgba(0, 123, 255, 0.5)',
+			'border': '2px solid #007bff'
+		});
+
+		// 선택 핸들(크기 조정 점) 추가
+		addSelectionHandles(frameGroup);
+		// NEW: 회전 핸들 추가
+		addRotationHandle(frameGroup);
+		// NEW: 프레임 컨트롤 툴팁 표시
+		showFrameControlsTooltip(frameGroup);
+
+	}
+
+	// 사진 선택 기능 추가
+	function selectPhoto(photo, frameGroup) {
+		// 기존 선택 해제
+		$('.frame-group').removeClass('selected-frame');
+		$('.uploaded-photo').removeClass('selected-photo');
+
+		// Hide frame controls when photo is selected
+		frameControlsTooltip.addClass('d-none');
+		$('.rotate-handle').remove(); // Remove all rotation handles
+
+		// 사진 선택 효과
+		photo.addClass('selected-photo');
+		photo.css({
+			'box-shadow': '0 0 0 2px rgba(40, 167, 69, 0.8)',
+			'border': '2px solid #28a745'
+		});
+
+		// 부모 프레임도 약간의 표시
+		frameGroup.css({
+			'box-shadow': '0 0 0 1px rgba(40, 167, 69, 0.3)'
+		});
+
+		selectedPhotoWrapper = photo;
+
+	}
+
+	// 선택 해제 기능
+	function clearSelection() {
+		// 프레임 선택 해제
+		$('.frame-group').removeClass('selected-frame').css({
+			'box-shadow': 'none',
+			'border': 'none'
+		});
+
+		// 사진 선택 해제
+		$('.uploaded-photo').removeClass('selected-photo').css({
+			'box-shadow': 'none',
+			'border': 'none'
+		});
+
+		// 선택 핸들 제거
+		$('.selection-handle').remove();
+		// NEW: 회전 핸들 제거
+		$('.rotate-handle').remove();
+		// NEW: 프레임 컨트롤 툴팁 숨기기
+		frameControlsTooltip.addClass('d-none');
+
+		selectedFrame = null;
+		selectedPhotoWrapper = null;
+		selectedBox = null; // Also clear text box selection
+		tooltip.addClass('d-none'); // Hide text tooltip
+	}
+
+	// 선택 핸들 추가 (프레임 크기 조정용) - (현재는 미구현, 시각적 표시만)
+	// 이 함수는 현재 핸들을 추가하지만, 실제 리사이징 로직은 포함되어 있지 않습니다.
+	// 리사이징을 구현하려면 mousedown/mousemove/mouseup 이벤트 핸들러를 추가해야 합니다.
+	function addSelectionHandles(frameGroup) {
+		// 기존 핸들 제거
+		$('.selection-handle').remove();
+
+		const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+
+		handles.forEach(position => {
+			const handle = $('<div class="selection-handle">').addClass(`handle-${position}`).css({
+				position: 'absolute',
+				width: '8px',
+				height: '8px',
+				backgroundColor: '#007bff',
+				border: '1px solid white',
+				borderRadius: '50%',
+				cursor: getResizeCursor(position),
+				zIndex: '25' // Ensure handles are above frame
+			});
+
+			// 핸들 위치 설정
+			const handlePosition = getHandlePosition(position);
+			handle.css(handlePosition);
+
+			frameGroup.append(handle);
+
+			// TODO: Add mousedown/mousemove/mouseup for actual resizing logic here
+		});
+	}
+
+	// 핸들 위치 계산
+	function getHandlePosition(position) {
+		const offset = -4; // 핸들 크기의 절반
+
+		switch (position) {
+			case 'nw':
+				return {
+					top: `${offset}px`,
+					left: `${offset}px`
+				};
+			case 'ne':
+				return {
+					top: `${offset}px`,
+					right: `${offset}px`
+				};
+			case 'sw':
+				return {
+					bottom: `${offset}px`,
+					left: `${offset}px`
+				};
+			case 'se':
+				return {
+					bottom: `${offset}px`,
+					right: `${offset}px`
+				};
+			case 'n':
+				return {
+					top: `${offset}px`,
+					left: '50%',
+					transform: 'translateX(-50%)'
+				};
+			case 's':
+				return {
+					bottom: `${offset}px`,
+					left: '50%',
+					transform: 'translateX(-50%)'
+				};
+			case 'e':
+				return {
+					top: '50%',
+					right: `${offset}px`,
+					transform: 'translateY(-50%)'
+				};
+			case 'w':
+				return {
+					top: '50%',
+					left: `${offset}px`,
+					transform: 'translateY(-50%)'
+				};
+		}
+	}
+
+	// 리사이즈 커서 설정
+	function getResizeCursor(position) {
+		const cursors = {
+			'nw': 'nw-resize',
+			'ne': 'ne-resize',
+			'sw': 'sw-resize',
+			'se': 'se-resize',
+			'n': 'n-resize',
+			's': 's-resize',
+			'e': 'e-resize',
+			'w': 'w-resize'
+		};
+		return cursors[position];
+	}
+
+	// 개선된 파일 업로드 처리 - 마스킹 유지
+	$('#image-upload-input').off('change').on('change', function(e) {
+		const file = e.target.files[0];
+		const $fileInput = $(this);
+		const targetFrameGroup = $fileInput.data('targetFrameGroup');
+		const targetUploadedPhoto = $fileInput.data('targetUploadedPhoto');
+		const targetPlaceholderLink = $fileInput.data('targetPlaceholderLink');
+		const targetMaskContainer = $fileInput.data('targetMaskContainer');
+
+		if (file && targetFrameGroup && targetUploadedPhoto && targetPlaceholderLink && targetMaskContainer) {
+			const reader = new FileReader();
+			reader.onload = function(event) {
+				// 사진 설정
+				targetUploadedPhoto.attr('src', event.target.result).css({
+					display: 'block',
+					position: 'absolute'
+				});
+
+				// 이미지 로드 완료 후 크기 조정
+				targetUploadedPhoto.on('load', function() {
+					const maskWidth = targetMaskContainer.width();
+					const maskHeight = targetMaskContainer.height();
+
+					// 이미지를 마스크 컨테이너에 맞게 크기 조정
+					const imgAspectRatio = this.naturalWidth / this.naturalHeight;
+					const containerAspectRatio = maskWidth / maskHeight;
+
+					let newWidth, newHeight;
+
+					// 컨테이너를 완전히 덮도록 크기 조정
+					if (imgAspectRatio > containerAspectRatio) {
+						newHeight = maskHeight * 1.2; // 여유분 추가하여 드래그 가능
+						newWidth = newHeight * imgAspectRatio;
+					} else {
+						newWidth = maskWidth * 1.2; // 여유분 추가하여 드래그 가능
+						newHeight = newWidth / imgAspectRatio;
+					}
+
+					// 사진 크기 및 중앙 배치
+					targetUploadedPhoto.css({
+						width: `${newWidth}px`,
+						height: `${newHeight}px`,
+						left: `${(maskWidth - newWidth) / 2}px`,
+						top: `${(maskHeight - newHeight) / 2}px`
+					});
+
+					console.log('Photo uploaded and positioned:', {
+						photoSize: {
+							width: newWidth,
+							height: newHeight
+						},
+						containerSize: {
+							width: maskWidth,
+							height: maskHeight
+						},
+						maskingActive: 'Mask applied at frame creation - photo will only show in masked areas'
+					});
+
+					// 중요: 마스킹은 이미 maskContainer에 적용되어 있으므로
+					// 사진이 업로드되면 자동으로 마스크 영역에서만 보임
+					// 별도의 마스킹 재적용 불필요!
+				});
+
+				// 플레이스홀더 숨기기
+				targetPlaceholderLink.hide();
+				$fileInput.val('');
+			};
+			reader.readAsDataURL(file);
+		}
+	});
+
+	// Clear 기능 (선택 상태도 함께 초기화)
+	$('#btn-clear').on('click', function() {
+		if (confirm("All designs on this page will be deleted and reset.\nPlease click \"Confirm\" to proceed.")) {
+			$('#page-preview-img').attr('src', '/images/placeholder.png');
+			$('#frame-container').empty();
+			clearSelection(); // 선택 상태 초기화
+		}
+	});
+
+	// 프레임 외부 클릭시 선택 해제 (개선됨)
+	$(document).on('click', function(e) {
+		// Check if click target or its parent is part of a selected element or a tooltip
+		const clickedOnFrame = $(e.target).closest('.frame-group').length > 0;
+		const clickedOnTextBox = $(e.target).closest('.text-box').length > 0;
+		const clickedOnTextTooltip = $(e.target).closest('#text-tooltip').length > 0;
+		const clickedOnFrameTooltip = $(e.target).closest('#frame-controls-tooltip').length > 0;
+
+		if (!clickedOnFrame && !clickedOnTextBox && !clickedOnTextTooltip && !clickedOnFrameTooltip) {
+			clearSelection();
+		}
+	});
+
+	// Text Panel
+	btnText.on("click", function() {
+		activate(btnText);
+		hideAllPanels();
+		textPanel.removeClass('d-none');
+	});
+
+	// Add Text Box 기능
+	addTextBtn.on('click', function() {
+		const preview = $('#page-preview');
+		const frameContainer = $('#frame-container');
+
+		// 텍스트 박스 생성
+		const textBox = $('<div class="text-box" contenteditable="true">').css({
+			position: 'absolute',
+			top: '50px',
+			left: '50px',
+			padding: '8px',
+			border: '2px dashed #007bff',
+			backgroundColor: 'rgba(255, 255, 255, 0.8)',
+			fontSize: '16px',
+			color: '#000',
+			minWidth: '100px',
+			minHeight: '30px',
+			cursor: 'text',
+			zIndex: 20,
+			outline: 'none'
+		}).text('텍스트를 입력하세요');
+
+		frameContainer.append(textBox);
+
+		// 텍스트 박스 드래그 기능
+		makeTextBoxDraggable(textBox);
+
+		// 텍스트 박스 클릭 시 선택
+		textBox.on('click', function(e) {
+			e.stopPropagation();
+			selectTextBox(textBox);
+		});
+
+		// 텍스트 박스 포커스 시 편집 모드
+		textBox.on('focus', function() {
+			$(this).css('border', '2px solid #007bff');
+		});
+
+		textBox.on('blur', function() {
+			$(this).css('border', '2px dashed #007bff');
+		});
+
+		// 생성 직후 선택 상태로 설정
+		selectTextBox(textBox);
+	});
+
+	// 텍스트 박스 드래그 기능
+	function makeTextBoxDraggable(textBox) {
+		let isDragging = false;
+		let startX, startY;
+
+		textBox.on('mousedown', function(e) {
+			// contenteditable 영역에서의 텍스트 선택을 위해 일부 영역은 제외
+			if (e.target === this && !$(this).is(':focus')) {
+				isDragging = true;
+				const textBoxOffset = textBox.offset();
+				const containerOffset = $('#frame-container').offset();
+
+				startX = e.clientX - textBoxOffset.left;
+				startY = e.clientY - textBoxOffset.top;
+
+				$(document).on('mousemove', function(ev) {
+					if (!isDragging) return;
+
+					let newLeft = ev.clientX - startX - containerOffset.left;
+					let newTop = ev.clientY - startY - containerOffset.top;
+
+					// 컨테이너 영역 내에서만 이동
+					const containerWidth = $('#page-preview').width();
+					const containerHeight = $('#page-preview').height();
+
+					newLeft = Math.max(0, Math.min(newLeft, containerWidth - textBox.width()));
+					newTop = Math.max(0, Math.min(newTop, containerHeight - textBox.height()));
+
+					textBox.css({
+						left: `${newLeft}px`,
+						top: `${newTop}px`
+					});
+				});
+
+				$(document).on('mouseup', function() {
+					isDragging = false;
+					$(document).off('mousemove mouseup');
+				});
+
+				e.preventDefault();
+			}
+		});
+	}
+
+	// 텍스트 박스 선택 기능
+	function selectTextBox(textBox) {
+		// Clear other selections
+		clearSelection();
+
+		selectedBox = textBox;
+		textBox.addClass('selected-text').css('border', '2px solid #28a745');
+
+		// 툴팁 표시
+		showTextTooltip(textBox);
+	}
+
+	// 텍스트 툴팁 표시
+	function showTextTooltip(textBox) {
+		const textBoxOffset = textBox.offset();
+		const containerOffset = $('#page-preview').offset();
+
+		tooltip.removeClass('d-none').css({
+			top: textBoxOffset.top - containerOffset.top - 40,
+			left: textBoxOffset.left - containerOffset.left
+		});
+
+		// 현재 스타일 값으로 툴팁 초기화
+		inColor.val(rgbToHex(textBox.css('color')));
+		inSize.val(textBox.css('font-size'));
+		inAlign.val(textBox.css('text-align') || 'left');
+	}
+
+	// 툴팁 컨트롤 이벤트
+	inColor.on('change', function() {
+		if (selectedBox) {
+			selectedBox.css('color', $(this).val());
+		}
+	});
+
+	inSize.on('change', function() {
+		if (selectedBox) {
+			selectedBox.css('font-size', $(this).val());
+		}
+	});
+
+	inAlign.on('change', function() {
+		if (selectedBox) {
+			selectedBox.css('text-align', $(this).val());
+		}
+	});
+
+	btnRemove.on('click', function() {
+		if (selectedBox) {
+			selectedBox.remove();
+			selectedBox = null;
+			tooltip.addClass('d-none');
+		}
+	});
+
+	// NEW: Frame delete button event
+	btnDeleteFrame.on('click', function() {
+		if (selectedFrame && confirm("Are you sure you want to delete this frame?")) {
+			selectedFrame.remove();
+			clearSelection(); // Clear selection after deleting
+		}
+	});
+
+	// NEW: Frame rotation input event
+	frameRotateInput.on('change', function() {
+		if (selectedFrame) {
+			let angle = parseInt($(this).val());
+			if (isNaN(angle)) angle = 0;
+			angle = Math.max(0, Math.min(360, angle)); // Keep within 0-360
+			$(this).val(angle); // Update input value if clamped
+			applyFrameRotation(selectedFrame, angle);
+		}
+	});
+
+	// NEW: Function to get current rotation of a frame
+	function getFrameRotation(frameGroup) {
+		const transform = frameGroup.css('transform');
+		if (transform && transform !== 'none') {
+			const matrix = transform.match(/^matrix\((.+)\)$/);
+			if (matrix) {
+				const values = matrix[1].split(',').map(Number);
+				const a = values[0];
+				const b = values[1];
+				const angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+				return angle < 0 ? angle + 360 : angle; // Ensure positive angle
+			}
+		}
+		return 0;
+	}
+
+	// NEW: Function to apply rotation to a frame
+	function applyFrameRotation(frameGroup, angle) {
+		frameGroup.css('transform', `rotate(${angle}deg)`);
+	}
+
+	// NEW: Add Rotation Handle to frame
+	function addRotationHandle(frameGroup) {
+		// Remove existing handle first
+		$('.rotate-handle').remove(); // Ensure only one handle exists at a time
+
+		const rotateHandle = $('<div class="rotate-handle"></div>');
+		frameGroup.append(rotateHandle);
+
+		let isRotating = false;
+		let startAngle = 0;
+		let startClientX, startClientY;
+
+		rotateHandle.on('mousedown', function(e) {
+			e.stopPropagation(); // Prevent frame drag
+			e.preventDefault(); // Prevent text selection
+			
+			isRotating = true;
+			
+			const frameCenter = {
+				x: frameGroup.offset().left + frameGroup.width() / 2,
+				y: frameGroup.offset().top + frameGroup.height() / 2
+			};
+
+			startClientX = e.clientX;
+			startClientY = e.clientY;
+			startAngle = getFrameRotation(frameGroup);
+
+			$(document).on('mousemove', function(ev) {
+				if (!isRotating) return;
+
+				const currentAngleRad = Math.atan2(ev.clientY - frameCenter.y, ev.clientX - frameCenter.x);
+				const startAngleRad = Math.atan2(startClientY - frameCenter.y, startClientX - frameCenter.x);
+
+				let deltaAngle = (currentAngleRad - startAngleRad) * (180 / Math.PI);
+				let newAngle = (startAngle + deltaAngle) % 360;
+				if (newAngle < 0) newAngle += 360; // Ensure positive
+
+				applyFrameRotation(frameGroup, newAngle);
+				frameRotateInput.val(Math.round(newAngle)); // Update input field
+			});
+
+			$(document).on('mouseup', function() {
+				isRotating = false;
+				$(document).off('mousemove mouseup');
+			});
+		});
+	}
+
+	// NEW: Show and position frame controls tooltip
+	function showFrameControlsTooltip(frameGroup) {
+		
+		const frameRect = frameGroup[0].getBoundingClientRect(); // 브라우저 뷰포트 기준
+		const pagePreviewRect = $('#page-preview')[0].getBoundingClientRect(); // 브라우저 뷰포트 기준
+		
+	    // #page-preview 내부에서의 프레임 상대적 위치
+		const frameRelativeLeft = frameRect.left - pagePreviewRect.left;
+		const frameRelativeTop = frameRect.top - pagePreviewRect.top;
+
+	    // 툴팁의 실제 너비와 높이
+	    const tooltipWidth = frameControlsTooltip.outerWidth();
+	    const tooltipHeight = frameControlsTooltip.outerHeight();
+
+	    // 툴팁을 프레임의 오른쪽 상단에 위치시키되, 프레임 내부에 들어가지 않도록 약간 밖으로 빼는 계산
+	    // 예: 프레임의 오른쪽 모서리 + 약간의 간격
+		let topPos = frameRelativeTop - tooltipHeight - 10;
+		let leftPos = frameRelativeLeft + frameRect.width + 10; // frameRect.width 사용
+
+	    // --- 경계 확인 및 조정 로직 (이전 답변과 동일) ---
+	    const pagePreviewWidth = $('#page-preview').width();
+	    const pagePreviewHeight = $('#page-preview').height();
+
+	    // 툴팁이 #page-preview 영역을 벗어나지 않도록 조정
+	    if (leftPos < 0) {
+	        leftPos = 0;
+	    }
+	    if (leftPos + tooltipWidth > pagePreviewWidth) {
+	        leftPos = frameRelativeLeft - tooltipWidth - 10;
+	        if (leftPos < 0) {
+	            leftPos = pagePreviewWidth - tooltipWidth;
+	        }
+	    }
+
+	    if (topPos < 0) {
+	        topPos = frameRelativeTop + frameGroup.outerHeight() + 10;
+	        if (topPos + tooltipHeight > pagePreviewHeight) {
+	             topPos = pagePreviewHeight - tooltipHeight;
+	        }
+	    }
+	    if (topPos + tooltipHeight > pagePreviewHeight) {
+	        topPos = pagePreviewHeight - tooltipHeight;
+	    }
+
+	    frameControlsTooltip.removeClass('d-none').css({
+	        top: `${topPos}px`,
+	        left: `${leftPos}px`
 	    });
 	}
 
-	// 프레임 적용 함수 (배경 위 오버레이만 교체)
-	function applyFrame(path) {
-	  const overlay = document.getElementById('frame-overlay');
-	  if (!overlay) return;
-	  overlay.src = path;
-	  overlay.style.display = 'block';
-	}
-	
-	function loadMainFrame() {
-		fetch(`${ctx}/edit/mainFrame`		, {
-			      method: 'POST',
-				  headers: { 'Content-Type': 'application/json' },
-				  body: JSON.stringify({
-				      id: 11,
-				      category: "frame"
-				  })
-			    })
-			.then(response => response.json())
-			.then(data => {
-				console.log(data);
-				categories.innerHTML = '';
-				items.innerHTML = ''; // 카테고리 전환 시 하위 리스트 초기화
-				data.forEach(cat => {
-					const col = document.createElement('div');
-					col.className = 'col';
-					col.innerHTML = `<button class="btn btn-outline-primary w-100">${cat.filename}</button>`;
-					col.querySelector('button')
-						.addEventListener('click', () => loadFrameItems(cat.id, col));
-					categories.appendChild(col);
-				});
-			});
-	}
-	
-	/*--------------------텍스트 패널--------------------*/
-	
-	const addTextBtn   = document.getElementById('add-text-btn');
-	const ctrlColor    = document.getElementById('text-color');
-	const ctrlSize     = document.getElementById('text-size');
-	const ctrlAlign    = document.getElementById('text-align');
-	const removeTextBtn= document.getElementById('remove-text-btn');
-	const textCtrls    = document.getElementById('text-controls');
-	const preview      = document.getElementById('page-preview');
-	
-	const tooltip = document.getElementById('text-tooltip');
-	const inColor = document.getElementById('tooltip-color');
-	const inSize = document.getElementById('tooltip-size');
-	const inAlign = document.getElementById('tooltip-align');
-	const btnRemove = document.getElementById('tooltip-remove');
-	
-	let selectedBox  = null;
-	
-	// 드래그 기능 (이전 makeDraggable 활용)
-	function makeDraggable(el) {
-	  let offsetX, offsetY;
-	  el.onmousedown = e => {
-	    offsetX = e.clientX - el.offsetLeft;
-	    offsetY = e.clientY - el.offsetTop;
-	    document.onmousemove = ev => {
-	      el.style.left = (ev.clientX - offsetX) + 'px';
-	      el.style.top  = (ev.clientY - offsetY) + 'px';
-	    };
-	    document.onmouseup = () => document.onmousemove = null;
-	  };
-	}
-	
-	btnText.addEventListener('click', () => {
-		activate(btnText);
-		hideAllPanels();
-		textPanel.classList.remove('d-none');
-	});
-	
-	preview.addEventListener('click', e => {
-		const box = e.target.closest('.text-box');
-		if (!box) {
-			hideTooltip();
-			return;
-		}
-		selectBox(box);
-	});
-	
-	function selectBox(box) {
-		
-		// 이전 선택 해제
-		if (selectedBox) selectedBox.classList.remove('selected');
-		selectedBox = box;
-		box.classList.add('selected');
 
-		// 컨트롤 초기값 동기화
-		inColor.value = rgbToHex(box.style.color);
-		inSize.value = box.style.fontSize;
-		inAlign.value = box.style.textAlign;
-
-		// 툴팁 위치 계산
-		const rect = box.getBoundingClientRect();
-		tooltip.style.left = `${rect.right + 8 + window.pageXOffset}px`;
-		tooltip.style.top = `${rect.top + window.pageYOffset}px`;
-
-		// 툴팁 보이기
-		tooltip.classList.remove('d-none');
-	}
-	
-	function hideTooltip() {
-	  if (selectedBox) selectedBox.classList.remove('selected');
-	  selectedBox = null;
-	  tooltip.classList.add('d-none');
-	}
-	
-	// 2) 툴팁 입력 변경 시 스타일 적용
-	inColor.addEventListener('input', () => {
-	  if (selectedBox) selectedBox.style.color = inColor.value;
-	});
-	inSize.addEventListener('change', () => {
-	  if (selectedBox) selectedBox.style.fontSize = inSize.value;
-	});
-	inAlign.addEventListener('change', () => {
-	  if (selectedBox) selectedBox.style.textAlign = inAlign.value;
-	});
-	
-	btnRemove.addEventListener('click', () => {
-	  if (selectedBox) {
-	    selectedBox.remove();
-	    hideTooltip();
-	  }
-	});
-	
-	addTextBtn.addEventListener('click', () => {
-
-		const box = document.createElement('div');
-		box.className = 'text-box position-absolute';
-		box.contentEditable = 'true';
-		box.innerText = 'Enter text';
-		Object.assign(box.style, {
-			left: '50%', top: '50%',
-			transform: 'translate(-50%, -50%)',
-			color: '#000', fontSize: '16px',
-			textAlign: 'center', padding: '2px',
-			border: '1px dashed #666', minWidth: '80px',
-			cursor: 'move', zIndex: 20
-		});
-
-		preview.appendChild(box);
-		makeDraggable(box);
-
-		// 클릭해도 툴팁 유지하도록 리스너
-		box.addEventListener('click', e => {
-			selectBox(box);
-			e.stopPropagation();
-		});
-
-		// 생성 직후 자동 선택
-		selectBox(box);
-		box.focus();
-	});
-	
-	document.addEventListener('click', e => {
-	  if (!tooltip.contains(e.target) && !e.target.closest('.text-box')) {
-	    hideTooltip();
-	  }
-	});
-
-	// 유틸: RGB → HEX
+	// RGB를 HEX로 변환하는 유틸리티 함수
 	function rgbToHex(rgb) {
-	  const m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-	  return m ? '#' + [1,2,3].map(i => parseInt(m[i])
-	    .toString(16).padStart(2,'0')).join('') : '#000000';
+		if (rgb.indexOf('#') === 0) return rgb;
+		const result = rgb.match(/\d+/g);
+		if (!result) return '#000000';
+		return '#' + ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2])).toString(16).slice(1);
 	}
+
+	// 마스킹 디버깅 함수 (개발용)
+	function debugMasking(frameGroup) {
+		const frameTheme = frameGroup.data('frameTheme');
+		const maskContainer = frameGroup.find('.mask-container');
+
+		console.log('=== Masking Debug Info ===');
+		console.log('Frame theme:', frameTheme);
+		console.log('Mask path:', frameTheme?.editMaskPath);
+		console.log('Mask container CSS:', {
+			'mask-image': maskContainer.css('mask-image'),
+			'-webkit-mask-image': maskContainer.css('-webkit-mask-image'),
+			'mask-size': maskContainer.css('mask-size'),
+			'overflow': maskContainer.css('overflow')
+		});
+		console.log('Photo elements:', frameGroup.find('.uploaded-photo').length);
+		console.log('=========================');
+	}
+
+	// 글로벌 디버그 함수 (개발자 콘솔에서 사용 가능)
+	window.debugAllFrames = function() {
+		$('.frame-group').each(function(index) {
+			console.log(`Frame ${index + 1}:`);
+			debugMasking($(this));
+		});
+	};
+
+	window.debugSelectedFrame = function() {
+		if (selectedFrame) {
+			debugMasking(selectedFrame);
+		} else {
+			console.log('No frame selected');
+		}
+	};
 });

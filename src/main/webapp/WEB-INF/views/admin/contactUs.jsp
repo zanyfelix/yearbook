@@ -19,25 +19,22 @@
 </c:if>
 <div class="sidebar">
 	<div class="mb-3">
-	<select class="form-select">
+	<form action="<c:url value='/admin/theme' />" method="get">
+	<select name="userId" class="form-select" onchange="this.form.submit()">
 	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-	    		<option value="${item.schoolName}">${item.schoolName}</option>
+	    		<option value="${item.id}">${item.schoolName}</option>
 	    	</c:forEach>
 	    </select>
+	</form>
 	</div>
-    <%-- <h5>${sessionScope.loginUser.schoolName}</h5> --%>
     
     <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
     
     <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
-    <a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
-    <a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
-    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
     <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 <div class="content">
