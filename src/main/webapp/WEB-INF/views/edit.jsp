@@ -142,6 +142,18 @@
 					    <button id="btn-delete-frame" class="btn btn-danger btn-sm me-2">X</button>
 					</div>
 					
+					<div id="photo-controls-tooltip" class="d-none position-absolute p-2 bg-dark text-white rounded" style="z-index: 100;">
+					    <div class="form-group mb-1">
+					        <label for="photo-zoom-input" class="mb-0 small">Zoom</label>
+					        <input type="range" id="photo-zoom-input" class="form-control-range form-control-range-sm" min="0.5" max="3" step="0.1" value="1">
+					    </div>
+					    <div class="form-group mb-1">
+					        <label for="photo-rotate-input" class="mb-0 small">Rotate</label>
+					        <input type="number" id="photo-rotate-input" class="form-control form-control-sm" min="0" max="360" value="0">
+					    </div>
+					    <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
+					</div>
+					
 					<!-- 툴팁 플로팅 컨트롤 (초기엔 hidden) -->
 					<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
 					  <input type="color" id="tooltip-color" title="Color" class="me-1" />

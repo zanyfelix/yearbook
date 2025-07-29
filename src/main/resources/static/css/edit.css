@@ -212,9 +212,14 @@ body {
 
 /* Add to your existing CSS file or a style block */
 
-/* For the frame controls tooltip */
-#frame-controls-tooltip {
-    /* Basic styling, similar to your text-tooltip */
+.frame-group {
+	border: 2px solid transparent; /* 기본 투명 테두리 */
+    box-sizing: border-box; /* 패딩과 보더가 width/height에 포함되도록 */
+}
+
+.frame-group.selected-frame {
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.8); /* 진한 녹색 그림자 */
+    border: 2px solid #28a745; /* 진한 녹색 테두리 */
 }
 
 /* Rotation icon on the frame */

@@ -20,10 +20,11 @@ $(document).ready(function() {
 	const btnRemove = $('#tooltip-remove');
 	const addTextBtn = $('#add-text-btn');
 
-	// NEW: Frame Controls
 	const frameControlsTooltip = $('#frame-controls-tooltip');
 	const btnDeleteFrame = $('#btn-delete-frame');
 	const frameRotateInput = $('#frame-rotate-input');
+	
+	const photoControlsTooltip = $('#photo-controls-tooltip');
 
 
 	const allBtns = [btnBg, btnFrame, btnText];
@@ -195,7 +196,9 @@ $(document).ready(function() {
 			fontSize: '14px',
 			fontWeight: 'bold',
 			textAlign: 'center',
-			display: 'block'
+			display: 'block',
+			zIndex: 19,
+			position: 'relative'
 		});
 
 		// 4. 업로드된 사진 (마스킹될 대상)
@@ -204,8 +207,9 @@ $(document).ready(function() {
 			position: 'absolute',
 			cursor: 'move',
 			maxWidth: 'none',
-						maxHeight: 'none',
-			objectFit: 'cover'
+			maxHeight: 'none',
+			objectFit: 'cover',
+			zIndex: 17
 		});
 
 		// 5. 프레임 오버레이 (가장 위에 표시될 프레임 테두리)
@@ -215,14 +219,27 @@ $(document).ready(function() {
 			left: 0,
 			width: '100%',
 			height: '100%',
-			zIndex: 17, // 가장 위에
+			zIndex: 20, // 가장 위에
 			pointerEvents: 'none' // 클릭 이벤트가 하위 요소로 전달되도록
+		});
+		
+		// 6. 클릭 감지용 투명 레이어 추가 (핵심 해결책!)
+		const clickDetector = $('<div class="frame-click-detector"></div>').css({
+		    position: 'absolute',
+		    top: 0,
+		    left: 0,
+		    width: '100%',
+		    height: '100%',
+		    zIndex: 18, // 모든 것보다 위에
+		    backgroundColor: 'transparent',
+		    cursor: 'move',
+			pointerEvents: 'none'
 		});
 
 		// DOM 구조 조립
 		photoContainer.append(placeholderLink).append(uploadedPhoto);
 		maskContainer.append(photoContainer);
-		frameGroup.append(maskContainer).append(frameOverlay);
+		frameGroup.append(maskContainer).append(frameOverlay).append(clickDetector);;
 		frameContainer.append(frameGroup);
 
 		// frameTheme 데이터 저장 (나중에 참조용)
@@ -231,8 +248,6 @@ $(document).ready(function() {
 		// 마스킹 적용 - 프레임 생성 시 한 번만 적용 (복잡한 모양 지원)
 		if (frameTheme.editMaskPath) {
 			applyComplexShapeMasking(maskContainer, frameTheme);
-		} else {
-			console.log('No mask provided for this frame - photos will fill entire frame area');
 		}
 
 		// 프레임 이미지가 로드된 후 위치 및 크기 설정
@@ -240,13 +255,12 @@ $(document).ready(function() {
 			setupFramePosition(frameGroup, frameTheme, this);
 			makeFrameDraggable(frameGroup);
 		}).on('error', function() {
-			console.error('Failed to load frame image:', frameTheme.editPath);
 			setupFramePosition(frameGroup, frameTheme, null);
 			makeFrameDraggable(frameGroup);
 		});
 
 		// 이벤트 핸들러 설정
-		setupFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+		setupEnhancedFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer, clickDetector);
 
 		// 모달 닫기
 		$('#frameModal').modal('hide');
@@ -355,7 +369,7 @@ $(document).ready(function() {
 	}
 
 	// 프레임 이벤트 핸들러 설정
-	function setupFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
+	function setupEnhancedFrameEventHandlers(frameGroup, placeholderLink, uploadedPhoto, maskContainer, clickDetector) {
 		// 이미지 업로드 클릭
 		placeholderLink.on('click', function(e) {
 			e.preventDefault();
@@ -372,7 +386,21 @@ $(document).ready(function() {
 		// 사진 클릭 시 사진 선택
 		// 이 이벤트가 가장 먼저 발생하고, e.stopPropagation()으로 상위 클릭 이벤트 차단
 		uploadedPhoto.on('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
 		    selectPhoto(uploadedPhoto, frameGroup);
+		});
+		
+		uploadedPhoto.on('load', function() {
+		    if (uploadedPhoto.is(':visible')) {
+		        //clickDetector.css('pointerEvents', 'auto'); // 사진이 있을 때만 클릭 감지 활성화
+		    }
+		});
+		
+		clickDetector.on('click', function(e) {
+		    e.preventDefault();
+		    e.stopPropagation();
+		    selectFrame(frameGroup);
 		});
 
 		// 프레임 그룹 클릭 시 (사진 외 영역 클릭) 프레임 선택
@@ -383,13 +411,9 @@ $(document).ready(function() {
 			    !$(e.target).hasClass('selection-handle') &&
 			    !$(e.target).hasClass('place-image-here-link')) {
 			    
+				e.preventDefault();
 			    e.stopPropagation(); // 이벤트를 여기서 멈춰 document 클릭 이벤트로 전달되지 않게 함 (중요!)
 			    selectFrame(frameGroup);
-			} else if ($(e.target).hasClass('uploaded-photo')) {
-			    // 만약 클릭된 타겟이 'uploaded-photo'인데 여기까지 왔다면 (stopPropagation을 제거했으므로),
-			    // 이미 selectPhoto가 호출되었을 것입니다.
-			    // 여기서는 추가적인 selectFrame 호출을 방지합니다.
-			    e.stopPropagation(); 
 			}
 		});
 
@@ -461,6 +485,9 @@ $(document).ready(function() {
 		photo.on('mousedown', function(e) {
 			if (e.button !== 0) return; 
 			
+			e.preventDefault();
+			e.stopPropagation(); // 이벤트 전파 중단
+			
 			isDraggingPhoto = true;
 
 			// 사진 선택 (드래그 시작 시)
@@ -507,9 +534,6 @@ $(document).ready(function() {
 				isDraggingPhoto = false;
 				$(document).off('mousemove mouseup');
 			});
-			
-			e.preventDefault(); 
-			e.stopPropagation(); 
 		});
 	}
 
@@ -528,7 +552,9 @@ $(document).ready(function() {
 		// 프레임 선택 시각적 효과
 		frameGroup.css({
 		    'box-shadow': '0 0 0 3px rgba(40, 167, 69, 0.8)', // 진한 녹색 그림자
-		    'border': '2px solid #28a745' // 진한 녹색 테두리
+		    'border': '2px solid #28a745', // 진한 녹색 테두리
+			'outline': '2px solid #28a745', // 추가 아웃라인으로 더 명확하게
+			'outline-offset': '2px'
 		});
 
 		// 선택 핸들(크기 조정 점) 추가
@@ -557,17 +583,202 @@ $(document).ready(function() {
 		photo.addClass('selected-photo');
 		photo.css({
 		    'box-shadow': '0 0 0 2px rgba(255, 165, 0, 0.8)', // 주황색 그림자
-		    'border': '2px solid #FFA500' // 주황색 테두리
+		    'border': '2px solid #FFA500', // 주황색 테두리
+			'outline': '2px solid #FFA500', // 추가 아웃라인
+			'outline-offset': '1px'
 		});
 
 		// 부모 프레임도 약간의 표시
 		frameGroup.css({
-		    'box-shadow': '0 0 0 1px rgba(255, 165, 0, 0.3)' // 연한 주황색 그림자
+		    'box-shadow': '0 0 0 1px rgba(255, 165, 0, 0.3)', // 연한 주황색 그림자
+			'border': '1px solid rgba(255, 165, 0, 0.5)'
 		});
 
 		selectedPhotoWrapper = photo;
-		selectedFrame = frameGroup;
+		
+		addPhotoSelectionHandles(photo); // 크기 조절 핸들 추가
+		addPhotoRotationHandle(photo); // 회전 핸들 추가
+		showPhotoControlsTooltip(photo, frameGroup); // 컨트롤 툴팁 표시
 
+	}
+	
+	//사진 컨트롤 툴팁 표시 함수
+	function showPhotoControlsTooltip(photo, frameGroup) {
+	    const frameRect = frameGroup[0].getBoundingClientRect();
+	    const pagePreviewRect = $('#page-preview')[0].getBoundingClientRect();
+
+	    const frameRelativeLeft = frameRect.left - pagePreviewRect.left;
+	    const frameRelativeTop = frameRect.top - pagePreviewRect.top;
+
+	    const tooltipWidth = photoControlsTooltip.outerWidth();
+	    const tooltipHeight = photoControlsTooltip.outerHeight();
+
+	    // ★★★ 프레임 툴팁과 동일한 위치 계산 로직 ★★★
+	    // 툴팁을 프레임의 오른쪽 상단에 위치시킵니다.
+	    let topPos = frameRelativeTop - tooltipHeight - 10;
+	    let leftPos = frameRelativeLeft + frameRect.width + 10;
+
+	    // --- 경계 확인 및 조정 로직 (기존 프레임 툴팁과 동일하게) ---
+	    const pagePreviewWidth = $('#page-preview').width();
+	    const pagePreviewHeight = $('#page-preview').height();
+
+	    // 툴팁이 오른쪽으로 벗어날 경우
+	    if (leftPos + tooltipWidth > pagePreviewWidth) {
+	        // 프레임의 왼쪽으로 위치 변경
+	        leftPos = frameRelativeLeft - tooltipWidth - 10;
+	        if (leftPos < 0) {
+	            leftPos = pagePreviewWidth - tooltipWidth;
+	        }
+	    }
+
+	    // 툴팁이 위쪽으로 벗어날 경우
+	    if (topPos < 0) {
+	        // 프레임 아래로 위치 변경
+	        topPos = frameRelativeTop + frameGroup.outerHeight() + 10;
+	        if (topPos + tooltipHeight > pagePreviewHeight) {
+	            topPos = pagePreviewHeight - tooltipHeight;
+	        }
+	    }
+
+	    // 계산된 위치에 툴팁 표시
+	    photoControlsTooltip.removeClass('d-none').css({
+	        top: `${topPos}px`,
+	        left: `${leftPos}px`
+	    });
+
+	    // 툴팁 컨트롤 값 초기화
+	    const currentTransform = getPhotoTransform(photo);
+		const inputZoomValue = ((currentTransform.scale - 0.5) / 2.5) * 100;
+		
+	    $('#photo-zoom-input').val(inputZoomValue);
+	    $('#photo-rotate-input').val(currentTransform.rotation);
+	}
+	
+	//사진 변환 정보(회전, 스케일) 가져오는 함수
+	function getPhotoTransform(photo) {
+	    const transform = photo.css('transform');
+	    let scale = 1;
+	    let rotation = 0;
+
+	    if (transform && transform !== 'none') {
+	        const matrix = transform.match(/matrix\((.+)\)/);
+	        if (matrix) {
+	            const values = matrix[1].split(', ').map(parseFloat);
+	            const a = values[0];
+	            const b = values[1];
+	            
+	            // 스케일 계산 ( assuming uniform scaling )
+	            scale = Math.sqrt(a*a + b*b);
+	            
+	            // 회전각 계산
+	            rotation = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+	            if (rotation < 0) rotation += 360;
+	        }
+	    }
+	    return { scale, rotation };
+	}
+
+	//사진 크기 조절(Zoom) 및 회전 적용 함수
+	function applyPhotoTransform(photo, scale, rotation) {
+	    photo.css('transform', `rotate(${rotation}deg) scale(${scale})`);
+	}
+
+	//사진 크기 조절 핸들 추가 함수
+	function addPhotoSelectionHandles(photo) {
+	    $('.selection-handle').remove();
+	    const handles = ['nw', 'ne', 'sw', 'se']; // 대각선 핸들만 사용
+	    handles.forEach(position => {
+	        const handle = $('<div class="selection-handle">').addClass(`handle-${position}`).css({
+	            position: 'absolute',
+	            width: '10px',
+	            height: '10px',
+	            backgroundColor: '#FFA500', // 주황색
+	            border: '1px solid white',
+	            cursor: getResizeCursor(position),
+	            zIndex: 30
+	        });
+
+	        handle.css(getHandlePosition(position));
+	        photo.append(handle);
+	        
+	        // 크기 조절 로직 추가
+	        makePhotoResizable(photo, handle, position);
+	    });
+	}
+
+	//사진 회전 핸들 추가 함수
+	function addPhotoRotationHandle(photo) {
+	    $('.rotate-handle').remove();
+	    const rotateHandle = $('<div class="rotate-handle"></div>').css({
+	        /* 스타일은 기존 addRotationHandle 함수와 유사하게 설정 */
+	    });
+	    photo.append(rotateHandle);
+
+	    let isRotating = false;
+	    let startAngle, photoCenter;
+
+	    rotateHandle.on('mousedown', function(e) {
+	        e.preventDefault();
+	        e.stopPropagation();
+	        isRotating = true;
+
+	        const currentTransform = getPhotoTransform(photo);
+	        startAngle = currentTransform.rotation;
+
+	        const photoOffset = photo.offset();
+	        photoCenter = {
+	            x: photoOffset.left + photo.width() / 2,
+	            y: photoOffset.top + photo.height() / 2
+	        };
+	        
+	        const startRad = Math.atan2(e.clientY - photoCenter.y, e.clientX - photoCenter.x);
+
+	        $(document).on('mousemove', function(ev) {
+	            if (!isRotating) return;
+	            const moveRad = Math.atan2(ev.clientY - photoCenter.y, ev.clientX - photoCenter.x);
+	            const deltaAngle = (moveRad - startRad) * (180 / Math.PI);
+	            let newAngle = (startAngle + deltaAngle);
+
+	            applyPhotoTransform(photo, currentTransform.scale, newAngle);
+	            $('#photo-rotate-input').val(Math.round(newAngle % 360));
+	        });
+
+	        $(document).on('mouseup', function() {
+	            isRotating = false;
+	            $(document).off('mousemove mouseup');
+	        });
+	    });
+	}
+
+	//사진 크기 조절 로직
+	function makePhotoResizable(photo, handle, position) {
+	    let isResizing = false;
+	    
+	    handle.on('mousedown', function(e) {
+	        e.preventDefault();
+	        e.stopPropagation();
+	        isResizing = true;
+	        
+	        $(document).on('mousemove', function(ev) {
+	            if (!isResizing) return;
+	            // 크기 조절 로직 구현 (간단한 예시: 스케일 조정)
+	            const currentTransform = getPhotoTransform(photo);
+	            
+	            // 마우스 이동에 따라 스케일 값을 간단히 증감시키는 로직
+	            // (더 정교한 계산이 필요할 수 있음)
+	            const movement = (ev.movementX - ev.movementY) * 0.001;
+	            let newScale = parseFloat(currentTransform.scale) + movement;
+	            newScale = Math.max(0.5, Math.min(newScale, 3)); // 최소/최대 스케일 제한
+
+	            applyPhotoTransform(photo, newScale, currentTransform.rotation);
+	            $('#photo-zoom-input').val(newScale);
+	        });
+	        
+	        $(document).on('mouseup', function() {
+	            isResizing = false;
+	            $(document).off('mousemove mouseup');
+	        });
+	    });
 	}
 
 	// 선택 해제 기능
@@ -575,25 +786,27 @@ $(document).ready(function() {
 		// 프레임 선택 해제
 		$('.frame-group').removeClass('selected-frame').css({
 			'box-shadow': 'none',
-			'border': 'none'
+			'border': 'none',
+			'outline': 'none' // 아웃라인도 제거
 		});
 
 		// 사진 선택 해제
 		$('.uploaded-photo').removeClass('selected-photo').css({
 			'box-shadow': 'none',
-			'border': 'none'
+			'border': 'none',
+			'outline': 'none' // 아웃라인도 제거			
 		});
 
 		// 선택 핸들 제거
 		$('.selection-handle').remove();
-		// NEW: 회전 핸들 제거
 		$('.rotate-handle').remove();
 		// NEW: 프레임 컨트롤 툴팁 숨기기
 		frameControlsTooltip.addClass('d-none');
+		photoControlsTooltip.addClass('d-none');
 
 		selectedFrame = null;
 		selectedPhotoWrapper = null;
-		selectedBox = null; // Also clear text box selection
+		selectedBox = null;
 		tooltip.addClass('d-none'); // Hide text tooltip
 	}
 
@@ -697,73 +910,64 @@ $(document).ready(function() {
 
 	// 개선된 파일 업로드 처리 - 마스킹 유지
 	$('#image-upload-input').off('change').on('change', function(e) {
-		const file = e.target.files[0];
-		const $fileInput = $(this);
-		const targetFrameGroup = $fileInput.data('targetFrameGroup');
-		const targetUploadedPhoto = $fileInput.data('targetUploadedPhoto');
-		const targetPlaceholderLink = $fileInput.data('targetPlaceholderLink');
-		const targetMaskContainer = $fileInput.data('targetMaskContainer');
+	    const file = e.target.files[0];
+	    const $fileInput = $(this);
+	    const targetFrameGroup = $fileInput.data('targetFrameGroup');
+	    const targetUploadedPhoto = $fileInput.data('targetUploadedPhoto');
+	    const targetPlaceholderLink = $fileInput.data('targetPlaceholderLink');
+	    const targetMaskContainer = $fileInput.data('targetMaskContainer');
 
-		if (file && targetFrameGroup && targetUploadedPhoto && targetPlaceholderLink && targetMaskContainer) {
-			const reader = new FileReader();
-			reader.onload = function(event) {
-				// 사진 설정
-				targetUploadedPhoto.attr('src', event.target.result).css({
-					display: 'block',
-					position: 'absolute'
-				});
+	    if (file && targetFrameGroup && targetUploadedPhoto && targetPlaceholderLink && targetMaskContainer) {
+	        const reader = new FileReader();
+	        reader.onload = function(event) {
+	            // 사진 설정
+	            targetUploadedPhoto.attr('src', event.target.result).css({
+	                display: 'block',
+	                position: 'absolute'
+	            });
 
-				// 이미지 로드 완료 후 크기 조정
-				targetUploadedPhoto.on('load', function() {
-					const maskWidth = targetMaskContainer.width();
-					const maskHeight = targetMaskContainer.height();
+	            // 이미지 로드 완료 후 크기 조정
+	            targetUploadedPhoto.on('load', function() {
+	                const maskWidth = targetMaskContainer.width();
+	                const maskHeight = targetMaskContainer.height();
 
-					// 이미지를 마스크 컨테이너에 맞게 크기 조정
-					const imgAspectRatio = this.naturalWidth / this.naturalHeight;
-					const containerAspectRatio = maskWidth / maskHeight;
+	                // 이미지를 마스크 컨테이너에 맞게 크기 조정
+	                const imgAspectRatio = this.naturalWidth / this.naturalHeight;
+	                const containerAspectRatio = maskWidth / maskHeight;
 
-					let newWidth, newHeight;
+	                let newWidth, newHeight;
 
-					// 컨테이너를 완전히 덮도록 크기 조정
-					if (imgAspectRatio > containerAspectRatio) {
-						newHeight = maskHeight * 1.2; // 여유분 추가하여 드래그 가능
-						newWidth = newHeight * imgAspectRatio;
-					} else {
-						newWidth = maskWidth * 1.2; // 여유분 추가하여 드래그 가능
-						newHeight = newWidth / imgAspectRatio;
-					}
+	                // 컨테이너를 완전히 덮도록 크기 조정
+	                if (imgAspectRatio > containerAspectRatio) {
+	                    newHeight = maskHeight * 1.2;
+	                    newWidth = newHeight * imgAspectRatio;
+	                } else {
+	                    newWidth = maskWidth * 1.2;
+	                    newHeight = newWidth / imgAspectRatio;
+	                }
 
-					// 사진 크기 및 중앙 배치
-					targetUploadedPhoto.css({
-						width: `${newWidth}px`,
-						height: `${newHeight}px`,
-						left: `${(maskWidth - newWidth) / 2}px`,
-						top: `${(maskHeight - newHeight) / 2}px`
-					});
+	                // 사진 크기 및 중앙 배치
+	                targetUploadedPhoto.css({
+	                    width: `${newWidth}px`,
+	                    height: `${newHeight}px`,
+	                    left: `${(maskWidth - newWidth) / 2}px`,
+	                    top: `${(maskHeight - newHeight) / 2}px`
+	                });
 
-					console.log('Photo uploaded and positioned:', {
-						photoSize: {
-							width: newWidth,
-							height: newHeight
-						},
-						containerSize: {
-							width: maskWidth,
-							height: maskHeight
-						},
-						maskingActive: 'Mask applied at frame creation - photo will only show in masked areas'
-					});
+	                // 사진이 업로드되면 clickDetector 활성화
+	                const clickDetector = targetFrameGroup.find('.frame-click-detector');
+	                clickDetector.css('pointerEvents', 'none');
 
-					// 중요: 마스킹은 이미 maskContainer에 적용되어 있으므로
-					// 사진이 업로드되면 자동으로 마스크 영역에서만 보임
-					// 별도의 마스킹 재적용 불필요!
-				});
+	                // 사진 업로드 후 자동으로 사진 선택
+	                selectPhoto(targetUploadedPhoto, targetFrameGroup);
+	            });
 
-				// 플레이스홀더 숨기기
-				targetPlaceholderLink.hide();
-				$fileInput.val('');
-			};
-			reader.readAsDataURL(file);
-		}
+	            // 플레이스홀더 숨기기
+	            targetPlaceholderLink.hide();
+	            $fileInput.val('');
+	        };
+	        reader.readAsDataURL(file);
+	    }
 	});
 
 	// Clear 기능 (선택 상태도 함께 초기화)
@@ -777,15 +981,16 @@ $(document).ready(function() {
 
 	// 프레임 외부 클릭시 선택 해제 (개선됨)
 	$(document).on('click', function(e) {
-		// Check if click target or its parent is part of a selected element or a tooltip
 		const clickedOnFrame = $(e.target).closest('.frame-group').length > 0;
 		const clickedOnTextBox = $(e.target).closest('.text-box').length > 0;
 		const clickedOnTextTooltip = $(e.target).closest('#text-tooltip').length > 0;
 		const clickedOnFrameTooltip = $(e.target).closest('#frame-controls-tooltip').length > 0;
+		
+		const clickedOnPhotoTooltip = $(e.target).closest('#photo-controls-tooltip').length > 0;
 
-		if (!clickedOnFrame && !clickedOnTextBox && !clickedOnTextTooltip && !clickedOnFrameTooltip) {
-			clearSelection();
-		}
+		if (!clickedOnFrame && !clickedOnTextBox && !clickedOnTextTooltip && !clickedOnFrameTooltip && !clickedOnPhotoTooltip) {
+		        clearSelection();
+		    }
 	});
 
 	// Text Panel
@@ -958,6 +1163,24 @@ $(document).ready(function() {
 			applyFrameRotation(selectedFrame, angle);
 		}
 	});
+	
+	// NEW: Photo controls tooltip events
+	$('#photo-zoom-input').on('input change', function() {
+	    if (selectedPhotoWrapper) {
+			const newScale = parseFloat($(this).val()); // parseFloat 추가
+			const currentTransform = getPhotoTransform(selectedPhotoWrapper);
+	        applyPhotoTransform(selectedPhotoWrapper, newScale, currentTransform.rotation);
+	    }
+	});
+	
+	$('#photo-rotate-input').on('change', function() {
+	    if (selectedPhotoWrapper) {
+	        let newAngle = parseInt($(this).val());
+	        if (isNaN(newAngle)) newAngle = 0;
+	        const currentTransform = getPhotoTransform(selectedPhotoWrapper);
+	        applyPhotoTransform(selectedPhotoWrapper, currentTransform.scale, newAngle);
+	    }
+	});
 
 	// NEW: Function to get current rotation of a frame
 	function getFrameRotation(frameGroup) {
@@ -1121,33 +1344,43 @@ $(document).ready(function() {
 		}
 	};
 	
-	// Delete 키로 프레임 삭제
+	// Delete 키로 프레임/사진 삭제
 	$(document).on('keydown', function(e) {
-	    // 46은 Delete 키의 keyCode (또는 'Delete' key.code)
-	    // 8은 Backspace 키의 keyCode (옵션)
-	    if ((e.keyCode === 46 || e.key === 'Delete' || e.keyCode === 8 || e.key === 'Backspace') && selectedFrame) {
-	        // 현재 포커스된 요소가 input, textarea, select 등이 아닌지 확인
-	        // (텍스트를 입력하고 있을 때 Delete 키가 작동하면 안 되기 때문)
+	    if ((e.keyCode === 46 || e.key === 'Delete' || e.keyCode === 8 || e.key === 'Backspace')) {
 	        const focusedElement = document.activeElement;
 	        if (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'TEXTAREA' || focusedElement.tagName === 'SELECT' || $(focusedElement).is('[contenteditable="true"]')) {
-	            return; // 입력 필드에 포커스되어 있다면 함수 종료
+	            return;
 	        }
 
-	        // 텍스트 박스(contenteditable)가 선택된 상태일 때도 Delete 키는 텍스트 삭제에 사용되어야 함
 	        if (selectedBox && selectedBox.is(focusedElement)) {
-	            return; // 텍스트 박스가 선택되어 있다면 텍스트 편집에 양보
+	            return;
 	        }
 	        
-	        // Backspace 키는 텍스트 박스가 비어있을 때만 삭제하도록 할 수도 있습니다.
-	        // 현재는 selectedBox가 아니면 프레임 삭제를 시도합니다.
+	        e.preventDefault();
 
-	        e.preventDefault(); // 기본 브라우저 동작 (뒤로 가기 등) 방지
-
-	        // 삭제 확인 메시지
-	        if (confirm("Are you sure you want to delete this frame?")) {
-	            selectedFrame.remove();
-	            clearSelection(); // 삭제 후 선택 상태 초기화
-	            console.log("프레임이 Delete/Backspace 키로 삭제되었습니다.");
+	        // 사진이 선택된 경우 사진 삭제
+	        if (selectedPhotoWrapper) {
+	            if (confirm("Are you sure you want to delete this photo?")) {
+	                const frameGroup = selectedPhotoWrapper.closest('.frame-group');
+	                const placeholderLink = frameGroup.find('.place-image-here-link');
+	                
+	                selectedPhotoWrapper.hide().attr('src', '');
+	                placeholderLink.show();
+	                
+	                const clickDetector = frameGroup.find('.frame-click-detector');
+	                clickDetector.css('pointerEvents', 'none');
+	                
+	                clearSelection();
+	                console.log("사진이 Delete/Backspace 키로 삭제되었습니다.");
+	            }
+	        }
+	        // 프레임이 선택된 경우 프레임 삭제
+	        else if (selectedFrame) {
+	            if (confirm("Are you sure you want to delete this frame?")) {
+	                selectedFrame.remove();
+	                clearSelection();
+	                console.log("프레임이 Delete/Backspace 키로 삭제되었습니다.");
+	            }
 	        }
 	    }
 	});
