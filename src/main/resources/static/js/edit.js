@@ -188,10 +188,12 @@ $(document).ready(function() {
 			justifyContent: 'center',
 			alignItems: 'center'
 		});
+		
+		photoContainer.css('background-color', 'black');
 
 		// 3. 플레이스홀더
 		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
-			color: '#007bff',
+			color: 'white',
 			textDecoration: 'underline',
 			fontSize: '14px',
 			fontWeight: 'bold',
@@ -235,11 +237,15 @@ $(document).ready(function() {
 		    cursor: 'move',
 			pointerEvents: 'none'
 		});
+		
+		const rotateHandle = $('<div class="rotate-handle"></div>');
+		const rotateLine = $('<div class="rotate-line"></div>');
+		rotateHandle.append(rotateLine);
 
 		// DOM 구조 조립
 		photoContainer.append(placeholderLink).append(uploadedPhoto);
 		maskContainer.append(photoContainer);
-		frameGroup.append(maskContainer).append(frameOverlay).append(clickDetector);;
+		frameGroup.append(maskContainer).append(frameOverlay).append(clickDetector).append(rotateHandle);
 		frameContainer.append(frameGroup);
 
 		// frameTheme 데이터 저장 (나중에 참조용)
@@ -551,14 +557,11 @@ $(document).ready(function() {
 
 		// 프레임 선택 시각적 효과
 		frameGroup.css({
-		    'box-shadow': '0 0 0 3px rgba(40, 167, 69, 0.8)', // 진한 녹색 그림자
-		    'border': '2px solid #28a745', // 진한 녹색 테두리
-			'outline': '2px solid #28a745', // 추가 아웃라인으로 더 명확하게
-			'outline-offset': '2px'
+		    'border': '2px dashed #ff0000' // 진한 녹색 테두리
 		});
 
-		// 선택 핸들(크기 조정 점) 추가
-		addSelectionHandles(frameGroup);
+		// 선택 핸들(크기 조정 점) 추가 - frame 은 크기 조절 필요없음
+		//addSelectionHandles(frameGroup);
 		// NEW: 회전 핸들 추가
 		addRotationHandle(frameGroup);
 		// NEW: 프레임 컨트롤 툴팁 표시
@@ -992,7 +995,270 @@ $(document).ready(function() {
 		        clearSelection();
 		    }
 	});
+	
+	// #frame-rotate1 아이콘 클릭 이벤트 리스너
+	$('#frame-controls-tooltip').on('click', '#frame-rotate1', function() {
+	    if (!selectedFrame) return;
+	    
+	    // 현재 회전 각도 가져오기
+	    function getCurrentRotation() {
+	        const currentTransform = selectedFrame.css('transform');
+	        console.log("1. 현재 transform 속성:", currentTransform);
+	        console.log("1-1. transform 타입:", typeof currentTransform, "길이:", currentTransform?.length);
+	        
+	        if (!currentTransform || currentTransform === 'none') {
+	            console.log("2. transform 속성이 'none'이거나 존재하지 않음. 각도 0으로 초기화.");
+	            return 0;
+	        }
+	        
+	        // 방법 1: rotate(Xdeg) 형태의 값을 직접 파싱
+	        const rotateMatch = currentTransform.match(/rotate\(([-+]?\d*\.?\d+)(deg|rad)?\)/i);
+	        console.log("2. 정규식 매칭 결과:", rotateMatch);
+	        
+	        if (rotateMatch && rotateMatch[1]) {
+	            let angle = parseFloat(rotateMatch[1]);
+	            console.log("3. 파싱된 원본 각도:", angle);
+	            
+	            if (rotateMatch[2] === 'rad') {
+	                angle = angle * (180 / Math.PI);
+	                console.log("3-1. 라디안을 도로 변환:", angle);
+	            }
+	            
+	            const normalizedAngle = (angle % 360 + 360) % 360;
+	            const rotation = Math.round(normalizedAngle);
+	            console.log("4. 정규화 및 반올림:", normalizedAngle, "→", rotation);
+	            console.log("*** 정규식 파싱 성공, 반환값:", rotation);
+	            return rotation;
+	        }
+	        
+	        // 방법 2: matrix() 형태 직접 파싱
+	        const matrixMatch = currentTransform.match(/matrix\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)/);
+	        console.log("3. matrix 정규식 매칭 결과:", matrixMatch);
+	        
+	        if (matrixMatch) {
+	            const a = parseFloat(matrixMatch[1]); // cos(θ)
+	            const b = parseFloat(matrixMatch[2]); // sin(θ)
+	            const c = parseFloat(matrixMatch[3]); // -sin(θ)
+	            const d = parseFloat(matrixMatch[4]); // cos(θ)
+	            
+	            console.log("4. Matrix 값들 - a(cos):", a, "b(sin):", b, "c(-sin):", c, "d(cos):", d);
+	            
+	            // atan2를 사용하여 각도 계산
+	            const angleRad = Math.atan2(b, a);
+	            const angleDeg = angleRad * (180 / Math.PI);
+	            console.log("5. atan2 계산 - 라디안:", angleRad, "도:", angleDeg);
+	            
+	            // 0-359 범위로 정규화
+	            const normalizedAngle = (angleDeg % 360 + 360) % 360;
+	            const rotation = Math.round(normalizedAngle);
+	            console.log("6. 정규화 및 반올림:", normalizedAngle, "→", rotation);
+	            console.log("*** matrix 파싱 성공, 반환값:", rotation);
+	            return rotation;
+	        }
+	        
+	        console.log("*** 정규식 파싱들 모두 실패, WebKitCSSMatrix 사용");
+	        
+	        // 방법 3: WebKitCSSMatrix 사용 (최후의 수단)
+	        try {
+	            const matrix = new WebKitCSSMatrix(currentTransform);
+	            console.log("7. Matrix 객체:", matrix);
+	            console.log("8. Matrix m11 (cos):", matrix.m11, "m21 (sin):", matrix.m21);
+	            
+	            const angleRad = Math.atan2(matrix.m21, matrix.m11);
+	            const angleDeg = angleRad * (180 / Math.PI);
+	            console.log("9. atan2로 계산된 라디안:", angleRad, "도:", angleDeg);
+	            
+	            const normalizedAngle = (angleDeg % 360 + 360) % 360;
+	            const rotation = Math.round(normalizedAngle);
+	            console.log("10. Matrix 정규화 및 반올림:", normalizedAngle, "→", rotation);
+	            console.log("*** WebKitCSSMatrix 파싱 성공, 반환값:", rotation);
+	            return rotation;
+	        } catch (e) {
+	            console.error("WebKitCSSMatrix 파싱 오류:", e);
+	            return 0;
+	        }
+	    }
+	    
+	    // 각도 스냅 함수 (이미 정규화된 0-359 범위의 각도를 받음)
+	    function snapAngle(angle) {
+	        console.log("4. 스냅 적용 전 각도:", angle);
+	        
+	        // 스냅 로직 적용
+	        if (angle >= 1 && angle <= 89) {
+	            console.log("5. 1-89도 범위 → 0도로 스냅");
+	            return 0;
+	        } else if (angle >= 91 && angle <= 179) {
+	            console.log("5. 91-179도 범위 → 90도로 스냅");
+	            return 90;
+	        } else if (angle >= 181 && angle <= 269) {
+	            console.log("5. 181-269도 범위 → 180도로 스냅");
+	            return 180;
+	        } else if (angle >= 271 && angle <= 359) {
+	            console.log("5. 271-359도 범위 → 270도로 스냅");
+	            return 270;
+	        }
+	        
+	        // 정확한 각도 (0, 90, 180, 270)는 그대로 유지
+	        console.log("5. 정확한 각도이므로 그대로 유지:", angle);
+	        return angle;
+	    }
+	    
+	    // 프레임 컨트롤 툴팁 위치 업데이트 함수
+	    function updateTooltipPosition() {
+	        const frameRect = selectedFrame[0].getBoundingClientRect();
+	        const previewRect = $('#page-preview')[0].getBoundingClientRect();
+	        const frameControlsTooltip = $('#frame-controls-tooltip'); // 변수가 정의되어 있다고 가정
+	        
+	        frameControlsTooltip.css({
+	            left: frameRect.right - previewRect.left + 10,
+	            top: frameRect.top - previewRect.top,
+	        });
+	    }
+	    
+	    // 메인 로직 실행
+	    const currentRotation = getCurrentRotation();
+	    const newRotation = snapAngle(currentRotation);
+	    
+	    console.log("6. 적용될 newRotation:", newRotation);
+	    
+	    // 프레임에 새로운 회전 값 적용
+	    selectedFrame.css('transform', `rotate(${newRotation}deg)`);
+	    
+	    // 툴팁 위치 업데이트
+	    updateTooltipPosition();
+	});
+	
+	$('#frame-controls-tooltip').on('click', '#frame-rotate2', function() {
+		if (!selectedFrame) return;
 
+		// 현재 회전 각도 가져오기
+		function getCurrentRotation() {
+			const currentTransform = selectedFrame.css('transform');
+			console.log("1. 현재 transform 속성:", currentTransform);
+			console.log("1-1. transform 타입:", typeof currentTransform, "길이:", currentTransform?.length);
+
+			if (!currentTransform || currentTransform === 'none') {
+				console.log("2. transform 속성이 'none'이거나 존재하지 않음. 각도 0으로 초기화.");
+				return 0;
+			}
+
+			// 방법 1: rotate(Xdeg) 형태의 값을 직접 파싱
+			const rotateMatch = currentTransform.match(/rotate\(([-+]?\d*\.?\d+)(deg|rad)?\)/i);
+			console.log("2. 정규식 매칭 결과:", rotateMatch);
+
+			if (rotateMatch && rotateMatch[1]) {
+				let angle = parseFloat(rotateMatch[1]);
+				console.log("3. 파싱된 원본 각도:", angle);
+
+				if (rotateMatch[2] === 'rad') {
+					angle = angle * (180 / Math.PI);
+					console.log("3-1. 라디안을 도로 변환:", angle);
+				}
+
+				const normalizedAngle = (angle % 360 + 360) % 360;
+				const rotation = Math.round(normalizedAngle);
+				console.log("4. 정규화 및 반올림:", normalizedAngle, "→", rotation);
+				console.log("*** 정규식 파싱 성공, 반환값:", rotation);
+				return rotation;
+			}
+
+			// 방법 2: matrix() 형태 직접 파싱
+			const matrixMatch = currentTransform.match(/matrix\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)/);
+			console.log("3. matrix 정규식 매칭 결과:", matrixMatch);
+
+			if (matrixMatch) {
+				const a = parseFloat(matrixMatch[1]); // cos(θ)
+				const b = parseFloat(matrixMatch[2]); // sin(θ)
+				const c = parseFloat(matrixMatch[3]); // -sin(θ)
+				const d = parseFloat(matrixMatch[4]); // cos(θ)
+
+				console.log("4. Matrix 값들 - a(cos):", a, "b(sin):", b, "c(-sin):", c, "d(cos):", d);
+
+				// atan2를 사용하여 각도 계산
+				const angleRad = Math.atan2(b, a);
+				const angleDeg = angleRad * (180 / Math.PI);
+				console.log("5. atan2 계산 - 라디안:", angleRad, "도:", angleDeg);
+
+				// 0-359 범위로 정규화
+				const normalizedAngle = (angleDeg % 360 + 360) % 360;
+				const rotation = Math.round(normalizedAngle);
+				console.log("6. 정규화 및 반올림:", normalizedAngle, "→", rotation);
+				console.log("*** matrix 파싱 성공, 반환값:", rotation);
+				return rotation;
+			}
+
+			console.log("*** 정규식 파싱들 모두 실패, WebKitCSSMatrix 사용");
+
+			// 방법 3: WebKitCSSMatrix 사용 (최후의 수단)
+			try {
+				const matrix = new WebKitCSSMatrix(currentTransform);
+				console.log("7. Matrix 객체:", matrix);
+				console.log("8. Matrix m11 (cos):", matrix.m11, "m21 (sin):", matrix.m21);
+
+				const angleRad = Math.atan2(matrix.m21, matrix.m11);
+				const angleDeg = angleRad * (180 / Math.PI);
+				console.log("9. atan2로 계산된 라디안:", angleRad, "도:", angleDeg);
+
+				const normalizedAngle = (angleDeg % 360 + 360) % 360;
+				const rotation = Math.round(normalizedAngle);
+				console.log("10. Matrix 정규화 및 반올림:", normalizedAngle, "→", rotation);
+				console.log("*** WebKitCSSMatrix 파싱 성공, 반환값:", rotation);
+				return rotation;
+			} catch (e) {
+				console.error("WebKitCSSMatrix 파싱 오류:", e);
+				return 0;
+			}
+		}
+
+		// 각도 스냅 함수 (이미 정규화된 0-359 범위의 각도를 받음)
+		function snapAngle(angle) {
+			console.log("4. 스냅 적용 전 각도:", angle);
+
+			// 스냅 로직 적용
+			if (angle >= 1 && angle <= 89) {
+				console.log("5. 1-89도 범위 → 0도로 스냅");
+				return 90;
+			} else if (angle >= 91 && angle <= 179) {
+				console.log("5. 91-179도 범위 → 90도로 스냅");
+				return 180;
+			} else if (angle >= 181 && angle <= 269) {
+				console.log("5. 181-269도 범위 → 180도로 스냅");
+				return 270;
+			} else if (angle >= 271 && angle <= 359) {
+				console.log("5. 271-359도 범위 → 270도로 스냅");
+				return 0;
+			}
+
+			// 정확한 각도 (0, 90, 180, 270)는 그대로 유지
+			console.log("5. 정확한 각도이므로 그대로 유지:", angle);
+			return angle;
+		}
+
+		// 프레임 컨트롤 툴팁 위치 업데이트 함수
+		function updateTooltipPosition() {
+			const frameRect = selectedFrame[0].getBoundingClientRect();
+			const previewRect = $('#page-preview')[0].getBoundingClientRect();
+			const frameControlsTooltip = $('#frame-controls-tooltip'); // 변수가 정의되어 있다고 가정
+
+			frameControlsTooltip.css({
+				left: frameRect.right - previewRect.left + 10,
+				top: frameRect.top - previewRect.top,
+			});
+		}
+
+		// 메인 로직 실행
+		const currentRotation = getCurrentRotation();
+		const newRotation = snapAngle(currentRotation);
+
+		console.log("6. 적용될 newRotation:", newRotation);
+
+		// 프레임에 새로운 회전 값 적용
+		selectedFrame.css('transform', `rotate(${newRotation}deg)`);
+
+		// 툴팁 위치 업데이트
+		updateTooltipPosition();
+	});
+	
 	// Text Panel
 	btnText.on("click", function() {
 		activate(btnText);
@@ -1208,7 +1474,7 @@ $(document).ready(function() {
 		// Remove existing handle first
 		$('.rotate-handle').remove(); // Ensure only one handle exists at a time
 
-		const rotateHandle = $('<div class="rotate-handle"></div>');
+		const rotateHandle = $('<div class="rotate-handle"><div class="rotate-line"></div></div>');
 		frameGroup.append(rotateHandle);
 
 		let isRotating = false;

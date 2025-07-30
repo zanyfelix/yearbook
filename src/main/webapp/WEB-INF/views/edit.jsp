@@ -117,68 +117,69 @@
 	        </div>
 
 	        <!-- 우측 미리보기 영역 (60% - 3/5 비율) -->
-	        <div class="px-3 py-3 d-flex flex-column" style="width: 60%;">
-	          <!-- 상단 버튼 영역 -->
-	          <div class="d-flex justify-content-end gap-2 mb-3">
-	            <button id="btn-clear" class="btn btn-outline-secondary btn-sm">Clear</button>
-	            <button class="btn btn-primary btn-sm">Save</button>
-	            <button class="btn btn-danger btn-sm" data-bs-dismiss="modal">Close</button>
-	          </div>
-
-	          <!-- 미리보기 영역 (남은 공간을 모두 사용) -->
-	          <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0;">
-	            <div id="page-preview" class="border rounded bg-white" style="position: relative; width: 100%; height: 100%; max-width: 100%; max-height: 100%;">
-	              <img id="page-preview-img" src="/images/placeholder.png" class="rounded" style="width: 100%; height: 100%; object-fit: contain;" />
-				  <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
-				  <input type="file" id="image-upload-input" accept="image/*" style="display: none;" />
-				  
-				  	<!-- frame 컨트롤 툴팁 -->
-					<div id="frame-controls-tooltip" class="d-none" style="position: absolute; z-index: 99999; background: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; padding: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-					    <div class="d-inline-flex align-items-center">
-					        <label for="frame-rotate-input" class="form-label me-1 mb-0">Rotate:</label>
-					        <input type="number" id="frame-rotate-input" class="form-control form-control-sm w-auto me-1" value="0" min="0" max="360" step="1">
-					        <span>°</span>
-					    </div>
-					    <button id="btn-delete-frame" class="btn btn-danger btn-sm me-2">X</button>
-					</div>
-					
-					<div id="photo-controls-tooltip" class="d-none position-absolute p-2 bg-dark text-white rounded" style="z-index: 100;">
-					    <div class="form-group mb-1">
-					        <label for="photo-zoom-input" class="mb-0 small">Zoom</label>
-					        <input type="range" id="photo-zoom-input" class="form-control-range form-control-range-sm" min="0.5" max="3" step="0.1" value="1">
-					    </div>
-					    <div class="form-group mb-1">
-					        <label for="photo-rotate-input" class="mb-0 small">Rotate</label>
-					        <input type="number" id="photo-rotate-input" class="form-control form-control-sm" min="0" max="360" value="0">
-					    </div>
-					    <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
-					</div>
-					
-					<!-- 툴팁 플로팅 컨트롤 (초기엔 hidden) -->
-					<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
-					  <input type="color" id="tooltip-color" title="Color" class="me-1" />
-					  <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto me-1">
-					    <option value="12px">12px</option>
-					    <option value="16px" selected>16px</option>
-					    <option value="20px">20px</option>
-					    <option value="24px">24px</option>
-					    <option value="32px">32px</option>
-					  </select>
-					  <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto me-1">
-					    <option value="left">L</option>
-					    <option value="center">C</option>
-					    <option value="right">R</option>
-					  </select>
-					  <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
-					</div>
-				  
-	            </div>
-	          </div>
-	        </div>
-	      </div> <!-- modal-body -->
+	        <div class="px-3 py-3 d-flex flex-column" style="width: 60%; height: 100%;"> 
+			    <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0; width: 100%;">
+			    
+			        <div id="page-preview" class="border rounded bg-white d-flex flex-row h-100 w-100 flex-nowrap" style="position: relative;"> 
+			            
+			            <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
+			                <img id="page-preview-img" src="/images/placeholder.png" class="rounded"/>
+			            </div>
+			            
+			            <div class="button-group-container d-flex flex-column justify-content-start gap-2 p-3 flex-shrink-0">
+			                <button id="btn-clear" class="btn btn-outline-secondary btn-sm">Clear</button>
+			                <button class="btn btn-primary btn-sm">Save</button>
+			                <button class="btn btn-danger btn-sm" data-bs-dismiss="modal">Close</button>
+			            </div>
+			        
+			            <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+			            <input type="file" id="image-upload-input" accept="image/*" style="display: none;" />
+			            
+			            <div id="frame-controls-tooltip" class="d-none" style="position: absolute; z-index: 99999; background: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; padding: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+			            	<div style="display: flex; align-items: center; justify-content: space-between; width: 100%;"> 
+			                	<div class="d-inline-flex align-items-center">
+			                		<img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate1" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
+			                    	<img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
+			                	</div>
+			                	<button id="btn-delete-frame" class="btn btn-danger btn-sm me-2">X</button>
+			                </div>
+			            </div>
+			            
+			            <div id="photo-controls-tooltip" class="d-none position-absolute p-2 bg-dark text-white rounded" style="z-index: 100;">
+			                <div class="form-group mb-1">
+			                    <label for="photo-zoom-input" class="mb-0 small">Zoom</label>
+			                    <input type="range" id="photo-zoom-input" class="form-control-range form-control-range-sm" min="0.5" max="3" step="0.1" value="1">
+			                </div>
+			                <div class="form-group mb-1">
+			                    <label for="photo-rotate-input" class="mb-0 small">Rotate</label>
+			                    <input type="number" id="photo-rotate-input" class="form-control form-control-sm" min="0" max="360" value="0">
+			                </div>
+			                <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
+			            </div>
+			            
+			            <div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
+			                <input type="color" id="tooltip-color" title="Color" class="me-1" />
+			                <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto me-1">
+			                    <option value="12px">12px</option>
+			                    <option value="16px" selected>16px</option>
+			                    <option value="20px">20px</option>
+			                    <option value="24px">24px</option>
+			                    <option value="32px">32px</option>
+			                </select>
+			                <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto me-1">
+			                    <option value="left">L</option>
+			                    <option value="center">C</option>
+			                    <option value="right">R</option>
+			                </select>
+			                <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
+			            </div>
+			        </div>
+			    </div>
+			</div>
+	      </div>
 	    </div>
 	  </div>
-	</div> <!-- modal -->
+	</div><!-- 팝업 모달 -->
 	
 	<!-- 프레임 선택용 모달 -->
 	<div class="modal fade" id="frameModal" tabindex="-1" aria-hidden="true">
