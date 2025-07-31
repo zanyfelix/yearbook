@@ -291,16 +291,27 @@ body {
 .uploaded-photo {
     transition: all 0.3s ease;
     border-radius: 4px;
+    pointer-events: none;  /* 기본적으로 클릭 불가 */
 }
 
-.uploaded-photo:hover {
+/* 프레임이 선택된 상태에서만 사진 클릭 가능 */
+.frame-group.selected-frame .uploaded-photo {
+    pointer-events: auto;
+}
+
+/* 프레임이 선택된 상태에서 사진 hover 시 */
+.frame-group.selected-frame .uploaded-photo:hover {
     cursor: pointer;
+    opacity: 0.9;
+    box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
 }
 
 .uploaded-photo.selected-photo {
     border: 3px solid #FFA500;
     box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
     z-index: 18;
+    pointer-events: auto;  /* 선택된 사진은 항상 클릭 가능 */
+    opacity: 1;
 }
 
 /* 사진용 선택 핸들 */

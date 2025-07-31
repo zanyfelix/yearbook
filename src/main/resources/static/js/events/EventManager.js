@@ -15,54 +15,89 @@ class EventManager {
             }).trigger('click');
         });
 
-        frameGroup.off('mousedown click dblclick').on('mousedown', (e) => {
-            if (e.button !== 0) return;
-            
-            if (window.selectionManager.selectedMode === 'frame' && window.selectionManager.currentFrame === frameGroup) {
-                e.preventDefault();
-                e.stopPropagation();
-                FrameManager.handleDrag(frameGroup, e);
-                return;
-            }
-            e.preventDefault();
-        });
+		frameGroup.off('mousedown click dblclick').on('mousedown', (e) => {
+			if (e.button !== 0) return;
+
+			// 프레임이 선택되고 사진도 선택된 상태에서는 드래그 처리
+			if (window.selectionManager.selectedMode === 'frame' &&
+				window.selectionManager.currentFrame === frameGroup &&
+				!$(e.target).hasClass('uploaded-photo')) {
+				e.preventDefault();
+				e.stopPropagation();
+				FrameManager.handleDrag(frameGroup, e);
+				return;
+			}
+			e.preventDefault();
+		});
 
         frameGroup.on('click', (e) => {
             e.preventDefault();
             e.stopImmediatePropagation();
-            window.selectionManager.selectFrame(frameGroup);
+			// 아무것도 선택되지 않았거나, 다른 프레임/사진이 선택된 경우에만 프레임 선택
+			if (window.selectionManager.selectedMode === null ||
+				window.selectionManager.currentFrame !== frameGroup) {
+				window.selectionManager.selectFrame(frameGroup);
+			}
         });
 
-        frameGroup.on('dblclick', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            
-            if (uploadedPhoto.is(':visible')) {
-                if (window.selectionManager.currentPhoto === uploadedPhoto) {
-                    window.selectionManager.selectFrame(frameGroup);
-                } else {
-                    window.selectionManager.selectPhoto(uploadedPhoto, frameGroup);
-                }
-            }
-        });
+		frameGroup.on('dblclick', (e) => {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+
+			// 클릭한 대상이 사진인지 확인
+			const isPhotoClick = $(e.target).hasClass('uploaded-photo');
+
+			// 사진이 있고 표시되는 경우
+			if (uploadedPhoto.is(':visible')) {
+				// 프레임이 선택된 상태에서 프레임 영역(사진 제외) 더블클릭 시에는 아무 동작 안함
+				if (window.selectionManager.selectedMode === 'frame' &&
+					window.selectionManager.currentFrame === frameGroup &&
+					!isPhotoClick) {
+					return;
+				}
+				// 사진이 선택된 상태에서 프레임 영역 더블클릭 시 프레임 선택으로 전환
+				else if (window.selectionManager.selectedMode === 'photo' &&
+					window.selectionManager.currentPhoto === uploadedPhoto &&
+					!isPhotoClick) {
+					window.selectionManager.selectFrame(frameGroup);
+				}
+			}
+		});
 
         this.setupPhotoEvents(uploadedPhoto, frameGroup, maskContainer);
     }
 
-    static setupPhotoEvents(photo, frameGroup, maskContainer) {
-        photo.off('mousedown').on('mousedown', (e) => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            e.stopPropagation();
+	static setupPhotoEvents(photo, frameGroup, maskContainer) {
+		photo.off('mousedown').on('mousedown', (e) => {
+			if (e.button !== 0) return;
+			e.preventDefault();
+			e.stopPropagation();
 
-            if (!photo.hasClass('selected-photo')) {
-                window.selectionManager.selectPhoto(photo, frameGroup);
-                return;
-            }
+			// 사진이 이미 선택된 상태에서만 드래그 가능
+			if (window.selectionManager.selectedMode === 'photo' &&
+				window.selectionManager.currentPhoto === photo) {
+				PhotoManager.handleDrag(photo, frameGroup, maskContainer, e);
+			}
+			// 그 외의 경우는 클릭 무시
+		});
 
-            PhotoManager.handleDrag(photo, frameGroup, maskContainer, e);
-        });
-    }
+		// 사진 더블클릭 이벤트
+		photo.off('dblclick').on('dblclick', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			// 프레임이 선택된 상태에서 사진 더블클릭 시 사진 선택
+			if (window.selectionManager.selectedMode === 'frame' &&
+				window.selectionManager.currentFrame === frameGroup) {
+				window.selectionManager.selectPhoto(photo, frameGroup);
+			}
+			// 사진이 선택된 상태에서 더블클릭 시 프레임 선택으로 전환
+			else if (window.selectionManager.selectedMode === 'photo' &&
+				window.selectionManager.currentPhoto === photo) {
+				window.selectionManager.selectFrame(frameGroup);
+			}
+		});
+	}
     
     static setupGlobalEvents() {
 		// page-preview 영역에 캡처 단계 이벤트 리스너 추가
