@@ -530,14 +530,39 @@ class EnhancedSelectionManager {
                 const photoWidth = photo.width();
                 const photoHeight = photo.height();
 
-                // 마스크 영역 내에서만 이동 가능 (오버플로우 제한)
-                newLeft = Math.max(-photoWidth * 0.8, Math.min(newLeft, containerWidth * 0.8));
-                newTop = Math.max(-photoHeight * 0.8, Math.min(newTop, containerHeight * 0.8));
+				const safeLineMgr = window.safeLineManager;
+				// 마스크 컨테이너의 크기에 비례하여 픽셀당 mm 계산 (여기서는 마스크 컨테이너가 프레임 그룹의 일부분이므로, 그 크기에 맞춤)
+				// 하지만 세이프라인은 전체 배경 이미지에 대한 것이므로, 이를 프레임 내 좌표로 변환해야 합니다.
+				// 더 정확하게는, 프레임이 이미지 내의 어느 위치에 있든, 그 프레임이 커버하는 이미지 영역 내에서 세이프라인을 계산해야 합니다.
+				// 이 예시에서는 단순화를 위해 마스크 컨테이너 자체를 기준으로 세이프라인 마진을 계산합니다.
+				const pixelPerMmX = containerWidth / safeLineMgr.actualWidth; // safeLineMgr.actualWidth는 배경 이미지의 실제 mm 너비
+				const pixelPerMmY = containerHeight / safeLineMgr.actualHeight; // safeLineMgr.actualHeight는 배경 이미지의 실제 mm 높이
+				const safeMarginX = safeLineMgr.safeMargin * pixelPerMmX;
+				const safeMarginY = safeLineMgr.safeMargin * pixelPerMmY;
 
-                photo.css({
-                    left: `${newLeft}px`,
-                    top: `${newTop}px`
-                });
+				// 마스크 컨테이너 내에서의 세이프라인 경계 계산 (px 단위, maskContainer 기준)
+				// 사진은 이 경계를 벗어나지 않아야 합니다.
+				// 예를 들어, 사진의 왼쪽 끝은 safeAreaLeftInMask보다 작아질 수 없습니다.
+				const safeAreaLeftInMask = safeMarginX;
+				const safeAreaTopInMask = safeMarginY;
+				const safeAreaRightInMask = containerWidth - safeMarginX;
+				const safeAreaBottomInMask = containerHeight - safeMarginY;
+
+				// 사진의 좌측 상단 좌표를 기준으로 이동 제한
+				// 사진의 왼쪽 끝은 safeAreaLeftInMask보다 크거나 같아야 합니다.
+				// 사진의 오른쪽 끝 (left + width)은 safeAreaRightInMask보다 작거나 같아야 합니다.
+				// 사진의 위쪽 끝은 safeAreaTopInMask보다 크거나 같아야 합니다.
+				// 사진의 아래쪽 끝 (top + height)은 safeAreaBottomInMask보다 작거나 같아야 합니다.
+				let finalNewLeft = Math.max(newLeft, safeAreaLeftInMask - photoWidth); // 사진의 왼쪽 끝이 safeAreaLeftInMask 보다 작아지지 않도록
+				finalNewLeft = Math.min(finalNewLeft, safeAreaRightInMask - photoWidth); // 사진의 오른쪽 끝이 safeAreaRightInMask 보다 커지지 않도록
+
+				let finalNewTop = Math.max(newTop, safeAreaTopInMask - photoHeight); // 사진의 위쪽 끝이 safeAreaTopInMask 보다 작아지지 않도록
+				finalNewTop = Math.min(finalNewTop, safeAreaBottomInMask - photoHeight); // 사진의 아래쪽 끝이 safeAreaBottomInMask 보다 커지지 않도록
+
+				photo.css({
+					left: `${finalNewLeft}px`,
+					top: `${finalNewTop}px`
+				});
                 
                 // 오버레이 사진도 함께 이동
                 if (self.photoOverlay) {
@@ -1220,6 +1245,25 @@ $(document).ready(function() {
 	
 	// Enhanced Selection Manager 초기화
 	window.enhancedSelection = new EnhancedSelectionManager();
+	
+	$(document).on('click', function(e) {
+	    const $target = $(e.target);
+	    // 선택된 프레임, 사진 또는 그 컨트롤 요소 (핸들, 툴팁 등)가 아닌 경우에만 선택 해제
+	    if (!$target.closest('.frame-group.selected-frame').length &&
+			!$target.closest('.uploaded-photo.selected-photo').length &&
+			!$target.hasClass('selection-handle') &&
+			!$target.hasClass('rotate-handle') &&
+			!$target.closest('#frame-controls-tooltip').length &&
+			!$target.closest('#photo-controls-tooltip').length &&
+			!$target.closest('#text-tooltip').length &&
+			!$target.closest('#image-upload-input').length &&
+			!$target.closest('.color-picker').length &&
+			!$target.closest('.font-selector-container').length
+	    ) {
+	        window.enhancedSelection.clearSelection();
+	        console.log("배경 클릭으로 선택이 해제되었습니다.");
+	    }
+	});
 
 	// 기존 clearSelection 함수를 새로운 것으로 교체
 	window.clearSelection = function() {
@@ -1650,119 +1694,6 @@ $(document).ready(function() {
 		});
 	}
 
-	// 사진 드래그 시 프레임 경계 내에서만 이동하도록 개선된 드래그 기능
-	function makePhotoDraggable(photo, maskContainer) {
-		let isDraggingPhoto = false;
-		let photoStartX, photoStartY;
-		let initialPhotoLeft, initialPhotoTop;
-
-		photo.on('mousedown', function(e) {
-			if (e.button !== 0) return; 
-			
-			e.preventDefault();
-			e.stopPropagation(); // 이벤트 전파 중단
-			
-			isDraggingPhoto = true;
-
-			// 사진 선택 (드래그 시작 시)
-			const frameGroup = photo.closest('.frame-group');
-			selectPhoto(photo, frameGroup);
-
-			// 현재 사진의 위치 저장
-			const photoPosition = photo.position();
-			initialPhotoLeft = photoPosition.left;
-			initialPhotoTop = photoPosition.top;
-
-			photoStartX = e.clientX;
-			photoStartY = e.clientY;
-
-			$(document).on('mousemove', function(ev) {
-				if (!isDraggingPhoto) return;
-
-				// 마우스 이동 거리 계산
-				const deltaX = ev.clientX - photoStartX;
-				const deltaY = ev.clientY - photoStartY;
-
-				// 새로운 위치 계산
-				let newLeft = initialPhotoLeft + deltaX;
-				let newTop = initialPhotoTop + deltaY;
-
-				// maskContainer 경계 내에서만 이동 허용
-				const containerWidth = maskContainer.width();
-				const containerHeight = maskContainer.height();
-				const photoWidth = photo.width();
-				const photoHeight = photo.height();
-
-				// 프레임 경계를 벗어나지 않도록 제한 (오버플로우 최소화)
-				const allowOverflow = 20; // 20px까지만 오버플로우 허용
-				newLeft = Math.max(-photoWidth + allowOverflow, Math.min(newLeft, containerWidth - allowOverflow));
-				newTop = Math.max(-photoHeight + allowOverflow, Math.min(newTop, containerHeight - allowOverflow));
-
-				photo.css({
-					left: `${newLeft}px`,
-					top: `${newTop}px`
-				});
-			});
-
-			$(document).on('mouseup', function() {
-				isDraggingPhoto = false;
-				$(document).off('mousemove mouseup');
-			});
-		});
-	}
-
-	//사진 컨트롤 툴팁 표시 함수
-	function showPhotoControlsTooltip(photo, frameGroup) {
-	    const frameRect = frameGroup[0].getBoundingClientRect();
-	    const pagePreviewRect = $('#page-preview')[0].getBoundingClientRect();
-
-	    const frameRelativeLeft = frameRect.left - pagePreviewRect.left;
-	    const frameRelativeTop = frameRect.top - pagePreviewRect.top;
-
-	    const tooltipWidth = photoControlsTooltip.outerWidth();
-	    const tooltipHeight = photoControlsTooltip.outerHeight();
-
-	    // ★★★ 프레임 툴팁과 동일한 위치 계산 로직 ★★★
-	    // 툴팁을 프레임의 오른쪽 상단에 위치시킵니다.
-	    let topPos = frameRelativeTop - tooltipHeight - 10;
-	    let leftPos = frameRelativeLeft + frameRect.width + 10;
-
-	    // --- 경계 확인 및 조정 로직 (기존 프레임 툴팁과 동일하게) ---
-	    const pagePreviewWidth = $('#page-preview').width();
-	    const pagePreviewHeight = $('#page-preview').height();
-
-	    // 툴팁이 오른쪽으로 벗어날 경우
-	    if (leftPos + tooltipWidth > pagePreviewWidth) {
-	        // 프레임의 왼쪽으로 위치 변경
-	        leftPos = frameRelativeLeft - tooltipWidth - 10;
-	        if (leftPos < 0) {
-	            leftPos = pagePreviewWidth - tooltipWidth;
-	        }
-	    }
-
-	    // 툴팁이 위쪽으로 벗어날 경우
-	    if (topPos < 0) {
-	        // 프레임 아래로 위치 변경
-	        topPos = frameRelativeTop + frameGroup.outerHeight() + 10;
-	        if (topPos + tooltipHeight > pagePreviewHeight) {
-	            topPos = pagePreviewHeight - tooltipHeight;
-	        }
-	    }
-
-	    // 계산된 위치에 툴팁 표시
-	    photoControlsTooltip.removeClass('d-none').css({
-	        top: `${topPos}px`,
-	        left: `${leftPos}px`
-	    });
-
-	    // 툴팁 컨트롤 값 초기화
-	    const currentTransform = getPhotoTransform(photo);
-		const inputZoomValue = ((currentTransform.scale - 0.5) / 2.5) * 100;
-		
-	    $('#photo-zoom-input').val(inputZoomValue);
-	    $('#photo-rotate-input').val(currentTransform.rotation);
-	}
-	
 	//사진 변환 정보(회전, 스케일) 가져오는 함수
 	function getPhotoTransform(photo) {
 	    const transform = photo.css('transform');
@@ -2698,23 +2629,4 @@ $(document).ready(function() {
 			}
 		}
 	});
-});
-
-$(document).on('click', function(e) {
-    const $target = $(e.target);
-    // 선택된 프레임, 사진 또는 그 컨트롤 요소 (핸들, 툴팁 등)가 아닌 경우에만 선택 해제
-    if (!$target.closest('.frame-group.selected-frame').length &&
-        !$target.closest('.uploaded-photo.selected-photo').length &&
-        !$target.hasClass('selection-handle') &&
-        !$target.hasClass('rotate-handle') &&
-        !$target.closest('#frame-controls-tooltip').length &&
-        !$target.closest('#photo-controls-tooltip').length &&
-        !$target.closest('#text-tooltip').length && // 텍스트 툴팁도 고려
-        !$target.closest('#image-upload-input').length && // 파일 입력 필드 클릭 시 해제 방지
-        !$target.closest('.color-picker').length && // 색상 선택기 클릭 시 해제 방지
-        !$target.closest('.font-selector-container').length // 폰트 선택기 클릭 시 해제 방지
-    ) {
-        window.enhancedSelection.clearSelection();
-        console.log("배경 클릭으로 선택이 해제되었습니다.");
-    }
 });
