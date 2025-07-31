@@ -24,112 +24,53 @@ class EnhancedSelectionManager {
 	        fileInput.data('targetMaskContainer', maskContainer);
 	        fileInput.trigger('click');
 	    });
+		
+		frameGroup.off('mousedown mouseup click dblclick');
 
-	    // ★★★ 프레임 이벤트 처리 - 단순화된 접근 방식 ★★★
-	    let clickCount = 0;
-	    let clickTimer = null;
-	    let isDragging = false;
-	    let dragStartX, dragStartY;
-	    
-	    frameGroup.off('mousedown mouseup click dblclick').on('mousedown', function(e) {
-	        // 특정 요소들은 제외
-	        if ($(e.target).hasClass('rotate-handle') || 
-	            $(e.target).hasClass('selection-handle') ||
-	            $(e.target).hasClass('place-image-here-link') ||
-	            $(e.target).hasClass('uploaded-photo')) {
-	            return;
-	        }
-	        
-	        isDragging = false;
-	        dragStartX = e.clientX;
-	        dragStartY = e.clientY;
-	        
-	        // 드래그 감지를 위한 mousemove 이벤트
-	        $(document).on('mousemove.frameCheck', function(ev) {
-	            const moveDistance = Math.abs(ev.clientX - dragStartX) + Math.abs(ev.clientY - dragStartY);
-	            if (moveDistance > 5) {
-	                isDragging = true;
-	                // 드래그 시작 - 프레임 드래그 로직 처리
-	                self.handleFrameDrag(frameGroup, e, dragStartX, dragStartY);
-	                $(document).off('mousemove.frameCheck');
-	            }
-	        });
-	        
-	        $(document).on('mouseup.frameCheck', function() {
-	            $(document).off('mousemove.frameCheck mouseup.frameCheck');
-	        });
-	        
-	        // mousedown에서는 프레임 선택하지 않음 - click 이벤트에서 처리
-	    });
-	    
-	    // 클릭 이벤트로 더블클릭 감지 및 프레임 선택
-	    frameGroup.on('click', function(e) {
-	        // 특정 요소들은 제외
-	        if ($(e.target).hasClass('rotate-handle') || 
-	            $(e.target).hasClass('selection-handle') ||
-	            $(e.target).hasClass('place-image-here-link') ||
-	            $(e.target).hasClass('uploaded-photo')) {
-	            return;
-	        }
-	        
-	        // 드래그한 경우 클릭 이벤트 무시
-	        if (isDragging) {
-	            isDragging = false;
-	            return;
-	        }
-	        
-	        e.preventDefault();
-	        e.stopPropagation();
-			
-	        clickCount++;
-	        
-	        if (clickCount === 1) {
-	            // 첫 번째 클릭 - 300ms 대기
-	            clickTimer = setTimeout(function() {
-	                // ★★★ 단일 클릭 처리 - 프레임 선택 ★★★
-	                console.log('프레임 단일 클릭');
-	                
-	                // 프레임이 선택되지 않은 상태이거나 다른 프레임인 경우 선택
-					console.log(self.selectedMode);
-	                if (self.selectedMode !== 'frame' || self.currentFrameGroup !== frameGroup) {
-	                    console.log('프레임 선택 처리');
-	                    self.selectFrame(frameGroup);
-	                } else {
-	                    console.log('이미 선택된 프레임 - 선택 유지');
-	                }
-	                
-	                clickCount = 0;
-	            }, 300);
-	        } else if (clickCount === 2) {
-	            // 두 번째 클릭 - 더블클릭!
-	            clearTimeout(clickTimer);
-	            clickCount = 0;
-	            
-	            console.log('프레임 더블클릭 감지!');
-	            
-	            // 사진이 있는지 확인
-	            const hasPhoto = uploadedPhoto.is(':visible') && 
-	                            uploadedPhoto.attr('src') && 
-	                            uploadedPhoto.attr('src').trim() !== '';
-	            
-	            console.log('사진 존재 여부:', hasPhoto);
-	            console.log('uploadedPhoto visible:', uploadedPhoto.is(':visible'));
-	            console.log('uploadedPhoto src:', uploadedPhoto.attr('src'));
-	            console.log('현재 선택 모드:', self.selectedMode);
-	            console.log('현재 프레임:', self.currentFrameGroup === frameGroup);
-	            
-	            if (hasPhoto && self.selectedMode === 'frame' && self.currentFrameGroup === frameGroup) {
-	                console.log('조건 만족 - 사진 선택으로 전환');
-	                self.selectPhoto(uploadedPhoto, frameGroup);
-	            } else {
-	                console.log('조건 불만족 - 업로드 대화상자 열기');
-	                // 사진이 없으면 업로드 대화상자
-	                if (!hasPhoto) {
-	                    placeholderLink.trigger('click');
-	                }
-	            }
-	        }
-	    });
+		frameGroup.on('mousedown', function(e) {
+			if (e.button !== 0) return; // 좌클릭만 처리
+
+			// 현재 선택 모드가 프레임이고, 드래그하려는 프레임이 현재 선택된 프레임인 경우
+			if (self.selectedMode === 'frame' && self.currentFrameGroup === frameGroup) {
+				e.preventDefault(); // 브라우저 기본 드래그 방지
+				e.stopPropagation(); // 이벤트 버블링 중단 (document 클릭 막기 위함)
+				self.handleFrameDrag(frameGroup, e, e.clientX, e.clientY); // 드래그 시작
+				return; // 드래그 처리 후 종료
+			}
+			// 드래그가 아닌 일반 클릭의 mousedown은 전파를 허용하여 frameGroup.on('click')이 처리하도록 함
+			e.preventDefault(); // 기본 텍스트 선택 등 방지
+			// e.stopPropagation()은 여기서는 호출하지 않음: 클릭/더블클릭 이벤트를 frameGroup이 받도록 허용
+		});
+
+		// ★★★ 단일 클릭 처리: 프레임 또는 사진 클릭 시 항상 프레임 선택 ★★★
+		frameGroup.on('click', function(e) {
+			// e.stopImmediatePropagation()을 사용하여 이 이벤트가 처리된 후 다른 'click' 핸들러가 실행되지 않도록 함
+			e.preventDefault();
+			e.stopImmediatePropagation(); // 중요: 이 요소의 다른 'click' 핸들러 및 부모 요소로의 전파 중단
+
+			self.selectFrame(frameGroup);
+			console.log("프레임 또는 사진 단일 클릭으로 프레임이 선택되었습니다.");
+		});
+
+		// ★★★ 더블 클릭 처리: 선택 토글 ★★★
+		frameGroup.on('dblclick', function(e) {
+			e.preventDefault(); // 브라우저 기본 더블클릭 동작 방지
+			e.stopImmediatePropagation(); // 중요: 이 요소의 다른 'dblclick' 핸들러 및 부모 요소로의 전파 중단
+
+			if (uploadedPhoto.is(':visible')) {
+				// 사진이 현재 선택된 상태에서 다시 더블 클릭한 경우
+				if (self.currentPhoto === uploadedPhoto) {
+					self.selectFrame(frameGroup); // 프레임으로 다시 선택
+					console.log("사진 더블클릭으로 프레임이 다시 선택되었습니다.");
+				} else {
+					// 프레임이 선택되었거나 아무것도 선택되지 않은 상태에서 더블 클릭한 경우
+					self.selectPhoto(uploadedPhoto, maskContainer); // 사진 선택
+					console.log("프레임 더블클릭으로 사진이 선택되었습니다.");
+				}
+			} else {
+				console.log("사진이 없는 프레임은 더블클릭해도 변화 없음.");
+			}
+		});
 	    
 	    // ★★★ 사진 이벤트 처리 - 개선된 버전 ★★★
 	    uploadedPhoto.off('click mousedown').on('mousedown', function(e) {
@@ -428,53 +369,30 @@ class EnhancedSelectionManager {
 	// ★★★ 프레임 드래그 처리 함수 추가 ★★★
 	handleFrameDrag(frameGroup, initialEvent, startX, startY) {
 	    const self = this;
-	    
-	    // 프레임이 선택되지 않은 경우 선택
-	    if (self.selectedMode !== 'frame' || self.currentFrameGroup !== frameGroup) {
-	        self.selectFrame(frameGroup);
-	    }
-	    
+
 	    const frameOffset = frameGroup.offset();
-	    const containerOffset = $('#frame-container').offset();
-	    const offsetX = initialEvent.clientX - frameOffset.left;
-	    const offsetY = initialEvent.clientY - frameOffset.top;
-	    
+	    const container = $('#frame-container');
+	    const containerOffset = container.offset();
+
+	    const offsetX = startX - frameOffset.left;
+	    const offsetY = startY - frameOffset.top;
+
 	    $(document).on('mousemove.frameDrag', function(ev) {
-	        // 프레임 드래그
-	        const backgroundImage = $('#page-preview-img');
-	        const bgDisplayWidth = backgroundImage.width();
-	        const bgDisplayHeight = backgroundImage.height();
-			const imageOffset = backgroundImage.position();
-			
-			// SafeLineManager에서 세이프라인 마진 값 가져오기
-			const safeLineMgr = window.safeLineManager;
-			const pixelPerMmX = bgDisplayWidth / safeLineMgr.actualWidth;
-			const pixelPerMmY = bgDisplayHeight / safeLineMgr.actualHeight;
-			const safeMarginX = safeLineMgr.safeMargin * pixelPerMmX;
-			const safeMarginY = safeLineMgr.safeMargin * pixelPerMmY;
+			// 기본 위치 계산
+			let newLeft = ev.pageX - offsetX - containerOffset.left;
+			let newTop = ev.pageY - offsetY - containerOffset.top;
 
-			// 세이프라인의 내부 경계 계산 (px 단위, #page-preview 기준)
-			const safeAreaLeft = imageOffset.left + safeMarginX;
-			const safeAreaTop = imageOffset.top + safeMarginY;
-			const safeAreaRight = imageOffset.left + bgDisplayWidth - safeMarginX;
-			const safeAreaBottom = imageOffset.top + bgDisplayHeight - safeMarginY;
+			// SafeLine 제약 적용
+			const constrainedPosition = applySafeLineConstraints(newLeft, newTop, frameGroup);
 
-	        let newLeft = ev.clientX - offsetX - containerOffset.left;
-	        let newTop = ev.clientY - offsetY - containerOffset.top;
-	        
-	        // 배경 영역 내에서만 이동 제한
-			newLeft = Math.max(safeAreaLeft, Math.min(newLeft, safeAreaRight - frameGroup.width()));
-            newTop = Math.max(safeAreaTop, Math.min(newTop, safeAreaBottom - frameGroup.height()));
-	        
-	        frameGroup.css({
-	            left: `${newLeft}px`,
-	            top: `${newTop}px`
-	        });
-	        
-	        // 툴팁 위치 업데이트
-	        self.showFrameControlsTooltip(frameGroup);
+			frameGroup.css({
+			    left: `${constrainedPosition.left}px`,
+			    top: `${constrainedPosition.top}px`
+			});
+
+			self.showFrameControlsTooltip(frameGroup);
 	    });
-	    
+
 	    $(document).on('mouseup.frameDrag', function() {
 	        $(document).off('mousemove.frameDrag mouseup.frameDrag');
 	    });
@@ -487,98 +405,77 @@ class EnhancedSelectionManager {
         let initialPhotoLeft, initialPhotoTop;
         const self = this;
 
-        photo.on('mousedown', function(e) {
-			if (e.button !== 0) return; 
+		photo.off('mousedown').on('mousedown', function(e) { // 기존 핸들러 제거 후 다시 바인딩
+			if (e.button !== 0) return;
 
 			const frameGroup = photo.closest('.frame-group');
 
-			// 프레임이 선택된 상태에서는 프레임 드래그를 우선시
-			if (self.selectedMode === 'frame' && frameGroup === self.currentFrameGroup) {
-			    // 프레임 드래그가 처리되도록 이벤트를 전파시킴
-			    return; // 사진 드래그 처리하지 않고 프레임 드래그로 넘김
-			}
+			// 현재 선택 모드가 사진이고, 드래그하려는 사진이 현재 선택된 사진인 경우
+			if (self.selectedMode === 'photo' && self.currentPhoto === photo) {
+				e.preventDefault(); // 브라우저 기본 드래그 방지
+				e.stopPropagation(); // 이벤트 버블링 중단 (document 클릭 막기 위함)
+				isDraggingPhoto = true;
 
-			// 사진이 선택되어 있지 않을 때는 프레임 선택 후 종료
-			if (!photo.hasClass('selected-photo')) {
-			    self.selectFrame(frameGroup);
-			    return;
-			}
+				photoStartX = e.clientX;
+				photoStartY = e.clientY;
+				initialPhotoLeft = photo.position().left;
+				initialPhotoTop = photo.position().top;
 
-			e.preventDefault();
-			e.stopPropagation();
+				$(document).on('mousemove', function(ev) {
+					if (!isDraggingPhoto) return;
+					// ... (사진 드래그 로직은 이전과 동일) ...
+					const deltaX = ev.clientX - photoStartX;
+					const deltaY = ev.clientY - photoStartY;
 
-			isDraggingPhoto = true;
+					let newLeft = initialPhotoLeft + deltaX;
+					let newTop = initialPhotoTop + deltaY;
 
-			const photoPosition = photo.position();
-			initialPhotoLeft = photoPosition.left;
-			initialPhotoTop = photoPosition.top;
+					const containerWidth = maskContainer.width();
+					const containerHeight = maskContainer.height();
+					const photoWidth = photo.width();
+					const photoHeight = photo.height();
 
-            photoStartX = e.clientX;
-            photoStartY = e.clientY;
+					const safeLineMgr = window.safeLineManager;
+					const pixelPerMmX = containerWidth / safeLineMgr.actualWidth;
+					const pixelPerMmY = containerHeight / safeLineMgr.actualHeight;
+					const safeMarginX = safeLineMgr.safeMargin * pixelPerMmX;
+					const safeMarginY = safeLineMgr.safeMargin * pixelPerMmY;
 
-            $(document).on('mousemove', function(ev) {
-                if (!isDraggingPhoto) return;
+					const safeAreaLeftInMask = safeMarginX;
+					const safeAreaTopInMask = safeMarginY;
+					const safeAreaRightInMask = containerWidth - safeMarginX;
+					const safeAreaBottomInMask = containerHeight - safeMarginY;
 
-                const deltaX = ev.clientX - photoStartX;
-                const deltaY = ev.clientY - photoStartY;
+					let finalNewLeft = Math.max(newLeft, safeAreaLeftInMask - photoWidth);
+					finalNewLeft = Math.min(finalNewLeft, safeAreaRightInMask - photoWidth);
 
-                let newLeft = initialPhotoLeft + deltaX;
-                let newTop = initialPhotoTop + deltaY;
+					let finalNewTop = Math.max(newTop, safeAreaTopInMask - photoHeight);
+					finalNewTop = Math.min(finalNewTop, safeAreaBottomInMask - photoHeight);
 
-                const containerWidth = maskContainer.width();
-                const containerHeight = maskContainer.height();
-                const photoWidth = photo.width();
-                const photoHeight = photo.height();
+					photo.css({
+						left: `${finalNewLeft}px`,
+						top: `${finalNewTop}px`
+					});
 
-				const safeLineMgr = window.safeLineManager;
-				// 마스크 컨테이너의 크기에 비례하여 픽셀당 mm 계산 (여기서는 마스크 컨테이너가 프레임 그룹의 일부분이므로, 그 크기에 맞춤)
-				// 하지만 세이프라인은 전체 배경 이미지에 대한 것이므로, 이를 프레임 내 좌표로 변환해야 합니다.
-				// 더 정확하게는, 프레임이 이미지 내의 어느 위치에 있든, 그 프레임이 커버하는 이미지 영역 내에서 세이프라인을 계산해야 합니다.
-				// 이 예시에서는 단순화를 위해 마스크 컨테이너 자체를 기준으로 세이프라인 마진을 계산합니다.
-				const pixelPerMmX = containerWidth / safeLineMgr.actualWidth; // safeLineMgr.actualWidth는 배경 이미지의 실제 mm 너비
-				const pixelPerMmY = containerHeight / safeLineMgr.actualHeight; // safeLineMgr.actualHeight는 배경 이미지의 실제 mm 높이
-				const safeMarginX = safeLineMgr.safeMargin * pixelPerMmX;
-				const safeMarginY = safeLineMgr.safeMargin * pixelPerMmY;
-
-				// 마스크 컨테이너 내에서의 세이프라인 경계 계산 (px 단위, maskContainer 기준)
-				// 사진은 이 경계를 벗어나지 않아야 합니다.
-				// 예를 들어, 사진의 왼쪽 끝은 safeAreaLeftInMask보다 작아질 수 없습니다.
-				const safeAreaLeftInMask = safeMarginX;
-				const safeAreaTopInMask = safeMarginY;
-				const safeAreaRightInMask = containerWidth - safeMarginX;
-				const safeAreaBottomInMask = containerHeight - safeMarginY;
-
-				// 사진의 좌측 상단 좌표를 기준으로 이동 제한
-				// 사진의 왼쪽 끝은 safeAreaLeftInMask보다 크거나 같아야 합니다.
-				// 사진의 오른쪽 끝 (left + width)은 safeAreaRightInMask보다 작거나 같아야 합니다.
-				// 사진의 위쪽 끝은 safeAreaTopInMask보다 크거나 같아야 합니다.
-				// 사진의 아래쪽 끝 (top + height)은 safeAreaBottomInMask보다 작거나 같아야 합니다.
-				let finalNewLeft = Math.max(newLeft, safeAreaLeftInMask - photoWidth); // 사진의 왼쪽 끝이 safeAreaLeftInMask 보다 작아지지 않도록
-				finalNewLeft = Math.min(finalNewLeft, safeAreaRightInMask - photoWidth); // 사진의 오른쪽 끝이 safeAreaRightInMask 보다 커지지 않도록
-
-				let finalNewTop = Math.max(newTop, safeAreaTopInMask - photoHeight); // 사진의 위쪽 끝이 safeAreaTopInMask 보다 작아지지 않도록
-				finalNewTop = Math.min(finalNewTop, safeAreaBottomInMask - photoHeight); // 사진의 아래쪽 끝이 safeAreaBottomInMask 보다 커지지 않도록
-
-				photo.css({
-					left: `${finalNewLeft}px`,
-					top: `${finalNewTop}px`
+					if (self.photoOverlay) {
+						const silhouette = self.photoOverlay.find('.photo-silhouette');
+						silhouette.css({
+							left: `${finalNewLeft}px`,
+							top: `${finalNewTop}px`
+						});
+					}
 				});
-                
-                // 오버레이 사진도 함께 이동
-                if (self.photoOverlay) {
-                    const silhouette = self.photoOverlay.find('.photo-silhouette');
-                    silhouette.css({
-                        left: `${newLeft}px`,
-                        top: `${newTop}px`
-                    });
-                }
-            });
+				$(document).on('mouseup', function() {
+					isDraggingPhoto = false;
+					$(document).off('mousemove mouseup');
+				});
+				return; // 드래그 처리 후 종료
+			}
 
-            $(document).on('mouseup', function() {
-                isDraggingPhoto = false;
-                $(document).off('mousemove mouseup');
-            });
-        });
+			// 사진 드래그가 아닌 경우 (단일 클릭 등), 이벤트 전파를 허용하여 frameGroup의 클릭/더블클릭 핸들러가 처리하도록 함
+			e.preventDefault(); // 브라우저 기본 동작(예: 이미지 드래그) 방지
+			// e.stopPropagation()은 여기서는 호출하지 않음: frameGroup으로 이벤트 전파 허용
+		});
     }
     
     // 기존 함수들을 이 클래스 내부로 통합
@@ -1216,6 +1113,53 @@ class SafeLineManager {
     }
 }
 
+function applySafeLineConstraints(newLeft, newTop, frameGroup) {
+    const bg = $('#page-preview-img');
+    const bgOffset = bg.position();
+    const bgWidth = bg.width();
+    const bgHeight = bg.height();
+
+    // SafeLine 마진 계산
+    const safeMarginPxX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * bgWidth;
+    const safeMarginPxY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * bgHeight;
+
+    const safeLeft = bgOffset.left + safeMarginPxX;
+    const safeTop = bgOffset.top + safeMarginPxY;
+    const safeRight = bgOffset.left + bgWidth - safeMarginPxX;
+    const safeBottom = bgOffset.top + bgHeight - safeMarginPxY;
+
+    // 프레임 크기
+    const frameW = frameGroup.outerWidth();
+    const frameH = frameGroup.outerHeight();
+
+    // SafeLine 제한 적용
+    const constrainedLeft = Math.max(safeLeft, Math.min(newLeft, safeRight - frameW));
+    const constrainedTop = Math.max(safeTop, Math.min(newTop, safeBottom - frameH));
+
+    return {
+        left: constrainedLeft,
+        top: constrainedTop
+    };
+}
+
+// 모든 프레임을 SafeLine 내부로 조정
+function adjustAllFramesToSafeLine() {
+    $('.frame-group').each(function() {
+        const frameGroup = $(this);
+        const currentLeft = parseFloat(frameGroup.css('left')) || 0;
+        const currentTop = parseFloat(frameGroup.css('top')) || 0;
+        
+        const constrainedPosition = applySafeLineConstraints(currentLeft, currentTop, frameGroup);
+        
+        if (constrainedPosition.left !== currentLeft || constrainedPosition.top !== currentTop) {
+            frameGroup.css({
+                left: `${constrainedPosition.left}px`,
+                top: `${constrainedPosition.top}px`
+            });
+        }
+    });
+}
+
 $(document).ready(function() {
 	
 	const btnBg = $('#btn-background');
@@ -1627,13 +1571,30 @@ $(document).ready(function() {
 		const frameWidth = frameTheme.width || (frameImage ? frameImage.naturalWidth : 200);
 		const frameHeight = frameTheme.height || (frameImage ? frameImage.naturalHeight : 250);
 
-		// 백그라운드 이미지 중앙에 프레임 배치
-		const initialTop = (bgDisplayHeight - frameHeight) / 2;
-		const initialLeft = (bgDisplayWidth - frameWidth) / 2;
+		// SafeLine 영역 계산
+		const safeMarginPxX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * bgDisplayWidth;
+		const safeMarginPxY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * bgDisplayHeight;
+
+		const bgOffset = backgroundImage.position();
+		const safeLeft = bgOffset.left + safeMarginPxX;
+		const safeTop = bgOffset.top + safeMarginPxY;
+		const safeRight = bgOffset.left + bgDisplayWidth - safeMarginPxX;
+		const safeBottom = bgOffset.top + bgDisplayHeight - safeMarginPxY;
+
+		// SafeLine 내부 중앙에 프레임 배치
+		const safeWidth = safeRight - safeLeft;
+		const safeHeight = safeBottom - safeTop;
+
+		const initialLeft = safeLeft + (safeWidth - frameWidth) / 2;
+		const initialTop = safeTop + (safeHeight - frameHeight) / 2;
+
+		// SafeLine 경계 확인 및 조정
+		const constrainedLeft = Math.max(safeLeft, Math.min(initialLeft, safeRight - frameWidth));
+		const constrainedTop = Math.max(safeTop, Math.min(initialTop, safeBottom - frameHeight));
 
 		frameGroup.css({
-			top: `${initialTop}px`,
-			left: `${initialLeft}px`,
+			top: `${constrainedTop}px`,
+			left: `${constrainedLeft}px`,
 			width: `${frameWidth}px`,
 			height: `${frameHeight}px`
 		});
