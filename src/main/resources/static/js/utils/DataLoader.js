@@ -11,6 +11,8 @@ class DataLoader {
             success: function(data) {
                 data.forEach(result => {
                     const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
+						//선택 해제 추가
+						window.selectionManager.clearSelection();
                         $('#page-preview-img').attr('src', result.theme.editPath);
                         setTimeout(() => window.safeLineManager.update(), 500);
                     });

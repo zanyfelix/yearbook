@@ -65,12 +65,25 @@ class EventManager {
     }
     
     static setupGlobalEvents() {
-        $(document).on('click', function(e) {
-            const $target = $(e.target);
-            if (!$target.closest('.frame-group, .uploaded-photo, #frame-controls-tooltip, #photo-controls-tooltip, .modal, .sidebar, button').length) {
-                window.selectionManager.clearSelection();
-            }
-        });
+		// page-preview 영역에 캡처 단계 이벤트 리스너 추가
+		document.getElementById('page-preview').addEventListener('click', function(e) {
+			const target = e.target;
+
+			// 클릭한 요소가 프레임이나 사진이 아닌 경우에만 선택 해제
+			if (!target.closest('.frame-group') &&
+				!target.closest('.uploaded-photo') &&
+				!target.closest('#frame-controls-tooltip') &&
+				!target.closest('#photo-controls-tooltip')) {
+				window.selectionManager.clearSelection();
+			}
+		}, true); // true로 캡처 단계에서 처리
+
+		$(document).on('click', function(e) {
+			const $target = $(e.target);
+			if (!$target.closest('.frame-group, .uploaded-photo, #frame-controls-tooltip, #photo-controls-tooltip, .modal, .sidebar, button, #page-preview').length) {
+				window.selectionManager.clearSelection();
+			}
+		});
         
         $(document).on('keydown', function(e) {
             if (e.key === 'Delete' || e.key === 'Backspace') {

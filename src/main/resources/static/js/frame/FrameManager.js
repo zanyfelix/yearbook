@@ -164,31 +164,63 @@ class FrameManager {
 	    });
 	}
     
-    static handleDrag(frameGroup, e) {
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const initialLeft = parseFloat(frameGroup.css('left')) || 0;
-        const initialTop = parseFloat(frameGroup.css('top')) || 0;
+	static handleDrag(frameGroup, e) {
+		const startX = e.clientX;
+		const startY = e.clientY;
+		const initialLeft = parseFloat(frameGroup.css('left')) || 0;
+		const initialTop = parseFloat(frameGroup.css('top')) || 0;
 
-        $(document).on('mousemove.frameDrag', (ev) => {
-            const deltaX = ev.clientX - startX;
-            const deltaY = ev.clientY - startY;
-            
-            let newLeft = initialLeft + deltaX;
-            let newTop = initialTop + deltaY;
-            
-            const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, frameGroup);
-            
-            frameGroup.css({
-                left: `${constrained.left}px`,
-                top: `${constrained.top}px`
-            });
-            
-            UIManager.showFrameTooltip(frameGroup);
-        });
+		let rafId = null;
+		let lastTooltipUpdate = 0;
 
-        $(document).on('mouseup.frameDrag', () => {
-            $(document).off('mousemove.frameDrag mouseup.frameDrag');
-        });
-    }
+		// 드래그 시작 시 클래스 추가
+		frameGroup.addClass('dragging');
+
+		const updatePosition = (clientX, clientY) => {
+			const deltaX = clientX - startX;
+			const deltaY = clientY - startY;
+
+			let newLeft = initialLeft + deltaX;
+			let newTop = initialTop + deltaY;
+
+			const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, frameGroup);
+
+			frameGroup.css({
+				left: `${constrained.left}px`,
+				top: `${constrained.top}px`
+			});
+
+			// 툴팁 업데이트는 100ms마다만
+			const now = Date.now();
+			if (now - lastTooltipUpdate > 100) {
+				UIManager.showFrameTooltip(frameGroup);
+				lastTooltipUpdate = now;
+			}
+		};
+
+		$(document).on('mousemove.frameDrag', (ev) => {
+			// 이전 애니메이션 프레임 취소
+			if (rafId) {
+				cancelAnimationFrame(rafId);
+			}
+
+			// requestAnimationFrame으로 부드럽게 처리
+			rafId = requestAnimationFrame(() => {
+				updatePosition(ev.clientX, ev.clientY);
+			});
+		});
+
+		$(document).on('mouseup.frameDrag', () => {
+			if (rafId) {
+				cancelAnimationFrame(rafId);
+			}
+			$(document).off('mousemove.frameDrag mouseup.frameDrag');
+
+			// 드래그 종료 시 클래스 제거
+			frameGroup.removeClass('dragging');
+
+			// 마지막 툴팁 위치 업데이트
+			UIManager.showFrameTooltip(frameGroup);
+		});
+	}
 }

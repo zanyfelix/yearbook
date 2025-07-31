@@ -37,26 +37,31 @@ class SafeLineManager {
     }
     
     update() {
-        if (!this.container) return;
-        
-        const img = $('#page-preview-img');
-        const src = img.attr('src');
-        
-        if (!src || src.includes('placeholder.png')) {
-            this.container.empty();
-            return;
-        }
-        
-        const width = img.width();
-        const height = img.height();
-        if (width === 0 || height === 0) return;
-        
-        const marginX = (this.safeMargin / this.actualWidth) * width;
-        const marginY = (this.safeMargin / this.actualHeight) * height;
-        const offset = img.position();
-        
-        this.drawSafeLines(offset, width, height, marginX, marginY);
-        setTimeout(() => this.adjustFrames(), 50);
+		if (!this.container) return;
+
+		const img = $('#page-preview-img');
+		const src = img.attr('src');
+
+		if (!src || src.includes('placeholder.png')) {
+			this.container.empty();
+			return;
+		}
+
+		const width = img.width();
+		const height = img.height();
+		if (width === 0 || height === 0) return;
+
+		const marginX = (this.safeMargin / this.actualWidth) * width;
+		const marginY = (this.safeMargin / this.actualHeight) * height;
+		const offset = img.position();
+
+		// SelectionManager의 캐시 무효화
+		if (window.selectionManager) {
+			window.selectionManager.safeConstraintsCache = null;
+		}
+
+		this.drawSafeLines(offset, width, height, marginX, marginY);
+		setTimeout(() => this.adjustFrames(), 50);
     }
     
     drawSafeLines(offset, width, height, marginX, marginY) {
