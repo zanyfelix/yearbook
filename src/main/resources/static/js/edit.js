@@ -80,7 +80,7 @@ class EnhancedSelectionManager {
 	        
 	        e.preventDefault();
 	        e.stopPropagation();
-	        
+			
 	        clickCount++;
 	        
 	        if (clickCount === 1) {
@@ -444,13 +444,27 @@ class EnhancedSelectionManager {
 	        const backgroundImage = $('#page-preview-img');
 	        const bgDisplayWidth = backgroundImage.width();
 	        const bgDisplayHeight = backgroundImage.height();
-	        
+			const imageOffset = backgroundImage.position();
+			
+			// SafeLineManager에서 세이프라인 마진 값 가져오기
+			const safeLineMgr = window.safeLineManager;
+			const pixelPerMmX = bgDisplayWidth / safeLineMgr.actualWidth;
+			const pixelPerMmY = bgDisplayHeight / safeLineMgr.actualHeight;
+			const safeMarginX = safeLineMgr.safeMargin * pixelPerMmX;
+			const safeMarginY = safeLineMgr.safeMargin * pixelPerMmY;
+
+			// 세이프라인의 내부 경계 계산 (px 단위, #page-preview 기준)
+			const safeAreaLeft = imageOffset.left + safeMarginX;
+			const safeAreaTop = imageOffset.top + safeMarginY;
+			const safeAreaRight = imageOffset.left + bgDisplayWidth - safeMarginX;
+			const safeAreaBottom = imageOffset.top + bgDisplayHeight - safeMarginY;
+
 	        let newLeft = ev.clientX - offsetX - containerOffset.left;
 	        let newTop = ev.clientY - offsetY - containerOffset.top;
 	        
 	        // 배경 영역 내에서만 이동 제한
-	        newLeft = Math.max(0, Math.min(newLeft, bgDisplayWidth - frameGroup.width()));
-	        newTop = Math.max(0, Math.min(newTop, bgDisplayHeight - frameGroup.height()));
+			newLeft = Math.max(safeAreaLeft, Math.min(newLeft, safeAreaRight - frameGroup.width()));
+            newTop = Math.max(safeAreaTop, Math.min(newTop, safeAreaBottom - frameGroup.height()));
 	        
 	        frameGroup.css({
 	            left: `${newLeft}px`,
@@ -2684,4 +2698,23 @@ $(document).ready(function() {
 			}
 		}
 	});
+});
+
+$(document).on('click', function(e) {
+    const $target = $(e.target);
+    // 선택된 프레임, 사진 또는 그 컨트롤 요소 (핸들, 툴팁 등)가 아닌 경우에만 선택 해제
+    if (!$target.closest('.frame-group.selected-frame').length &&
+        !$target.closest('.uploaded-photo.selected-photo').length &&
+        !$target.hasClass('selection-handle') &&
+        !$target.hasClass('rotate-handle') &&
+        !$target.closest('#frame-controls-tooltip').length &&
+        !$target.closest('#photo-controls-tooltip').length &&
+        !$target.closest('#text-tooltip').length && // 텍스트 툴팁도 고려
+        !$target.closest('#image-upload-input').length && // 파일 입력 필드 클릭 시 해제 방지
+        !$target.closest('.color-picker').length && // 색상 선택기 클릭 시 해제 방지
+        !$target.closest('.font-selector-container').length // 폰트 선택기 클릭 시 해제 방지
+    ) {
+        window.enhancedSelection.clearSelection();
+        console.log("배경 클릭으로 선택이 해제되었습니다.");
+    }
 });
