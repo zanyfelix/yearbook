@@ -133,6 +133,8 @@
 			            </div>
 			        
 			            <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+			            <!-- Safe Line Overlay - 안전 영역 표시 -->
+			            <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
 			            <input type="file" id="image-upload-input" accept="image/*" style="display: none;" />
 			            
 			            <div id="frame-controls-tooltip" class="d-none" style="position: absolute; z-index: 99999; background: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; padding: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
@@ -146,15 +148,13 @@
 			            </div>
 			            
 			            <div id="photo-controls-tooltip" class="d-none position-absolute p-2 bg-dark text-white rounded" style="z-index: 100;">
-			                <div class="form-group mb-1">
-			                    <label for="photo-zoom-input" class="mb-0 small">Zoom</label>
-			                    <input type="range" id="photo-zoom-input" class="form-control-range form-control-range-sm" min="0.5" max="3" step="0.1" value="1">
+			                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+			                    <div class="d-inline-flex align-items-center">
+			                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate1" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
+			                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
+			                    </div>
+			                    <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
 			                </div>
-			                <div class="form-group mb-1">
-			                    <label for="photo-rotate-input" class="mb-0 small">Rotate</label>
-			                    <input type="number" id="photo-rotate-input" class="form-control form-control-sm" min="0" max="360" value="0">
-			                </div>
-			                <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
 			            </div>
 			            
 			            <div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
@@ -202,6 +202,10 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const ctx = '${pageContext.request.contextPath}';
+let selectedFrame = null;
+let selectedPhotoWrapper = null;
+let selectedBox = null;
+let selectedBackgroundPath = null;
 </script>
 </body>
 </html>

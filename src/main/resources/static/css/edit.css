@@ -325,3 +325,177 @@ body {
     z-index: 999999;
     position: relative;
 }
+/* Safe Line 시스템 CSS - edit.css 파일에 추가 */
+
+#safe-line-overlay {
+    transition: opacity 0.3s ease;
+}
+
+.safe-area {
+    animation: safeline-pulse 2s infinite ease-in-out;
+}
+
+@keyframes safeline-pulse {
+    0%, 100% { 
+        opacity: 0.8; 
+        border-color: #ff6b6b;
+    }
+    50% { 
+        opacity: 1; 
+        border-color: #ff4757;
+    }
+}
+
+.corner-mark {
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.corner-mark:hover {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 3px rgba(255, 107, 107, 0.8));
+}
+
+.safe-area-label {
+    user-select: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.warning-label {
+    user-select: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.bleed-overlay {
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+/* 프린트 시 safe line 숨김 */
+@media print {
+    #safe-line-overlay {
+        display: none !important;
+    }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .safe-area-label,
+    .warning-label {
+        font-size: 8px;
+        padding: 1px 3px;
+    }
+    
+    .corner-mark {
+        width: 8px !important;
+        height: 8px !important;
+    }
+}
+
+/* Safe Line이 활성화되었을 때 프레임들이 더 잘 보이도록 */
+#safe-line-overlay ~ #frame-container .frame-group {
+    z-index: 15;
+}
+
+/* 접근성 개선 */
+.safe-area-label,
+.warning-label,
+.corner-mark {
+    opacity: 0.9;
+}
+
+.safe-area-label:focus,
+.warning-label:focus,
+.corner-mark:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* 사진 오버레이 스타일 */
+#photo-full-overlay {
+    transition: opacity 0.3s ease;
+}
+
+.photo-silhouette {
+    transition: opacity 0.2s ease;
+}
+
+.photo-silhouette:hover {
+    opacity: 0.6 !important;
+}
+
+.mask-indicator {
+    animation: mask-pulse 2s infinite ease-in-out;
+}
+
+@keyframes mask-pulse {
+    0%, 100% { 
+        background-color: rgba(255, 165, 0, 0.15);
+        border-color: rgba(255, 165, 0, 0.6);
+    }
+    50% { 
+        background-color: rgba(255, 165, 0, 0.25);
+        border-color: rgba(255, 165, 0, 0.9);
+    }
+}
+
+.overlay-label {
+    user-select: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    animation: label-fade-in 0.5s ease-in;
+}
+
+@keyframes label-fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 더블클릭 방지 */
+.frame-group, .uploaded-photo {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* 호버 효과 개선 */
+.frame-group:hover {
+    cursor: pointer;
+}
+
+.uploaded-photo:hover {
+    cursor: pointer;
+}
+
+/* 사진용 회전 핸들 스타일 */
+.uploaded-photo .rotate-handle {
+    background-color: #f8f9fa;
+    border: 1px solid #FFA500;
+}
+
+.uploaded-photo .rotate-handle:hover {
+    background-color: #e9ecef;
+    border-color: #FF8C00;
+    transform: scale(1.1);
+}
+
+.uploaded-photo .rotate-handle .rotate-line {
+    background-color: #FFA500;
+}
+
+/* 사진용 선택 핸들 스타일 */
+.uploaded-photo .selection-handle {
+    background-color: #FFA500;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.uploaded-photo .selection-handle:hover {
+    background-color: #FF8C00;
+    transform: scale(1.2);
+}
