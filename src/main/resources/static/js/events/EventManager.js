@@ -2,43 +2,52 @@
 // 📁 js/events/EventManager.js
 // ============================================================================
 class EventManager {
-    static setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
-        placeholderLink.on('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const fileInput = $('#image-upload-input');
-            fileInput.data({
-                targetFrameGroup: frameGroup,
-                targetUploadedPhoto: uploadedPhoto,
-                targetPlaceholderLink: placeholderLink,
-                targetMaskContainer: maskContainer
-            }).trigger('click');
-        });
+	static setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
+		placeholderLink.on('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const fileInput = $('#image-upload-input');
+			fileInput.data({
+				targetFrameGroup: frameGroup,
+				targetUploadedPhoto: uploadedPhoto,
+				targetPlaceholderLink: placeholderLink,
+				targetMaskContainer: maskContainer
+			}).trigger('click');
+		});
 
 		frameGroup.off('mousedown click dblclick').on('mousedown', (e) => {
 			if (e.button !== 0) return;
 
-			// 프레임이 선택되고 사진도 선택된 상태에서는 드래그 처리
-			if (window.selectionManager.selectedMode === 'frame' &&
-				window.selectionManager.currentFrame === frameGroup &&
-				!$(e.target).hasClass('uploaded-photo')) {
+			// 이벤트 타겟이 사진이나 placeholder 링크가 아닌 경우에만 처리
+			if (!$(e.target).hasClass('uploaded-photo') &&
+				!$(e.target).hasClass('place-image-here-link')) {
+
 				e.preventDefault();
 				e.stopPropagation();
-				FrameManager.handleDrag(frameGroup, e);
-				return;
+
+				// 프레임이 이미 선택된 상태면 드래그 시작
+				if (window.selectionManager.selectedMode === 'frame' &&
+					window.selectionManager.currentFrame === frameGroup) {
+					FrameManager.handleDrag(frameGroup, e);
+				}
 			}
-			e.preventDefault();
 		});
 
-        frameGroup.on('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-			// 아무것도 선택되지 않았거나, 다른 프레임/사진이 선택된 경우에만 프레임 선택
-			if (window.selectionManager.selectedMode === null ||
-				window.selectionManager.currentFrame !== frameGroup) {
-				window.selectionManager.selectFrame(frameGroup);
+		frameGroup.on('click', (e) => {
+			// 이벤트 타겟이 사진이나 placeholder 링크가 아닌 경우에만 처리
+			if (!$(e.target).hasClass('uploaded-photo') &&
+				!$(e.target).hasClass('place-image-here-link')) {
+
+				e.preventDefault();
+				e.stopImmediatePropagation();
+
+				// 아무것도 선택되지 않았거나, 다른 프레임/사진이 선택된 경우에만 프레임 선택
+				if (window.selectionManager.selectedMode === null ||
+					window.selectionManager.currentFrame !== frameGroup) {
+					window.selectionManager.selectFrame(frameGroup);
+				}
 			}
-        });
+		});
 
 		frameGroup.on('dblclick', (e) => {
 			e.preventDefault();
@@ -64,8 +73,8 @@ class EventManager {
 			}
 		});
 
-        this.setupPhotoEvents(uploadedPhoto, frameGroup, maskContainer);
-    }
+		this.setupPhotoEvents(uploadedPhoto, frameGroup, maskContainer);
+	}
 
 	static setupPhotoEvents(photo, frameGroup, maskContainer) {
 		photo.off('mousedown').on('mousedown', (e) => {

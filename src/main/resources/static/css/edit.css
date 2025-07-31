@@ -235,10 +235,26 @@ body {
     box-shadow: 0 0 0 1px rgba(0,123,255,0.3);
 }
 
+
 .frame-group.selected-frame {
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
     z-index: 20;
+    cursor: move;  /* 선택된 프레임은 move 커서 */
+}
+
+/* 프레임 내부 요소들의 pointer-events 설정 */
+.frame-group .mask-container,
+.frame-group .photo-container {
+    pointer-events: none;  /* 컨테이너는 클릭 불가 */
+}
+
+.frame-group .frame-overlay {
+    pointer-events: auto;  /* 프레임 오버레이는 클릭 가능 */
+}
+
+.frame-group .place-image-here-link {
+    pointer-events: auto;  /* 링크는 클릭 가능 */
 }
 
 /* 회전 핸들 향상 */

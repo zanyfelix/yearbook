@@ -36,7 +36,7 @@ class FrameManager {
         const frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
             position: 'absolute', top: 0, left: 0,
             width: '100%', height: '100%',
-            zIndex: 20, pointerEvents: 'none'
+            zIndex: 20, pointerEvents: 'auto'
         });
         
         photoContainer.append(placeholderLink).append(uploadedPhoto);
