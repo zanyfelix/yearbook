@@ -41,19 +41,11 @@ class SelectionManager {
 	}
 
 	selectFrame(frameGroup) {
-	    console.log('=== SelectionManager.selectFrame called ===');
-	    console.log('frameGroup:', frameGroup);
-	    console.log('frameGroup[0]:', frameGroup[0]);
-	    
 	    this.clearSelection();
 	    
 	    selectedFrame = frameGroup;
 	    this.selectedMode = 'frame';
 	    this.currentFrame = frameGroup;
-	    
-	    console.log('After selection:');
-	    console.log('this.selectedMode:', this.selectedMode);
-	    console.log('this.currentFrame:', this.currentFrame);
 	    
 	    frameGroup.addClass('selected-frame').css('border', '2px dashed #ff0000');
 	    FrameManager.addRotationHandle(frameGroup);
