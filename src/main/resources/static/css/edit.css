@@ -924,3 +924,78 @@ button:focus,
 .thumbnail-wrapper.selected-thumbnail .overlay {
 	opacity: 0;
 }
+
+/* ===========================================
+   17. 사진 편집 UI 추가 스타일
+   =========================================== */
+
+/* 사진 선택 시 나타나는 전체 박스 */
+.photo-selection-box {
+    position: absolute;
+    border: 1px dashed #FFA500; /* 주황색 점선 */
+    box-sizing: border-box;
+    pointer-events: none; /* 중요: 이 박스는 클릭 이벤트를 받지 않음 */
+    z-index: 28;
+}
+
+/* 크기 조절 핸들 (공통) */
+.resize-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background-color: #FFA500;
+    border: 2px solid white;
+    border-radius: 50%;
+    pointer-events: auto; /* 핸들은 클릭 가능해야 함 */
+    z-index: 30;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* 각 모서리 핸들 위치 및 커서 모양 */
+.handle-nw { top: -8px; left: -8px; cursor: nwse-resize; }
+.handle-ne { top: -8px; right: -8px; cursor: nesw-resize; }
+.handle-sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+.handle-se { bottom: -8px; right: -8px; cursor: nwse-resize; }
+
+/* 사진 회전 핸들 (프레임 핸들과 유사하게) */
+.photo-rotate-handle {
+    position: absolute;
+    top: -42px; /* 위치 조정 */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    background: #FFA500;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: grab;
+    pointer-events: auto;
+    z-index: 29;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.photo-rotate-handle:before {
+    content: '⟳';
+    font-size: 14px;
+    color: white;
+    font-weight: bold;
+}
+
+.photo-rotate-handle:active {
+    cursor: grabbing;
+}
+
+/* 사진 회전 핸들 라인 */
+.photo-rotate-line {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 20px;
+    background: #FFA500;
+    z-index: 28;
+}

@@ -25,16 +25,16 @@ class Helpers {
         return 0;
     }
     
-    static getPhotoRotation(photo) {
-        const transform = photo.css('transform');
-        if (!transform || transform === 'none') return 0;
-        
-        const matrix = transform.match(/matrix\((.+)\)/);
-        if (matrix) {
-            const values = matrix[1].split(', ').map(parseFloat);
-            const angle = Math.atan2(values[1], values[0]) * (180 / Math.PI);
-            return (angle % 360 + 360) % 360;
-        }
-        return 0;
-    }
+	static getPhotoRotation(photo) {
+	    const transform = photo.css('transform');
+	    if (transform === 'none') return 0;
+	    const matrix = transform.match(/^matrix\((.+)\)$/);
+	    if (matrix) {
+	        const values = matrix[1].split(', ');
+	        const a = values[0];
+	        const b = values[1];
+	        return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+	    }
+	    return 0;
+	}
 }

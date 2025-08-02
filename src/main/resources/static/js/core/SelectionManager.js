@@ -67,15 +67,16 @@ class SelectionManager {
         this.selectedMode = 'photo';
         this.currentFrame = frameGroup;
         this.currentPhoto = photo;
+		
+		photo.addClass('selected-photo');
         
-        photo.addClass('selected-photo').css({
-            'border': '2px solid #FFA500',
-            'box-shadow': '0 0 0 2px rgba(255, 165, 0, 0.8)'
-        });
-        
-        PhotoManager.addHandles(photo);
-        UIManager.showPhotoTooltip(photo, frameGroup);
-        PhotoManager.showOverlay(photo, frameGroup);
+		// ▼▼▼▼▼ 수정/추가된 부분 ▼▼▼▼▼
+		PhotoManager.removeSelectionUI(); // 만약을 위해 기존 UI 제거
+		PhotoManager.addSelectionUI(photo, frameGroup); // 새로운 편집 UI 생성
+		// ▲▲▲▲▲ 수정/추가된 부분 ▲▲▲▲▲
+
+		UIManager.showPhotoTooltip(photo, frameGroup);
+		PhotoManager.showOverlay(photo, frameGroup);
     }
 
     clearSelection() {
@@ -94,6 +95,7 @@ class SelectionManager {
 		$('.selection-handle, .rotate-handle, .rotate-line').remove();
 		$('#frame-controls-tooltip, #photo-controls-tooltip, #text-tooltip').addClass('d-none');
 
+		PhotoManager.removeSelectionUI();
 		PhotoManager.hideOverlay();
         
 		selectedFrame = null;

@@ -156,10 +156,10 @@ class UIManager {
 		            <div class="control-buttons-container">
 		                <div class="control-buttons">
 		                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
-		                        <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
+		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
 		                    </button>
 		                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
-		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
+		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate-right" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
 		                    </button>
 		                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제">
 		                        <i class="delete-icon">🗑️</i>
@@ -170,10 +170,76 @@ class UIManager {
         
         this.bindPhotoTooltipEvents(photo, frameGroup);
     }
+	
+	static bindPhotoRotationEvents(photo) {
+		// 현재 회전 각도 가져오기
+		function getCurrentRotation() {
+			const currentTransform = photo.css('transform'); // frameGroup -> photo
+
+			if (!currentTransform || currentTransform === 'none') return 0;
+
+			const rotateMatch = currentTransform.match(/rotate\(([-+]?\d*\.?\d+)(deg|rad)?\)/i);
+			if (rotateMatch && rotateMatch[1]) {
+				let angle = parseFloat(rotateMatch[1]);
+				if (rotateMatch[2] === 'rad') angle = angle * (180 / Math.PI);
+				return Math.round((angle % 360 + 360) % 360);
+			}
+
+			const matrixMatch = currentTransform.match(/matrix\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)/);
+			if (matrixMatch) {
+				const a = parseFloat(matrixMatch[1]);
+				const b = parseFloat(matrixMatch[2]);
+				const angleRad = Math.atan2(b, a);
+				const angleDeg = angleRad * (180 / Math.PI);
+				return Math.round((angleDeg % 360 + 360) % 360);
+			}
+
+			return 0;
+		}
+
+		// 각도 스냅 함수 (반시계방향)
+		function snapAngleLeft(angle) {
+			if (angle >= 1 && angle <= 89) return 0;
+			if (angle >= 91 && angle <= 179) return 90;
+			if (angle >= 181 && angle <= 269) return 180;
+			if (angle >= 271 && angle <= 359) return 270;
+			if (angle === 0) return 270;
+			if (angle === 90) return 0;
+			if (angle === 180) return 90;
+			if (angle === 270) return 180;
+			return angle;
+		}
+
+		// 각도 스냅 함수 (시계방향)
+		function snapAngleRight(angle) {
+			if (angle >= 1 && angle <= 89) return 90;
+			if (angle >= 91 && angle <= 179) return 180;
+			if (angle >= 181 && angle <= 269) return 270;
+			if (angle >= 271 && angle <= 359) return 0;
+			if (angle === 0) return 90;
+			if (angle === 90) return 180;
+			if (angle === 180) return 270;
+			if (angle === 270) return 0;
+			return angle;
+		}
+
+		// 반시계방향 회전
+		$('#photo-rotate-left').off('click').on('click', function() {
+			const currentRotation = getCurrentRotation();
+			const newRotation = snapAngleLeft(currentRotation);
+			photo.css('transform', `rotate(${newRotation}deg)`); // frameGroup -> photo
+		});
+
+		// 시계방향 회전
+		$('#photo-rotate-right').off('click').on('click', function() {
+			const currentRotation = getCurrentRotation();
+			const newRotation = snapAngleRight(currentRotation);
+			photo.css('transform', `rotate(${newRotation}deg)`); // frameGroup -> photo
+		});
+	}
     
     static bindPhotoTooltipEvents(photo, frameGroup) {
-        $('#photo-rotate1').on('click', () => PhotoManager.rotate(photo, -90));
-        $('#photo-rotate2').on('click', () => PhotoManager.rotate(photo, 90));
+        this.bindPhotoRotationEvents(photo);
         
         $('#btn-delete-photo').on('click', () => {
             if (confirm("사진을 삭제하시겠습니까?")) {
