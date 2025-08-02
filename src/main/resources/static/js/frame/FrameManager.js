@@ -166,6 +166,10 @@ class FrameManager {
 	}
     
 	static handleDrag(frameGroup, e) {
+		console.log('=== FrameManager.handleDrag called ===');
+		console.log('frameGroup:', frameGroup);
+		console.log('event:', e);
+		
 		const startX = e.clientX;
 		const startY = e.clientY;
 		const initialLeft = parseFloat(frameGroup.css('left')) || 0;
