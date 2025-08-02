@@ -70,6 +70,16 @@ class SelectionManager {
 		UIManager.showPhotoTooltip(photo, frameGroup);
 		PhotoManager.showOverlay(photo, frameGroup);
     }
+	
+	selectTextBox(textBox) {
+		this.clearSelection(); // 다른 모든 선택 해제
+
+		selectedBox = textBox;
+		this.selectedMode = 'text';
+
+		textBox.addClass('selected');
+		UIManager.showTextTooltip(textBox); // 텍스트 툴팁 표시
+	}
 
     clearSelection() {
 		$('.frame-group').removeClass('selected-frame').css({
@@ -82,6 +92,9 @@ class SelectionManager {
 			'border': 'none',
 			'box-shadow': 'none'
 		});
+		
+		$('.text-box').removeClass('selected'); // 텍스트 상자 선택 클래스 제거
+		$('#text-tooltip').addClass('d-none');   // 텍스트 툴팁 숨기기
 
 		// 핸들 및 툴팁 제거
 		$('.selection-handle, .rotate-handle, .rotate-line').remove();

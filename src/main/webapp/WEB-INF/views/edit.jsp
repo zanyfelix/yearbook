@@ -219,6 +219,7 @@
 <!-- Feature Modules (기능 모듈) -->
 <script src="<c:url value='/js/frame/FrameManager.js'/>"></script>
 <script src="<c:url value='/js/photo/PhotoManager.js'/>"></script>
+<script src="<c:url value='/js/text/TextManager.js'/>"></script>
 
 <!-- Events & Utils (이벤트 및 유틸리티) -->
 <script src="<c:url value='/js/events/EventManager.js'/>"></script>

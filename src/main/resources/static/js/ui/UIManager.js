@@ -238,16 +238,56 @@ class UIManager {
 		});
 	}
     
-    static bindPhotoTooltipEvents(photo, frameGroup) {
-        this.bindPhotoRotationEvents(photo);
-        
-        $('#btn-delete-photo').on('click', () => {
-            if (confirm("사진을 삭제하시겠습니까?")) {
-                const placeholderLink = frameGroup.find('.place-image-here-link');
-                photo.hide().attr('src', '');
-                placeholderLink.show();
-                window.selectionManager.clearSelection();
-            }
-        });
-    }
+	static bindPhotoTooltipEvents(photo, frameGroup) {
+		this.bindPhotoRotationEvents(photo);
+
+		$('#btn-delete-photo').on('click', () => {
+			if (confirm("사진을 삭제하시겠습니까?")) {
+				const placeholderLink = frameGroup.find('.place-image-here-link');
+				photo.hide().attr('src', '');
+				placeholderLink.show();
+				window.selectionManager.clearSelection();
+			}
+		});
+	}
+
+	static showTextTooltip(textBox) {
+	    const tooltip = $('#text-tooltip');
+	    
+	    // 프레임/사진 툴팁과 유사한 위치에 고정
+	    tooltip.removeClass('d-none').css({
+	        position: 'absolute',
+	        right: '20px',
+	        top: '220px', // 프레임/사진 툴팁 아래
+	        left: 'auto',
+	        zIndex: 10000 
+	    });
+
+	    // 툴팁 컨트롤(색상, 크기 등)에 이벤트 바인딩
+	    this.bindTextTooltipEvents(textBox);
+	}
+
+	/**
+	 * 텍스트 툴팁의 컨트롤들에 실제 동작을 연결합니다.
+	 */
+	static bindTextTooltipEvents(textBox) {
+		// 기존 이벤트를 제거하여 중복 바인딩 방지
+		$('#tooltip-color, #tooltip-size, #tooltip-align, #tooltip-remove').off();
+
+		$('#tooltip-color').on('input', function() {
+			textBox.css('color', $(this).val());
+		});
+		$('#tooltip-size').on('change', function() {
+			textBox.css('font-size', $(this).val());
+		});
+		$('#tooltip-align').on('change', function() {
+			textBox.css('text-align', $(this).val());
+		});
+		$('#tooltip-remove').on('click', function() {
+			if (confirm('텍스트 상자를 삭제하시겠습니까?')) {
+				textBox.remove();
+				window.selectionManager.clearSelection();
+			}
+		});
+	}
 }
