@@ -114,6 +114,7 @@ body {
     min-width: 120px;
     z-index: 999;
     position: relative;
+    bottom: -730px;
 }
 
 .btn-outline-secondary:hover,
@@ -295,7 +296,7 @@ body {
 .rotate-handle {
     position: absolute;
     top: -50px;
-    right: 45%;
+    right: 48%;
     transform: translateX(50%);
     width: 32px;
     height: 32px;
@@ -480,33 +481,148 @@ body {
    =========================================== */
 #frame-controls-tooltip,
 #photo-controls-tooltip {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.12);
     z-index: 99999;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    position: absolute !important;
+    overflow: hidden;
 }
 
-#frame-controls-tooltip:hover,
-#photo-controls-tooltip:hover {
-    background: rgba(255, 255, 255, 1);
-    box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+/* 컨트롤 컨테이너 */
+.control-buttons-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
-.tooltip-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
+/* 컨트롤 타이틀 */
+.control-title {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+/* 버튼 그룹 */
+.control-buttons {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: #f8f9fa;
+}
+
+/* 개별 버튼 스타일 */
+.control-btn {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 8px;
+    background: white;
+    color: #495057;
+    font-size: 20px;
     cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
 }
 
-.tooltip-icon:hover {
-    transform: scale(1.1);
-    filter: brightness(1.1);
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* 회전 버튼 스타일 */
+.rotate-btn {
+    background: linear-gradient(135deg, #fff 0%, #f1f3f5 100%);
+    border: 1px solid #e9ecef;
+}
+
+.rotate-btn:hover {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border-color: #007bff;
+}
+
+/* 삭제 버튼 스타일 */
+.delete-btn {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+    border: 1px solid #ffdddd;
+    color: #dc3545;
+}
+
+.delete-btn:hover {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border-color: #dc3545;
+}
+
+/* 아이콘 스타일 */
+.rotate-icon-left,
+.rotate-icon-right,
+.delete-icon {
+    font-style: normal;
+    font-size: 22px;
+    line-height: 1;
+}
+
+/* 애니메이션 효과 */
+.control-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.control-btn:active::before {
+    width: 100px;
+    height: 100px;
+}
+
+/* 툴팁이 프리뷰 영역 내에서만 표시되도록 */
+#page-preview {
+    position: relative;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    .control-title {
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+    
+    .control-buttons {
+        gap: 6px;
+        padding: 10px;
+    }
 }
 
 #text-tooltip {

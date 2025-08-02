@@ -4,13 +4,35 @@
 class UIManager {
     static showFrameTooltip(frameGroup) {
         const tooltip = $('#frame-controls-tooltip');
-        const frameRect = frameGroup[0].getBoundingClientRect();
         const previewRect = $('#page-preview')[0].getBoundingClientRect();
         
-        const left = frameRect.left - previewRect.left + frameRect.width + 10;
-        const top = frameRect.top - previewRect.top - tooltip.outerHeight() - 10;
-        
-        tooltip.removeClass('d-none').css({ left: `${left}px`, top: `${top}px` });
+		// 프리뷰 오른쪽 상단에 고정
+		const right = 20; // 오른쪽에서 20px
+		const top = 20;   // 위에서 20px
+
+		tooltip.removeClass('d-none').css({
+			position: 'absolute',
+			right: `${right}px`,
+			top: `${top}px`,
+			left: 'auto' // left 값 제거
+		});
+		
+		// 버튼 형태의 컨트롤 생성 (이 부분이 추가됨)
+		tooltip.html(`
+		    <div class="control-buttons-container">
+		        <div class="control-buttons">
+		            <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
+		                <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
+		            </button>
+		            <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
+		                <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
+		            </button>
+		            <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제">
+		                <i class="delete-icon">🗑️</i>
+		            </button>
+		        </div>
+		    </div>
+		`);
 		
 		// 프레임 회전 이벤트 바인딩
 		this.bindFrameRotationEvents(frameGroup);
@@ -96,7 +118,6 @@ class UIManager {
 	        const newRotation = snapAngleLeft(currentRotation);
 	        
 	        frameGroup.css('transform', `rotate(${newRotation}deg)`);
-	        console.log(`프레임 반시계방향 회전: ${currentRotation}° → ${newRotation}°`);
 	    });
 	    
 	    // 시계방향 회전 (frame-rotate2)
@@ -105,7 +126,6 @@ class UIManager {
 	        const newRotation = snapAngleRight(currentRotation);
 	        
 	        frameGroup.css('transform', `rotate(${newRotation}deg)`);
-	        console.log(`프레임 시계방향 회전: ${currentRotation}° → ${newRotation}°`);
 	    });
 	    
 	    // 프레임 삭제 버튼
@@ -119,21 +139,34 @@ class UIManager {
 
     static showPhotoTooltip(photo, frameGroup) {
         const tooltip = $('#photo-controls-tooltip');
-        const frameRect = frameGroup[0].getBoundingClientRect();
         const previewRect = $('#page-preview')[0].getBoundingClientRect();
         
-        const left = frameRect.left - previewRect.left + frameRect.width + 10;
-        const top = frameRect.top - previewRect.top - tooltip.outerHeight() - 10;
-        
-        tooltip.removeClass('d-none').css({ left: `${left}px`, top: `${top}px` });
-        
-        tooltip.html(`
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <img src="/images/icon/transform.png" id="photo-rotate1" style="width: 30px; height: 30px; cursor: pointer; transform: scaleX(-1);">
-                <img src="/images/icon/transform.png" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer;">
-                <button id="btn-delete-photo" class="btn btn-danger btn-sm">X</button>
-            </div>
-        `);
+		// 프리뷰 오른쪽 상단에 고정 (프레임 툴팁보다 아래)
+		const right = 20;  // 오른쪽에서 20px
+		const top = 120;    // 위에서 70px (프레임 툴팁 아래)
+
+		tooltip.removeClass('d-none').css({ 
+		    position: 'absolute',
+		    right: `${right}px`, 
+		    top: `${top}px`,
+		    left: 'auto' // left 값 제거
+		});
+
+		tooltip.html(`
+		            <div class="control-buttons-container">
+		                <div class="control-buttons">
+		                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
+		                        <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
+		                    </button>
+		                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
+		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
+		                    </button>
+		                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제">
+		                        <i class="delete-icon">🗑️</i>
+		                    </button>
+		                </div>
+		            </div>
+		        `);
         
         this.bindPhotoTooltipEvents(photo, frameGroup);
     }

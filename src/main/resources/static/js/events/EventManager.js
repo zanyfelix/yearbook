@@ -8,7 +8,6 @@ class EventManager {
 			e.preventDefault();
 			e.stopPropagation();
 			e.stopImmediatePropagation();
-			console.log('Place Image Here clicked');
 			const fileInput = $('#image-upload-input');
 			fileInput.data({
 				targetFrameGroup: frameGroup,

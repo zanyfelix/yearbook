@@ -194,7 +194,6 @@ class FrameManager {
 			// 툴팁 업데이트는 100ms마다만
 			const now = Date.now();
 			if (now - lastTooltipUpdate > 100) {
-				UIManager.showFrameTooltip(frameGroup);
 				lastTooltipUpdate = now;
 			}
 		};
