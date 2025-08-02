@@ -143,7 +143,7 @@ class UIManager {
         
 		// 프리뷰 오른쪽 상단에 고정 (프레임 툴팁보다 아래)
 		const right = 20;  // 오른쪽에서 20px
-		const top = 120;    // 위에서 70px (프레임 툴팁 아래)
+		const top = 20;    // 위에서 70px (프레임 툴팁 아래)
 
 		tooltip.removeClass('d-none').css({ 
 		    position: 'absolute',
