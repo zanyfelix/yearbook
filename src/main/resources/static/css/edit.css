@@ -244,19 +244,53 @@ body {
 }
 
 /* 프레임 내부 요소들의 pointer-events 설정 */
-.frame-group .mask-container,
+.frame-group .mask-container {
+    pointer-events: auto;  /* 컨테이너는 클릭 가능 */
+}
+
 .frame-group .photo-container {
-    pointer-events: none;  /* 컨테이너는 클릭 불가 */
+    pointer-events: auto;  /* photo-container도 클릭 가능 */
 }
 
 .frame-group .frame-overlay {
-    pointer-events: auto;  /* 프레임 오버레이는 클릭 가능 */
+    pointer-events: none;  /* 프레임 오버레이는 클릭 불가 */
 }
 
 .frame-group .place-image-here-link {
     pointer-events: auto;  /* 링크는 클릭 가능 */
+    position: relative;
+    z-index: 21;  /* 가장 위에 표시 */
+    cursor: pointer !important;  /* 포인터 커서 강제 */
+    padding: 5px 10px;  /* 클릭 영역 확대 */
+    display: inline-block;  /* 클릭 영역 보장 */
 }
 
+.frame-group .place-image-here-link:hover {
+    color: #ffcc00;  /* hover 시 색상 변경 */
+    text-decoration: underline;
+    background-color: rgba(0, 0, 0, 0.2);  /* hover 시 배경색 추가 */
+}
+
+/* 프레임이 선택되지 않은 상태에서 hover 시 */
+.frame-group:not(.selected-frame):hover {
+    cursor: pointer;  /* 선택 가능함을 나타내는 포인터 커서 */
+}
+
+/* 프레임이 선택된 상태에서는 move 커서 */
+.frame-group.selected-frame {
+    cursor: move;
+}
+
+/* place-image-here-link는 항상 pointer 커서 유지 */
+.frame-group .place-image-here-link,
+.frame-group .place-image-here-link * {
+    cursor: pointer !important;
+}
+
+/* 프레임이 선택된 상태에서는 move 커서 */
+.frame-group.selected-frame .frame-click-area {
+    cursor: move;
+}
 /* 회전 핸들 향상 */
 .rotate-handle {
     position: absolute;

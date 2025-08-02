@@ -16,6 +16,8 @@ $(document).ready(function() {
     $('#image-upload-input').on('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
+		
+		console.log('File selected:', file.name);
         
         const $input = $(this);
         const frameGroup = $input.data('targetFrameGroup');

@@ -2,59 +2,60 @@
 // 📁 js/frame/FrameManager.js
 // ============================================================================
 class FrameManager {
-    static applyFrame(frameTheme) {
-        const frameContainer = $('#frame-container');
-        const frameGroup = $('<div class="frame-group"></div>').css({
-            position: 'absolute', cursor: 'move', zIndex: 15
-        });
-        
-        const maskContainer = $('<div class="mask-container"></div>').css({
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%',
-            overflow: 'hidden', zIndex: 16
-        });
-        
-        const photoContainer = $('<div class="photo-container"></div>').css({
-            position: 'relative', width: '100%', height: '100%',
-            display: 'flex', justifyContent: 'center', alignItems: 'center',
-            backgroundColor: 'black'
-        });
-        
-        const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
-            color: 'white', textDecoration: 'underline',
-            fontSize: '14px', fontWeight: 'bold',
-            textAlign: 'center', display: 'block',
-            zIndex: 19, position: 'relative'
-        });
-        
-        const uploadedPhoto = $('<img class="uploaded-photo">').css({
-            display: 'none', position: 'absolute',
-            cursor: 'move', maxWidth: 'none', maxHeight: 'none',
-            objectFit: 'cover', zIndex: 17
-        });
-        
-        const frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%',
-            zIndex: 20, pointerEvents: 'auto'
-        });
-        
-        photoContainer.append(placeholderLink).append(uploadedPhoto);
-        maskContainer.append(photoContainer);
-        frameGroup.append(maskContainer).append(frameOverlay);
-        frameContainer.append(frameGroup);
-        
-        frameGroup.data('frameTheme', frameTheme);
-        
-        if (frameTheme.editMaskPath) {
-            this.applyMasking(maskContainer, frameTheme);
-        }
-        
-        frameOverlay.on('load', () => {
-            this.setupPosition(frameGroup, frameTheme);
-            EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
-        });
-    }
+	static applyFrame(frameTheme) {
+		const frameContainer = $('#frame-container');
+		const frameGroup = $('<div class="frame-group"></div>').css({
+			position: 'absolute', cursor: 'move', zIndex: 15
+		});
+
+		const maskContainer = $('<div class="mask-container"></div>').css({
+			position: 'absolute', top: 0, left: 0,
+			width: '100%', height: '100%',
+			overflow: 'hidden', zIndex: 16
+		});
+
+		const photoContainer = $('<div class="photo-container"></div>').css({
+			position: 'relative', width: '100%', height: '100%',
+			display: 'flex', justifyContent: 'center', alignItems: 'center',
+			backgroundColor: 'black'
+		});
+
+		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
+			color: 'white', textDecoration: 'underline',
+			fontSize: '14px', fontWeight: 'bold',
+			textAlign: 'center', display: 'block',
+			position: 'relative',
+			cursor: 'pointer'  // 포인터 커서 추가
+		});
+
+		const uploadedPhoto = $('<img class="uploaded-photo">').css({
+			display: 'none', position: 'absolute',
+			cursor: 'move', maxWidth: 'none', maxHeight: 'none',
+			objectFit: 'cover', zIndex: 17
+		});
+
+		const frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
+			position: 'absolute', top: 0, left: 0,
+			width: '100%', height: '100%',
+			zIndex: 20, pointerEvents: 'none'  // frameOverlay의 pointer-events를 none으로 설정
+		});
+
+		photoContainer.append(placeholderLink).append(uploadedPhoto);
+		maskContainer.append(photoContainer);
+		frameGroup.append(maskContainer).append(frameOverlay);
+		frameContainer.append(frameGroup);
+
+		frameGroup.data('frameTheme', frameTheme);
+
+		if (frameTheme.editMaskPath) {
+			this.applyMasking(maskContainer, frameTheme);
+		}
+
+		frameOverlay.on('load', () => {
+			this.setupPosition(frameGroup, frameTheme);
+			EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+		});
+	}
     
     static applyMasking(container, frameTheme) {
         const img = new Image();
