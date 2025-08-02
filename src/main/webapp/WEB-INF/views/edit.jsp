@@ -155,22 +155,28 @@
                                     </div>
                                 </div>
                                 
-                                <div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
-                                    <input type="color" id="tooltip-color" title="Color" class="me-1" />
-                                    <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto me-1">
-                                        <option value="12px">12px</option>
-                                        <option value="16px" selected>16px</option>
-                                        <option value="20px">20px</option>
-                                        <option value="24px">24px</option>
-                                        <option value="32px">32px</option>
-                                    </select>
-                                    <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto me-1">
-                                        <option value="left">L</option>
-                                        <option value="center">C</option>
-                                        <option value="right">R</option>
-                                    </select>
-                                    <button id="tooltip-remove" class="btn btn-outline-danger btn-sm">×</button>
-                                </div>
+								<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
+								    <div class="tooltip-row">
+								        <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto">
+								            <option value="12px">12px</option>
+								            <option value="16px" selected>16px</option>
+								            <option value="20px">20px</option>
+								            <option value="24px">24px</option>
+								            <option value="32px">32px</option>
+								        </select>
+								        <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto">
+								            <option value="left">Left</option>
+								            <option value="center">Center</option>
+								            <option value="right">Right</option>
+								        </select>
+								    </div>
+								    <div class="tooltip-row">
+								        <input type="color" id="tooltip-color" title="Color" />
+								        <button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제">
+								            <i class="delete-icon">🗑️</i>
+								        </button>
+								    </div>
+								</div>
                             </div>
                         </div>
                     </div>

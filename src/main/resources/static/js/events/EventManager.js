@@ -201,39 +201,33 @@ class EventManager {
 	
 	static setupTextEvents(textBox) {
 		// 기존 이벤트를 초기화하여 중복 등록 방지
-		textBox.off('click mousedown');
+		textBox.off('mousedown focus keydown');
 
+		// --- 마우스 다운: 선택 및 드래그 준비 (변경 없음) ---
 		textBox.on('mousedown', function(e) {
 			e.stopPropagation();
 			const $this = $(this);
 
-			// --- ✨ 핵심 수정 ✨ ---
-			// 마우스 버튼을 누르는 즉시, 선택되지 않은 상태라면 먼저 선택합니다.
-			// 이것으로 상자 안 어디를 눌러도 선택이 보장됩니다.
 			if (!$this.hasClass('selected')) {
 				window.selectionManager.selectTextBox($this);
 			}
 
-			// --- 드래그 및 편집 처리 로직 ---
 			const startX = e.clientX;
 			const startY = e.clientY;
 			const initialLeft = $this.position().left;
 			const initialTop = $this.position().top;
-			let isDragging = false; // 드래그 상태 플래그
+			let isDragging = false;
 
 			const onMouseMove = function(ev) {
-				// 마우스가 일정 거리(5px) 이상 움직였을 때만 드래그로 간주합니다.
 				if (!isDragging && (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5)) {
 					isDragging = true;
-					$this.blur(); // 드래그 시작 시 포커스를 해제하여 커서 깜빡임 중지
+					$this.blur();
 				}
 
 				if (isDragging) {
-					ev.preventDefault(); // 드래그 중 텍스트가 선택되는 현상 방지
-
+					ev.preventDefault();
 					const newLeft = initialLeft + (ev.clientX - startX);
 					const newTop = initialTop + (ev.clientY - startY);
-
 					const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, $this);
 					$this.css({
 						left: constrained.left + 'px',
@@ -244,13 +238,33 @@ class EventManager {
 
 			const onMouseUp = function() {
 				$(document).off('mousemove.textDrag mouseup.textDrag');
-				// 드래그가 아니었다면(단순 클릭) 다시 포커스를 주어 바로 편집할 수 있게 합니다.
 				if (!isDragging) {
 					$this.focus();
 				}
 			};
 
 			$(document).on('mousemove.textDrag', onMouseMove).on('mouseup.textDrag', onMouseUp);
+		});
+
+		// --- 포커스: 툴팁 표시 (변경 없음) ---
+		textBox.on('focus', function() {
+			UIManager.showTextTooltip($(this));
+		});
+
+		// --- ✨ 핵심 수정: keydown 이벤트 핸들러 ---
+		// 키보드 입력 시, 데이터 속성(깃발)을 확인하여 내용을 한번만 지웁니다.
+		textBox.on('keydown', function(e) {
+			const $this = $(this);
+
+			if ($this.attr('data-is-placeholder') === 'true') {
+				// 사용자가 백스페이스나 삭제 키를 먼저 누르는 경우는 제외
+				if (e.key === 'Backspace' || e.key === 'Delete') {
+					return;
+				}
+				// 다른 키를 누르면 안내 문구를 지우고, 깃발도 제거하여 다시는 실행되지 않도록 함
+				$this.text('');
+				$this.removeAttr('data-is-placeholder');
+			}
 		});
 	}
     
@@ -262,8 +276,10 @@ class EventManager {
 			// 클릭한 요소가 프레임이나 사진이 아닌 경우에만 선택 해제
 			if (!target.closest('.frame-group') &&
 				!target.closest('.uploaded-photo') &&
+				!target.closest('.text-box') &&
 				!target.closest('#frame-controls-tooltip') &&
-				!target.closest('#photo-controls-tooltip')) {
+				!target.closest('#photo-controls-tooltip') &&
+				!target.closest('#text-tooltip')) {
 				window.selectionManager.clearSelection();
 			}
 		}, true);

@@ -253,15 +253,16 @@ class UIManager {
 
 	static showTextTooltip(textBox) {
 	    const tooltip = $('#text-tooltip');
+		
+		const right = 20;
+		const top = 20;
 	    
-	    // 프레임/사진 툴팁과 유사한 위치에 고정
-	    tooltip.removeClass('d-none').css({
-	        position: 'absolute',
-	        right: '20px',
-	        top: '220px', // 프레임/사진 툴팁 아래
-	        left: 'auto',
-	        zIndex: 10000 
-	    });
+		tooltip.removeClass('d-none').css({
+			position: 'absolute',
+			right: `${right}px`,
+			top: `${top}px`,
+			left: 'auto'
+		});
 
 	    // 툴팁 컨트롤(색상, 크기 등)에 이벤트 바인딩
 	    this.bindTextTooltipEvents(textBox);

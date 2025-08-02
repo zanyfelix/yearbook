@@ -78,7 +78,6 @@ class SelectionManager {
 		this.selectedMode = 'text';
 
 		textBox.addClass('selected');
-		UIManager.showTextTooltip(textBox); // 텍스트 툴팁 표시
 	}
 
     clearSelection() {
