@@ -48,18 +48,23 @@ class EventManager {
 			const target = $(e.target);
 			const isPhotoClick = target.hasClass('uploaded-photo') || target.closest('.uploaded-photo').length > 0;
 
-			// 사진이 있고 표시되는 경우
-			if (uploadedPhoto.is(':visible')) {
-				// 프레임이 선택된 상태에서 사진 더블클릭 시 사진 선택
-				if (window.selectionManager.selectedMode === 'frame' &&
-					window.selectionManager.currentFrame === frameGroup &&
-					isPhotoClick) {
+			// 사진이 존재하고, 사진 영역을 더블클릭했을 경우
+			if (isPhotoClick && uploadedPhoto.is(':visible')) {
+
+				// 현재 '사진'이 선택된 상태라면 -> '프레임' 선택으로 전환
+				if (window.selectionManager.selectedMode === 'photo') {
+					window.selectionManager.selectFrame(frameGroup);
+				}
+				// 현재 '프레임'이 선택되었거나 아무것도 선택되지 않았다면 -> '사진' 선택
+				else {
 					window.selectionManager.selectPhoto(uploadedPhoto, frameGroup);
 				}
-				// 사진이 선택된 상태에서 프레임 영역 더블클릭 시 프레임 선택으로 전환
-				else if (window.selectionManager.selectedMode === 'photo' &&
-					window.selectionManager.currentPhoto === uploadedPhoto &&
-					!isPhotoClick) {
+
+			}
+			// 사진이 아닌 프레임의 다른 영역을 더블클릭했을 경우
+			else {
+				// 현재 '사진'이 선택된 상태였다면 -> '프레임' 선택으로 전환
+				if (window.selectionManager.selectedMode === 'photo' && window.selectionManager.currentPhoto === uploadedPhoto) {
 					window.selectionManager.selectFrame(frameGroup);
 				}
 			}
@@ -166,42 +171,29 @@ class EventManager {
 					 window.selectionManager.currentFrame === frameGroup) {
 				// 아무 동작 안함
 			}
-			// 다른 프레임/사진이 선택된 상태면 이 프레임 선택
+			// ✨✨✨ 추가된 부분 시작 ✨✨✨
+			// 사진이 이미 선택된 상태에서 다시 클릭해도 아무 동작 안함
+			else if (window.selectionManager.selectedMode === 'photo' &&
+					 window.selectionManager.currentPhoto === photo) {
+				// 아무 동작 안함
+			}
+			// ✨✨✨ 추가된 부분 끝 ✨✨✨
+			// 그 외 다른 것이 선택된 경우, 이 프레임을 선택
 			else {
 				window.selectionManager.selectFrame(frameGroup);
 			}
 		});
 
-		// 사진 더블클릭 이벤트
-		photo.on('dblclick', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			// 프레임이 선택된 상태에서 사진 더블클릭 시 사진 선택
-			if (window.selectionManager.selectedMode === 'frame' &&
-				window.selectionManager.currentFrame === frameGroup) {
-				window.selectionManager.selectPhoto(photo, frameGroup);
-			}
-			// 사진이 선택된 상태에서 더블클릭 시 프레임 선택으로 전환
-			else if (window.selectionManager.selectedMode === 'photo' &&
-				window.selectionManager.currentPhoto === photo) {
-				window.selectionManager.selectFrame(frameGroup);
-			}
-			// 아무것도 선택되지 않은 상태에서 사진 더블클릭 시 사진 선택
-			else if (window.selectionManager.selectedMode === null) {
-				window.selectionManager.selectPhoto(photo, frameGroup);
-			}
-		});
-		
 		// 사진 드래그 이벤트
 		photo.on('mousedown', (e) => {
 			if (e.button !== 0) return;
-			e.preventDefault();
-			e.stopPropagation();
 
-			// 사진이 선택된 상태에서만 드래그 가능
+			// 사진이 선택된 상태에서만 사진 드래그를 처리하고 이벤트 전파를 중단합니다.
 			if (window.selectionManager.selectedMode === 'photo' &&
 				window.selectionManager.currentPhoto === photo) {
+
+				e.preventDefault();
+				e.stopPropagation(); // <-- 이 코드를 if문 안으로 이동
 				PhotoManager.handleDrag(photo, frameGroup, maskContainer, e);
 			}
 		});
