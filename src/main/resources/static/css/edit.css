@@ -221,14 +221,15 @@ body {
     border: 2px solid transparent;
     box-sizing: border-box;
     border-radius: 4px;
-    transition: none;  /* 드래그 시 transition 제거 */
+    transition: none;
     cursor: move;
-    will-change: transform, left, top;  /* 성능 최적화 */
-    transform: translateZ(0);  /* GPU 가속 */
+    will-change: transform, left, top;
+    transform: translateZ(0);
+    position: relative;  /* 추가: z-index가 작동하도록 */
 }
 
 .frame-group:not(.dragging):hover {
-    transition: box-shadow 0.3s ease;  /* hover 시에만 transition */
+    transition: box-shadow 0.3s ease;
     box-shadow: 0 0 0 1px rgba(0,123,255,0.3);
 }
 
@@ -236,34 +237,45 @@ body {
     box-shadow: 0 0 0 1px rgba(0,123,255,0.3);
 }
 
-
 .frame-group.selected-frame {
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
     z-index: 20;
-    cursor: move;  /* 선택된 프레임은 move 커서 */
+    cursor: move;
 }
 
 /* 프레임 내부 요소들의 pointer-events 설정 */
 .frame-group .mask-container {
-    pointer-events: auto;  /* 컨테이너는 클릭 가능 */
+    pointer-events: auto;
+    position: relative;  /* 추가 */
+    z-index: 1;  /* 변경: 16 → 1 */
 }
 
 .frame-group .photo-container {
-    pointer-events: auto;  /* photo-container도 클릭 가능 */
+    pointer-events: auto;
+    position: relative;  /* 추가 */
+    z-index: 2;  /* 변경: 17 → 2 */
+}
+
+.frame-group .uploaded-photo {
+    pointer-events: auto;
+    position: relative;
+    z-index: 3;  /* 변경: 17 → 3 */
 }
 
 .frame-group .frame-overlay {
-    pointer-events: none;  /* 프레임 오버레이는 클릭 불가 */
+    pointer-events: none;  /* 변경: auto → none (이미지는 클릭 통과) */
+    position: absolute;  /* 확인 */
+    z-index: 4;  /* 변경: 20 → 4 */
 }
 
 .frame-group .place-image-here-link {
-    pointer-events: auto;  /* 링크는 클릭 가능 */
+    pointer-events: auto;
     position: relative;
-    z-index: 21;  /* 가장 위에 표시 */
-    cursor: pointer !important;  /* 포인터 커서 강제 */
-    padding: 5px 10px;  /* 클릭 영역 확대 */
-    display: inline-block;  /* 클릭 영역 보장 */
+    z-index: 5;  /* 변경: 21 → 5 */
+    cursor: pointer !important;
+    padding: 5px 10px;
+    display: inline-block;
 }
 
 .frame-group .place-image-here-link:hover {
