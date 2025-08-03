@@ -40,7 +40,7 @@
             
             <div class="position-relative">
                 <!-- 왼쪽 버튼 -->
-                <button class="slide-btn left" onclick="scrollLeft('${st.index}')">&#10094;</button>
+                <%-- <button class="slide-btn left" onclick="scrollLeft('${st.index}')">&#10094;</button> --%>
                 
                 <!-- 슬라이드 박스 -->
                 <div class="slide-container" id="slider-${st.index}">
@@ -53,7 +53,7 @@
                 </div>
                 
                 <!-- 오른쪽 버튼 -->
-                <button class="slide-btn right" onclick="scrollRight('${st.index}')">&#10095;</button>
+                <%-- <button class="slide-btn right" onclick="scrollRight('${st.index}')">&#10095;</button> --%>
             </div>
         </div>
     </c:forEach>
@@ -115,13 +115,37 @@
                     </div>
 
                     <!-- 우측 미리보기 영역 (60% - 3/5 비율) -->
-                    <div class="px-3 py-3 d-flex flex-column" style="width: 60%; height: 100%;"> 
-                        <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0; width: 100%;">
+                    <!-- 툴팁영역 -->
+                    <div class="d-flex flex-column" style="width: 60%; height: 100%;"> 
                         
+                        <div id="editor-toolbar" class="d-flex align-items-center">
+                            <div id="frame-controls" class="d-none w-100">
+                                <div class="control-buttons">
+                                    <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
+                                    <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
+                                    <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제"><i class="delete-icon">🗑️</i></button>
+                                </div>
+                            </div>
+                            <div id="photo-controls" class="d-none w-100">
+                                <div class="control-buttons">
+                                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
+                                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
+                                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제"><i class="delete-icon">🗑️</i></button>
+                                </div>
+                            </div>
+                            <div id="text-controls" class="d-none w-100">
+                                <select id="tooltip-size" class="form-select form-select-sm"><option value="12px">12px</option><option value="16px" selected>16px</option><option value="20px">20px</option><option value="24px">24px</option><option value="32px">32px</option></select>
+    							<select id="tooltip-align" class="form-select form-select-sm"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+    							<input type="color" id="tooltip-color" title="Color">
+    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><i class="delete-icon">🗑️</i></button>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0; width: 100%;">
                             <div id="page-preview" class="border rounded bg-white d-flex flex-row h-100 w-100 flex-nowrap" style="position: relative;"> 
                                 
                                 <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
-                                    <img id="page-preview-img" src="/images/placeholder.png" class="rounded"/>
+                                    <img id="page-preview-img" src="/images/placeholder.png" class="rounded">
                                 </div>
                                 
                                 <div class="button-group-container d-flex flex-column justify-content-start gap-2 p-3 flex-shrink-0">
@@ -131,52 +155,8 @@
                                 </div>
                             
                                 <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
-                                <!-- Safe Line Overlay - 안전 영역 표시 -->
                                 <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
-                                <input type="file" id="image-upload-input" accept="image/*" style="display: none;" />
-                                
-                                <div id="frame-controls-tooltip" class="d-none">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;"> 
-                                        <div class="d-inline-flex align-items-center">
-                                            <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
-                                            <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-right" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
-                                        </div>
-                                        <button id="btn-delete-frame" class="btn btn-danger btn-sm me-2">X</button>
-                                    </div>
-                                </div>
-                                
-                                <div id="photo-controls-tooltip" class="d-none">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                        <div class="d-inline-flex align-items-center">
-                                            <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate1" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
-                                            <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
-                                        </div>
-                                        <button id="btn-delete-photo" class="btn btn-danger btn-sm me-2">X</button>
-                                    </div>
-                                </div>
-                                
-								<div id="text-tooltip" class="d-none position-absolute p-2 bg-white border rounded shadow" style="z-index:9999;">
-								    <div class="tooltip-row">
-								        <select id="tooltip-size" class="form-select form-select-sm d-inline-block w-auto">
-								            <option value="12px">12px</option>
-								            <option value="16px" selected>16px</option>
-								            <option value="20px">20px</option>
-								            <option value="24px">24px</option>
-								            <option value="32px">32px</option>
-								        </select>
-								        <select id="tooltip-align" class="form-select form-select-sm d-inline-block w-auto">
-								            <option value="left">Left</option>
-								            <option value="center">Center</option>
-								            <option value="right">Right</option>
-								        </select>
-								    </div>
-								    <div class="tooltip-row">
-								        <input type="color" id="tooltip-color" title="Color" />
-								        <button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제">
-								            <i class="delete-icon">🗑️</i>
-								        </button>
-								    </div>
-								</div>
+                                <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
                             </div>
                         </div>
                     </div>

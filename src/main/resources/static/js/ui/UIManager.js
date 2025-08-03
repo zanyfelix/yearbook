@@ -2,39 +2,14 @@
 // 📁 js/ui/UIManager.js
 // ============================================================================
 class UIManager {
+	
+	static hideAllToolbars() {
+	    $('#editor-toolbar > div').addClass('d-none');
+	}
+	
     static showFrameTooltip(frameGroup) {
-        const tooltip = $('#frame-controls-tooltip');
-        const previewRect = $('#page-preview')[0].getBoundingClientRect();
-        
-		// 프리뷰 오른쪽 상단에 고정
-		const right = 20; // 오른쪽에서 20px
-		const top = 20;   // 위에서 20px
-
-		tooltip.removeClass('d-none').css({
-			position: 'absolute',
-			right: `${right}px`,
-			top: `${top}px`,
-			left: 'auto' // left 값 제거
-		});
-		
-		// 버튼 형태의 컨트롤 생성 (이 부분이 추가됨)
-		tooltip.html(`
-		    <div class="control-buttons-container">
-		        <div class="control-buttons">
-		            <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
-		                <img src="/images/icon/transform.png" alt="Rotate" id="frame-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
-		            </button>
-		            <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
-		                <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate2" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
-		            </button>
-		            <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제">
-		                <i class="delete-icon">🗑️</i>
-		            </button>
-		        </div>
-		    </div>
-		`);
-		
-		// 프레임 회전 이벤트 바인딩
+		this.hideAllToolbars();
+		$('#frame-controls').removeClass('d-none');
 		this.bindFrameRotationEvents(frameGroup);
     }
 	
@@ -138,37 +113,9 @@ class UIManager {
 	}
 
     static showPhotoTooltip(photo, frameGroup) {
-        const tooltip = $('#photo-controls-tooltip');
-        const previewRect = $('#page-preview')[0].getBoundingClientRect();
-        
-		// 프리뷰 오른쪽 상단에 고정 (프레임 툴팁보다 아래)
-		const right = 20;  // 오른쪽에서 20px
-		const top = 20;    // 위에서 70px (프레임 툴팁 아래)
-
-		tooltip.removeClass('d-none').css({ 
-		    position: 'absolute',
-		    right: `${right}px`, 
-		    top: `${top}px`,
-		    left: 'auto' // left 값 제거
-		});
-
-		tooltip.html(`
-		            <div class="control-buttons-container">
-		                <div class="control-buttons">
-		                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
-		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate-left" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px; transform: scaleX(-1);">
-		                    </button>
-		                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
-		                        <img src="/images/icon/transform.png" alt="Rotate" id="photo-rotate-right" style="width: 30px; height: 30px; cursor: pointer; margin-right: 5px;">
-		                    </button>
-		                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제">
-		                        <i class="delete-icon">🗑️</i>
-		                    </button>
-		                </div>
-		            </div>
-		        `);
-        
-        this.bindPhotoTooltipEvents(photo, frameGroup);
+		this.hideAllToolbars();
+		$('#photo-controls').removeClass('d-none');
+		this.bindPhotoTooltipEvents(photo, frameGroup);
     }
 	
 	static bindPhotoRotationEvents(photo) {
@@ -252,20 +199,9 @@ class UIManager {
 	}
 
 	static showTextTooltip(textBox) {
-	    const tooltip = $('#text-tooltip');
-		
-		const right = 20;
-		const top = 20;
-	    
-		tooltip.removeClass('d-none').css({
-			position: 'absolute',
-			right: `${right}px`,
-			top: `${top}px`,
-			left: 'auto'
-		});
-
-	    // 툴팁 컨트롤(색상, 크기 등)에 이벤트 바인딩
-	    this.bindTextTooltipEvents(textBox);
+		this.hideAllToolbars();
+        $('#text-controls').removeClass('d-none');
+        this.bindTextTooltipEvents(textBox);
 	}
 
 	/**

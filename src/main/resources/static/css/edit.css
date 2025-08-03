@@ -114,7 +114,7 @@ body {
     min-width: 120px;
     z-index: 999;
     position: relative;
-    bottom: -730px;
+    bottom: 5px;
 }
 
 .btn-outline-secondary:hover,
@@ -491,19 +491,6 @@ body {
 /* ===========================================
    8. 툴팁 시스템 (UIManager 대응)
    =========================================== */
-#frame-controls-tooltip,
-#photo-controls-tooltip {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 0;
-    box-shadow: 0 6px 30px rgba(0,0,0,0.12);
-    z-index: 99999;
-    transition: all 0.3s ease;
-    position: absolute !important;
-    overflow: hidden;
-}
-
 /* 컨트롤 컨테이너 */
 .control-buttons-container {
     background: white;
@@ -528,7 +515,6 @@ body {
     display: flex;
     gap: 8px;
     padding: 12px;
-    background: #f8f9fa;
 }
 
 /* 개별 버튼 스타일 */
@@ -991,79 +977,84 @@ button:focus,
 }
 
 /* ===========================================
-   18. 텍스트 툴팁 UI 개선 (2-Row Layout)
+   8. 통합 툴바 시스템 (최종 고정 스타일)
    =========================================== */
 
-/* 툴팁 메인 컨테이너 */
-#text-tooltip {
-    display: flex;
-    flex-direction: column; /* 세로로 쌓는 Flexbox 레이아웃 */
-    gap: 8px; /* 두 줄 사이의 간격 */
-    
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+/* 1. 툴바 메인 컨테이너: 고정 높이 설정 */
+#editor-toolbar {
+    min-height: 57px; /* 툴바 공간을 항상 고정 */
+    align-items: center;
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+    background-color: transparent;
 }
 
-/* 각 행의 스타일 */
-.tooltip-row {
+/* 2. 툴바 내부 모든 컨트롤 그룹을 한 줄(row)로 정렬 */
+#editor-toolbar .control-buttons,
+#editor-toolbar #text-controls {
     display: flex;
     align-items: center;
-    gap: 8px; /* 행 내부 아이템 간의 간격 */
+    gap: 6px; /* 아이콘/컨트롤 사이 간격 */
+    width: 100%;
+    margin-left: 130px;
 }
 
-/* 두 번째 행의 아이템을 양쪽 끝으로 분산 */
-.tooltip-row:nth-child(2) {
-    justify-content: space-between;
-}
-
-/* 컨트롤 공통 스타일 */
-#text-tooltip input[type="color"],
-#text-tooltip select,
-#text-tooltip button {
-    height: 38px;
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    background-color: #fff;
-    font-size: 14px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Select 박스 스타일 */
-#text-tooltip select {
-    padding: 0 8px 0 12px;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    padding-right: 30px; /* 화살표 아이콘 공간 */
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 16px 12px;
-    flex-grow: 1; /* 가능한 공간을 모두 채움 */
-}
-
-/* 컬러 피커 스타일 */
-#text-tooltip input[type="color"] {
-    width: 50px;
+/* 3. 아이콘 버튼 크기 축소 및 스타일 */
+#editor-toolbar .control-btn {
+    width: 30px;   /* 크기 축소 */
+    height: 30px;  /* 크기 축소 */
     padding: 4px;
-    border: none;
-    background: none;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    box-shadow: none;
+    transition: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-#text-tooltip input[type="color"]::-webkit-color-swatch-wrapper {
-    padding: 0;
+#editor-toolbar .control-btn:hover {
+    border-color: #007bff;
+    background-color: #f1f3f5;
+    transform: none;
 }
-#text-tooltip input[type="color"]::-webkit-color-swatch {
-    border: 1px solid #ddd;
-    border-radius: 6px;
+#editor-toolbar .control-btn:active {
+    background-color: #e9ecef;
+    transform: none;
 }
 
-/* 삭제 버튼 크기 및 스타일 조정 */
-#text-tooltip #tooltip-remove.control-btn {
-    width: 38px;
-    height: 38px;
-    border-color: #ffdddd; /* 다른 버튼들과의 시각적 일관성 */
-    flex-shrink: 0;
+/* 4. 아이콘 자체의 크기 축소 */
+#editor-toolbar .control-btn img,
+#editor-toolbar .control-btn .delete-icon {
+    width: 18px;   /* 크기 축소 */
+    height: 18px;  /* 크기 축소 */
+    font-size: 18px; /* 아이콘 폰트 크기 축소 */
+}
+
+/* 5. 텍스트 컨트롤을 한 줄로 만들고 크기 축소 */
+#text-controls {
+    justify-content: flex-start; /* 왼쪽부터 정렬 */
+}
+#text-controls select {
+    height: 30px; /* 크기 축소 */
+    font-size: 13px;
+    border-radius: 5px;
+    width: 80px; /* 너비 고정 */
+    flex-grow: 0;
+}
+#text-controls input[type="color"] {
+    width: 38px;   /* 크기 축소 */
+    height: 30px;  /* 크기 축소 */
+    margin-left: 16px; /* 다른 컨트롤 그룹과 간격 */
+    padding: 2px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+}
+#text-controls input[type="color"]::-webkit-color-swatch {
+    border-radius: 3px;
+    border: none;
+}
+/* 삭제 버튼을 오른쪽 끝으로 이동 */
+#text-controls .control-btn {
+    margin-left: auto; 
 }

@@ -93,7 +93,7 @@ class SelectionManager {
 		});
 		
 		$('.text-box').removeClass('selected'); // 텍스트 상자 선택 클래스 제거
-		$('#text-tooltip').addClass('d-none');   // 텍스트 툴팁 숨기기
+		UIManager.hideAllToolbars();
 
 		// 핸들 및 툴팁 제거
 		$('.selection-handle, .rotate-handle, .rotate-line').remove();
