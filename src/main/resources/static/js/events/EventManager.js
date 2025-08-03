@@ -203,15 +203,17 @@ class EventManager {
 		// 기존 이벤트를 초기화하여 중복 등록 방지
 		textBox.off('mousedown focus keydown');
 
-		// --- 마우스 다운: 선택 및 드래그 준비 (변경 없음) ---
 		textBox.on('mousedown', function(e) {
 			e.stopPropagation();
 			const $this = $(this);
 
+			// 아직 선택되지 않았다면, 먼저 '선택' 상태로 만듭니다.
 			if (!$this.hasClass('selected')) {
 				window.selectionManager.selectTextBox($this);
+				return; // 이번 클릭의 역할은 여기까지입니다.
 			}
 
+			// 이미 선택된 상자를 다시 클릭했으므로, 드래그 또는 편집(포커스)을 준비합니다.
 			const startX = e.clientX;
 			const startY = e.clientY;
 			const initialLeft = $this.position().left;
@@ -238,6 +240,7 @@ class EventManager {
 
 			const onMouseUp = function() {
 				$(document).off('mousemove.textDrag mouseup.textDrag');
+				// 드래그가 아니었다면(클릭), '편집' 상태로 만듭니다.
 				if (!isDragging) {
 					$this.focus();
 				}
@@ -246,22 +249,18 @@ class EventManager {
 			$(document).on('mousemove.textDrag', onMouseMove).on('mouseup.textDrag', onMouseUp);
 		});
 
-		// --- 포커스: 툴팁 표시 (변경 없음) ---
+		// 포커스 시 툴팁 표시
 		textBox.on('focus', function() {
 			UIManager.showTextTooltip($(this));
 		});
 
-		// --- ✨ 핵심 수정: keydown 이벤트 핸들러 ---
-		// 키보드 입력 시, 데이터 속성(깃발)을 확인하여 내용을 한번만 지웁니다.
+		// 키보드 입력 시 안내 문구 제거
 		textBox.on('keydown', function(e) {
 			const $this = $(this);
-
 			if ($this.attr('data-is-placeholder') === 'true') {
-				// 사용자가 백스페이스나 삭제 키를 먼저 누르는 경우는 제외
 				if (e.key === 'Backspace' || e.key === 'Delete') {
 					return;
 				}
-				// 다른 키를 누르면 안내 문구를 지우고, 깃발도 제거하여 다시는 실행되지 않도록 함
 				$this.text('');
 				$this.removeAttr('data-is-placeholder');
 			}
@@ -300,16 +299,19 @@ class EventManager {
                 
                 e.preventDefault();
                 
-                if (selectedPhotoWrapper && confirm("사진을 삭제하시겠습니까?")) {
+                if (selectedPhotoWrapper && confirm("Are you sure you want to delete the photo?")) {
                     const frameGroup = selectedPhotoWrapper.closest('.frame-group');
                     const placeholder = frameGroup.find('.place-image-here-link');
                     selectedPhotoWrapper.hide().attr('src', '');
                     placeholder.show();
                     window.selectionManager.clearSelection();
-                } else if (selectedFrame && confirm("프레임을 삭제하시겠습니까?")) {
+                } else if (selectedFrame && confirm("Are you sure you want to delete the frame?")) {
                     selectedFrame.remove();
                     window.selectionManager.clearSelection();
-                }
+                } else if (selectedBox && confirm("Are you sure you want to delete the text?")) {
+					selectedBox.remove();
+					window.selectionManager.clearSelection();
+				}
             }
         });
 		
