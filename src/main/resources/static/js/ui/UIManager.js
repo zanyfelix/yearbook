@@ -203,8 +203,36 @@ class UIManager {
 
 	static showTextTooltip(textBox) {
 		this.hideAllToolbars();
-        $('#text-controls').removeClass('d-none');
-        this.bindTextTooltipEvents(textBox);
+		$('#text-controls').removeClass('d-none');
+
+		// --- ✨ 핵심 수정: 툴팁과 텍스트 상자 스타일 동기화 ---
+
+		// 1. 현재 텍스트 상자의 스타일 값을 가져옵니다.
+		const currentSize = textBox.css('font-size');
+		const currentAlign = textBox.css('text-align');
+		const currentColorRGB = textBox.css('color');
+
+		// rgb(r, g, b) 형식을 hex(#rrggbb) 형식으로 변환하는 함수
+		function rgbToHex(rgb) {
+			if (!rgb || !rgb.startsWith('rgb')) return rgb;
+			let a = rgb.split("(")[1].split(")")[0].split(",");
+			return "#" + a.map(function(x) {
+				x = parseInt(x).toString(16);
+				return (x.length == 1) ? "0" + x : x;
+			}).join("");
+		}
+
+		// 2. 가져온 값으로 툴팁 컨트롤의 현재 상태를 설정합니다.
+		$('#tooltip-size').val(currentSize);
+		if(currentAlign == 'start') {
+			$('#tooltip-align').val('left');
+		} else {
+			$('#tooltip-align').val(currentAlign || 'left');	
+		}
+		$('#tooltip-color').val(rgbToHex(currentColorRGB));
+
+		// 3. 툴팁 컨트롤에 이벤트를 바인딩합니다. (기존과 동일)
+		this.bindTextTooltipEvents(textBox);
 	}
 
 	/**

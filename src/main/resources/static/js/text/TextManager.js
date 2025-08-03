@@ -10,9 +10,9 @@ class TextManager {
 
 		// ✨ 추가된 부분: 파라미터 값에 따라 스타일을 다르게 적용
 		if (param === 'Title') {
-			// 'Title'일 경우: 글자 크기 25px, 굵게
+			// 'Title'일 경우: 글자 크기 24px, 굵게
 			textStyles = {
-				'font-size': '25px',
+				'font-size': '24px',
 				'font-weight': 'bold'
 			};
 		} else {

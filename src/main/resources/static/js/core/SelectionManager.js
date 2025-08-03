@@ -73,9 +73,12 @@ class SelectionManager {
 	
 	selectTextBox(textBox) {
 		this.clearSelection(); // 다른 모든 선택 해제
-
 		selectedBox = textBox;
 		this.selectedMode = 'text';
+		
+		// '편집' 상태는 제거하고 '선택' 상태를 추가합니다.
+		textBox.removeClass('editing').addClass('selected');
+		textBox.blur(); // 텍스트 편집 커서가 활성화되지 않도록 포커스를 해제합니다.
 
 		textBox.addClass('selected');
 	}
@@ -92,7 +95,8 @@ class SelectionManager {
 			'box-shadow': 'none'
 		});
 		
-		$('.text-box').removeClass('selected'); // 텍스트 상자 선택 클래스 제거
+		// 'selected'와 'editing' 클래스를 모두 제거합니다.
+		$('.text-box').removeClass('selected editing');
 		UIManager.hideAllToolbars();
 
 		// 핸들 및 툴팁 제거

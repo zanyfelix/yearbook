@@ -200,34 +200,44 @@ class EventManager {
 	}
 	
 	static setupTextEvents(textBox) {
-		// 기존 이벤트를 초기화하여 중복 등록 방지
-		textBox.off('mousedown focus keydown');
+		// 기존 이벤트를 모두 초기화
+		textBox.off('click dblclick mousedown keydown');
 
+		// 한 번 클릭: '선택' 상태로 전환
+		textBox.on('click', function(e) {
+			e.stopPropagation();
+			const $this = $(this);
+			if (!$this.hasClass('selected')) {
+				window.selectionManager.selectTextBox($this);
+			}
+		});
+
+		// 더블 클릭: '편집' 상태로 전환
+		textBox.on('dblclick', function(e) {
+			e.stopPropagation();
+			const $this = $(this);
+			if ($this.hasClass('selected')) {
+				$this.addClass('editing');
+				$this.focus(); // 텍스트 커서 활성화
+				UIManager.showTextTooltip($this); // ✨ 이 라인을 추가합니다.
+			}
+		});
+
+		// 마우스 다운: '선택' 상태일 때만 드래그 시작
 		textBox.on('mousedown', function(e) {
 			e.stopPropagation();
 			const $this = $(this);
 
-			// 아직 선택되지 않았다면, 먼저 '선택' 상태로 만듭니다.
-			if (!$this.hasClass('selected')) {
-				window.selectionManager.selectTextBox($this);
-				return; // 이번 클릭의 역할은 여기까지입니다.
-			}
+			// '선택' 상태이고 '편집' 상태가 아닐 때만 드래그를 허용합니다.
+			if ($this.hasClass('selected') && !$this.hasClass('editing')) {
+				e.preventDefault(); // 드래그 중 텍스트가 선택되는 현상 방지
 
-			// 이미 선택된 상자를 다시 클릭했으므로, 드래그 또는 편집(포커스)을 준비합니다.
-			const startX = e.clientX;
-			const startY = e.clientY;
-			const initialLeft = $this.position().left;
-			const initialTop = $this.position().top;
-			let isDragging = false;
+				const startX = e.clientX;
+				const startY = e.clientY;
+				const initialLeft = $this.position().left;
+				const initialTop = $this.position().top;
 
-			const onMouseMove = function(ev) {
-				if (!isDragging && (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5)) {
-					isDragging = true;
-					$this.blur();
-				}
-
-				if (isDragging) {
-					ev.preventDefault();
+				$(document).on('mousemove.textDrag', function(ev) {
 					const newLeft = initialLeft + (ev.clientX - startX);
 					const newTop = initialTop + (ev.clientY - startY);
 					const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, $this);
@@ -235,32 +245,19 @@ class EventManager {
 						left: constrained.left + 'px',
 						top: constrained.top + 'px'
 					});
-				}
-			};
+				});
 
-			const onMouseUp = function() {
-				$(document).off('mousemove.textDrag mouseup.textDrag');
-				// 드래그가 아니었다면(클릭), '편집' 상태로 만듭니다.
-				if (!isDragging) {
-					$this.focus();
-				}
-			};
-
-			$(document).on('mousemove.textDrag', onMouseMove).on('mouseup.textDrag', onMouseUp);
+				$(document).on('mouseup.textDrag', function() {
+					$(document).off('.textDrag');
+				});
+			}
 		});
 
-		// 포커스 시 툴팁 표시
-		textBox.on('focus', function() {
-			UIManager.showTextTooltip($(this));
-		});
-
-		// 키보드 입력 시 안내 문구 제거
-		textBox.on('keydown', function(e) {
+		// 최초 키 입력 시에만 안내 문구 제거 (.one()으로 단 한 번만 실행)
+		textBox.one('keydown', function(e) {
 			const $this = $(this);
 			if ($this.attr('data-is-placeholder') === 'true') {
-				if (e.key === 'Backspace' || e.key === 'Delete') {
-					return;
-				}
+				if (e.key === 'Backspace' || e.key === 'Delete') return;
 				$this.text('');
 				$this.removeAttr('data-is-placeholder');
 			}

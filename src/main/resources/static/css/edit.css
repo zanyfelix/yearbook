@@ -622,9 +622,27 @@ body {
         padding: 10px;
     }
 }
-
+/* text box */
+.text-box {
+    position: absolute;
+    border: 1px dashed transparent;
+    padding: 10px;
+    min-width: 50px;
+    cursor: default; /* 기본 커서 */
+}
+.text-box:hover {
+    border-color: #007bff;
+}
 .text-box.selected {
-    outline: 2px solid #007bff;
+    cursor: move; /* '선택' 상태일 때 이동 커서 */
+    border: 2px solid #007bff; /* 파란색 테두리 */
+}
+.text-box.editing {
+    cursor: text; /* '편집' 상태일 때 텍스트 커서 */
+    border: 2px solid #28a745; /* 편집을 의미하는 녹색 테두리 */
+}
+.text-box[contenteditable=true]:focus {
+    outline: none;
 }
 
 /* ===========================================
