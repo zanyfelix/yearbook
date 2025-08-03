@@ -1054,7 +1054,3 @@ button:focus,
     border-radius: 3px;
     border: none;
 }
-/* 삭제 버튼을 오른쪽 끝으로 이동 */
-#text-controls .control-btn {
-    margin-left: auto; 
-}

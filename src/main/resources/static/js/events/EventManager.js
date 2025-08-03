@@ -315,8 +315,14 @@ class EventManager {
             }
         });
 		
+		$('#add-title-btn').on('click', () => {
+			TextManager.addTextBox('Title');
+		});
+		$('#add-subtitle-btn').on('click', () => {
+			TextManager.addTextBox('Sub-Title');
+		});
 		$('#add-text-btn').on('click', () => {
-			TextManager.addTextBox();
+			TextManager.addTextBox('text');
 		});
     }
 }

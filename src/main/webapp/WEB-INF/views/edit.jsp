@@ -107,8 +107,14 @@
                             
                             <!-- Text 패널 -->
                             <div id="text-panel" class="d-none">
-                                <div class="mb-2">
-                                    <button id="add-text-btn" class="btn btn-outline-primary btn-sm">Add Text Box</button>
+                                <div class="w-100 mb-2">
+                                    <button id="add-title-btn" class="btn btn-outline-primary">Click here to insert "Title"</button>
+                                </div>
+                                <div class="w-100 mb-2">
+                                    <button id="add-subtitle-btn" class="btn btn-outline-primary">Click here to insert "Sub-Title"</button>
+                                </div>
+                                <div class="w-100 mb-2">
+                                    <button id="add-text-btn" class="btn btn-outline-primary">Click here to insert "Text"</button>
                                 </div>
                             </div>
                         </div>
