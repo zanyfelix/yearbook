@@ -156,6 +156,10 @@ class PhotoManager {
                 let newAngle = initialAngle + deltaAngle;
 
                 photo.css('transform', `rotate(${newAngle}deg)`);
+				
+				// ✨ 추가된 부분: 실루엣의 회전도 함께 업데이트
+				$('.photo-silhouette').css('transform', `rotate(${newAngle}deg)`);
+				                
                 this.updateSelectionUI(photo);
             });
 
@@ -204,6 +208,15 @@ class PhotoManager {
                     left: `${newLeft}px`,
                     top: `${newTop}px`
                 });
+				
+				// ✨ 추가된 부분: 실루엣의 크기와 위치도 함께 업데이트
+				$('.photo-silhouette').css({
+					width: `${newWidth}px`,
+					height: `${newHeight}px`,
+					left: `${newLeft}px`,
+					top: `${newTop}px`
+				});
+								
                 this.updateSelectionUI(photo);
             });
 
