@@ -175,13 +175,16 @@ class UIManager {
 			const currentRotation = getCurrentRotation();
 			const newRotation = snapAngleLeft(currentRotation);
 			photo.css('transform', `rotate(${newRotation}deg)`); // frameGroup -> photo
+			// ✨ 추가된 부분: 실루엣도 함께 회전
+			$('.photo-silhouette').css('transform', `rotate(${newRotation}deg)`);
 		});
 
 		// 시계방향 회전
 		$('#photo-rotate-right').off('click').on('click', function() {
 			const currentRotation = getCurrentRotation();
 			const newRotation = snapAngleRight(currentRotation);
-			photo.css('transform', `rotate(${newRotation}deg)`); // frameGroup -> photo
+			// ✨ 추가된 부분: 실루엣도 함께 회전
+			$('.photo-silhouette').css('transform', `rotate(${newRotation}deg)`);
 		});
 	}
     
