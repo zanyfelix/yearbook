@@ -19,50 +19,96 @@ $(document).ready(function() {
 
 	// Save 버튼 클릭 이벤트
 	$('#btn-save').on('click', function() {
-	    const captureArea = $('#page-preview');
-	    // ... (designData 수집 로직은 기존과 동일) ...
-	    const designData = { /* ... */ };
+		const captureArea = $('#page-preview');
+		const elementsToHide = $('#safe-line-overlay, .photo-selection-box');
 
-	    html2canvas(captureArea[0], { useCORS: true, backgroundColor: null }).then(canvas => {
-	        const imageDataUrl = canvas.toDataURL('image/png');
+		window.selectionManager.clearSelection();
+		elementsToHide.addClass('hide-for-capture');
 
-	        // ✨ --- ID 및 데이터 구성 로직 (핵심 수정) --- ✨
-	        const yearbookId = activePageThumb ? activePageThumb.data('yearbook-id') : null;
-	        const contentsId = activePageThumb ? activePageThumb.data('contents-id') : null;
-	        const pageNo = activePageThumb ? activePageThumb.data('page-no') : null;
+		// ✨ --- 핵심 수정: 누락되었던 designData 수집 로직 추가 --- ✨
+		const designData = {
+			background: $('#page-preview-img').attr('src'),
+			frames: [],
+			textBoxes: []
+		};
 
-	        // 서버로 보낼 최종 데이터 객체
-	        const payload = {
-				/*userId : "${sessionScope.loginUser.id}"*/
-				userId : 11, //임시
-	            yearbookId: yearbookId,
-	            contentsId: contentsId,
-	            pageNo: pageNo,
-	            designData: JSON.stringify(designData),
-	            imageData: imageDataUrl
-	        };
+		// 모든 프레임 정보 수집
+		captureArea.find('.frame-group').each(function() {
+			const $frame = $(this);
+			const $photo = $frame.find('.uploaded-photo');
+			designData.frames.push({
+				theme: $frame.data('frameTheme'),
+				position: $frame.position(),
+				size: { width: $frame.width(), height: $frame.height() },
+				transform: $frame.css('transform'),
+				photo: {
+					src: $photo.attr('src'),
+					position: $photo.position(),
+					size: { width: $photo.width(), height: $photo.height() },
+					transform: $photo.css('transform')
+				}
+			});
+		});
 
-	        // AJAX 로직 (URL은 그대로, 보내는 데이터만 payload로 변경)
-	        $.ajax({
-	            url: `${ctx}/edit/savePage`, // URL은 /saveThumbnail에서 /savePage로 변경
-	            method: 'POST',
-	            contentType: 'application/json',
-	            data: JSON.stringify(payload), // 위에서 만든 payload 전송
-	            success: function(response) {
-	                if (response && response.newImagePath) {
-	                    activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
-	                    // ✨ 새로 생성된 페이지의 경우, 받은 ID를 data 속성에 추가해줌
-	                    if (response.newYearbookId) {
-	                        activePageThumb.attr('data-yearbook-id', response.newYearbookId);
-	                    }
-	                } else {
-	                    alert("저장에 성공했지만, 썸네일 업데이트에 실패했습니다.");
-	                }
-	                $('#editModal').modal('hide');
-	            },
-	            // ... (error, complete 로직은 기존과 거의 동일) ...
-	        });
-	    });
+		// 모든 텍스트 상자 정보 수집
+		captureArea.find('.text-box').each(function() {
+			const $box = $(this);
+			designData.textBoxes.push({
+				html: $box.html(),
+				position: $box.position(),
+				size: { width: $box.outerWidth(), height: $box.outerHeight() },
+				styles: {
+					color: $box.css('color'),
+					fontSize: $box.css('font-size'),
+					fontWeight: $box.css('font-weight'),
+					textAlign: $box.css('text-align')
+				}
+			});
+		});
+		// ✨ --- 데이터 수집 로직 끝 --- ✨
+
+		html2canvas(captureArea[0], { useCORS: true, backgroundColor: null }).then(canvas => {
+			const imageDataUrl = canvas.toDataURL('image/png');
+
+			const yearbookId = activePageThumb ? activePageThumb.data('yearbook-id') : null;
+			const contentsId = activePageThumb ? activePageThumb.data('contents-id') : null;
+			const pageNo = activePageThumb ? activePageThumb.data('page-no') : null;
+			const userId = $('#id').val();
+
+			const payload = {
+				userId: userId,
+				yearbookId: yearbookId,
+				contentsId: contentsId,
+				pageNo: pageNo,
+				designData: JSON.stringify(designData), // 수집한 데이터를 JSON 문자열로 변환
+				imageData: imageDataUrl
+			};
+
+			$.ajax({
+				url: `${ctx}/edit/savePage`,
+				method: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify(payload),
+				success: function(response) {
+					if (response && response.newImagePath) {
+						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
+						if (response.newYearbookId) {
+							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
+						}
+					} else {
+						alert("저장에 성공했지만, 썸네일 업데이트에 실패했습니다.");
+					}
+					$('#editModal').modal('hide');
+				},
+				error: function(err) {
+					console.error("Save failed:", err);
+					alert("저장에 실패했습니다.");
+				},
+				complete: function() {
+					elementsToHide.removeClass('hide-for-capture');
+				}
+			});
+		});
 	});
 
 	// 파일 업로드 처리
