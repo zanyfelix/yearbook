@@ -182,7 +182,7 @@ class EnhancedSelectionManager {
         
         frameGroup.addClass('selected-frame');
         frameGroup.css({
-            'border': '2px dashed #ff0000'
+            'border': '1px dashed #ff0000'
         });
 
         this.addRotationHandle(frameGroup);
@@ -265,7 +265,7 @@ class EnhancedSelectionManager {
             height: photo.css('height'),
             transform: photo.css('transform'),
             opacity: 0.4, // 반투명 처리
-            border: '1px dashed rgba(255, 165, 0, 0.6)',
+            border: '1px dashed #ff0000',
             boxShadow: 'none',
             zIndex: 1
         }).removeClass('selected-photo uploaded-photo').addClass('photo-silhouette');
@@ -1163,7 +1163,8 @@ function adjustAllFramesToSafeLine() {
 $(document).ready(function() {
 	
 	const btnBg = $('#btn-background');
-	const btnFrame = $('#btn-frame');
+	const btnPhotoFrame = $('#btn-photo-frame');
+	const btnTextFrame = $('#btn-text-frame');
 	const btnText = $('#btn-text');
 	const bgPanel = $('#background-panel');
 	const framePanel = $('#frame-panel');
@@ -1185,7 +1186,7 @@ $(document).ready(function() {
 	const photoControlsTooltip = $('#photo-controls-tooltip');
 
 
-	const allBtns = [btnBg, btnFrame, btnText];
+	const allBtns = [btnBg, btnPhotoFrame, btnTextFrame, btnText];
 	
 	// Enhanced Selection Manager 초기화
 	window.enhancedSelection = new EnhancedSelectionManager();
@@ -1283,10 +1284,51 @@ $(document).ready(function() {
 	});
 
 	// Frame Panel
-	btnFrame.on("click", function() {
+	btnPhotoFrame.on("click", function() {
 		
 		window.enhancedSelection.clearSelection();
 		
+		activate(btnFrame);
+		hideAllPanels();
+		framePanel.removeClass('d-none');
+
+		photoFrameList.empty();
+
+		$.ajax({
+			url: `${ctx}/edit/mainFrame`,
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({
+				id: 11,
+				category: "frame"
+			}),
+			success: function(data) {
+				data.forEach(function(result) {
+					const col = $('<div class="col-4 text-center">');
+					const wrapper = $('<div class="thumbnail-wrapper position-relative">');
+					const img = $('<img class="img-thumbnail preview-img">').attr('src', result.theme.thumbnailPath);
+					const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
+					const selectBtn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', function() {
+						const frameModalEl = $('#frameModal');
+						const frameModal = new bootstrap.Modal(frameModalEl[0]);
+						$('#modalFrameList').empty();
+						loadFramesModal();
+						frameModal.show();
+					});
+
+					overlay.append(selectBtn);
+					wrapper.append(img).append(overlay);
+					col.append(wrapper);
+					photoFrameList.append(col);
+				});
+			}
+		});
+	});
+	
+	btnTextFrame.on("click", function() {
+			
+		window.enhancedSelection.clearSelection();
+
 		activate(btnFrame);
 		hideAllPanels();
 		framePanel.removeClass('d-none');
@@ -2234,7 +2276,7 @@ $(document).ready(function() {
 			top: '50px',
 			left: '50px',
 			padding: '8px',
-			border: '2px dashed #007bff',
+			border: '1px dashed #ff0000',
 			backgroundColor: 'rgba(255, 255, 255, 0.8)',
 			fontSize: '16px',
 			color: '#000',
@@ -2258,11 +2300,11 @@ $(document).ready(function() {
 
 		// 텍스트 박스 포커스 시 편집 모드
 		textBox.on('focus', function() {
-			$(this).css('border', '2px solid #007bff');
+			$(this).css('border', '1px solid #ff0000');
 		});
 
 		textBox.on('blur', function() {
-			$(this).css('border', '2px dashed #007bff');
+			$(this).css('border', '1px dashed #ff0000');
 		});
 
 		// 생성 직후 선택 상태로 설정

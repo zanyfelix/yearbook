@@ -68,6 +68,6 @@ public class User {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private Date deadline;
     
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Yearbook> yearbookPages = new ArrayList<>();
+    //@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    //private List<Yearbook> yearbookPages = new ArrayList<>();
 }

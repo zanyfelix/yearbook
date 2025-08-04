@@ -4,7 +4,7 @@
 class UIManager {
 	
 	static hideAllToolbars() {
-	    $('#editor-toolbar > div').addClass('d-none');
+	    $('#editor-toolbar .context-controls > div').addClass('d-none');
 	}
 	
     static showFrameTooltip(frameGroup) {

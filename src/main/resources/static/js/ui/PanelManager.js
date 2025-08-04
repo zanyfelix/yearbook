@@ -4,7 +4,8 @@
 class PanelManager {
     constructor() {
         this.btnBg = $('#btn-background');
-        this.btnFrame = $('#btn-frame');
+        this.btnPhotoFrame = $('#btn-photo-frame');
+		this.btnTextboxFrame = $('#btn-textbox-frame');
         this.btnText = $('#btn-text');
         this.bgPanel = $('#background-panel');
         this.framePanel = $('#frame-panel');
@@ -15,7 +16,8 @@ class PanelManager {
     
     init() {
         this.btnBg.on('click', () => this.showBackgroundPanel());
-        this.btnFrame.on('click', () => this.showFramePanel());
+        this.btnPhotoFrame.on('click', () => this.showPhotoFramePanel());
+		this.btnTextboxFrame.on('click', () => this.showTextFramePanel());
         this.btnText.on('click', () => this.showTextPanel());
     }
     
@@ -24,7 +26,7 @@ class PanelManager {
     }
     
     activate(btn) {
-        [this.btnBg, this.btnFrame, this.btnText].forEach(b => b.removeClass('active'));
+        [this.btnBg, this.btnPhotoFrame, this.btnTextboxFrame, this.btnText].forEach(b => b.removeClass('active'));
         btn.addClass('active');
     }
     
@@ -36,13 +38,21 @@ class PanelManager {
         DataLoader.loadBackgrounds();
     }
     
-    showFramePanel() {
+    showPhotoFramePanel() {
         window.selectionManager.clearSelection();
-        this.activate(this.btnFrame);
+        this.activate(this.btnPhotoFrame);
         this.hideAllPanels();
         this.framePanel.removeClass('d-none');
         DataLoader.loadFrames();
     }
+	
+	showTextboxFramePanel() {
+		window.selectionManager.clearSelection();
+		this.activate(this.btnTextboxFrame);
+		this.hideAllPanels();
+		this.framePanel.removeClass('d-none');
+		DataLoader.loadFrames();
+	}
     
     showTextPanel() {
         window.selectionManager.clearSelection();

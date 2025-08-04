@@ -242,7 +242,7 @@ class PhotoManager {
 			position: 'absolute',
 			top: photo.css('top'), left: photo.css('left'),
 			width: photo.css('width'), height: photo.css('height'),
-			opacity: 0.4, border: '1px dashed rgba(255, 165, 0, 0.6)',
+			opacity: 0.4, border: '1px dashed #ff0000',
 			zIndex: 1
 		}).removeClass('selected-photo uploaded-photo').addClass('photo-silhouette');
 

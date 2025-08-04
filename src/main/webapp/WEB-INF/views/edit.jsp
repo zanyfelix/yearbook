@@ -34,29 +34,49 @@
     </div>
     
     <!-- 각 카테고리별 섹션 -->
-    <c:forEach var="item" items="${list}" varStatus="st">
-        <div class="category-section">
-            <h5 class="mb-3">${item.title} (${item.pages})</h5>
-            
-            <div class="position-relative">
-                <!-- 왼쪽 버튼 -->
-                <%-- <button class="slide-btn left" onclick="scrollLeft('${st.index}')">&#10094;</button> --%>
-                
-                <!-- 슬라이드 박스 -->
-                <div class="slide-container" id="slider-${st.index}">
-                    <c:forEach var="i" begin="1" end="${item.pages}" varStatus="st2">
-                        <div class="page-card" draggable="true">
-                            <img src="/images/placeholder.png" class="page-thumb" alt="Page Thumbnail"/>
-                            <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
-                        </div>
-                    </c:forEach>
-                </div>
-                
-                <!-- 오른쪽 버튼 -->
-                <%-- <button class="slide-btn right" onclick="scrollRight('${st.index}')">&#10095;</button> --%>
-            </div>
-        </div>
-    </c:forEach>
+	<c:forEach var="item" items="${contentsList}" varStatus="st">
+	    <div class="category-section">
+	        <h5 class="mb-3">${item.contentsInfo.title} (${item.contentsInfo.pages})</h5>
+	        
+	        <div class="position-relative">
+	            <div class="slide-container" id="slider-${st.index}">
+	
+	                <c:choose>
+	                    <%-- 1. yearbook 데이터가 존재하는 경우 --%>
+	                    <c:when test="${not empty item.yearbookPages}">
+	                        <c:forEach var="page" items="${item.yearbookPages}">
+	                            <div class="page-card" draggable="true">
+	                                <c:choose>
+	                                    <c:when test="${not empty page.thumbnailPath}">
+	                                        <img src="${pageContext.request.contextPath}${page.thumbnailPath}" class="page-thumb" alt="Page Thumbnail" data-yearbook-id="${page.id}"/>
+	                                    </c:when>
+	                                    <c:otherwise>
+	                                        <img src="/images/placeholder.png" class="page-thumb" alt="Page Thumbnail" data-yearbook-id="${page.id}"/>
+	                                    </c:otherwise>
+	                                </c:choose>
+	                                <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+	                            </div>
+	                        </c:forEach>
+	                    </c:when>
+	                    
+	                    <%-- 2. yearbook 데이터가 아직 없는 경우 (초기 상태) --%>
+	                    <c:otherwise>
+	                        <%-- contentsInfo의 pages 숫자만큼 기본 이미지를 반복 표시 --%>
+	                        <c:forEach var="i" begin="1" end="${item.contentsInfo.pages}">
+	                            <div class="page-card" draggable="true">
+	                                <img src="/images/placeholder.png" class="page-thumb" alt="Page Thumbnail" 
+	                                     data-contents-id="${item.contentsInfo.id}" 
+	                                     data-page-no="${i}"/>
+	                                <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+	                            </div>
+	                        </c:forEach>
+	                    </c:otherwise>
+	                </c:choose>
+	
+	            </div>
+	        </div>
+	    </div>
+	</c:forEach>
     
     <!-- Bootstrap Modal - 전체 화면 크기 -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
@@ -67,7 +87,8 @@
                     <!-- 좌측 버튼 영역 (고정 너비) -->
                     <div class="d-flex flex-column p-3 border-end" style="min-width: 150px;">
                         <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
-                        <button id="btn-frame" class="btn btn-outline-secondary w-100 mb-2">Frame</button>
+                        <button id="btn-photo-frame" class="btn btn-outline-secondary w-100 mb-2">PhotoFrame</button>
+                        <button id="btn-textbox-frame" class="btn btn-outline-secondary w-100 mb-2">TextBoxFrame</button>
                         <button id="btn-text" class="btn btn-outline-secondary w-100">Text</button>
                     </div>
 
@@ -81,19 +102,6 @@
                             
                             <!-- Frame 패널 (카테고리 + 아이템) -->
                             <div id="frame-panel" class="d-none">
-                                <ul class="nav nav-tabs" id="frameTab" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="photo-tab"
-                                            data-bs-toggle="tab" data-bs-target="#photoFrameList"
-                                            type="button" role="tab">Photo Frame</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="text-tab" data-bs-toggle="tab"
-                                            data-bs-target="#textBoxFrameList" type="button" role="tab">
-                                            Text Box Frame</button>
-                                    </li>
-                                </ul>
-                                
                                 <!-- Tab panes -->
                                 <div class="tab-content">
                                     <div class="tab-pane fade show active" id="photoFrameList" role="tabpanel">
@@ -125,26 +133,39 @@
                     <div class="d-flex flex-column" style="width: 60%; height: 100%;"> 
                         
                         <div id="editor-toolbar" class="d-flex align-items-center">
-                            <div id="frame-controls" class="d-none w-100">
-                                <div class="control-buttons">
-                                    <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
-                                    <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
-                                    <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제"><i class="delete-icon">🗑️</i></button>
-                                </div>
+                        	<div class="context-controls d-flex align-items-center">
+	                            <div id="frame-controls" class="d-none w-100">
+	                                <div class="control-buttons">
+	                                    <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
+	                                    <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
+	                                    <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
+	                                </div>
+	                            </div>
+	                            <div id="photo-controls" class="d-none w-100">
+	                                <div class="control-buttons">
+	                                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
+	                                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
+	                                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
+	                                </div>
+	                            </div>
+	                            <div id="text-controls" class="d-none w-100">
+	                                <select id="tooltip-size" class="form-select form-select-sm"><option value="12px">12px</option><option value="16px" selected>16px</option><option value="20px">20px</option><option value="24px">24px</option><option value="32px">32px</option></select>
+	    							<select id="tooltip-align" class="form-select form-select-sm"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+	    							<input type="color" id="tooltip-color" title="Color">
+	    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
+	                            </div>
                             </div>
-                            <div id="photo-controls" class="d-none w-100">
-                                <div class="control-buttons">
-                                    <button id="photo-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
-                                    <button id="photo-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
-                                    <button id="btn-delete-photo" class="control-btn delete-btn" title="사진 삭제"><i class="delete-icon">🗑️</i></button>
-                                </div>
-                            </div>
-                            <div id="text-controls" class="d-none w-100">
-                                <select id="tooltip-size" class="form-select form-select-sm"><option value="12px">12px</option><option value="16px" selected>16px</option><option value="20px">20px</option><option value="24px">24px</option><option value="32px">32px</option></select>
-    							<select id="tooltip-align" class="form-select form-select-sm"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
-    							<input type="color" id="tooltip-color" title="Color">
-    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><i class="delete-icon">🗑️</i></button>
-                            </div>
+                            <div id="main-actions" class="d-flex align-items-center gap-2" style="margin-right:8px;">
+						        <button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
+						        <button id="btn-save" class="btn btn-primary">Save</button>
+						        <button class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+						    </div>
+                            
+                            <!-- <div class="button-group-container d-flex flex-column justify-content-start gap-2 p-3 flex-shrink-0">
+                            	<button id="btn-clear" class="btn btn-outline-secondary" style="width:80px; height:30px; font-size:13px">Clear</button>
+                                <button id="btn-save" class="btn btn-primary" style="width:80px; height:30px; font-size:13px">Save</button>
+                                <button class="btn btn-danger" data-bs-dismiss="modal" style="width:80px; height:30px; font-size:13px">Close</button>
+                            </div> -->
                         </div>
 
                         <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0; width: 100%;">
@@ -154,12 +175,6 @@
                                     <img id="page-preview-img" src="/images/placeholder.png" class="rounded">
                                 </div>
                                 
-                                <div class="button-group-container d-flex flex-column justify-content-start gap-2 p-3 flex-shrink-0">
-                                    <button id="btn-clear" class="btn btn-outline-secondary btn-sm">Clear</button>
-                                    <button class="btn btn-primary btn-sm">Save</button>
-                                    <button class="btn btn-danger btn-sm" data-bs-dismiss="modal">Close</button>
-                                </div>
-                            
                                 <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
                                 <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
                                 <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
@@ -220,6 +235,7 @@
 
 <!-- Main Initialization (반드시 마지막에 로드) -->
 <script src="<c:url value='/js/main.js'/>"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <!-- 전역 변수 및 기존 함수들 -->
 <script>

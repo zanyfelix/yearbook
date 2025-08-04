@@ -47,7 +47,7 @@ class SelectionManager {
 	    this.selectedMode = 'frame';
 	    this.currentFrame = frameGroup;
 	    
-	    frameGroup.addClass('selected-frame').css('border', '2px dashed #ff0000');
+	    frameGroup.addClass('selected-frame').css('border', '1px dashed #ff0000');
 	    FrameManager.addRotationHandle(frameGroup);
 	    UIManager.showFrameTooltip(frameGroup);
 	}

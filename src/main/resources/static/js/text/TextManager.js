@@ -30,7 +30,7 @@ class TextManager {
 				position: 'absolute',
 				zIndex: 100,
 				padding: '10px',
-				border: '1px dashed #007bff',
+				border: '1px dashed #ff0000',
 				visibility: 'hidden',
 				...textStyles // ✨ 위에서 정의한 스타일 객체를 여기에 적용
 			});

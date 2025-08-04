@@ -1,18 +1,14 @@
 package com.mbiz.yearbook.model;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Date;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,29 +18,29 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Yearbook extends BaseTimeEntity {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "subcategory_id")
-    private Subcategory subcategory;
+    @Column(name = "user_id")
+    private Long userId;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "contents_id")
+    private Long contentsId;
 
-    @Column(nullable = false)
+    @Column(name = "page_no")
     private int pageNo;
 
-    private String title;
+    @Column(name = "thumbnail_path")
+    private String thumbnailPath;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "design_data", columnDefinition = "TEXT")
+    private String designData;
 
-    private boolean submitted;
-
-    private LocalDateTime lastSaved;
-
-    @OneToMany(mappedBy = "yearbook", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Photo> photos = new ArrayList<>();
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "last_saved")
+    private Date lastSaved;
+    
+    @Column(name = "subcategory")
+    private String subcategory;
 }

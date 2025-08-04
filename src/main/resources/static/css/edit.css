@@ -110,13 +110,6 @@ body {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.button-group-container {
-    min-width: 120px;
-    z-index: 999;
-    position: relative;
-    bottom: 5px;
-}
-
 .btn-outline-secondary:hover,
 .btn-outline-secondary:focus {
     background-color: #e2e6ea;
@@ -628,7 +621,7 @@ body {
     border: 1px dashed transparent;
     padding: 10px;
     min-width: 50px;
-    cursor: default; /* 기본 커서 */
+    cursor: default; /* 기본 커서 */    
 }
 .text-box:hover {
     border-color: #007bff;
@@ -926,7 +919,7 @@ button:focus,
 /* 사진 선택 시 나타나는 전체 박스 */
 .photo-selection-box {
     position: absolute;
-    border: 1px dashed #FFA500; /* 주황색 점선 */
+    border: 1px dashed #ff0000; /* 주황색 점선 */
     box-sizing: border-box;
     pointer-events: none; /* 중요: 이 박스는 클릭 이벤트를 받지 않음 */
     z-index: 28;
@@ -1005,6 +998,19 @@ button:focus,
     border: none;
     border-bottom: 1px solid #e9ecef;
     background-color: transparent;
+    justify-content: space-between; /* ✨ 왼쪽과 오른쪽 요소를 양 끝으로 분리 */
+}
+
+#editor-toolbar .context-controls {
+    display: flex;
+    align-items: center;
+}
+
+/* 3. 오른쪽 메인 액션 버튼 그룹 */
+#main-actions button {
+    width: 80px;
+    height: 32px;
+    font-size: 13px;
 }
 
 /* 2. 툴바 내부 모든 컨트롤 그룹을 한 줄(row)로 정렬 */
@@ -1014,7 +1020,7 @@ button:focus,
     align-items: center;
     gap: 6px; /* 아이콘/컨트롤 사이 간격 */
     width: 100%;
-    margin-left: 130px;
+    margin-left: 8px;
 }
 
 /* 3. 아이콘 버튼 크기 축소 및 스타일 */
@@ -1022,7 +1028,7 @@ button:focus,
     width: 30px;   /* 크기 축소 */
     height: 30px;  /* 크기 축소 */
     padding: 4px;
-    border: 1px solid transparent;
+    border: 1px solid #ced4da;
     border-radius: 5px;
     background: transparent;
     box-shadow: none;
@@ -1063,12 +1069,14 @@ button:focus,
 #text-controls input[type="color"] {
     width: 38px;   /* 크기 축소 */
     height: 30px;  /* 크기 축소 */
-    margin-left: 16px; /* 다른 컨트롤 그룹과 간격 */
-    padding: 2px;
+    padding: 5px;
     border-radius: 5px;
     border: 1px solid #ced4da;
 }
 #text-controls input[type="color"]::-webkit-color-swatch {
     border-radius: 3px;
     border: none;
+}
+.hide-for-capture {
+    display: none !important;
 }
