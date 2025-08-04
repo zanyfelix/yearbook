@@ -1181,35 +1181,51 @@ button:focus,
 }
 
 /* ===========================================
-   24. 패널 썸네일 스타일 (정사각형)
+   24. 패널 썸네일 스타일 (분리 및 크기 재조정)
    =========================================== */
 
-/* 1. 썸네일 wrapper를 정사각형으로 만들고 정렬합니다. (모달창 내부 포함) */
-#background-panel .thumbnail-wrapper,
-#photoFrameList .thumbnail-wrapper,
-#modalBackgroundList .thumbnail-wrapper, /* ✨ 모달 선택자 추가 */
-#modalFrameList .thumbnail-wrapper {      /* ✨ 모달 선택자 추가 */
-    width: 100%;
-    aspect-ratio: 1; /* 가로세로 비율을 1:1 (정사각형)로 설정 */
-    background-color: #ffffff;
+/* --- 공통 스타일 --- */
+
+/* 썸네일을 담는 Bootstrap 컬럼을 flex 컨테이너로 만들어 내부 아이템을 중앙 정렬합니다. */
+#background-panel .col-6, /* Background 패널은 2열(col-6) 기준 */
+#photoFrameList .col-4 {   /* Frame 패널은 3열(col-4) 기준 */
     display: flex;
+    justify-content: center;
+    margin-bottom: 1rem; /* 썸네일 상하 간격 추가 */
+}
+
+/* 썸네일 wrapper가 내부 이미지 크기에 맞게 너비를 갖도록 설정합니다. */
+#background-panel .thumbnail-wrapper,
+#photoFrameList .thumbnail-wrapper {
+    display: inline-flex; /* content 크기에 맞게 너비 자동 조절 */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    overflow: hidden;
+    background-color: #ffffff;
+    border : 1px solid #ddd;
+    gap : 10px;
+    /* border는 제거된 상태 유지 */
 }
 
-/* 2. 내부 이미지 크기를 wrapper에 맞게 조절합니다. (모달창 내부 포함) */
-#background-panel .thumbnail-wrapper img,
-#photoFrameList .thumbnail-wrapper img,
-#modalBackgroundList .thumbnail-wrapper img, /* ✨ 모달 선택자 추가 */
-#modalFrameList .thumbnail-wrapper img {      /* ✨ 모달 선택자 추가 */
-    max-width: 90%;
-    max-height: 90%;
-    width: auto;
-    height: auto;
-    object-fit: contain; /* 이미지 비율을 유지하며 내부에 맞춤 */
-    border: none !important;
+/* --- 배경 썸네일 개별 스타일 --- */
+
+/* 배경 썸네일 이미지의 크기를 200px * 257px로 지정합니다. */
+#background-panel .thumbnail-wrapper img {
+    width: 200px;
+    height: 257px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+
+/* --- 포토프레임 썸네일 개별 스타일 --- */
+
+/* 포토프레임 썸네일 이미지의 크기를 지정합니다. */
+#photoFrameList .thumbnail-wrapper img {
+    width: 150px;
+    height: 150px; /* 정사각형 */
+    object-fit: contain; /* 프레임 전체가 보여야 하므로 contain 사용 */
 }
 
 /* ===========================================
@@ -1251,4 +1267,13 @@ button:focus,
 
     /* 색상: 검은색 실선으로 변경 */
     background: #000000;
+}
+/* ===========================================
+   27. img-thumbnail 패딩 제거
+   =========================================== */
+#editModal .img-thumbnail {
+    padding: 0;
+}
+#backgroundModal .img-thumbnail {
+    padding: 0;
 }

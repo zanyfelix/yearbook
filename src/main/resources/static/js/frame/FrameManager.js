@@ -22,7 +22,7 @@ class FrameManager {
 
 		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
 			color: 'white', textDecoration: 'underline',
-			fontSize: '14px', fontWeight: 'bold',
+			fontSize: '12px', fontWeight: 'bold',
 			textAlign: 'center', display: 'block',
 			position: 'relative',
 			cursor: 'pointer'  // 포인터 커서 추가
