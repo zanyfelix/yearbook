@@ -93,7 +93,7 @@ public class EditController {
         return "edit";
     }
     
-    @PostMapping("/edit/background")
+    @PostMapping("/edit/theme")
     @ResponseBody
     public List<UserTheme> backgroundList(@RequestBody Map<String, Object> param) {
     	Long id = Long.parseLong(param.get("id").toString());
@@ -120,22 +120,6 @@ public class EditController {
 
         // parentId가 없는 경우, 빈 리스트나 적절한 예외 처리를 합니다.
         return Collections.emptyList();
-    }
-    
-    @PostMapping("/edit/mainFrame")
-    @ResponseBody
-    public List<UserTheme> mainFrameList(@RequestBody Map<String, Object> param) {
-    	Long id = Long.parseLong(param.get("id").toString());
-        String category = (String) param.get("category");
-        return themeService.findByUserIdAndCategory(id, category);
-    }
-    
-    @PostMapping("/edit/subFrame")
-    @ResponseBody
-    public List<UserTheme> subFrameList(@RequestBody Map<String, Object> param) {
-    	Long id = Long.parseLong(param.get("id").toString());
-        String category = (String) param.get("category");
-        return themeService.findByUserIdAndCategory(id, category);
     }
     
     @PostMapping("/savePage")
