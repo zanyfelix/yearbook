@@ -174,7 +174,7 @@
                             <div id="page-preview" class="border rounded bg-white d-flex flex-row h-100 w-100 flex-nowrap" style="position: relative;"> 
                                 
                                 <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
-                                    <img id="page-preview-img" src="/images/placeholder.png" class="rounded">
+                                    <img id="page-preview-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="rounded">
                                 </div>
                                 
                                 <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>

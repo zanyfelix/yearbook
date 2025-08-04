@@ -114,7 +114,8 @@ $(document).ready(function() {
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
 		if (confirm("모든 디자인이 삭제됩니다. 계속하시겠습니까?")) {
-			$('#page-preview-img').attr('src', '/images/placeholder.png');
+			// ✨ placeholder.png 대신 투명 이미지로 변경
+			$('#page-preview-img').attr('src', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=');
 			$('#frame-container').empty();
 			window.selectionManager.clearSelection();
 			setTimeout(() => window.safeLineManager.update(), 100);
@@ -123,4 +124,26 @@ $(document).ready(function() {
 
 	// 전역 이벤트 설정
 	EventManager.setupGlobalEvents();
+	
+	/**
+		 * 함수가 너무 자주 실행되는 것을 방지하는 Debounce 함수
+		 * @param {Function} func - 실행할 함수
+		 * @param {number} wait - 지연 시간 (밀리초)
+		 */
+	function debounce(func, wait) {
+		let timeout;
+		return function(...args) {
+			clearTimeout(timeout);
+			timeout = setTimeout(() => func.apply(this, args), wait);
+		};
+	}
+
+	// 브라우저 창 크기가 조절될 때마다 세이프라인을 다시 계산하도록 이벤트 리스너 추가
+	// debounce 함수를 사용하여 0.25초마다 한 번씩만 실행되도록 하여 성능을 최적화합니다.
+	$(window).on('resize', debounce(function() {
+		// 모달창이 열려 있을 때만 업데이트를 실행합니다.
+		if ($('#editModal').is(':visible')) {
+			window.safeLineManager.update();
+		}
+	}, 250));
 });
