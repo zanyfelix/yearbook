@@ -1050,7 +1050,6 @@ button:focus,
 }
 #editor-toolbar .control-btn:hover {
     border-color: #007bff;
-    background-color: #f1f3f5;
     transform: none;
 }
 #editor-toolbar .control-btn:active {
@@ -1138,4 +1137,22 @@ button:focus,
 #frameModal .modal-body {
     max-height: 70vh; /* 모달 내용의 최대 높이를 화면 높이의 70%로 제한 */
     overflow-y: auto;   /* 내용이 최대 높이를 넘을 경우, 세로 스크롤바를 표시 */
+}
+
+/* ===========================================
+   22. 좌측 패널 버튼 폰트 크기 조정
+   =========================================== */
+#btn-background,
+#btn-photo-frame,
+#btn-textbox-frame,
+#btn-text {
+    font-size: 0.85rem;
+}
+
+/* ===========================================
+   23. Text 패널 버튼 텍스트 정렬
+   =========================================== */
+#text-panel .btn {
+    text-align: left;
+    padding-left: 1rem; /* 텍스트가 왼쪽에 너무 붙지 않도록 여백 추가 */
 }
