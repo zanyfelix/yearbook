@@ -25,7 +25,6 @@ class TextManager {
 
 		const textBox = $('<div class="text-box" contenteditable="true"></div>')
 			.text('Enter ' + param + ' Here') // 이전 수정사항 반영
-			.attr('data-is-placeholder', 'true')
 			.css({
 				position: 'absolute',
 				zIndex: 100,

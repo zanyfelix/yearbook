@@ -253,15 +253,6 @@ class EventManager {
 			}
 		});
 
-		// 최초 키 입력 시에만 안내 문구 제거 (.one()으로 단 한 번만 실행)
-		textBox.one('keydown', function(e) {
-			const $this = $(this);
-			if ($this.attr('data-is-placeholder') === 'true') {
-				if (e.key === 'Backspace' || e.key === 'Delete') return;
-				$this.text('');
-				$this.removeAttr('data-is-placeholder');
-			}
-		});
 	}
     
     static setupGlobalEvents() {
