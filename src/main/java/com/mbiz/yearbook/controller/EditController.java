@@ -62,36 +62,58 @@ public class EditController {
     @Autowired
     private ThemeRepository themeRepository;
 
-    @GetMapping("/edit")
-    public String editMain(HttpSession session, @RequestParam Long id, Model model) {
-    	
-		User loginUser = (User) session.getAttribute("user");
+	@GetMapping("/edit")
+	public String editMain(HttpSession session, @RequestParam Long id, Model model) {
+
+		User loginUser = (User) session.getAttribute("loginUser");
 		model.addAttribute("loginUser", loginUser);
-		
-		List<Contents> allContents = contentsRepository.findAll();
-		
-		// 2. 화면에 전달할 DTO 리스트 생성
-        List<ContentsData> contentsListForView = new ArrayList<>();
-        
-        for (Contents content : allContents) {
-            // 해당 contents_id를 가진 yearbook 페이지들을 모두 조회
-            List<Yearbook> pages = yearbookRepository.findByContentsId(content.getId());
 
-            // DTO 객체 생성 및 데이터 설정
-            ContentsData data = new ContentsData();
-            data.setContentsInfo(content);
-            data.setYearbookPages(pages);
+		List<Contents> allContents = contentsRepository.findByUserId(loginUser.getId());
 
-            // 최종 리스트에 추가
-            contentsListForView.add(data);
-        }
+		List<ContentsData> contentsListForView = new ArrayList<>();
 
-        // 4. 최종적으로 만들어진 DTO 리스트를 모델에 담아 JSP로 전달
-        model.addAttribute("contentsList", contentsListForView);
-        model.addAttribute("currentMenu", "edit");
-        
-        return "edit";
-    }
+		for (Contents content : allContents) {
+			// 1. 해당 contents에 대해 DB에 이미 저장된 yearbook 페이지들을 가져옵니다.
+			List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+
+			// 2. contents.pages 개수만큼 채울 최종 페이지 리스트를 생성합니다.
+			List<Yearbook> fullPageList = new ArrayList<>();
+
+			// 3. 1페이지부터 contents.pages 만큼 반복합니다.
+			for (int i = 1; i <= content.getPages(); i++) {
+				final int currentPageNo = i;
+
+				// 4. 이미 저장된 페이지 목록(existingPages)에서 현재 페이지 번호와 일치하는 것을 찾습니다.
+				Yearbook pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
+						.orElse(null); // 없으면 null
+
+				if (pageToAdd != null) {
+					// 5a. 일치하는 페이지가 있으면, 그 데이터를 리스트에 추가합니다.
+					fullPageList.add(pageToAdd);
+				} else {
+					// 5b. 일치하는 페이지가 없으면, JSP에서 placeholder를 표시할 수 있도록
+					// contentsId와 pageNo만 가진 '빈' Yearbook 객체를 만들어 추가합니다.
+					Yearbook emptyPage = new Yearbook();
+					emptyPage.setContentsId(content.getId());
+					emptyPage.setPageNo(currentPageNo);
+					// id, thumbnailPath 등은 null인 상태로 둡니다.
+					fullPageList.add(emptyPage);
+				}
+			}
+
+			// DTO 객체 생성 및 데이터 설정
+			ContentsData data = new ContentsData();
+			data.setContentsInfo(content);
+			data.setYearbookPages(fullPageList); // 완성된 리스트를 DTO에 담습니다.
+
+			contentsListForView.add(data);
+		}
+
+		model.addAttribute("contentsList", contentsListForView);
+		model.addAttribute("currentMenu", "edit");
+
+		return "edit";
+	}
     
     @PostMapping("/edit/theme")
     @ResponseBody
@@ -122,7 +144,7 @@ public class EditController {
         return Collections.emptyList();
     }
     
-    @PostMapping("/savePage")
+    @PostMapping("/edit/savePage")
     public Map<String, Object> savePage(@RequestBody Map<String, Object> payload) {
         // 1. 데이터 추출 (Long, Integer 타입 캐스팅 주의)
         // yearbookId는 null일 수 있으므로 Long 대신 Object로 받고 확인
