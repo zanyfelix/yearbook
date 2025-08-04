@@ -1155,7 +1155,8 @@ button:focus,
 #btn-background,
 #btn-photo-frame,
 #btn-textbox-frame,
-#btn-text {
+#btn-text,
+#btn-element {
     font-size: 0.85rem;
 }
 

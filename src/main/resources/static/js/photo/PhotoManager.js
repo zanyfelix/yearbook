@@ -169,62 +169,75 @@ class PhotoManager {
         });
     }
 
-    /**
-     * 사진 크기 조절 기능 구현 (비율 유지)
-     */
-    static _makeResizable(photo, handle) {
-        handle.on('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+	/**
+	     * 사진 크기 조절 기능 구현 (비율 유지 및 피벗 지점 고정)
+	     */
+	static _makeResizable(photo, handle) {
+		handle.on('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startWidth = photo.width();
-            const startHeight = photo.height();
-            const startLeft = parseFloat(photo.css('left'));
-            const startTop = parseFloat(photo.css('top'));
-            const aspectRatio = startWidth / startHeight;
+			const startX = e.clientX;
+			const startY = e.clientY;
+			const startWidth = photo.width();
+			const startHeight = photo.height();
+			const startLeft = parseFloat(photo.css('left'));
+			const startTop = parseFloat(photo.css('top'));
+			const aspectRatio = startWidth / startHeight;
 
-            $(document).on('mousemove.photoResize', (ev) => {
-                let deltaX = ev.clientX - startX;
-                
-                // 핸들 위치에 따라 deltaX 방향 조정
-                if (handle.hasClass('handle-nw') || handle.hasClass('handle-sw')) {
-                    deltaX = -deltaX;
-                }
+			$(document).on('mousemove.photoResize', (ev) => {
+				let newWidth, newHeight;
+				let newLeft = startLeft;
+				let newTop = startTop;
 
-                const newWidth = startWidth + deltaX * 2;
-                const newHeight = newWidth / aspectRatio;
+				// 핸들 위치에 따라 계산 방식 변경
+				if (handle.hasClass('handle-se')) {
+					newWidth = startWidth + (ev.clientX - startX);
+					newHeight = newWidth / aspectRatio;
+				} else if (handle.hasClass('handle-sw')) {
+					const deltaX = ev.clientX - startX;
+					newWidth = startWidth - deltaX;
+					newHeight = newWidth / aspectRatio;
+					newLeft = startLeft + deltaX;
+				} else if (handle.hasClass('handle-ne')) {
+					const deltaY = ev.clientY - startY;
+					newHeight = startHeight - deltaY;
+					newWidth = newHeight * aspectRatio;
+					newTop = startTop + deltaY;
+				} else if (handle.hasClass('handle-nw')) {
+					const deltaX = ev.clientX - startX;
+					newWidth = startWidth - deltaX;
+					newHeight = newWidth / aspectRatio;
+					newLeft = startLeft + deltaX;
+					newTop = startTop + (startHeight - newHeight);
+				}
 
-                // 최소 크기 제한
-                if (newWidth < 50 || newHeight < 50) return;
+				// 최소 크기 제한
+				if (newWidth < 50 || newHeight < 50) return;
 
-                const newLeft = startLeft - (newWidth - startWidth) / 2;
-                const newTop = startTop - (newHeight - startHeight) / 2;
+				photo.css({
+					width: `${newWidth}px`,
+					height: `${newHeight}px`,
+					left: `${newLeft}px`,
+					top: `${newTop}px`
+				});
 
-                photo.css({
-                    width: `${newWidth}px`,
-                    height: `${newHeight}px`,
-                    left: `${newLeft}px`,
-                    top: `${newTop}px`
-                });
-				
-				// ✨ 추가된 부분: 실루엣의 크기와 위치도 함께 업데이트
+				// 실루엣과 선택 UI도 함께 업데이트
 				$('.photo-silhouette').css({
 					width: `${newWidth}px`,
 					height: `${newHeight}px`,
 					left: `${newLeft}px`,
 					top: `${newTop}px`
 				});
-								
-                this.updateSelectionUI(photo);
-            });
+				this.updateSelectionUI(photo);
+			});
 
-            $(document).on('mouseup.photoResize', () => {
-                $(document).off('mousemove.photoResize mouseup.photoResize');
-            });
-        });
-    }
+			$(document).on('mouseup.photoResize', () => {
+				// 마우스 업 시, 이벤트 핸들러만 제거하고 선택 상태는 유지합니다.
+				$(document).off('mousemove.photoResize mouseup.photoResize');
+			});
+		});
+	}
 	
 	static showOverlay(photo, frameGroup) {
 		this.hideOverlay();

@@ -90,7 +90,8 @@
                         <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
                         <button id="btn-photo-frame" class="btn btn-outline-secondary w-100 mb-2">PhotoFrame</button>
                         <button id="btn-textbox-frame" class="btn btn-outline-secondary w-100 mb-2">TextBoxFrame</button>
-                        <button id="btn-text" class="btn btn-outline-secondary w-100">Text</button>
+                        <button id="btn-text" class="btn btn-outline-secondary w-100 mb-2">Text</button>
+                        <button id="btn-element" class="btn btn-outline-secondary w-100">Element</button>
                     </div>
 
                     <!-- 중앙 썸네일 선택 영역 (40% - 2/5 비율) -->
