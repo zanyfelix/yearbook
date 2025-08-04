@@ -86,6 +86,7 @@
                 <div class="modal-body d-flex p-0" style="height: 100vh;">
                     <!-- 좌측 버튼 영역 (고정 너비) -->
                     <div class="d-flex flex-column p-3 border-end" style="min-width: 150px;">
+                    	<div class="editor-panel-spacer"></div>
                         <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
                         <button id="btn-photo-frame" class="btn btn-outline-secondary w-100 mb-2">PhotoFrame</button>
                         <button id="btn-textbox-frame" class="btn btn-outline-secondary w-100 mb-2">TextBoxFrame</button>
@@ -94,6 +95,7 @@
 
                     <!-- 중앙 썸네일 선택 영역 (40% - 2/5 비율) -->
                     <div class="px-3 py-3 overflow-auto border-end" style="width: 40%; max-height: 100vh;">
+                    	<div class="editor-panel-spacer"></div>
                         <!-- 공통 컨테이너 -->
                         <div id="thumbnail-area">
                             <!-- Background 패널 -->

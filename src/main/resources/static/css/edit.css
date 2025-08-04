@@ -1080,3 +1080,21 @@ button:focus,
 .hide-for-capture {
     display: none !important;
 }
+/* ===========================================
+   9. 에디터 패널 상단 정렬
+   =========================================== */
+.editor-panel-spacer {
+    /* 우측 툴바의 높이와 동일하게 설정 */
+    min-height: 57px; 
+    
+    /* 우측 툴바의 하단 경계선과 동일한 선 추가 */
+    border-bottom: 1px solid #e9ecef;
+    
+    /* 우측 툴바의 하단 여백(margin)과 동일하게 설정 */
+    margin-bottom: 0.5rem; /* mb-2 클래스와 동일 */
+
+    /* 부모 요소의 패딩(p-3)을 무시하고 경계선이 끝까지 이어지도록 조정 */
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-top: -1rem;
+}
