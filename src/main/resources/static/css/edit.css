@@ -1117,3 +1117,14 @@ button:focus,
 .frame-group:not(.dragging):hover {
     box-shadow: none;
 }
+
+/* ===========================================
+   20. 팝업 모달 스크롤 수정
+   =========================================== */
+
+/* 배경/프레임 선택 모달의 내용(body)에 대한 스크롤 설정 */
+#backgroundModal .modal-body,
+#frameModal .modal-body {
+    max-height: 70vh; /* 모달 내용의 최대 높이를 화면 높이의 70%로 제한 */
+    overflow-y: auto;   /* 내용이 최대 높이를 넘을 경우, 세로 스크롤바를 표시 */
+}

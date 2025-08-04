@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -23,10 +24,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
+import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
 import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.repository.ContentsRepository;
+import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.ThemeService;
@@ -55,6 +58,9 @@ public class EditController {
     private ContentsRepository contentsRepository;
     @Autowired
     private YearbookRepository yearbookRepository;
+    
+    @Autowired
+    private ThemeRepository themeRepository;
 
     @GetMapping("/edit")
     public String editMain(HttpSession session, @RequestParam Long id, Model model) {
@@ -93,6 +99,27 @@ public class EditController {
     	Long id = Long.parseLong(param.get("id").toString());
         String category = (String) param.get("category");
         return themeService.findByUserIdAndCategory(id, category);
+    }
+    
+    /**
+     * 특정 테마 ID를 받아, 해당 테마와 동일한 부모 ID를 가진 모든 테마 목록을 반환합니다.
+     */
+    @GetMapping("/edit/themesByParent") // 새로운 GET 요청 주소
+    @ResponseBody
+    public List<Theme> getThemesByParentId(@RequestParam("themeId") Long themeId) {
+        // 1. 전달받은 themeId로 현재 테마를 조회하여 parentId를 얻습니다.
+        Theme currentTheme = themeRepository.findById(themeId)
+                .orElseThrow(() -> new RuntimeException("Theme not found with id: " + themeId));
+        
+        Long parentId = currentTheme.getParentId();
+
+        // 2. parentId가 있으면, 해당 parentId를 가진 모든 테마 목록을 조회하여 반환합니다.
+        if (parentId != null) {
+            return themeRepository.findByParentId(parentId);
+        }
+
+        // parentId가 없는 경우, 빈 리스트나 적절한 예외 처리를 합니다.
+        return Collections.emptyList();
     }
     
     @PostMapping("/edit/mainFrame")
