@@ -54,6 +54,9 @@ class FrameManager {
 		frameOverlay.on('load', () => {
 			this.setupPosition(frameGroup, frameTheme);
 			EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+			
+			// ✨ 핵심 수정: 생성된 프레임을 즉시 선택 상태로 만듭니다.
+			window.selectionManager.selectFrame(frameGroup);
 		});
 	}
     
