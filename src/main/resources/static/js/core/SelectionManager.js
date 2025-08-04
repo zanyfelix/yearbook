@@ -98,6 +98,7 @@ class SelectionManager {
 		
 		// 'selected'와 'editing' 클래스를 모두 제거합니다.
 		$('.text-box').removeClass('selected editing');
+		$('#text-tooltip').addClass('d-none');
 		UIManager.hideAllToolbars();
 
 		// 핸들 및 툴팁 제거

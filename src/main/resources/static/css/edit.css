@@ -626,26 +626,36 @@ body {
         padding: 10px;
     }
 }
-/* text box */
+/* ===========================================
+   기존 .text-box 관련 스타일을 아래 코드로 전체 교체
+   =========================================== */
+
+/* 텍스트 상자 기본 스타일 */
 .text-box {
-    position: absolute;
-    border: 1px dashed transparent;
-    padding: 10px;
+    /* ✨ 테두리 스타일을 점선(dotted)으로 변경하고 투명하게 설정 */
+    border: 2px dotted transparent; 
+    padding: 8px;
+    background-color: transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
     min-width: 50px;
-    cursor: default; /* 기본 커서 */    
+    cursor: default;
 }
-.text-box:hover {
-    border-color: #007bff;
-}
+
+/* 선택 상태 */
 .text-box.selected {
-    cursor: move; /* '선택' 상태일 때 이동 커서 */
-    border: 2px solid #007bff; /* 파란색 테두리 */
+    cursor: move;
+    border-color: #FF0000; /* ✨ 테두리 색상을 빨간색으로 변경 */
 }
+
+/* 편집 상태 (녹색 실선으로 유지) */
 .text-box.editing {
-    cursor: text; /* '편집' 상태일 때 텍스트 커서 */
-    border: 2px solid #28a745; /* 편집을 의미하는 녹색 테두리 */
+    cursor: text;
+    border: 1px dotted #FF0000; /* 편집 시에는 실선으로 명확하게 표시 */
 }
-.text-box[contenteditable=true]:focus {
+
+/* 편집 상태 & 포커스 상태 */
+.text-box.editing:focus {
+    background-color: rgba(255, 255, 255, 0.5);
     outline: none;
 }
 
