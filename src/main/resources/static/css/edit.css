@@ -1205,3 +1205,37 @@ button:focus,
 #photoFrameList .thumbnail-wrapper img {
     border: none !important; /* !important를 사용하여 다른 스타일보다 우선 적용 */
 }
+
+/* ===========================================
+   26. 회전 핸들 위치 및 색상 수정
+   =========================================== */
+
+/* 1. 프레임 및 사진 회전 핸들 공통 스타일 */
+.rotate-handle,
+.photo-rotate-handle {
+    /* 위치: 정중앙 상단으로 수정 */
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto; /* 기존 right 속성 초기화 */
+
+    /* 색상: 흰색 배경, 검은색 테두리로 변경 */
+    background: #ffffff;
+    border: 2px solid #000000;
+}
+
+/* 핸들 내부 아이콘 색상 변경 */
+.rotate-handle::before,
+.photo-rotate-handle::before {
+    color: #000000;
+}
+
+/* 2. 프레임 및 사진 회전 핸들 연결선 공통 스타일 */
+.rotate-line,
+.photo-rotate-line {
+    /* 위치: 정중앙 상단으로 수정 */
+    left: 50%;
+    transform: translateX(-50%);
+
+    /* 색상: 검은색 실선으로 변경 */
+    background: #000000;
+}
