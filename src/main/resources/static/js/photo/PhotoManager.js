@@ -31,6 +31,14 @@ class PhotoManager {
 		const resizeHandles = ['nw', 'ne', 'sw', 'se'].map(pos =>
 			$(`<div class="resize-handle handle-${pos}"></div>`)
 		);
+		
+		// ✨ --- 핵심 수정 --- ✨
+		const allHandles = [rotateHandle, ...resizeHandles];
+		allHandles.forEach(handle => {
+			handle.on('click', function(e) {
+				e.stopPropagation();
+			});
+		});
 
 		selectionBox.append(rotateHandle, rotateLine, ...resizeHandles);
 		parentContainer.append(selectionBox); // 수정된 부모 컨테이너에 추가
