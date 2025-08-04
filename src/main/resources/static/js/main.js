@@ -33,6 +33,8 @@ $(document).ready(function() {
 
 	        // 서버로 보낼 최종 데이터 객체
 	        const payload = {
+				/*userId : "${sessionScope.loginUser.id}"*/
+				userId : 11, //임시
 	            yearbookId: yearbookId,
 	            contentsId: contentsId,
 	            pageNo: pageNo,
@@ -146,4 +148,79 @@ $(document).ready(function() {
 			window.safeLineManager.update();
 		}
 	}, 250));
+	
+	/**
+	 * 서버에서 받은 디자인 데이터(JSON)를 사용해 편집 페이지의 내용을 복원하는 함수
+	 * @param {object} pageData - yearbook 객체 전체
+	 */
+	function renderPage(pageData) {
+		if (!pageData || !pageData.designData) {
+			console.log("디자인 데이터가 없어 기본 상태로 시작합니다.");
+			// 기본 흰색 배경으로 초기화
+			$('#page-preview-img').attr('src', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=');
+			$('#frame-container').empty();
+			return;
+		}
+
+		const design = JSON.parse(pageData.designData);
+
+		// 1. 기존 내용 초기화
+		$('#frame-container').empty();
+
+		// 2. 배경 이미지 복원
+		$('#page-preview-img').attr('src', design.background);
+
+		// 3. 저장된 프레임들 복원
+		if (design.frames) {
+			design.frames.forEach(frameData => {
+				// FrameManager.applyFrame을 호출하여 프레임을 생성하고,
+				// 콜백을 통해 저장된 위치, 크기, 회전, 사진 정보를 적용합니다.
+				FrameManager.applyFrame(frameData.theme, frameData);
+			});
+		}
+
+		// 4. 저장된 텍스트 상자들 복원
+		if (design.textBoxes) {
+			design.textBoxes.forEach(boxData => {
+				const $box = $('<div class="text-box" contenteditable="true"></div>')
+					.html(boxData.html)
+					.css({
+						position: 'absolute',
+						left: boxData.position.left + 'px',
+						top: boxData.position.top + 'px',
+						width: boxData.size.width + 'px',
+						height: boxData.size.height + 'px',
+						...boxData.styles
+					});
+				$('#frame-container').append($box);
+				EventManager.setupTextEvents($box);
+			});
+		}
+	}
+	
+	// Edit 버튼 클릭 시, AJAX로 페이지 데이터를 가져와 편집창에 렌더링
+	$('.content').on('click', '.edit-btn', function() {
+		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
+		const yearbookId = activePageThumb.data('yearbook-id');
+
+		// yearbookId가 있을 경우 (저장된 페이지) -> 서버에서 데이터를 가져옴
+		if (yearbookId) {
+			$.ajax({
+				url: `${ctx}/edit/pageData`,
+				method: 'GET',
+				data: { id: yearbookId },
+				success: function(pageData) {
+					// 성공적으로 데이터를 받으면, renderPage 함수를 호출해 편집창을 복원
+					renderPage(pageData);
+				},
+				error: function() {
+					alert("페이지 데이터를 불러오는 데 실패했습니다.");
+					renderPage(null); // 실패 시 빈 페이지로 시작
+				}
+			});
+		} else {
+			// yearbookId가 없을 경우 (새 페이지) -> 빈 페이지로 시작
+			renderPage(null);
+		}
+	});
 });

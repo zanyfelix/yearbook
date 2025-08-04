@@ -145,56 +145,49 @@ public class EditController {
     }
     
     @PostMapping("/edit/savePage")
+    @ResponseBody // @ResponseBody를 추가하여 JSON 응답을 보장합니다.
     public Map<String, Object> savePage(@RequestBody Map<String, Object> payload) {
-        // 1. 데이터 추출 (Long, Integer 타입 캐스팅 주의)
-        // yearbookId는 null일 수 있으므로 Long 대신 Object로 받고 확인
         Object yearbookIdObj = payload.get("yearbookId");
-        Long yearbookId = (yearbookIdObj != null) ? Long.parseLong(yearbookIdObj.toString()) : null;
-
-        Long contentsId = Long.parseLong(payload.get("contentsId").toString());
-        Integer pageNo = Integer.parseInt(payload.get("pageNo").toString());
-        Long userId = 1L; // TODO: 실제 로그인된 사용자 ID를 가져와야 합니다. (예: 세션 등)
+        Long yearbookId = (yearbookIdObj != null && !yearbookIdObj.toString().isEmpty()) ? Long.parseLong(yearbookIdObj.toString()) : null;
 
         String designDataJson = (String) payload.get("designData");
         String imageData = (String) payload.get("imageData");
 
         Yearbook page;
 
-        // 2. ID 존재 여부에 따라 분기
+        // ID 존재 여부에 따라 분기
         if (yearbookId != null) {
             // ID가 있으면 기존 데이터 수정 (Update)
             page = yearbookRepository.findById(yearbookId).orElseThrow(() -> new RuntimeException("페이지를 찾을 수 없습니다."));
         } else {
             // ID가 없으면 신규 데이터 생성 (Create)
-            // 혹시 모를 중복 생성을 방지하기 위해 DB를 한번 더 확인
+            Long contentsId = Long.parseLong(payload.get("contentsId").toString());
+            Integer pageNo = Integer.parseInt(payload.get("pageNo").toString());
+            Long userId = Long.parseLong(payload.get("userId").toString());
+
             page = yearbookRepository.findByContentsIdAndPageNo(contentsId, pageNo)
-                                      .orElse(new Yearbook()); // 없으면 새 객체 생성
+                                      .orElse(new Yearbook());
             
-            if (page.getId() == null) { // 새로 생성된 객체일 경우 초기값 설정
+            if (page.getId() == null) {
                 page.setUserId(userId);
                 page.setContentsId(contentsId);
                 page.setPageNo(pageNo);
             }
         }
 
-        // 3. 공통 데이터 업데이트
         page.setDesignData(designDataJson);
         page.setLastSaved(new Date());
 
-        // 4. DB에 저장하여 ID를 먼저 확정 (신규 생성 시 ID가 부여됨)
         Yearbook savedPage = yearbookRepository.save(page);
 
-        // 5. 확정된 ID로 썸네일 파일 저장
         String newImagePath = saveThumbnailFile(imageData, savedPage.getId());
         
-        // 6. 썸네일 경로를 다시 업데이트하고 최종 저장
         savedPage.setThumbnailPath(newImagePath);
         yearbookRepository.save(savedPage);
 
-        // 7. 클라이언트에 새 경로와 새로 생성된 ID 응답
         Map<String, Object> response = new HashMap<>();
         response.put("newImagePath", newImagePath);
-        response.put("newYearbookId", savedPage.getId()); // 새로 생성된 ID 전달
+        response.put("newYearbookId", savedPage.getId());
         return response;
     }
     
@@ -228,5 +221,15 @@ public class EditController {
 
         // WebMvcConfig에 설정한 URL 경로를 기준으로 최종 경로 반환
         return "/thumbnails/" + filename;
+    }
+    
+    /**
+     * 특정 yearbook ID에 해당하는 페이지의 저장된 디자인 데이터를 반환합니다.
+     */
+    @GetMapping("/edit/pageData")
+    @ResponseBody
+    public Yearbook getPageData(@RequestParam("id") Long yearbookId) {
+        return yearbookRepository.findById(yearbookId)
+                .orElseThrow(() -> new RuntimeException("Yearbook page not found with id: " + yearbookId));
     }
 }

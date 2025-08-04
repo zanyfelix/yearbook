@@ -2,7 +2,7 @@
 // 📁 js/frame/FrameManager.js
 // ============================================================================
 class FrameManager {
-	static applyFrame(frameTheme) {
+	static applyFrame(frameTheme, savedState = null) {
 		const frameContainer = $('#frame-container');
 		const frameGroup = $('<div class="frame-group"></div>').css({
 			position: 'absolute', cursor: 'move', zIndex: 15
@@ -57,6 +57,38 @@ class FrameManager {
 			
 			// ✨ 핵심 수정: 생성된 프레임을 즉시 선택 상태로 만듭니다.
 			window.selectionManager.selectFrame(frameGroup);
+		});
+		
+		frameOverlay.on('load', () => {
+			if (savedState) {
+				// ✨ 저장된 상태(savedState)가 있으면, 그 정보로 프레임 복원
+				frameGroup.css({
+					left: savedState.position.left + 'px',
+					top: savedState.position.top + 'px',
+					width: savedState.size.width + 'px',
+					height: savedState.size.height + 'px',
+					transform: savedState.transform
+				});
+
+				if (savedState.photo && savedState.photo.src) {
+					uploadedPhoto.attr('src', savedState.photo.src)
+						.css({
+							display: 'block',
+							left: savedState.photo.position.left + 'px',
+							top: savedState.photo.position.top + 'px',
+							width: savedState.photo.size.width + 'px',
+							height: savedState.photo.size.height + 'px',
+							transform: savedState.photo.transform
+						});
+					placeholderLink.hide();
+				}
+			} else {
+				// ✨ 저장된 상태가 없으면, 새로 추가하는 로직 (기존과 동일)
+				this.setupPosition(frameGroup, frameTheme);
+				window.selectionManager.selectFrame(frameGroup);
+			}
+
+			EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
 		});
 	}
     
