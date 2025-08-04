@@ -188,6 +188,22 @@
         </div>
     </div><!-- 팝업 모달 -->
     
+    <!-- 배경 선택용 모달 -->
+    <div class="modal fade" id="backgroundModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Backgrounds</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="modalBackgroundList" class="row gy-3">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 프레임 선택용 모달 -->
     <div class="modal fade" id="frameModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">

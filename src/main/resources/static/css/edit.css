@@ -1098,3 +1098,22 @@ button:focus,
     margin-right: -1rem;
     margin-top: -1rem;
 }
+/* ===========================================
+   19. 호버 기능 제거 (수정본)
+   =========================================== */
+
+/* 1. 모든 썸네일의 마우스오버 시각 효과(그림자, 움직임)만 제거합니다. */
+.thumbnail-wrapper:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 2. 오버레이를 숨기는 규칙은 여기서 삭제했습니다.
+      따라서 이제 마우스를 올리면 오버레이가 정상적으로 나타납니다.
+*/
+
+/* 3. 편집 화면의 프레임 요소 마우스오버 효과(테두리 그림자) 제거 */
+.frame-group:hover,
+.frame-group:not(.dragging):hover {
+    box-shadow: none;
+}
