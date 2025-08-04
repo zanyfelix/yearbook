@@ -1277,3 +1277,9 @@ button:focus,
 #backgroundModal .img-thumbnail {
     padding: 0;
 }
+/* ===========================================
+   28. Place Image Here 텍스트 크기
+   =========================================== */
+.place-image-here-link {
+    font-size: 12px;
+}
