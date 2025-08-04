@@ -216,10 +216,10 @@ class EventManager {
 		textBox.on('dblclick', function(e) {
 			e.stopPropagation();
 			const $this = $(this);
+			
 			if ($this.hasClass('selected')) {
 				$this.addClass('editing');
 				$this.focus(); // 텍스트 커서 활성화
-				UIManager.showTextTooltip($this); // ✨ 이 라인을 추가합니다.
 			}
 		});
 

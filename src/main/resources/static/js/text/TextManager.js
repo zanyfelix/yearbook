@@ -58,5 +58,8 @@ class TextManager {
 		});
 
 		EventManager.setupTextEvents(textBox);
+		
+		// ✨ 핵심 수정: 생성된 텍스트 상자를 즉시 선택 상태로 만듭니다.
+		window.selectionManager.selectTextBox(textBox);
 	}
 }

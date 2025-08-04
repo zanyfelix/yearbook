@@ -80,6 +80,7 @@ class SelectionManager {
 		textBox.removeClass('editing').addClass('selected');
 		textBox.blur(); // 텍스트 편집 커서가 활성화되지 않도록 포커스를 해제합니다.
 
+		UIManager.showTextTooltip(textBox);
 		textBox.addClass('selected');
 	}
 
