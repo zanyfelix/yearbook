@@ -100,6 +100,7 @@ class SelectionManager {
 			'border': '2px solid transparent',
 			'box-shadow': 'none'
 		});
+		
 		$('.element-resize-handle').remove();
 
 		// 사진 선택 해제
