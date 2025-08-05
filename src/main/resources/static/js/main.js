@@ -1,8 +1,8 @@
 $(document).ready(function() {
-	
+
 	let activePageThumb = null;
 	let hasSaved = false;
-	
+
 	// 전역 인스턴스 초기화
 	window.selectionManager = new SelectionManager();
 	window.safeLineManager = new SafeLineManager();
@@ -12,10 +12,10 @@ $(document).ready(function() {
 	window.clearSelection = () => window.selectionManager.clearSelection();
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
-	
+
 	// Edit 버튼 클릭 시, 어떤 썸네일을 편집할지 activePageThumb 변수에 저장
 	$('.content').on('click', '.edit-btn', function() {
-	    activePageThumb = $(this).closest('.page-card').find('.page-thumb');
+		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
 	});
 
 	// Save 버튼 클릭 이벤트
@@ -93,12 +93,12 @@ $(document).ready(function() {
 				success: function(response) {
 					if (response && response.newImagePath) {
 						hasSaved = true; // ✨ 저장이 성공했으므로 플래그를 true로 설정
-						
+
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 						if (response.newYearbookId) {
 							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
 						}
-						
+
 						// --- ✨ 핵심 수정: 메시지 표시 로직 ---
 						if (response.lastSaved) {
 							const savedDate = new Date(response.lastSaved);
@@ -197,17 +197,16 @@ $(document).ready(function() {
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
 		if (confirm("모든 디자인이 삭제됩니다. 계속하시겠습니까?")) {
-			// ✨ placeholder.png 대신 투명 이미지로 변경
-			$('#page-preview-img').attr('src', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=');
+			// ✨ 기본 배경으로 초기화
+			loadDefaultBackground();
 			$('#frame-container').empty();
 			window.selectionManager.clearSelection();
-			setTimeout(() => window.safeLineManager.update(), 100);
 		}
 	});
 
 	// 전역 이벤트 설정
 	EventManager.setupGlobalEvents();
-	
+
 	/**
 		 * 함수가 너무 자주 실행되는 것을 방지하는 Debounce 함수
 		 * @param {Function} func - 실행할 함수
@@ -229,16 +228,31 @@ $(document).ready(function() {
 			window.safeLineManager.update();
 		}
 	}, 250));
-	
+
+	// ✨ 기본 배경 이미지 로드 함수
+	function loadDefaultBackground() {
+		const defaultBgPath = `${ctx}/images/background.png`;
+		$('#page-preview-img').attr('src', defaultBgPath);
+
+		// 이미지 로드 완료 후 safeline 업데이트
+		$('#page-preview-img').on('load', function() {
+			setTimeout(() => {
+				if (window.safeLineManager) {
+					window.safeLineManager.update();
+				}
+			}, 100);
+		});
+	}
+
 	/**
 	 * 서버에서 받은 디자인 데이터(JSON)를 사용해 편집 페이지의 내용을 복원하는 함수
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
 	function renderPage(pageData) {
 		if (!pageData || !pageData.designData) {
-			console.log("디자인 데이터가 없어 기본 상태로 시작합니다.");
-			// 기본 흰색 배경으로 초기화
-			$('#page-preview-img').attr('src', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=');
+			console.log("디자인 데이터가 없어 기본 배경으로 시작합니다.");
+			// ✨ 기본 배경으로 초기화
+			loadDefaultBackground();
 			$('#frame-container').empty();
 			return;
 		}
@@ -248,8 +262,12 @@ $(document).ready(function() {
 		// 1. 기존 내용 초기화
 		$('#frame-container').empty();
 
-		// 2. 배경 이미지 복원
-		$('#page-preview-img').attr('src', design.background);
+		// 2. 배경 이미지 복원 (없으면 기본 배경 사용)
+		if (design.background && !design.background.includes('data:image/gif;base64')) {
+			$('#page-preview-img').attr('src', design.background);
+		} else {
+			loadDefaultBackground();
+		}
 
 		// 3. 저장된 프레임들 복원
 		if (design.frames) {
@@ -278,7 +296,7 @@ $(document).ready(function() {
 			});
 		}
 	}
-	
+
 	// Edit 버튼 클릭 시, AJAX로 페이지 데이터를 가져와 편집창에 렌더링
 	$('.content').on('click', '.edit-btn', function() {
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
@@ -293,51 +311,37 @@ $(document).ready(function() {
 				success: function(pageData) {
 					// 성공적으로 데이터를 받으면, renderPage 함수를 호출해 편집창을 복원
 					renderPage(pageData);
-					
-					// last_save 값이 있으면 표시
-					if (pageData && pageData.lastSaved) {
-						displayLastSaveTime(pageData.lastSaved);
-					}
 				},
 				error: function() {
 					alert("페이지 데이터를 불러오는 데 실패했습니다.");
-					renderPage(null); // 실패 시 빈 페이지로 시작
+					renderPage(null); // 실패 시 기본 배경으로 시작
 				}
 			});
 		} else {
-			// yearbookId가 없을 경우 (새 페이지) -> 빈 페이지로 시작
+			// yearbookId가 없을 경우 (새 페이지) -> 기본 배경으로 시작
 			renderPage(null);
 		}
 	});
-	
-	// 저장 시간 표시 함수
-	function displayLastSaveTime(lastSaved) {
-		const savedDate = new Date(lastSaved);
 
-		const year = savedDate.getFullYear();
-		const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
-		const day = savedDate.getDate().toString().padStart(2, '0');
-
-		let hours = savedDate.getHours();
-		const minutes = savedDate.getMinutes().toString().padStart(2, '0');
-		const ampm = hours >= 12 ? 'PM' : 'AM';
-
-		hours = hours % 12;
-		hours = hours ? hours : 12;
-
-		const formattedDate = `${year}.${month}.${day}`;
-		const formattedTime = `${hours}:${minutes}${ampm}`;
-
-		const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
-
-		$('#save-confirmation-message').html(message).show();
-	}
-	
-	// 모달이 열릴 때마다 저장 상태 플래그를 초기화합니다.
+	// ✨ 모달이 열릴 때 기본 설정 적용
 	$('#editModal').on('show.bs.modal', function() {
 		hasSaved = false;
-		// 저장 메시지 숨김 (새로운 데이터 로드 전)
-		$('#save-confirmation-message').hide();
+
+		// 기본 배경이 설정되어 있지 않다면 로드
+		const currentSrc = $('#page-preview-img').attr('src');
+		if (!currentSrc ||
+			currentSrc.includes('data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')) {
+			loadDefaultBackground();
+		}
+	});
+
+	// 모달이 완전히 열린 후 safeline 업데이트
+	$('#editModal').on('shown.bs.modal', function() {
+		setTimeout(() => {
+			if (window.safeLineManager) {
+				window.safeLineManager.update();
+			}
+		}, 200);
 	});
 
 	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.

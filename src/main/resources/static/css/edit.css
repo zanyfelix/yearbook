@@ -177,14 +177,14 @@ body {
 }
 
 /* ===========================================
-   4. 미리보기 영역 (SelectionManager 대응)
+   4. 미리보기 영역 (반응형 배경 이미지 대응)
    =========================================== */
 #page-preview {
-    /* ✨ 핵심 수정: 이미지 비율에 맞춰 크기 자동 조절 */
-    max-width: 658px;         /* 최대 너비를 786px로 제한 */
-    aspect-ratio: 658 / 844;  /* 너비에 맞춰 786:1011 비율 유지 */
-    width: 100%;
+    /* ✨ 핵심 수정: 컨테이너가 유연하게 크기 조절되도록 변경 */
+    max-width: 100%;           /* 부모 컨테이너를 넘지 않도록 */
+    width: 100%;               /* 가용 공간을 최대한 활용 */
     height: auto;              /* 높이는 비율에 따라 자동 계산 */
+    min-height: 400px;         /* 최소 높이 보장 */
     margin: auto;              /* 컨테이너 내에서 자동 중앙 정렬 */
 
     /* 기존 스타일 유지 */
@@ -193,29 +193,113 @@ body {
     border-radius: 12px;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
     background-color: #ffffff;
-}
-
-.page-preview-container {
-    overflow: hidden;
+    
+    /* 내부 요소들이 컨테이너에 맞게 조절되도록 */
     display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-#page-preview-img {
-    /* ✨ 부모(#page-preview) 크기에 꽉 차도록 변경 */
+.page-preview-container {
+    /* ✨ 수정: 이미지 컨테이너가 부모를 꽉 채우도록 */
     width: 100%;
     height: 100%;
-    object-fit: contain; /* 이미지가 컨테이너를 꽉 채우도록 설정 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#page-preview-img {
+    /* ✨ 핵심 수정: 배경 이미지가 비율을 유지하면서 컨테이너에 맞게 조절 */
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;               /* 가로는 자동 조절 */
+    height: auto;              /* 세로는 자동 조절 */
+    object-fit: contain;       /* 비율 유지하면서 컨테이너 안에 맞춤 */
 
     /* 기존 스타일 유지 */
     display: block;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     background-color: #ffffff;
+    
+    /* 부드러운 전환 효과 */
+    transition: all 0.3s ease;
 }
 
 #page-preview-img:hover {
     transform: scale(1.01);
+}
+
+/* 반응형 디자인 강화 */
+@media (max-width: 1200px) {
+    #page-preview {
+        min-height: 350px;
+    }
+}
+
+@media (max-width: 992px) {
+    #page-preview {
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    #page-preview {
+        min-height: 250px;
+        border-radius: 8px;
+    }
+    
+    #page-preview-img {
+        border-radius: 6px;
+    }
+}
+
+@media (max-width: 576px) {
+    #page-preview {
+        min-height: 200px;
+        border-radius: 6px;
+        border-width: 1px;
+    }
+    
+    #page-preview-img {
+        border-radius: 4px;
+    }
+}
+
+/* 모달 내에서의 반응형 조정 */
+#editModal .modal-body {
+    padding: 0;
+}
+
+#editModal #page-preview {
+    /* 모달 내에서는 더 유연하게 크기 조절 */
+    max-height: calc(100vh - 100px);  /* 화면 높이에서 여백 제외 */
+    height: auto;
+}
+
+/* 고해상도 디스플레이 대응 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    #page-preview-img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* 세로 방향 화면 (모바일) */
+@media (orientation: portrait) and (max-width: 768px) {
+    #page-preview {
+        width: 100%;
+        min-height: 60vw; /* 화면 너비의 60% 높이 */
+    }
+}
+
+/* 가로 방향 화면 (태블릿) */
+@media (orientation: landscape) and (max-width: 1024px) {
+    #page-preview {
+        min-height: 40vh; /* 화면 높이의 40% */
+    }
 }
 
 /* ===========================================
@@ -457,39 +541,70 @@ body {
 /* ===========================================
    7. SafeLine 시스템 (SafeLineManager 대응)
    =========================================== */
+/* 메인 안전선 오버레이 */
 #safe-line-overlay {
     transition: opacity 0.3s ease;
     border-radius: 8px;
 }
 
-.safe-zone {
+/* 안전선 박스 (단일 div) */
+.safe-line-box {
     animation: safeline-pulse 3s infinite ease-in-out;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 4px;
+    position: relative;
 }
 
+/* 펄스 애니메이션 */
 @keyframes safeline-pulse {
     0%, 100% { 
         opacity: 0.7; 
-        background-color: rgba(255, 107, 107, 0.25);
-        border-color: rgba(255, 107, 107, 0.5);
+        border-color: rgba(255, 107, 107, 0.6);
     }
     50% { 
         opacity: 0.9; 
-        background-color: rgba(255, 107, 107, 0.35);
-        border-color: rgba(255, 107, 107, 0.7);
+        border-color: rgba(255, 107, 107, 0.9);
     }
 }
 
+/* 안전선 텍스트 */
 .safe-line-text {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 10px;
+    color: rgba(255, 107, 107, 0.9);
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
     user-select: none;
     font-family: 'Segoe UI', sans-serif;
     letter-spacing: 0.5px;
+    animation: label-fade-in 0.5s ease-in;
+}
+
+@keyframes label-fade-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .safe-line-text {
+        font-size: 8px !important;
+        letter-spacing: 0.3px;
+    }
+    
+    .safe-line-box {
+        border-width: 1px;
+    }
+}
+
+/* 성능 최적화 */
+.safe-line-box {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+}
+
+/* 프린트 모드에서 숨김 */
+@media print {
+    #safe-line-overlay {
+        display: none !important;
+    }
 }
 
 /* ===========================================
