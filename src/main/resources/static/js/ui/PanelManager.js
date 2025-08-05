@@ -78,7 +78,7 @@ class PanelManager {
 	    this.activate(this.btnElement);
 	    this.hideAllPanels();
 	    this.elementPanel.removeClass('d-none');
-	    if (this.elementPanel.is(':empty')) {
+	    if (this.elementPanel.children().length === 0) {
 	        DataLoader.loadElements();
 	    }
 	}

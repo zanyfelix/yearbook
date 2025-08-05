@@ -46,9 +46,15 @@ class SelectionManager {
 	    selectedFrame = frameGroup;
 	    this.selectedMode = 'frame';
 	    this.currentFrame = frameGroup;
+		
+		const isTextboxFrame = frameGroup.hasClass('textbox-frame');
+		const isElement = frameGroup.hasClass('element-frame');
 	    
 	    frameGroup.addClass('selected-frame').css('border', '1px dashed #ff0000');
 	    FrameManager.addRotationHandle(frameGroup);
+		if (isElement) {
+			this.addElementResizeHandles(frameGroup);
+		}
 	    UIManager.showFrameTooltip(frameGroup);
 	}
 
@@ -89,6 +95,12 @@ class SelectionManager {
 			'border': '2px solid transparent',  // 'none' 대신 transparent로 변경
 			'box-shadow': 'none'
 		});
+		
+		$('.frame-group.element-frame').removeClass('selected-element').css({
+			'border': '2px solid transparent',
+			'box-shadow': 'none'
+		});
+		$('.element-resize-handle').remove();
 
 		// 사진 선택 해제
 		$('.uploaded-photo').removeClass('selected-photo').css({
@@ -114,9 +126,10 @@ class SelectionManager {
 		this.selectedMode = null;
 		this.currentFrame = null;
 		this.currentPhoto = null;
-    }
+		this.currentElement = null;
+	}
 
-    applySafeLineConstraints(newLeft, newTop, frameGroup) {
+	applySafeLineConstraints(newLeft, newTop, frameGroup) {
 		// 캐시가 없으면 계산
 		if (!this.safeConstraintsCache) {
 			const bg = $('#page-preview-img');
@@ -143,5 +156,123 @@ class SelectionManager {
 			left: Math.max(cache.safeLeft, Math.min(newLeft, cache.safeRight - frameW)),
 			top: Math.max(cache.safeTop, Math.min(newTop, cache.safeBottom - frameH))
 		};
-    }
+	}
+
+	selectElement(elementGroup) {
+		this.clearSelection();
+
+		this.selectedMode = 'element';
+		this.currentElement = elementGroup;
+		this.currentFrame = elementGroup;
+		this.currentElement = elementGroup;
+
+		// Element는 빨간색 점선 테두리
+		elementGroup.addClass('selected-frame selected-element').css('border', '1px dashed #ff0000');
+
+		// 회전 핸들 추가
+		FrameManager.addRotationHandle(elementGroup);
+
+		// 크기 조절 핸들 추가
+		this.addElementResizeHandles(elementGroup);
+
+		// Element 툴팁 표시
+		UIManager.showElementTooltip(elementGroup);
+	}
+
+	addElementResizeHandles(elementGroup) {
+		// 기존 핸들 제거
+		$('.element-resize-handle').remove();
+
+		// 4개 모서리에 리사이즈 핸들 추가
+		const handles = ['nw', 'ne', 'sw', 'se'];
+
+		handles.forEach(position => {
+			const handle = $('<div class="element-resize-handle"></div>')
+				.addClass(`handle-${position}`)
+				.css({
+					position: 'absolute',
+					width: '8px',
+					height: '8px',
+					backgroundColor: '#ff0000',
+					border: '1px solid #000',
+					cursor: `${position}-resize`,
+					zIndex: 30
+				});
+
+			// 위치 설정
+			switch (position) {
+				case 'nw': handle.css({ top: '-4px', left: '-4px' }); break;
+				case 'ne': handle.css({ top: '-4px', right: '-4px' }); break;
+				case 'sw': handle.css({ bottom: '-4px', left: '-4px' }); break;
+				case 'se': handle.css({ bottom: '-4px', right: '-4px' }); break;
+			}
+
+			elementGroup.append(handle);
+
+			// 리사이즈 이벤트 바인딩
+			this.makeElementResizable(elementGroup, handle, position);
+		});
+	}
+
+	makeElementResizable(elementGroup, handle, position) {
+		handle.on('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const startX = e.clientX;
+			const startY = e.clientY;
+			const startWidth = elementGroup.width();
+			const startHeight = elementGroup.height();
+			const startLeft = parseFloat(elementGroup.css('left'));
+			const startTop = parseFloat(elementGroup.css('top'));
+			const aspectRatio = startWidth / startHeight;
+
+			$(document).on('mousemove.elementResize', (ev) => {
+				let newWidth = startWidth;
+				let newHeight = startHeight;
+				let newLeft = startLeft;
+				let newTop = startTop;
+
+				const deltaX = ev.clientX - startX;
+				const deltaY = ev.clientY - startY;
+
+				switch (position) {
+					case 'se':
+						newWidth = startWidth + deltaX;
+						newHeight = newWidth / aspectRatio;
+						break;
+					case 'sw':
+						newWidth = startWidth - deltaX;
+						newHeight = newWidth / aspectRatio;
+						newLeft = startLeft + deltaX;
+						break;
+					case 'ne':
+						newHeight = startHeight - deltaY;
+						newWidth = newHeight * aspectRatio;
+						newTop = startTop + deltaY;
+						break;
+					case 'nw':
+						newWidth = startWidth - deltaX;
+						newHeight = newWidth / aspectRatio;
+						newLeft = startLeft + deltaX;
+						newTop = startTop + (startHeight - newHeight);
+						break;
+				}
+
+				// 최소 크기 제한
+				if (newWidth < 30 || newHeight < 30) return;
+
+				elementGroup.css({
+					width: `${newWidth}px`,
+					height: `${newHeight}px`,
+					left: `${newLeft}px`,
+					top: `${newTop}px`
+				});
+			});
+
+			$(document).on('mouseup.elementResize', () => {
+				$(document).off('mousemove.elementResize mouseup.elementResize');
+			});
+		});
+	}
 }

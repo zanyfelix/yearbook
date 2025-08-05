@@ -12,10 +12,13 @@ class FrameManager {
 		const isTextboxFrame = frameTheme.category === 'textboxframe' ||
 			frameTheme.type === 'textbox' ||
 			frameTheme.name?.toLowerCase().includes('text');
+			
+		const isElement = frameTheme.category === 'element' ||
+			frameTheme.type === 'element';
 
 		let frameOverlay; // frameOverlay를 상위 스코프에 선언
 
-		if (isTextboxFrame) {
+		if (isTextboxFrame || isElement) {
 			// 텍스트박스프레임인 경우: 마스크 없이 단순하게 구성
 			frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
 				position: 'absolute', top: 0, left: 0,
@@ -24,7 +27,11 @@ class FrameManager {
 			});
 
 			frameGroup.append(frameOverlay);
-			frameGroup.addClass('textbox-frame'); // CSS 스타일링을 위한 클래스 추가
+			if (isTextboxFrame) {
+				frameGroup.addClass('textbox-frame');
+			} else if (isElement) {
+				frameGroup.addClass('element-frame');
+			}
 		} else {
 			// 포토프레임인 경우: 기존 로직 유지
 			const maskContainer = $('<div class="mask-container"></div>').css({
@@ -101,18 +108,24 @@ class FrameManager {
 			} else {
 				// 저장된 상태가 없으면, 새로 추가하는 로직
 				this.setupPosition(frameGroup, frameTheme);
-				window.selectionManager.selectFrame(frameGroup);
+				// Element는 selectElement, 나머지는 selectFrame 호출
+				if (isElement) {
+					window.selectionManager.selectElement(frameGroup);
+				} else {
+					window.selectionManager.selectFrame(frameGroup);
+				}
 			}
 
 			// 텍스트박스프레임은 포토 이벤트가 필요없음
-			if (!isTextboxFrame) {
+			if (!isTextboxFrame && !isElement) {
 				const placeholderLink = frameGroup.find('.place-image-here-link');
 				const uploadedPhoto = frameGroup.find('.uploaded-photo');
 				const maskContainer = frameGroup.find('.mask-container');
 				EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
-			} else {
-				// 텍스트박스프레임은 간단한 이벤트만 설정
+			} else if (isTextboxFrame) {
 				EventManager.setupTextboxFrameEvents(frameGroup);
+			} else if (isElement) {
+				EventManager.setupElementEvents(frameGroup);
 			}
 		});
 	}

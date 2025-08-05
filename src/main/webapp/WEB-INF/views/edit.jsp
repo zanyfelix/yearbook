@@ -115,6 +115,10 @@
                                     <button id="add-text-btn" class="btn btn-outline-primary w-50">Click here to insert "Text"</button>
                                 </div>
                             </div>
+                            <!-- Element 패널 추가 -->
+						    <div id="element-panel" class="row row-cols-2 g-3 d-none">
+						        <!-- Element 썸네일이 여기에 동적으로 로드됩니다 -->
+						    </div>
                         </div>
                     </div>
 
@@ -144,7 +148,24 @@
 	    							<input type="color" id="tooltip-color" title="Color">
 	    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
 	                            </div>
-                            </div>
+								<div id="element-controls" class="d-none w-100">
+									<div class="control-buttons">
+										<button id="element-rotate-left"
+											class="control-btn rotate-btn" title="왼쪽 회전">
+											<img src="/images/icon/transform.png" alt="Rotate Left"
+												style="transform: scaleX(-1);">
+										</button>
+										<button id="element-rotate-right"
+											class="control-btn rotate-btn" title="오른쪽 회전">
+											<img src="/images/icon/transform.png" alt="Rotate Right">
+										</button>
+										<button id="btn-delete-element"
+											class="control-btn delete-btn" title="Element 삭제">
+											<img src="/images/icon/trash.png" alt="trash">
+										</button>
+									</div>
+								</div>
+								</div>
                             <div id="main-actions" class="d-flex align-items-center gap-2" style="margin-right:8px;">
 						        <button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
 						        <button id="btn-save" class="btn btn-primary">Save</button>

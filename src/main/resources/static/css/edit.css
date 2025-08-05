@@ -1306,3 +1306,29 @@ button:focus,
 .frame-group.textbox-frame .frame-overlay {
     pointer-events: auto !important;
 }
+
+/* Element 전용 스타일 */
+.frame-group.element-frame {
+    cursor: move;
+}
+
+.frame-group.element-frame .frame-overlay {
+    pointer-events: auto !important;
+}
+
+.frame-group.selected-element {
+    border: 1px dashed #ff0000;
+}
+
+.element-resize-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #ff0000; 
+    border: 1px solid #000;
+    z-index: 30;
+}
+
+.element-resize-handle:hover {
+    background-color: #cc0000;
+}

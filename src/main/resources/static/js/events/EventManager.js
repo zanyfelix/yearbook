@@ -274,6 +274,87 @@ class EventManager {
 	    // 프레임 드래그 설정
 	    this.setupFrameDrag(frameGroup);
 	}
+	
+	static setupElementEvents(frameGroup) {
+		// Element는 이미지 클릭이 없으므로 프레임 오버레이의 pointer-events를 활성화
+		frameGroup.find('.frame-overlay').css('pointer-events', 'auto');
+
+		// 프레임 클릭 이벤트 - 선택만 처리
+		frameGroup.on('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			// Element 선택
+			if (window.selectionManager.selectedMode !== 'element' ||
+				window.selectionManager.currentElement !== frameGroup) {
+				window.selectionManager.selectElement(frameGroup);
+			}
+		});
+
+		// 프레임 드래그 설정
+		this.setupElementDrag(frameGroup);
+	}
+	
+	// Element 전용 드래그 메서드 추가
+	static setupElementDrag(frameGroup) {
+	    let dragStartX, dragStartY;
+	    let isDragging = false;
+	    
+	    frameGroup.on('mousedown', function(e) {
+	        if (e.button !== 0) return;
+	        
+	        const isElementSelected = window.selectionManager.selectedMode === 'element' &&
+	                                  window.selectionManager.currentElement &&
+	                                  window.selectionManager.currentElement[0] === frameGroup[0];
+	        
+	        if (isElementSelected) {
+	            e.preventDefault();
+	            e.stopPropagation();
+	            
+	            dragStartX = e.clientX;
+	            dragStartY = e.clientY;
+	            isDragging = false;
+	            
+	            const initialLeft = parseFloat(frameGroup.css('left')) || 0;
+	            const initialTop = parseFloat(frameGroup.css('top')) || 0;
+	            
+	            $(document).on('mousemove.elementDrag', function(ev) {
+	                if (!isDragging && 
+	                    (Math.abs(ev.clientX - dragStartX) > 5 || 
+	                     Math.abs(ev.clientY - dragStartY) > 5)) {
+	                    isDragging = true;
+	                    frameGroup.addClass('dragging');
+	                }
+	                
+	                if (isDragging) {
+	                    const deltaX = ev.clientX - dragStartX;
+	                    const deltaY = ev.clientY - dragStartY;
+	                    
+	                    let newLeft = initialLeft + deltaX;
+	                    let newTop = initialTop + deltaY;
+	                    
+	                    // SafeLine 제약 적용
+	                    const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, frameGroup);
+	                    
+	                    frameGroup.css({
+	                        left: `${constrained.left}px`,
+	                        top: `${constrained.top}px`
+	                    });
+	                    
+	                    if (isDragging) {
+	                        UIManager.showElementTooltip(frameGroup);
+	                    }
+	                }
+	            });
+	            
+	            $(document).on('mouseup.elementDrag', function() {
+	                $(document).off('mousemove.elementDrag mouseup.elementDrag');
+	                frameGroup.removeClass('dragging');
+	                isDragging = false;
+	            });
+	        }
+	    });
+	}
     
     static setupGlobalEvents() {
 		// page-preview 영역에 캡처 단계 이벤트 리스너 추가
@@ -329,6 +410,12 @@ class EventManager {
                 } else if (selectedBox && confirm("Are you sure you want to delete the text?")) {
 					selectedBox.remove();
 					window.selectionManager.clearSelection();
+				} else if (window.selectionManager.selectedMode === 'element' && window.selectionManager.currentElement) {
+					// Element 삭제 추가
+					if (confirm("Are you sure you want to delete the element?")) {
+						window.selectionManager.currentElement.remove();
+						window.selectionManager.clearSelection();
+					}
 				}
             }
         });

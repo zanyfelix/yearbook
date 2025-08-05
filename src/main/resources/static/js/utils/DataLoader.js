@@ -185,4 +185,36 @@ class DataLoader {
 			}
 		});
 	}
+	
+	static loadElements() {
+		$('#element-panel').empty();
+
+		$.ajax({
+			url: `${ctx}/edit/theme`,
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({ id: 11, category: "element" }),
+			success: function(data) {
+				const panel = $('#element-panel').empty();
+
+				data.forEach(result => {
+					// 썸네일 클릭 시 바로 프리뷰에 추가
+					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
+						window.selectionManager.clearSelection();
+
+						// Element 데이터에 카테고리 추가
+						const elementData = {
+							...result.theme,
+							category: 'element'
+						};
+
+						// 모달 없이 바로 적용
+						FrameManager.applyFrame(elementData);
+						setTimeout(() => window.safeLineManager.update(), 500);
+					});
+					panel.append(item);
+				});
+			}
+		});
+	}
 }

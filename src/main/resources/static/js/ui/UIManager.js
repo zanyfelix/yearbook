@@ -258,4 +258,23 @@ class UIManager {
 			}
 		});
 	}
+	
+	static showElementTooltip(elementGroup) {
+		this.hideAllToolbars();
+		$('#element-controls').removeClass('d-none');
+		this.bindElementTooltipEvents(elementGroup);
+	}
+
+	static bindElementTooltipEvents(elementGroup) {
+		// 회전 이벤트는 기존 프레임 회전 이벤트 재사용
+		this.bindFrameRotationEvents(elementGroup);
+
+		// Element 삭제 버튼
+		$('#btn-delete-element').off('click').on('click', function() {
+			if (confirm("Element를 삭제하시겠습니까?")) {
+				elementGroup.remove();
+				window.selectionManager.clearSelection();
+			}
+		});
+	}
 }
