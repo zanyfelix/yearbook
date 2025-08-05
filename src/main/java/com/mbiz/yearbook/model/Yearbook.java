@@ -34,7 +34,7 @@ public class Yearbook extends BaseTimeEntity {
     @Column(name = "thumbnail_path")
     private String thumbnailPath;
 
-    @Column(name = "design_data", columnDefinition = "TEXT")
+    @Column(name = "design_data", columnDefinition = "LONGTEXT")
     private String designData;
 
     @Temporal(TemporalType.TIMESTAMP)

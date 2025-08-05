@@ -1,6 +1,7 @@
 $(document).ready(function() {
 	
 	let activePageThumb = null;
+	let hasSaved = false;
 	
 	// 전역 인스턴스 초기화
 	window.selectionManager = new SelectionManager();
@@ -91,6 +92,8 @@ $(document).ready(function() {
 				data: JSON.stringify(payload),
 				success: function(response) {
 					if (response && response.newImagePath) {
+						hasSaved = true; // ✨ 저장이 성공했으므로 플래그를 true로 설정
+						
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 						if (response.newYearbookId) {
 							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
@@ -121,6 +124,13 @@ $(document).ready(function() {
 							$('#save-confirmation-message').html(message).show();
 						}
 						// --- 수정 끝 ---
+						if (response.contentsId && response.updatedSavedCount !== undefined) {
+							const counterSpan = $(`#page-count-${response.contentsId}`);
+							if (counterSpan.length) {
+								const totalPages = counterSpan.data('total-pages');
+								counterSpan.text(`(${response.updatedSavedCount}/${totalPages})`);
+							}
+						}
 					} else {
 						alert("저장에 성공했지만, 썸네일 업데이트에 실패했습니다.");
 					}
@@ -292,6 +302,18 @@ $(document).ready(function() {
 		} else {
 			// yearbookId가 없을 경우 (새 페이지) -> 빈 페이지로 시작
 			renderPage(null);
+		}
+	});
+	
+	// 모달이 열릴 때마다 저장 상태 플래그를 초기화합니다.
+	$('#editModal').on('show.bs.modal', function() {
+		hasSaved = false;
+	});
+
+	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.
+	$('#editModal').on('hidden.bs.modal', function() {
+		if (hasSaved) {
+			location.reload();
 		}
 	});
 });

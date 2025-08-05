@@ -105,6 +105,8 @@ public class EditController {
 			ContentsData data = new ContentsData();
 			data.setContentsInfo(content);
 			data.setYearbookPages(fullPageList); // 완성된 리스트를 DTO에 담습니다.
+			
+			data.setSavedPagesCount(existingPages.size());
 
 			contentsListForView.add(data);
 		}
@@ -179,6 +181,8 @@ public class EditController {
         page.setLastSaved(new Date());
 
         Yearbook savedPage = yearbookRepository.save(page);
+        
+        int updatedSavedCount = yearbookRepository.findByContentsId(savedPage.getContentsId()).size();
 
         String newImagePath = saveThumbnailFile(imageData, savedPage.getId());
         
@@ -189,6 +193,10 @@ public class EditController {
         response.put("newImagePath", newImagePath);
         response.put("newYearbookId", savedPage.getId());
         response.put("lastSaved", savedPage.getLastSaved());
+        
+        response.put("updatedSavedCount", updatedSavedCount);
+        response.put("contentsId", savedPage.getContentsId());
+        
         return response;
     }
     

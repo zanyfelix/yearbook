@@ -1292,10 +1292,10 @@ button:focus,
 #save-confirmation-message {
     position: absolute;
     bottom: 0px;
-    right: -190px;
+    right: -175px;
     color: black; /* 글자색 검은색으로 변경 */
     font-size: 13px;
     z-index: 1050;
-    text-align: right;
+    text-align: left;
     line-height: 1.5;
 }

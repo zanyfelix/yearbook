@@ -279,6 +279,16 @@ class EventManager {
 		});
         
         $(document).on('keydown', function(e) {
+
+			// 모달이 열려있을 때 F5 또는 Ctrl+R 키를 감지
+			if ($('#editModal').is(':visible') && (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R')))) {
+				// 브라우저의 기본 새로고침 동작을 막습니다.
+				e.preventDefault();
+				// 사용자에게 알림 메시지를 표시합니다.
+				alert('You cannot refresh while editing.');
+				return false;
+			}
+			
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const focused = document.activeElement;
                 if (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.contentEditable === 'true') {

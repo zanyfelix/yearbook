@@ -36,7 +36,7 @@
     <!-- 각 카테고리별 섹션 -->
 	<c:forEach var="item" items="${contentsList}" varStatus="st">
 	    <div class="category-section">
-	        <h5 class="mb-3">${item.contentsInfo.title} (${item.contentsInfo.pages})</h5>
+	        <h5 class="mb-3">${item.contentsInfo.title} (${item.savedPagesCount}/${item.contentsInfo.pages})</h5>
 	        
 	        <div class="position-relative">
 	            <div class="slide-container" id="slider-${st.index}">
@@ -66,7 +66,7 @@
 	</c:forEach>
     
     <!-- Bootstrap Modal - 전체 화면 크기 -->
-    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true" data-bs-keyboard="false">
         <div class="modal-dialog" style="max-width: 100vw; width: 100vw; height: 100vh; margin: 0;">
             <div class="modal-content border-0 rounded-0" style="height: 100vh;">
 

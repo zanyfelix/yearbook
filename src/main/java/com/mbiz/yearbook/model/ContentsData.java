@@ -10,4 +10,5 @@ import lombok.Setter;
 public class ContentsData {
     private Contents contentsInfo;        // Contents 엔티티 정보
     private List<Yearbook> yearbookPages; // 해당 Contents에 속한 Yearbook 페이지 목록
+    private int savedPagesCount;
 }
