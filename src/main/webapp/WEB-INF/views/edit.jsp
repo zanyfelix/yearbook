@@ -94,7 +94,10 @@
                             <div id="frame-panel" class="d-none">
                                 <!-- Tab panes -->
                                 <div class="tab-content">
-                                    <div class="tab-pane fade show active" id="photoFrameList" role="tabpanel">
+                                    <div class="tab-pane d-none" id="photoFrameList">
+                                        <!-- Photo Frame 썸네일이 여기에 동적으로 로드됩니다 -->
+                                    </div>
+                                    <div class="tab-pane d-none" id="textboxFrameList">
                                         <!-- Photo Frame 썸네일이 여기에 동적으로 로드됩니다 -->
                                     </div>
                                 </div>

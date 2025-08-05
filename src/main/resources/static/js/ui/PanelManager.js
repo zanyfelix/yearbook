@@ -7,9 +7,12 @@ class PanelManager {
         this.btnPhotoFrame = $('#btn-photo-frame');
 		this.btnTextboxFrame = $('#btn-textbox-frame');
         this.btnText = $('#btn-text');
+		this.btnElement = $('#btn-element');
+		
         this.bgPanel = $('#background-panel');
         this.framePanel = $('#frame-panel');
         this.textPanel = $('#text-panel');
+		this.elementPanel = $('#element-panel');
         
         this.init();
     }
@@ -17,16 +20,17 @@ class PanelManager {
     init() {
         this.btnBg.on('click', () => this.showBackgroundPanel());
         this.btnPhotoFrame.on('click', () => this.showPhotoFramePanel());
-		this.btnTextboxFrame.on('click', () => this.showTextFramePanel());
+		this.btnTextboxFrame.on('click', () => this.showTextboxFramePanel());
         this.btnText.on('click', () => this.showTextPanel());
+		this.btnElement.on('click', () => this.showElementPanel());
     }
     
     hideAllPanels() {
-        this.bgPanel.add(this.framePanel).add(this.textPanel).addClass('d-none');
+        this.bgPanel.add(this.framePanel).add(this.textPanel).add(this.elementPanel).addClass('d-none');
     }
     
     activate(btn) {
-        [this.btnBg, this.btnPhotoFrame, this.btnTextboxFrame, this.btnText].forEach(b => b.removeClass('active'));
+        [this.btnBg, this.btnPhotoFrame, this.btnTextboxFrame, this.btnText, this.btnElement].forEach(b => b.removeClass('active'));
         btn.addClass('active');
     }
     
@@ -43,7 +47,11 @@ class PanelManager {
         this.activate(this.btnPhotoFrame);
         this.hideAllPanels();
         this.framePanel.removeClass('d-none');
-        DataLoader.loadFrames();
+		$('#photoFrameList').removeClass('d-none');
+		$('#textboxFrameList').addClass('d-none');
+		if ($('#photoFrameList').children('.col-4').length === 0) {
+			DataLoader.loadPhotoFrames();
+		}
     }
 	
 	showTextboxFramePanel() {
@@ -51,7 +59,11 @@ class PanelManager {
 		this.activate(this.btnTextboxFrame);
 		this.hideAllPanels();
 		this.framePanel.removeClass('d-none');
-		DataLoader.loadFrames();
+		$('#textboxFrameList').removeClass('d-none');
+		$('#photoFrameList').addClass('d-none');
+		if ($('#textboxFrameList').children('.col-4').length === 0) {
+			DataLoader.loadTextboxFrames();
+		}
 	}
     
     showTextPanel() {
@@ -60,4 +72,14 @@ class PanelManager {
         this.hideAllPanels();
         this.textPanel.removeClass('d-none');
     }
+	
+	showElementPanel() {
+	    window.selectionManager.clearSelection();
+	    this.activate(this.btnElement);
+	    this.hideAllPanels();
+	    this.elementPanel.removeClass('d-none');
+	    if (this.elementPanel.is(':empty')) {
+	        DataLoader.loadElements();
+	    }
+	}
 }

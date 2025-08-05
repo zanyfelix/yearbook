@@ -167,7 +167,7 @@ body {
     transform: scale(1);
 }
 
-#photoFrameList {
+#photoFrameList, #textboxFrameList {
     /* Bootstrap row와 호환되도록 설정 */
     display: flex;
     flex-wrap: wrap;
@@ -1188,6 +1188,7 @@ button:focus,
 /* 썸네일을 담는 컬럼(col) 내부에서 wrapper를 중앙 정렬합니다. */
 #background-panel .col-6,
 #photoFrameList .col-4,
+#textboxFrameList .col-4,
 #modalBackgroundList .col-4,
 #modalFrameList .col-4 {
     display: flex;
@@ -1198,6 +1199,7 @@ button:focus,
 /* 썸네일 wrapper는 내부 이미지 크기에 자동으로 맞춰집니다. */
 #background-panel .thumbnail-wrapper,
 #photoFrameList .thumbnail-wrapper,
+#textboxFrameList .thumbnail-wrapper,
 #modalBackgroundList .thumbnail-wrapper,
 #modalFrameList .thumbnail-wrapper {
     /* 배경 썸네일 이미지 크기에 맞춰 고정 */
@@ -1229,6 +1231,7 @@ button:focus,
 
 /* 3. 포토프레임 썸네일 이미지는 wrapper 안에, 전체 모습이 보이도록 중앙 정렬됩니다. */
 #photoFrameList .thumbnail-wrapper img,
+#textboxFrameList .thumbnail-wrapper img,
 #modalFrameList .thumbnail-wrapper img {
     /* wrapper 크기를 넘지 않도록 최대 크기만 지정 */
     max-width: 100%;

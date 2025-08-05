@@ -69,7 +69,7 @@ class DataLoader {
 		}, 100);
 	}
     
-    static loadFrames() {
+    static loadPhotoFrames() {
         $('#photoFrameList').empty();
         
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
@@ -82,6 +82,7 @@ class DataLoader {
 				const panel = $('#photoFrameList').empty();
 
 				representativeData.forEach(result => {
+					console.log(result);
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
 					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
 
@@ -137,4 +138,44 @@ class DataLoader {
 			}
 		}, 100);
     }
+	
+	static loadTextboxFrames() {
+		$('#textboxFrameList').empty();
+
+		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
+		$.ajax({
+			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({ id: 11, category: "textboxframe" }),
+			success: function(representativeData) {
+				const panel = $('#textboxFrameList').empty();
+
+				representativeData.forEach(result => {
+					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
+					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
+
+						// ✨ 핵심 수정: 클릭된 썸네일의 ID로 새로운 AJAX 요청
+						$.ajax({
+							url: `${ctx}/edit/themesByParent`, // 새로 만든 서버 주소
+							method: 'GET',
+							data: {
+								themeId: result.theme.id // 클릭된 썸네일의 theme id
+							},
+							success: function(fullListData) {
+								// 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
+								$('#frameModal').modal('show');
+								// 모달을 채우는 함수는 그대로 재사용
+								DataLoader.loadFrameModal(fullListData, 0); // selectedIndex는 0으로 시작
+							},
+							error: function() {
+								alert("전체 목록을 불러오는 데 실패했습니다.");
+							}
+						});
+					});
+					panel.append(item);
+				});
+			}
+		});
+	}
 }
