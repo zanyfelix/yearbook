@@ -1286,3 +1286,16 @@ button:focus,
 .place-image-here-link {
     font-size: 12px;
 }
+/* ===========================================
+   29. 저장 완료 메시지 스타일
+   =========================================== */
+#save-confirmation-message {
+    position: absolute;
+    bottom: 0px;
+    right: -190px;
+    color: black; /* 글자색 검은색으로 변경 */
+    font-size: 13px;
+    z-index: 1050;
+    text-align: right;
+    line-height: 1.5;
+}

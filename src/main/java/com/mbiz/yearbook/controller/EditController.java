@@ -188,6 +188,7 @@ public class EditController {
         Map<String, Object> response = new HashMap<>();
         response.put("newImagePath", newImagePath);
         response.put("newYearbookId", savedPage.getId());
+        response.put("lastSaved", savedPage.getLastSaved());
         return response;
     }
     

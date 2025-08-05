@@ -95,10 +95,35 @@ $(document).ready(function() {
 						if (response.newYearbookId) {
 							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
 						}
+						
+						// --- ✨ 핵심 수정: 메시지 표시 로직 ---
+						if (response.lastSaved) {
+							const savedDate = new Date(response.lastSaved);
+
+							// ✨ --- 시간 포맷팅 로직 변경 --- ✨
+							const year = savedDate.getFullYear();
+							const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
+							const day = savedDate.getDate().toString().padStart(2, '0');
+
+							let hours = savedDate.getHours();
+							const minutes = savedDate.getMinutes().toString().padStart(2, '0');
+							const ampm = hours >= 12 ? 'PM' : 'AM';
+
+							hours = hours % 12;
+							hours = hours ? hours : 12; // 0시는 12시로 표시
+
+							const formattedDate = `${year}.${month}.${day}`;
+							const formattedTime = `${hours}:${minutes}${ampm}`;
+							// ✨ --- 변경 끝 --- ✨
+
+							const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
+
+							$('#save-confirmation-message').html(message).show();
+						}
+						// --- 수정 끝 ---
 					} else {
 						alert("저장에 성공했지만, 썸네일 업데이트에 실패했습니다.");
 					}
-					$('#editModal').modal('hide');
 				},
 				error: function(err) {
 					console.error("Save failed:", err);
