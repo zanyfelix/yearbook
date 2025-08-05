@@ -256,6 +256,9 @@ class EventManager {
 	}
 	
 	static setupTextboxFrameEvents(frameGroup) {
+		// 텍스트박스프레임은 이미지 클릭이 없으므로 프레임 오버레이의 pointer-events를 활성화
+		frameGroup.find('.frame-overlay').css('pointer-events', 'auto');
+			
 	    // 프레임 클릭 이벤트 - 선택만 처리
 	    frameGroup.on('click', (e) => {
 	        e.preventDefault();

@@ -8,64 +8,73 @@ class FrameManager {
 			position: 'absolute', cursor: 'move', zIndex: 15
 		});
 
-		const maskContainer = $('<div class="mask-container"></div>').css({
-			position: 'absolute', top: 0, left: 0,
-			width: '100%', height: '100%',
-			overflow: 'hidden', zIndex: 16
-		});
-		
+		// frameTheme에 category 정보가 있는지 확인
 		const isTextboxFrame = frameTheme.category === 'textboxframe' ||
 			frameTheme.type === 'textbox' ||
 			frameTheme.name?.toLowerCase().includes('text');
 
-		const photoContainer = $('<div class="photo-container"></div>').css({
-			position: 'relative', width: '100%', height: '100%',
-			display: 'flex', justifyContent: 'center', alignItems: 'center',
-			backgroundColor: isTextboxFrame ? 'transparent' : 'black'
-		});
+		let frameOverlay; // frameOverlay를 상위 스코프에 선언
 
-		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
-			color: 'white', textDecoration: 'underline',
-			fontWeight: 'bold',
-			textAlign: 'center', display: 'block',
-			position: 'relative',
-			cursor: 'pointer'  // 포인터 커서 추가
-		});
+		if (isTextboxFrame) {
+			// 텍스트박스프레임인 경우: 마스크 없이 단순하게 구성
+			frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
+				position: 'absolute', top: 0, left: 0,
+				width: '100%', height: '100%',
+				zIndex: 20, pointerEvents: 'none'
+			});
 
-		const uploadedPhoto = $('<img class="uploaded-photo">').css({
-			display: 'none', position: 'absolute',
-			cursor: 'move', maxWidth: 'none', maxHeight: 'none',
-			objectFit: 'cover', zIndex: 17
-		});
+			frameGroup.append(frameOverlay);
+			frameGroup.addClass('textbox-frame'); // CSS 스타일링을 위한 클래스 추가
+		} else {
+			// 포토프레임인 경우: 기존 로직 유지
+			const maskContainer = $('<div class="mask-container"></div>').css({
+				position: 'absolute', top: 0, left: 0,
+				width: '100%', height: '100%',
+				overflow: 'hidden', zIndex: 16
+			});
 
-		const frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
-			position: 'absolute', top: 0, left: 0,
-			width: '100%', height: '100%',
-			zIndex: 20, pointerEvents: 'none'  // frameOverlay의 pointer-events를 none으로 설정
-		});
+			const photoContainer = $('<div class="photo-container"></div>').css({
+				position: 'relative', width: '100%', height: '100%',
+				display: 'flex', justifyContent: 'center', alignItems: 'center',
+				backgroundColor: 'black'
+			});
 
-		photoContainer.append(placeholderLink).append(uploadedPhoto);
-		maskContainer.append(photoContainer);
-		frameGroup.append(maskContainer).append(frameOverlay);
-		frameContainer.append(frameGroup);
+			const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({
+				color: 'white', textDecoration: 'underline',
+				fontWeight: 'bold',
+				textAlign: 'center', display: 'block',
+				position: 'relative',
+				cursor: 'pointer'
+			});
 
-		frameGroup.data('frameTheme', frameTheme);
+			const uploadedPhoto = $('<img class="uploaded-photo">').css({
+				display: 'none', position: 'absolute',
+				cursor: 'move', maxWidth: 'none', maxHeight: 'none',
+				objectFit: 'cover', zIndex: 17
+			});
 
-		if (frameTheme.editMaskPath) {
-			this.applyMasking(maskContainer, frameTheme);
+			frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
+				position: 'absolute', top: 0, left: 0,
+				width: '100%', height: '100%',
+				zIndex: 20, pointerEvents: 'none'
+			});
+
+			photoContainer.append(placeholderLink).append(uploadedPhoto);
+			maskContainer.append(photoContainer);
+			frameGroup.append(maskContainer).append(frameOverlay);
+
+			// 마스크 적용 (마스크 경로가 있는 경우에만)
+			if (frameTheme.editMaskPath) {
+				this.applyMasking(maskContainer, frameTheme);
+			}
 		}
 
-		frameOverlay.on('load', () => {
-			this.setupPosition(frameGroup, frameTheme);
-			EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
-			
-			// ✨ 핵심 수정: 생성된 프레임을 즉시 선택 상태로 만듭니다.
-			window.selectionManager.selectFrame(frameGroup);
-		});
-		
+		frameContainer.append(frameGroup);
+		frameGroup.data('frameTheme', frameTheme);
+
 		frameOverlay.on('load', () => {
 			if (savedState) {
-				// ✨ 저장된 상태(savedState)가 있으면, 그 정보로 프레임 복원
+				// 저장된 상태(savedState)가 있으면, 그 정보로 프레임 복원
 				frameGroup.css({
 					left: savedState.position.left + 'px',
 					top: savedState.position.top + 'px',
@@ -74,7 +83,10 @@ class FrameManager {
 					transform: savedState.transform
 				});
 
-				if (savedState.photo && savedState.photo.src) {
+				if (!isTextboxFrame && savedState.photo && savedState.photo.src) {
+					const uploadedPhoto = frameGroup.find('.uploaded-photo');
+					const placeholderLink = frameGroup.find('.place-image-here-link');
+
 					uploadedPhoto.attr('src', savedState.photo.src)
 						.css({
 							display: 'block',
@@ -87,12 +99,21 @@ class FrameManager {
 					placeholderLink.hide();
 				}
 			} else {
-				// ✨ 저장된 상태가 없으면, 새로 추가하는 로직 (기존과 동일)
+				// 저장된 상태가 없으면, 새로 추가하는 로직
 				this.setupPosition(frameGroup, frameTheme);
 				window.selectionManager.selectFrame(frameGroup);
 			}
 
-			EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+			// 텍스트박스프레임은 포토 이벤트가 필요없음
+			if (!isTextboxFrame) {
+				const placeholderLink = frameGroup.find('.place-image-here-link');
+				const uploadedPhoto = frameGroup.find('.uploaded-photo');
+				const maskContainer = frameGroup.find('.mask-container');
+				EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+			} else {
+				// 텍스트박스프레임은 간단한 이벤트만 설정
+				EventManager.setupTextboxFrameEvents(frameGroup);
+			}
 		});
 	}
     

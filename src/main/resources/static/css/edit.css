@@ -1302,3 +1302,7 @@ button:focus,
     text-align: left;
     line-height: 1.5;
 }
+
+.frame-group.textbox-frame .frame-overlay {
+    pointer-events: auto !important;
+}
