@@ -293,6 +293,11 @@ $(document).ready(function() {
 				success: function(pageData) {
 					// 성공적으로 데이터를 받으면, renderPage 함수를 호출해 편집창을 복원
 					renderPage(pageData);
+					
+					// last_save 값이 있으면 표시
+					if (pageData && pageData.lastSaved) {
+						displayLastSaveTime(pageData.lastSaved);
+					}
 				},
 				error: function() {
 					alert("페이지 데이터를 불러오는 데 실패했습니다.");
@@ -305,9 +310,34 @@ $(document).ready(function() {
 		}
 	});
 	
+	// 저장 시간 표시 함수
+	function displayLastSaveTime(lastSaved) {
+		const savedDate = new Date(lastSaved);
+
+		const year = savedDate.getFullYear();
+		const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
+		const day = savedDate.getDate().toString().padStart(2, '0');
+
+		let hours = savedDate.getHours();
+		const minutes = savedDate.getMinutes().toString().padStart(2, '0');
+		const ampm = hours >= 12 ? 'PM' : 'AM';
+
+		hours = hours % 12;
+		hours = hours ? hours : 12;
+
+		const formattedDate = `${year}.${month}.${day}`;
+		const formattedTime = `${hours}:${minutes}${ampm}`;
+
+		const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
+
+		$('#save-confirmation-message').html(message).show();
+	}
+	
 	// 모달이 열릴 때마다 저장 상태 플래그를 초기화합니다.
 	$('#editModal').on('show.bs.modal', function() {
 		hasSaved = false;
+		// 저장 메시지 숨김 (새로운 데이터 로드 전)
+		$('#save-confirmation-message').hide();
 	});
 
 	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.
