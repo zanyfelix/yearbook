@@ -194,8 +194,8 @@ class SelectionManager {
 					position: 'absolute',
 					width: '8px',
 					height: '8px',
-					backgroundColor: '#ff0000',
-					border: '1px solid #000',
+					backgroundColor: 'rgb(255, 255, 255)',
+					border: '1px solid rgb(255, 0, 0)',
 					cursor: `${position}-resize`,
 					zIndex: 30
 				});
