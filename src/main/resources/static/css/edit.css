@@ -189,9 +189,6 @@ body {
 
     /* 기존 스타일 유지 */
     position: relative;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
     background-color: #ffffff;
     
     /* 내부 요소들이 컨테이너에 맞게 조절되도록 */
@@ -275,7 +272,7 @@ body {
 
 #editModal #page-preview {
     /* 모달 내에서는 더 유연하게 크기 조절 */
-    max-height: calc(100vh - 100px);  /* 화면 높이에서 여백 제외 */
+    max-height: calc(100vh - 60px);  /* 화면 높이에서 여백 제외 */
     height: auto;
 }
 
@@ -1559,14 +1556,38 @@ button:focus,
    29. 저장 완료 메시지 스타일
    =========================================== */
 #save-confirmation-message {
-    position: absolute;
-    bottom: 0px;
-    right: -175px;
+    position: fixed; /* absolute에서 fixed로 변경 */
+    bottom: 20px;    /* 화면 하단에서 20px 여백 */
+    right: 20px;     /* 화면 우측에서 20px 여백 */
     color: black; /* 글자색 검은색으로 변경 */
     font-size: 13px;
     z-index: 1050;
     text-align: left;
     line-height: 1.5;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    #save-confirmation-message {
+        bottom: 15px;
+        right: 15px;
+        font-size: 12px;
+        padding: 10px 14px;
+        max-width: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    #save-confirmation-message {
+        bottom: 10px;
+        right: 10px;
+        left: 10px; /* 모바일에서는 좌우 여백 동일 */
+        font-size: 11px;
+        padding: 8px 12px;
+        max-width: none;
+        text-align: center;
+        white-space: normal; /* 모바일에서는 줄바꿈 허용 */
+    }
 }
 
 .frame-group.textbox-frame .frame-overlay {

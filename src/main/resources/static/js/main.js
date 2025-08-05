@@ -311,6 +311,11 @@ $(document).ready(function() {
 				success: function(pageData) {
 					// 성공적으로 데이터를 받으면, renderPage 함수를 호출해 편집창을 복원
 					renderPage(pageData);
+					
+					// last_save 값이 있으면 표시
+					if (pageData && pageData.lastSaved) {
+						displayLastSaveTime(pageData.lastSaved);
+					}
 				},
 				error: function() {
 					alert("페이지 데이터를 불러오는 데 실패했습니다.");
@@ -322,10 +327,36 @@ $(document).ready(function() {
 			renderPage(null);
 		}
 	});
+	
+	// 저장 시간 표시 함수
+	function displayLastSaveTime(lastSaved) {
+		const savedDate = new Date(lastSaved);
+
+		const year = savedDate.getFullYear();
+		const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
+		const day = savedDate.getDate().toString().padStart(2, '0');
+
+		let hours = savedDate.getHours();
+		const minutes = savedDate.getMinutes().toString().padStart(2, '0');
+		const ampm = hours >= 12 ? 'PM' : 'AM';
+
+		hours = hours % 12;
+		hours = hours ? hours : 12;
+
+		const formattedDate = `${year}.${month}.${day}`;
+		const formattedTime = `${hours}:${minutes}${ampm}`;
+
+		const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
+
+		$('#save-confirmation-message').html(message).show();
+	}
 
 	// ✨ 모달이 열릴 때 기본 설정 적용
 	$('#editModal').on('show.bs.modal', function() {
 		hasSaved = false;
+		
+		// save-confirmation-message 표시
+		$('#save-confirmation-message').show();
 
 		// 기본 배경이 설정되어 있지 않다면 로드
 		const currentSrc = $('#page-preview-img').attr('src');
@@ -349,5 +380,7 @@ $(document).ready(function() {
 		if (hasSaved) {
 			location.reload();
 		}
+		const $message = $('#save-confirmation-message');
+		$message.removeClass('show');
 	});
 });

@@ -179,9 +179,7 @@
                             </div> -->
                         </div>
 
-                        <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2" style="min-height: 0; width: 100%;">
-                            <div id="page-preview" class="border rounded bg-white d-flex flex-row h-100 w-100 flex-nowrap" style="position: relative;"> 
-                                
+                        <div id="page-preview" class="bg-white d-flex flex-row h-100 w-100 flex-nowrap" style="position: relative;"> 
                                 <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
                                     <img id="page-preview-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="rounded">
                                 </div>
@@ -190,7 +188,6 @@
                                 <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
                                 <div id="save-confirmation-message" style="display:none;"></div>
                                 <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
-                            </div>
                         </div>
                     </div>
                 </div>
