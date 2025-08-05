@@ -97,7 +97,7 @@ class DataLoader {
 								// 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
 								$('#frameModal').modal('show');
 								// 모달을 채우는 함수는 그대로 재사용
-								DataLoader.loadFrameModal(fullListData, 0); // selectedIndex는 0으로 시작
+								DataLoader.loadFrameModal(fullListData, 0, 'photoframe');
 							},
 							error: function() {
 								alert("전체 목록을 불러오는 데 실패했습니다.");
@@ -110,14 +110,21 @@ class DataLoader {
 		});
     }
     
-    static loadFrameModal(data, selectedIndex = 0) {  // selectedIndex 매개변수 추가
+    static loadFrameModal(data, selectedIndex = 0, category = 'photoframe') {
         const listEl = $('#modalFrameList').empty();
         
 		data.forEach((result, index) => {
 			// ✨ 모달 안의 썸네일을 클릭했을 때, 배경을 최종 적용합니다.
 			const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
 				window.selectionManager.clearSelection();
-				FrameManager.applyFrame(result);
+				
+				// category 정보를 frameTheme 객체에 추가
+				const frameData = {
+					...result,
+					category: category
+				};
+				
+				FrameManager.applyFrame(frameData);
 				setTimeout(() => window.safeLineManager.update(), 500);
 				$('#frameModal').modal('hide');
 			});
@@ -166,7 +173,7 @@ class DataLoader {
 								// 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
 								$('#frameModal').modal('show');
 								// 모달을 채우는 함수는 그대로 재사용
-								DataLoader.loadFrameModal(fullListData, 0); // selectedIndex는 0으로 시작
+								DataLoader.loadFrameModal(fullListData, 0, 'textboxframe');
 							},
 							error: function() {
 								alert("전체 목록을 불러오는 데 실패했습니다.");

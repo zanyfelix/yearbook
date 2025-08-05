@@ -13,11 +13,15 @@ class FrameManager {
 			width: '100%', height: '100%',
 			overflow: 'hidden', zIndex: 16
 		});
+		
+		const isTextboxFrame = frameTheme.category === 'textboxframe' ||
+			frameTheme.type === 'textbox' ||
+			frameTheme.name?.toLowerCase().includes('text');
 
 		const photoContainer = $('<div class="photo-container"></div>').css({
 			position: 'relative', width: '100%', height: '100%',
 			display: 'flex', justifyContent: 'center', alignItems: 'center',
-			backgroundColor: 'black'
+			backgroundColor: isTextboxFrame ? 'transparent' : 'black'
 		});
 
 		const placeholderLink = $('<a href="#" class="place-image-here-link">Place Image Here</a>').css({

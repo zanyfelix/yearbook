@@ -254,6 +254,23 @@ class EventManager {
 		});
 
 	}
+	
+	static setupTextboxFrameEvents(frameGroup) {
+	    // 프레임 클릭 이벤트 - 선택만 처리
+	    frameGroup.on('click', (e) => {
+	        e.preventDefault();
+	        e.stopPropagation();
+	        
+	        // 프레임 선택
+	        if (window.selectionManager.selectedMode !== 'frame' ||
+	            window.selectionManager.currentFrame !== frameGroup) {
+	            window.selectionManager.selectFrame(frameGroup);
+	        }
+	    });
+	    
+	    // 프레임 드래그 설정
+	    this.setupFrameDrag(frameGroup);
+	}
     
     static setupGlobalEvents() {
 		// page-preview 영역에 캡처 단계 이벤트 리스너 추가
