@@ -1,5 +1,5 @@
 // ============================================================================
-// 📁 js/core/SafeLineManager.js - 반응형 배경 이미지 대응
+// 📁 js/core/SafeLineManager.js - 빗금 패턴 SafeLine
 // ============================================================================
 class SafeLineManager {
     constructor() {
@@ -7,7 +7,7 @@ class SafeLineManager {
         this.actualHeight = 285.4;
         this.safeMargin = 3;
         this.container = null;
-        this.safeLineBox = null;
+        this.safeAreas = [];
         this.resizeObserver = null;
         this.init();
     }
@@ -32,33 +32,6 @@ class SafeLineManager {
             zIndex: 5
         });
         
-        // 안전선 박스 (단일 div)
-        this.safeLineBox = $('<div class="safe-line-box"></div>').css({
-            position: 'absolute',
-            border: '2px dashed rgba(255, 107, 107, 0.8)',
-            backgroundColor: 'transparent',
-            pointerEvents: 'none',
-            boxSizing: 'border-box'
-        });
-        
-        // 안전선 텍스트
-        const safeText = $('<div class="safe-line-text">Safe Area</div>').css({
-            position: 'absolute',
-            top: '8px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            color: 'rgba(255, 107, 107, 0.9)',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            textShadow: '1px 1px 2px rgba(255,255,255,0.8)',
-            userSelect: 'none',
-            fontFamily: '"Segoe UI", sans-serif',
-            letterSpacing: '0.5px',
-            whiteSpace: 'nowrap'
-        });
-        
-        this.safeLineBox.append(safeText);
-        this.container.append(this.safeLineBox);
         $('#page-preview').append(this.container);
     }
     
@@ -67,11 +40,10 @@ class SafeLineManager {
         
         // 이미지 로드 이벤트
         $(img).on('load', () => {
-            // 이미지 로드 후 약간의 지연을 두고 업데이트 (레이아웃 안정화 대기)
             setTimeout(() => this.update(), 150);
         });
         
-        // ResizeObserver로 이미지 크기 변화 감지 (반응형 대응)
+        // ResizeObserver로 이미지 크기 변화 감지
         if (window.ResizeObserver) {
             if (this.resizeObserver) {
                 this.resizeObserver.disconnect();
@@ -79,7 +51,6 @@ class SafeLineManager {
             
             this.resizeObserver = new ResizeObserver((entries) => {
                 for (let entry of entries) {
-                    // 디바운스 적용하여 과도한 호출 방지
                     clearTimeout(this.resizeTimeout);
                     this.resizeTimeout = setTimeout(() => {
                         this.update();
@@ -89,7 +60,7 @@ class SafeLineManager {
             this.resizeObserver.observe(img);
         }
         
-        // 윈도우 리사이즈 이벤트 (모달 크기 변경 등에 대응)
+        // 윈도우 리사이즈 이벤트
         $(window).on('resize.safeline', () => {
             clearTimeout(this.windowResizeTimeout);
             this.windowResizeTimeout = setTimeout(() => {
@@ -99,7 +70,7 @@ class SafeLineManager {
             }, 150);
         });
         
-        // 이미지 src 변경 감지 (MutationObserver)
+        // 이미지 src 변경 감지
         this.watchImageSrcChanges(img);
     }
     
@@ -112,7 +83,6 @@ class SafeLineManager {
             this.srcObserver = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-                        // src 변경 시 이미지 로드 완료까지 기다린 후 업데이트
                         setTimeout(() => this.update(), 200);
                     }
                 });
@@ -126,7 +96,7 @@ class SafeLineManager {
     }
     
     update() {
-        if (!this.container || !this.safeLineBox) return;
+        if (!this.container) return;
 
         const img = $('#page-preview-img');
         const src = img.attr('src');
@@ -138,18 +108,17 @@ class SafeLineManager {
             return;
         }
 
-        // ✨ 실제 렌더링된 이미지 크기 정확히 계산
+        // 실제 렌더링된 이미지 크기 정확히 계산
         const imgElement = img[0];
         const imgWidth = img.width();
         const imgHeight = img.height();
         
-        // 이미지가 아직 로드되지 않았거나 크기가 0인 경우 대기
         if (imgWidth === 0 || imgHeight === 0 || !imgElement.complete) {
             this.container.hide();
             return;
         }
 
-        // ✨ 이미지의 실제 위치 계산 (object-fit: contain 고려)
+        // 이미지의 실제 위치 계산
         const imgPosition = this.getActualImagePosition(img);
         if (!imgPosition) {
             this.container.hide();
@@ -159,27 +128,15 @@ class SafeLineManager {
         // 안전선 표시
         this.container.show();
         
-        // ✨ 실제 이미지 크기 기준으로 안전 마진 계산
+        // 실제 이미지 크기 기준으로 안전 마진 계산
         const actualImgWidth = imgPosition.width;
         const actualImgHeight = imgPosition.height;
         
         const marginX = (this.safeMargin / this.actualWidth) * actualImgWidth;
         const marginY = (this.safeMargin / this.actualHeight) * actualImgHeight;
 
-        // 안전 영역 박스를 실제 이미지 안쪽에 위치시킴
-        this.safeLineBox.css({
-            left: `${imgPosition.left + marginX}px`,
-            top: `${imgPosition.top + marginY}px`,
-            width: `${actualImgWidth - (marginX * 2)}px`,
-            height: `${actualImgHeight - (marginY * 2)}px`
-        });
-        
-        // 텍스트 크기를 이미지 크기에 비례하여 조정
-        const textSize = Math.max(8, Math.min(14, actualImgWidth * 0.02));
-        this.safeLineBox.find('.safe-line-text').css({
-            fontSize: textSize + 'px',
-            display: marginY > 8 ? 'block' : 'none'
-        });
+        // ✨ 빗금 패턴으로 안전선 영역 그리기
+        this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
 
         // SelectionManager의 캐시 무효화
         this.clearSelectionCache();
@@ -188,7 +145,68 @@ class SafeLineManager {
         setTimeout(() => this.adjustFrames(), 50);
     }
     
-    // ✨ object-fit: contain이 적용된 이미지의 실제 위치와 크기 계산
+    // ✨ 빗금 패턴 안전선 영역 그리기
+    drawHatchedSafeAreas(imgPosition, marginX, marginY) {
+        // 기존 안전선 영역 제거
+        this.container.empty();
+        
+        const { left, top, width, height } = imgPosition;
+        
+        // 4개 영역 정의 (상, 하, 좌, 우)
+        const areas = [
+            // 상단
+            { 
+                left: left, 
+                top: top, 
+                width: width, 
+                height: marginY,
+                className: 'safe-area-top'
+            },
+            // 하단
+            { 
+                left: left, 
+                top: top + height - marginY, 
+                width: width, 
+                height: marginY,
+                className: 'safe-area-bottom'
+            },
+            // 좌측 (상하 마진 제외)
+            { 
+                left: left, 
+                top: top + marginY, 
+                width: marginX, 
+                height: height - (marginY * 2),
+                className: 'safe-area-left'
+            },
+            // 우측 (상하 마진 제외)
+            { 
+                left: left + width - marginX, 
+                top: top + marginY, 
+                width: marginX, 
+                height: height - (marginY * 2),
+                className: 'safe-area-right'
+            }
+        ];
+        
+        // 각 안전선 영역을 빗금 패턴으로 생성
+        areas.forEach(area => {
+            if (area.width > 0 && area.height > 0) {
+                const safeDiv = $(`<div class="safe-area-hatched ${area.className}"></div>`).css({
+                    position: 'absolute',
+                    left: `${area.left}px`,
+                    top: `${area.top}px`,
+                    width: `${area.width}px`,
+                    height: `${area.height}px`,
+                    pointerEvents: 'none',
+                    opacity: 0.8
+                });
+                
+                this.container.append(safeDiv);
+            }
+        });
+    }
+    
+    // object-fit: contain이 적용된 이미지의 실제 위치와 크기 계산
     getActualImagePosition($imgElement) {
         const img = $imgElement[0];
         const containerWidth = $imgElement.width();
@@ -251,7 +269,7 @@ class SafeLineManager {
         });
     }
     
-    // ✨ SelectionManager에서 사용하는 제약조건 정보 (실제 이미지 위치 기반)
+    // SelectionManager에서 사용하는 제약조건 정보
     getSafeConstraints() {
         const img = $('#page-preview-img');
         const imgPosition = this.getActualImagePosition(img);

@@ -74,12 +74,22 @@ class PanelManager {
     }
 	
 	showElementPanel() {
-	    window.selectionManager.clearSelection();
-	    this.activate(this.btnElement);
-	    this.hideAllPanels();
-	    this.elementPanel.removeClass('d-none');
-	    if (this.elementPanel.children().length === 0) {
-	        DataLoader.loadElements();
-	    }
+		window.selectionManager.clearSelection();
+		this.activate(this.btnElement);
+		this.hideAllPanels();
+
+		// ✨ element-panel이 없으면 PhotoFrame과 동일한 구조로 생성
+		if ($('#element-panel').length === 0) {
+			const elementPanel = $('<div id="element-panel" class="d-none row row-cols-3 g-3"></div>');
+			$('#thumbnail-area').append(elementPanel);
+		}
+
+		// Element 패널 표시
+		$('#element-panel').removeClass('d-none');
+
+		// 데이터가 로드되지 않았으면 로드
+		if ($('#element-panel').children('.col-4').length === 0) {
+			DataLoader.loadElements();
+		}
 	}
 }

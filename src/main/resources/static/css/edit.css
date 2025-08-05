@@ -539,65 +539,175 @@ body {
 }
 
 /* ===========================================
-   7. SafeLine 시스템 (SafeLineManager 대응)
+   7. SafeLine 시스템 (빗금 패턴)
    =========================================== */
+
 /* 메인 안전선 오버레이 */
 #safe-line-overlay {
     transition: opacity 0.3s ease;
     border-radius: 8px;
 }
 
-/* 안전선 박스 (단일 div) */
-.safe-line-box {
+/* 빗금 안전선 영역 (공통) - 테두리 제거 */
+.safe-area-hatched {
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(255, 107, 107, 0.6) 0px,
+        rgba(255, 107, 107, 0.6) 3px,
+        rgba(255, 107, 107, 0.3) 3px,
+        rgba(255, 107, 107, 0.3) 6px
+    );
+    border: none; /* 모든 테두리 제거 */
     animation: safeline-pulse 3s infinite ease-in-out;
-    border-radius: 4px;
     position: relative;
+    overflow: hidden;
 }
 
-/* 펄스 애니메이션 */
+/* 빗금 패턴 애니메이션 */
 @keyframes safeline-pulse {
     0%, 100% { 
-        opacity: 0.7; 
-        border-color: rgba(255, 107, 107, 0.6);
+        opacity: 0.7;
     }
     50% { 
-        opacity: 0.9; 
-        border-color: rgba(255, 107, 107, 0.9);
+        opacity: 0.9;
     }
 }
 
-/* 안전선 텍스트 */
-.safe-line-text {
-    color: rgba(255, 107, 107, 0.9);
-    font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
-    user-select: none;
-    font-family: 'Segoe UI', sans-serif;
-    letter-spacing: 0.5px;
-    animation: label-fade-in 0.5s ease-in;
+/* 각 영역별 특별 스타일 - 연결부위 라인 제거 */
+.safe-area-top {
+    border: none; /* 모든 테두리 제거 */
 }
 
-@keyframes label-fade-in {
-    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+.safe-area-bottom {
+    border: none; /* 모든 테두리 제거 */
 }
 
-/* 반응형 디자인 */
+.safe-area-left {
+    border: none; /* 모든 테두리 제거 */
+}
+
+.safe-area-right {
+    border: none; /* 모든 테두리 제거 */
+}
+
+/* 호버 효과 */
+.safe-area-hatched:hover {
+    animation-play-state: paused;
+    opacity: 1 !important;
+}
+
+/* 대각선 빗금 패턴 (더 세밀한 버전) */
+.safe-area-hatched.fine-hatch {
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(255, 107, 107, 0.7) 0px,
+        rgba(255, 107, 107, 0.7) 2px,
+        rgba(255, 107, 107, 0.2) 2px,
+        rgba(255, 107, 107, 0.2) 4px
+    );
+}
+
+/* 수직/수평 빗금 조합 패턴 */
+.safe-area-hatched.cross-hatch {
+    background-image: 
+        repeating-linear-gradient(
+            45deg,
+            rgba(255, 107, 107, 0.4) 0px,
+            rgba(255, 107, 107, 0.4) 2px,
+            transparent 2px,
+            transparent 4px
+        ),
+        repeating-linear-gradient(
+            -45deg,
+            rgba(255, 107, 107, 0.4) 0px,
+            rgba(255, 107, 107, 0.4) 2px,
+            transparent 2px,
+            transparent 4px
+        );
+}
+
+/* 점선 패턴 (옵션) */
+.safe-area-hatched.dotted-pattern {
+    background-image: radial-gradient(
+        circle at 2px 2px,
+        rgba(255, 107, 107, 0.8) 1px,
+        transparent 1px
+    );
+    background-size: 6px 6px;
+}
+
+/* 반응형 디자인 - 테두리 제거 유지 */
 @media (max-width: 768px) {
-    .safe-line-text {
-        font-size: 8px !important;
-        letter-spacing: 0.3px;
-    }
-    
-    .safe-line-box {
-        border-width: 1px;
+    .safe-area-hatched {
+        border: none; /* 테두리 제거 유지 */
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 107, 107, 0.6) 0px,
+            rgba(255, 107, 107, 0.6) 2px,
+            rgba(255, 107, 107, 0.3) 2px,
+            rgba(255, 107, 107, 0.3) 4px
+        );
     }
 }
 
-/* 성능 최적화 */
-.safe-line-box {
-    will-change: transform, opacity;
-    transform: translateZ(0);
+@media (max-width: 480px) {
+    .safe-area-hatched {
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 107, 107, 0.6) 0px,
+            rgba(255, 107, 107, 0.6) 1px,
+            rgba(255, 107, 107, 0.3) 1px,
+            rgba(255, 107, 107, 0.3) 3px
+        );
+    }
+}
+
+/* 고해상도 디스플레이 최적화 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .safe-area-hatched {
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 107, 107, 0.6) 0px,
+            rgba(255, 107, 107, 0.6) 1.5px,
+            rgba(255, 107, 107, 0.3) 1.5px,
+            rgba(255, 107, 107, 0.3) 3px
+        );
+    }
+}
+
+/* 다크 모드 지원 (테두리 제거) */
+@media (prefers-color-scheme: dark) {
+    .safe-area-hatched {
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 255, 255, 0.4) 0px,
+            rgba(255, 255, 255, 0.4) 3px,
+            rgba(255, 255, 255, 0.2) 3px,
+            rgba(255, 255, 255, 0.2) 6px
+        );
+        border: none; /* 다크모드에서도 테두리 제거 */
+    }
+}
+
+/* 접근성 개선 - 높은 대비 모드 (테두리 제거) */
+@media (prefers-contrast: high) {
+    .safe-area-hatched {
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255, 0, 0, 0.8) 0px,
+            rgba(255, 0, 0, 0.8) 3px,
+            rgba(255, 0, 0, 0.4) 3px,
+            rgba(255, 0, 0, 0.4) 6px
+        ) !important;
+        border: none !important; /* 고대비 모드에서도 테두리 제거 */
+    }
+}
+
+/* 움직임 감소 설정 */
+@media (prefers-reduced-motion: reduce) {
+    .safe-area-hatched {
+        animation: none;
+    }
 }
 
 /* 프린트 모드에서 숨김 */
@@ -605,6 +715,44 @@ body {
     #safe-line-overlay {
         display: none !important;
     }
+}
+
+/* 성능 최적화 */
+.safe-area-hatched {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* 추가 패턴 옵션들 */
+
+/* 물결 패턴 */
+.safe-area-hatched.wave-pattern {
+    background-image: repeating-linear-gradient(
+        90deg,
+        rgba(255, 107, 107, 0.6) 0px,
+        rgba(255, 107, 107, 0.3) 2px,
+        rgba(255, 107, 107, 0.6) 4px
+    );
+}
+
+/* 격자 패턴 */
+.safe-area-hatched.grid-pattern {
+    background-image: 
+        linear-gradient(rgba(255, 107, 107, 0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 107, 107, 0.3) 1px, transparent 1px);
+    background-size: 8px 8px;
+}
+
+/* 다이아몬드 패턴 */
+.safe-area-hatched.diamond-pattern {
+    background-image: repeating-conic-gradient(
+        from 45deg,
+        rgba(255, 107, 107, 0.6) 0deg 90deg,
+        rgba(255, 107, 107, 0.3) 90deg 180deg
+    );
+    background-size: 8px 8px;
 }
 
 /* ===========================================
@@ -1304,6 +1452,7 @@ button:focus,
 #background-panel .col-6,
 #photoFrameList .col-4,
 #textboxFrameList .col-4,
+#element-panel .col-4,
 #modalBackgroundList .col-4,
 #modalFrameList .col-4 {
     display: flex;
@@ -1315,6 +1464,7 @@ button:focus,
 #background-panel .thumbnail-wrapper,
 #photoFrameList .thumbnail-wrapper,
 #textboxFrameList .thumbnail-wrapper,
+#element-panel .thumbnail-wrapper,
 #modalBackgroundList .thumbnail-wrapper,
 #modalFrameList .thumbnail-wrapper {
     /* 배경 썸네일 이미지 크기에 맞춰 고정 */
@@ -1347,6 +1497,7 @@ button:focus,
 /* 3. 포토프레임 썸네일 이미지는 wrapper 안에, 전체 모습이 보이도록 중앙 정렬됩니다. */
 #photoFrameList .thumbnail-wrapper img,
 #textboxFrameList .thumbnail-wrapper img,
+#element-panel .thumbnail-wrapper img,
 #modalFrameList .thumbnail-wrapper img {
     /* wrapper 크기를 넘지 않도록 최대 크기만 지정 */
     max-width: 100%;
@@ -1422,28 +1573,90 @@ button:focus,
     pointer-events: auto !important;
 }
 
-/* Element 전용 스타일 */
-.frame-group.element-frame {
-    cursor: move;
+/* ===========================================
+   Element 패널 - 기존 CSS 구조와 완전 통일
+   =========================================== */
+   /* 호버 효과만 제거 (요청사항에 따라) */
+#element-panel .thumbnail-wrapper:hover {
+    transform: none;
+    box-shadow: none;
 }
 
-.frame-group.element-frame .frame-overlay {
-    pointer-events: auto !important;
+/* 반응형 디자인 - 기존 프레임과 동일 */
+@media (max-width: 768px) {
+    #element-panel .thumbnail-wrapper {
+        width: 160px;
+        height: 206px;
+    }
 }
 
-.frame-group.selected-element {
-    border: 1px dashed #ff0000;
+@media (max-width: 480px) {
+    #element-panel {
+        padding: 12px 0;
+    }
+    
+    #element-panel .thumbnail-wrapper {
+        width: 140px;
+        height: 180px;
+    }
+    
+    #element-panel .thumbnail-wrapper img {
+        /* 모바일에서도 실제 사이즈 유지 */
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+    }
 }
 
-.element-resize-handle {
+/* 고해상도 디스플레이 대응 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    #element-panel .thumbnail-wrapper img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* 로딩 상태 */
+#element-panel .thumbnail-wrapper.loading {
+    background-color: #e9ecef;
+    position: relative;
+}
+
+#element-panel .thumbnail-wrapper.loading::before {
+    content: '';
     position: absolute;
-    width: 8px;
-    height: 8px;
-    background-color: #ff0000; 
-    border: 1px solid #000;
-    z-index: 30;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #dee2e6;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
 
-.element-resize-handle:hover {
-    background-color: #cc0000;
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 접근성 개선 */
+#element-panel .thumbnail-wrapper {
+    cursor: pointer;
+    outline: none;
+}
+
+#element-panel .thumbnail-wrapper:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* 성능 최적화 */
+#element-panel .thumbnail-wrapper {
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }

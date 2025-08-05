@@ -116,7 +116,7 @@
                                 </div>
                             </div>
                             <!-- Element 패널 추가 -->
-						    <div id="element-panel" class="row row-cols-2 g-3 d-none">
+						    <div id="element-panel" class="d-none">
 						        <!-- Element 썸네일이 여기에 동적으로 로드됩니다 -->
 						    </div>
                         </div>

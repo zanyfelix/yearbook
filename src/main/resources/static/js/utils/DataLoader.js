@@ -3,43 +3,43 @@
 // ============================================================================
 class DataLoader {
 	static loadBackgrounds() {
-	    // 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
-	    $.ajax({
-	        url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
-	        method: 'POST',
+		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
+		$.ajax({
+			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
+			method: 'POST',
 			contentType: 'application/json',
 			data: JSON.stringify({ id: 11, category: "background" }),
-	        success: function(representativeData) {
-	            const panel = $('#background-panel').empty();
-	            
-	            representativeData.forEach(result => {
-	                // 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
-	                const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
-	                    
-	                    // ✨ 핵심 수정: 클릭된 썸네일의 ID로 새로운 AJAX 요청
-	                    $.ajax({
-	                        url: `${ctx}/edit/themesByParent`, // 새로 만든 서버 주소
-	                        method: 'GET',
-	                        data: {
-	                            themeId: result.theme.id // 클릭된 썸네일의 theme id
-	                        },
-	                        success: function(fullListData) {
-	                            // 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
-	                            $('#backgroundModal').modal('show');
-	                            // 모달을 채우는 함수는 그대로 재사용
-	                            DataLoader.loadBackgroundModal(fullListData, 0); // selectedIndex는 0으로 시작
-	                        },
-	                        error: function() {
-	                            alert("전체 목록을 불러오는 데 실패했습니다.");
-	                        }
-	                    });
-	                });
-	                panel.append(item);
-	            });
-	        }
-	    });
+			success: function(representativeData) {
+				const panel = $('#background-panel').empty();
+
+				representativeData.forEach(result => {
+					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
+					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
+
+						// ✨ 핵심 수정: 클릭된 썸네일의 ID로 새로운 AJAX 요청
+						$.ajax({
+							url: `${ctx}/edit/themesByParent`, // 새로 만든 서버 주소
+							method: 'GET',
+							data: {
+								themeId: result.theme.id // 클릭된 썸네일의 theme id
+							},
+							success: function(fullListData) {
+								// 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
+								$('#backgroundModal').modal('show');
+								// 모달을 채우는 함수는 그대로 재사용
+								DataLoader.loadBackgroundModal(fullListData, 0); // selectedIndex는 0으로 시작
+							},
+							error: function() {
+								alert("전체 목록을 불러오는 데 실패했습니다.");
+							}
+						});
+					});
+					panel.append(item);
+				});
+			}
+		});
 	}
-	
+
 	static loadBackgroundModal(data, selectedIndex = 0) {
 		const listEl = $('#modalBackgroundList').empty();
 
@@ -68,10 +68,10 @@ class DataLoader {
 			}
 		}, 100);
 	}
-    
-    static loadPhotoFrames() {
-        $('#photoFrameList').empty();
-        
+
+	static loadPhotoFrames() {
+		$('#photoFrameList').empty();
+
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
 		$.ajax({
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
@@ -82,7 +82,6 @@ class DataLoader {
 				const panel = $('#photoFrameList').empty();
 
 				representativeData.forEach(result => {
-					console.log(result);
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
 					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
 
@@ -108,22 +107,22 @@ class DataLoader {
 				});
 			}
 		});
-    }
-    
-    static loadFrameModal(data, selectedIndex = 0, category = 'photoframe') {
-        const listEl = $('#modalFrameList').empty();
-        
+	}
+
+	static loadFrameModal(data, selectedIndex = 0, category = 'photoframe') {
+		const listEl = $('#modalFrameList').empty();
+
 		data.forEach((result, index) => {
 			// ✨ 모달 안의 썸네일을 클릭했을 때, 배경을 최종 적용합니다.
 			const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
 				window.selectionManager.clearSelection();
-				
+
 				// category 정보를 frameTheme 객체에 추가
 				const frameData = {
 					...result,
 					category: category
 				};
-				
+
 				FrameManager.applyFrame(frameData);
 				setTimeout(() => window.safeLineManager.update(), 500);
 				$('#frameModal').modal('hide');
@@ -144,8 +143,8 @@ class DataLoader {
 				selectedItem[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 			}
 		}, 100);
-    }
-	
+	}
+
 	static loadTextboxFrames() {
 		$('#textboxFrameList').empty();
 
@@ -185,8 +184,17 @@ class DataLoader {
 			}
 		});
 	}
-	
+
 	static loadElements() {
+		// element-panel이 없으면 생성하되, 기존 프레임과 동일한 구조로
+		if ($('#element-panel').length === 0) {
+			const elementPanel = $('<div id="element-panel" class="row row-cols-3 g-3"></div>');
+			$('#thumbnail-area').append(elementPanel);
+		} else {
+			// 기존 패널이 있으면 클래스 확인 및 설정
+			$('#element-panel').removeClass().addClass('row row-cols-3 g-3');
+		}
+
 		$('#element-panel').empty();
 
 		$.ajax({
@@ -195,7 +203,7 @@ class DataLoader {
 			contentType: 'application/json',
 			data: JSON.stringify({ id: 11, category: "element" }),
 			success: function(data) {
-				const panel = $('#element-panel').empty();
+				const panel = $('#element-panel');
 
 				data.forEach(result => {
 					// 썸네일 클릭 시 바로 프리뷰에 추가
@@ -214,6 +222,11 @@ class DataLoader {
 					});
 					panel.append(item);
 				});
+			},
+			error: function(xhr, status, error) {
+				console.error('Element 로딩 실패:', error);
+				const panel = $('#element-panel');
+				panel.html('<div class="text-center text-muted p-3">Element를 불러올 수 없습니다.</div>');
 			}
 		});
 	}
