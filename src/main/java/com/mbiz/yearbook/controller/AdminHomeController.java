@@ -1,6 +1,7 @@
 package com.mbiz.yearbook.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.mbiz.yearbook.model.Home;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.HomeService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -27,12 +29,27 @@ public class AdminHomeController {
     private UserService userService;
 	
 	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
     private HomeService homeService;
 	
 	private final String UPLOAD_DIR = "uploads/";
 
 	@GetMapping("/admin/home")
 	public String showForm(HttpSession session, @RequestParam Long userId, Model model) {
+		
+		if (userId != null) {
+			Optional<User> selectedUser = userRepository.findById(userId);
+			if (selectedUser.isPresent()) {
+			    User user = selectedUser.get();
+			    String role = user.getRole(); // 안전함
+			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
+		        if ("admin".equals(role)) {
+		            return "redirect:/admin/user?userId=" + userId;
+		        }
+			}
+	    }
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
