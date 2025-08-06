@@ -303,16 +303,35 @@ $(document).ready(function() {
 	// ✨ 기본 배경 이미지 로드 함수
 	function loadDefaultBackground() {
 		const defaultBgPath = `${ctx}/images/background.png`;
-		$('#page-preview-img').attr('src', defaultBgPath);
+		const bgImg = $('#page-preview-img');
+		const currentSrc = bgImg.attr('src');
+
+		// 이미 기본 배경이 로드되어 있다면 SafeLine만 업데이트
+		if (currentSrc === defaultBgPath) {
+			setTimeout(() => {
+				if (window.safeLineManager) {
+					window.safeLineManager.update();
+				}
+			}, 100);
+			return;
+		}
+
+		// 새로운 배경 이미지 설정
+		bgImg.attr('src', defaultBgPath);
 
 		// 이미지 로드 완료 후 safeline 업데이트
-		$('#page-preview-img').on('load', function() {
+		bgImg.off('load.defaultBg').on('load.defaultBg', function() {
 			setTimeout(() => {
 				if (window.safeLineManager) {
 					window.safeLineManager.update();
 				}
 			}, 100);
 		});
+
+		// 이미지가 이미 캐시되어 있을 경우
+		if (bgImg[0].complete) {
+			bgImg.trigger('load.defaultBg');
+		}
 	}
 
 	/**
@@ -320,46 +339,138 @@ $(document).ready(function() {
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
 	function renderPage(pageData) {
-		$('#frame-container').empty();
-		if (!pageData || !pageData.designData) {
-			loadDefaultBackground();
-			return;
-		}
+	    console.log('=== renderPage 시작 ===');
+	    console.log('pageData:', pageData);
+	    
+	    $('#frame-container').empty();
+	    
+	    if (!pageData || !pageData.designData) {
+	        console.log('pageData 없음 - 기본 배경 로드');
+	        loadDefaultBackground();
+	        return;
+	    }
 
-		const design = JSON.parse(pageData.designData);
-		const bgImg = $('#page-preview-img');
+	    let design;
+	    try {
+	        design = JSON.parse(pageData.designData);
+	        console.log('파싱된 designData:', design);
+	    } catch (e) {
+	        console.error('JSON 파싱 에러:', e);
+	        loadDefaultBackground();
+	        return;
+	    }
 
-		// 1. 배경 이미지 로드가 완료되면 실행될 렌더링 로직을 미리 정의합니다.
-		bgImg.off('load.render').on('load.render', function() {
-			$('#frame-container').empty();
+	    const bgImg = $('#page-preview-img');
 
-			if (design.frames) {
-				design.frames.forEach(frameData => FrameManager.applyFrame(frameData.theme, frameData));
-			}
+	    // 프레임과 텍스트박스를 렌더링하는 공통 함수
+	    function renderElements() {
+	        console.log('=== renderElements 실행 시작 ===');
+	        
+	        // SafeLine 업데이트 먼저 실행
+	        if (window.safeLineManager) {
+	            console.log('SafeLine 업데이트 중...');
+	            window.safeLineManager.update();
+	        }
 
-			if (design.textBoxes) {
-				design.textBoxes.forEach(boxData => {
-					const $box = $('<div class="text-box" contenteditable="true"></div>').html(boxData.html).css({ position: 'absolute', ...boxData.styles });
-					$('#frame-container').append($box);
-					EventManager.setupTextEvents($box);
-					$box.data('relativeState', boxData);
-					window.updateElementPosition($box);
-				});
-			}
-		});
+	        $('#frame-container').empty();
 
-		// 2. 배경 이미지 소스를 설정합니다.
-		if (design.background && !design.background.includes('data:image/gif;base64')) {
-			bgImg.attr('src', design.background);
-		} else {
-			loadDefaultBackground();
-		}
+	        // 프레임 렌더링
+	        if (design.frames && design.frames.length > 0) {
+	            console.log(`${design.frames.length}개의 프레임 렌더링 시작`);
+	            design.frames.forEach((frameData, index) => {
+	                console.log(`프레임 ${index} 렌더링:`, frameData);
+	                try {
+	                    FrameManager.applyFrame(frameData.theme, frameData);
+	                    console.log(`프레임 ${index} 렌더링 완료`);
+	                } catch (e) {
+	                    console.error(`프레임 ${index} 렌더링 실패:`, e);
+	                }
+	            });
+	        } else {
+	            console.log('렌더링할 프레임이 없음');
+	        }
 
-		// 3. 이미지가 캐시되어 'load' 이벤트가 발생하지 않을 경우를 대비하여,
-		//    이미지 로드가 완료되었는지 직접 확인하고 수동으로 렌더링을 트리거합니다.
-		if (bgImg[0].complete) {
-			bgImg.trigger('load.render');
-		}
+	        // 텍스트박스 렌더링
+	        if (design.textBoxes && design.textBoxes.length > 0) {
+	            console.log(`${design.textBoxes.length}개의 텍스트박스 렌더링 시작`);
+	            design.textBoxes.forEach((boxData, index) => {
+	                console.log(`텍스트박스 ${index} 렌더링:`, boxData);
+	                try {
+	                    const $box = $('<div class="text-box" contenteditable="true"></div>')
+	                        .html(boxData.html)
+	                        .css({ 
+	                            position: 'absolute', 
+	                            ...boxData.styles 
+	                        });
+	                    
+	                    $('#frame-container').append($box);
+	                    EventManager.setupTextEvents($box);
+	                    $box.data('relativeState', boxData);
+	                    window.updateElementPosition($box);
+	                    console.log(`텍스트박스 ${index} 렌더링 완료`);
+	                } catch (e) {
+	                    console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
+	                }
+	            });
+	        } else {
+	            console.log('렌더링할 텍스트박스가 없음');
+	        }
+	        
+	        console.log('=== renderElements 실행 완료 ===');
+	        console.log('현재 frame-container 내용:', $('#frame-container').html());
+	    }
+
+	    // 배경 이미지 처리
+	    if (design.background && !design.background.includes('data:image/gif;base64')) {
+	        const currentSrc = bgImg.attr('src');
+	        console.log('현재 배경:', currentSrc);
+	        console.log('새 배경:', design.background);
+	        
+	        // 현재 배경과 같은 이미지라면 즉시 렌더링
+	        if (currentSrc === design.background) {
+	            console.log('같은 배경 이미지 - 즉시 렌더링');
+	            setTimeout(() => {
+	                renderElements();
+	            }, 200); // 시간을 좀 더 늘려봅시다
+	        } else {
+	            console.log('다른 배경 이미지 - 로드 후 렌더링');
+	            // 다른 이미지라면 로드 완료 후 렌더링
+	            bgImg.off('load.render').on('load.render', function() {
+	                console.log('배경 이미지 로드 완료');
+	                setTimeout(() => {
+	                    renderElements();
+	                }, 200);
+	            });
+	            
+	            bgImg.attr('src', design.background);
+	            
+	            // 이미지가 캐시되어 있을 경우를 대비
+	            if (bgImg[0].complete) {
+	                console.log('배경 이미지가 이미 로드됨 - 트리거');
+	                bgImg.trigger('load.render');
+	            }
+	        }
+	    } else {
+	        console.log('기본 배경 사용');
+	        // 기본 배경 로드
+	        loadDefaultBackground();
+	        
+	        // 기본 배경 로드 후 렌더링
+	        bgImg.off('load.render').on('load.render', function() {
+	            console.log('기본 배경 로드 완료');
+	            setTimeout(() => {
+	                renderElements();
+	            }, 200);
+	        });
+	        
+	        // 기본 배경이 이미 로드되어 있을 경우
+	        if (bgImg[0].complete) {
+	            console.log('기본 배경이 이미 로드됨 - 렌더링');
+	            setTimeout(() => {
+	                renderElements();
+	            }, 200);
+	        }
+	    }
 	}
 
 	// Edit 버튼 클릭 시, AJAX로 페이지 데이터를 가져와 편집창에 렌더링
@@ -367,7 +478,7 @@ $(document).ready(function() {
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
 		const yearbookId = activePageThumb.data('yearbook-id');
 		
-		showLoader(); // <--- 로더 보이기
+		showLoader();
 
 		// yearbookId가 있을 경우 (저장된 페이지) -> 서버에서 데이터를 가져옴
 		if (yearbookId) {
@@ -426,14 +537,11 @@ $(document).ready(function() {
 	// ✨ 모달이 열릴 때 기본 설정 적용
 	$('#editModal').on('show.bs.modal', function() {
 		hasSaved = false;
-		
-		// save-confirmation-message 표시
 		$('#save-confirmation-message').show();
 
 		// 기본 배경이 설정되어 있지 않다면 로드
 		const currentSrc = $('#page-preview-img').attr('src');
-		if (!currentSrc ||
-			currentSrc.includes('data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')) {
+		if (!currentSrc || currentSrc.includes('data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')) {
 			loadDefaultBackground();
 		}
 	});
