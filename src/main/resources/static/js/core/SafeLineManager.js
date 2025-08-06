@@ -137,6 +137,19 @@ class SafeLineManager {
 
         // ✨ 빗금 패턴으로 안전선 영역 그리기
         this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
+		
+		const $message = $('#save-confirmation-message');
+		if ($message.length > 0) {
+			// 이미지 실제 위치의 하단에서 5px 아래에 위치하도록 top 설정
+			const newTop = imgPosition.top + imgPosition.height;
+			// 이미지 실제 위치의 수평 중앙에 위치하도록 left 설정
+			const newLeft = imgPosition.left;
+
+			$message.css({
+				top: `${newTop}px`,
+				left: `${newLeft}px`
+			});
+		}
 
         // SelectionManager의 캐시 무효화
         this.clearSelectionCache();

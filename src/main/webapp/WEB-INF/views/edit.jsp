@@ -183,10 +183,9 @@
                                 <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
                                     <img id="page-preview-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="rounded">
                                 </div>
-                                
+                                <div id="save-confirmation-message" style="display:none;"></div>
                                 <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
                                 <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
-                                <div id="save-confirmation-message" style="display:none;"></div>
                                 <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
                         </div>
                     </div>

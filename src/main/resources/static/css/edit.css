@@ -203,14 +203,14 @@ body {
     height: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     overflow: hidden;
 }
 
 #page-preview-img {
     /* ✨ 핵심 수정: 배경 이미지가 비율을 유지하면서 컨테이너에 맞게 조절 */
     max-width: 100%;
-    max-height: 100%;
+    max-height: 98%;
     width: auto;               /* 가로는 자동 조절 */
     height: auto;              /* 세로는 자동 조절 */
     object-fit: contain;       /* 비율 유지하면서 컨테이너 안에 맞춤 */
@@ -1555,14 +1555,13 @@ button:focus,
    29. 저장 완료 메시지 스타일
    =========================================== */
 #save-confirmation-message {
-    position: fixed; /* absolute에서 fixed로 변경 */
-    bottom: 20px;    /* 화면 하단에서 20px 여백 */
-    right: 20px;     /* 화면 우측에서 20px 여백 */
+    position: absolute !important;
     color: black; /* 글자색 검은색으로 변경 */
     font-size: 13px;
     z-index: 1050;
     text-align: left;
     line-height: 1.5;
+    white-space: nowrap;
 }
 
 /* 반응형 디자인 */

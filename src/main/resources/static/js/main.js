@@ -119,7 +119,7 @@ $(document).ready(function() {
 							const formattedTime = `${hours}:${minutes}${ampm}`;
 							// ✨ --- 변경 끝 --- ✨
 
-							const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
+							const message = `The Page has been saved.${formattedDate} ${formattedTime}`;
 
 							$('#save-confirmation-message').html(message).show();
 						}
@@ -346,7 +346,7 @@ $(document).ready(function() {
 		const formattedDate = `${year}.${month}.${day}`;
 		const formattedTime = `${hours}:${minutes}${ampm}`;
 
-		const message = `The Page has been saved.<br>${formattedDate} ${formattedTime}`;
+		const message = `The Page has been saved.${formattedDate} ${formattedTime}`;
 
 		$('#save-confirmation-message').html(message).show();
 	}
