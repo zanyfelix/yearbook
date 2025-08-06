@@ -173,7 +173,7 @@
                             <div id="main-actions" class="d-flex align-items-center gap-2" style="margin-right:8px;">
 						        <button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
 						        <button id="btn-save" class="btn btn-primary">Save</button>
-						        <button class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+						        <button id="btn-close-modal" class="btn btn-danger">Close</button>
 						    </div>
                             
                             <!-- <div class="button-group-container d-flex flex-column justify-content-start gap-2 p-3 flex-shrink-0">

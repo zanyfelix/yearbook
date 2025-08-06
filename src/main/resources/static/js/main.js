@@ -280,6 +280,7 @@ $(document).ready(function() {
 				complete: function() {
 					elementsToHide.removeClass('hide-for-capture');
 					hideLoader(); // <--- 작업 완료 후 로더 숨기기
+					$(document).trigger('saveComplete');
 				}
 			});
 		});
@@ -606,6 +607,20 @@ $(document).ready(function() {
 				window.updateAllPositions();
 			}
 		}, 200);
+	});
+	
+	$('#btn-close-modal').on('click', function() {
+		if (confirm("Do you want to save?")) {
+			// "확인"을 누르면, 저장이 완료된 후 모달을 닫도록 이벤트를 한 번만 리스닝
+			$(document).one('saveComplete', function() {
+				$('#editModal').modal('hide');
+			});
+			// 저장 버튼 클릭을 프로그래밍적으로 트리거
+			$('#btn-save').trigger('click');
+		} else {
+			// "취소"를 누르면 바로 모달을 닫음
+			$('#editModal').modal('hide');
+		}
 	});
 
 	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.
