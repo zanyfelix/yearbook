@@ -29,13 +29,12 @@ html, body {
 }
 
 .sidebar a:hover {
-	background-color: #555;
+    background-color: #555;
 }
 
-.sidebar a.active,
-.sidebar a.active:hover {
-  background-color: #6c757d; /* 원하는 배경색 */
-  color: #fff;               /* 원하는 글자색 */
+.sidebar a.active {
+    background-color: #28a745;
+    font-weight: bold;
 }
 
 .content {

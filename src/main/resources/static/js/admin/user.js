@@ -1,123 +1,135 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // 전체 선택/해제
-  document.getElementById('selectAll')
-    .addEventListener('click', function() {
-      document.querySelectorAll('.selectBox').forEach(cb => cb.checked = this.checked);
-    });
-	
+$(document).ready(function() {
+	// 전체 선택/해제
+	$('#selectAll').on('click', function() {
+		$('.selectBox').prop('checked', this.checked);
+	});
+
 	const registerModalEl = document.getElementById('registerModal');
-	  const registerModal   = new bootstrap.Modal(registerModalEl);
-	  const form            = document.getElementById('registerForm');
-	  const titleEl         = document.getElementById('registerModalLabel');
-	  const submitBtn       = document.getElementById('registerSubmitBtn');
+	const registerModal = new bootstrap.Modal(registerModalEl);
+	const $form = $('#registerForm');
+	const $titleEl = $('#registerModalLabel');
+	const $submitBtn = $('#registerSubmitBtn');
 
-	  // --- 1) REGISTER 버튼 클릭 ---
-	  document.getElementById('btn-register').addEventListener('click', () => {
-		
-		document.querySelectorAll('.selectBox').forEach(cb => cb.checked = false);
-		const selectAllChk = document.getElementById('selectAll');
-		if (selectAllChk) selectAllChk.checked = false;
-		
-	    form.reset();                       // 폼 초기화
-	    document.getElementById('userIdHidden').value = '';
-	    form.action = window.contextPath +'/admin/user/register';
-	    titleEl.textContent = 'USER REGISTRATION';
-	    submitBtn.textContent = '등록';
-	    registerModal.show();
-	  });
+	// --- 1) REGISTER 버튼 클릭 ---
+	$('#btn-register').on('click', function() {
+		// 모든 체크박스 해제
+		$('.selectBox').prop('checked', false);
+		$('#selectAll').prop('checked', false);
 
-	  // --- 2) MODIFY 버튼 클릭 ---
-	  document.getElementById('btn-modify').addEventListener('click', () => {
-	    const checked = document.querySelectorAll('.selectBox:checked');
-	    if (checked.length !== 1) {
-	      alert('Please select only one user to edit.');
-	      return;
-	    }
-	    const row = checked[0].closest('tr');
-	    // 1) PK 채우기
-	    const id = checked[0].value;
-	    document.getElementById('userIdHidden').value = id;
+		$form[0].reset(); // 폼 초기화
+		$('#userIdHidden').val(''); // hidden input 초기화
+		$form.attr('action', window.contextPath + '/admin/user/register');
+		$titleEl.text('USER REGISTRATION');
+		$submitBtn.text('등록');
+		registerModal.show();
+	});
 
-	    // 2) 나머지 필드 읽어와서 채우기
-	    document.getElementById('userIdInput').value    = row.children[2].textContent.trim();
-		const passwordInput = row.children[3].querySelector('input[name="password"]');
-	    document.getElementById('passwordInput').value  = passwordInput?.value.trim();
-	    document.getElementById('nameInput').value      = row.children[4].textContent.trim();
-	    document.getElementById('schoolInput').value    = row.children[5].textContent.trim();
-	    document.getElementById('mailInput').value      = row.children[6].textContent.trim();
-		const dateText = row.children[7].textContent.trim();
-		const date = new Date(dateText.replace(' ', 'T')); 
-		const deadlineInput = document.getElementById('deadlineInput');
-		if (deadlineInput.type === 'date') {
-		  // <input type="date"> 의 경우
-		  deadlineInput.valueAsDate = date;
+	// --- 2) MODIFY 버튼 클릭 ---
+	$('#btn-modify').on('click', function() {
+		const $checked = $('.selectBox:checked');
+		if ($checked.length !== 1) {
+			alert('Please select only one user to edit.');
+			return;
 		}
-		else if (deadlineInput.type === 'datetime-local') {
-		  // <input type="datetime-local"> 은 "YYYY-MM-DDThh:mm" 형식 필요
-		  // toISOString() 은 UTC 기준이므로, 로컬 타임존 오프셋 보정
-		  const tzOffsetMs = date.getTimezoneOffset() * 60000;
-		  const localISO = new Date(date - tzOffsetMs).toISOString().slice(0,16);
-		  deadlineInput.value = localISO;
+
+		const $row = $checked.closest('tr');
+		const id = $checked.val();
+
+		// 1) PK 및 나머지 필드 채우기
+		$('#userIdHidden').val(id);
+		$('#userIdInput').val($row.children().eq(2).text().trim());
+		$('#passwordInput').val($row.find('input[name="password"]').val().trim());
+		$('#nameInput').val($row.children().eq(4).text().trim());
+		$('#schoolInput').val($row.children().eq(5).text().trim());
+		$('#mailInput').val($row.children().eq(6).text().trim());
+
+		// 날짜 처리
+		const dateText = $row.children().eq(7).text().trim();
+		const date = new Date(dateText.replace(' ', 'T'));
+		const $deadlineInput = $('#deadlineInput');
+
+		if ($deadlineInput.attr('type') === 'date') {
+			$deadlineInput.prop('valueAsDate', date);
+		} else if ($deadlineInput.attr('type') === 'datetime-local') {
+			const tzOffsetMs = date.getTimezoneOffset() * 60000;
+			const localISO = new Date(date - tzOffsetMs).toISOString().slice(0, 16);
+			$deadlineInput.val(localISO);
+		} else {
+			$deadlineInput.val(dateText);
 		}
-		else {
-		  // 그 외 (text 등) 그냥 문자열 넣기
-		  deadlineInput.value = dateText;
+
+		// 역할(Role) 처리
+		let roleText = $row.children().eq(8).text().trim().toLowerCase();
+		$('#roleSelect').val(roleText);
+
+		// 3) 모달 설정 변경
+		$form.attr('action', window.contextPath + '/admin/user/modify');
+		$titleEl.text('USER MODIFY');
+		$submitBtn.text('수정');
+
+		registerModal.show();
+	});
+	
+	// DELETE 버튼 클릭 시
+	$('#btn-delete').on('click', function(e) {
+		const $checked = $('.selectBox:checked');
+		// 선택된 항목이 없으면 경고창을 띄우고 폼 제출을 막습니다.
+		if ($checked.length === 0) {
+			alert('Please select only one user to edit.');
+			e.preventDefault();
 		}
-	    let roleText = row.children[8].textContent.trim();
-		roleText = roleText.toLowerCase();
-		const roleSelect = document.getElementById('roleSelect');
-		roleSelect.value = roleText;
-		
-	    // 3) 모달 설정 변경
-	    form.action = window.contextPath +'/admin/user/modify';
-	    titleEl.textContent = 'USER MODIFY';
-	    submitBtn.textContent = '수정';
+		// 선택된 항목이 있으면, form의 onsubmit 이벤트가 정상적으로 실행됩니다.
+	});
 
-	    registerModal.show();
-	  });
+	// active 토글 스위치 변경
+	$('.toggle-switch input[type="checkbox"]').on('change', function() {
+		const $this = $(this);
 
-	//active변경
-	const toggleUrl = window.contextPath + '/admin/user/toggle-active';
-	document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach(chk => {
-	  chk.addEventListener('change', function() {
-		
-		  if (this.checked) {
-			  const row = this.closest('tr');
-			  // 0=checkbox,1=index,2=userId,3=password,4=name,5=school,6=mail,7=deadline,...
-			  const deadlineText = row.children[7].textContent.trim();
-			  if (deadlineText) {
-				  const deadlineDate = new Date(`${deadlineText}T00:00:00`);
-				  const today = new Date();
-				  today.setHours(0, 0, 0, 0);
+		// 활성화 시 마감일 체크
+		if (this.checked) {
+			const $row = $this.closest('tr');
+			const deadlineText = $row.children().eq(7).text().trim();
+			if (deadlineText) {
+				const deadlineDate = new Date(`${deadlineText}T00:00:00`);
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
 
-				  if (deadlineDate <= today) {
-					  alert('If the submission deadline is today or a past date, activation is not possible.');
-					  // 체크 원복
-					  this.checked = false;
-					  return;
-				  }
+				if (deadlineDate <= today) {
+					alert('If the submission deadline is today or a past date, activation is not possible.');
+					this.checked = false; // 체크 원복
+					return;
+				}
+			}
+		}
+
+		const payload = {
+			id: +$this.data('user-id'),
+			active: this.checked
+		};
+
+		// fetch를 jQuery.ajax로 변경
+		$.ajax({
+			url: window.contextPath + '/admin/user/toggle-active',
+			type: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify(payload),
+			// CSRF 토큰이 필요하다면 아래 주석을 해제하고 설정
+			/*
+			beforeSend: function(xhr) {
+			  const token = $('meta[name="_csrf"]').attr('content');
+			  const header = $('meta[name="_csrf_header"]').attr('content');
+			  if (token && header) {
+				xhr.setRequestHeader(header, token);
 			  }
-		  }
-		
-	    const payload = {
-	      id:     +this.dataset.userId,
-	      active: this.checked
-	    };
-	    //const token  = document.querySelector('meta[name="_csrf"]').content;
-	    //const header = document.querySelector('meta[name="_csrf_header"]').content;
-
-	    fetch(toggleUrl, {
-	      method: 'POST',
-	      headers: {
-	        'Content-Type': 'application/json'
-	      },
-	      body: JSON.stringify(payload)
-	    })
-	    .then(res => { if (!res.ok) throw new Error(res.statusText); })
-	    .catch(err => {
-	      alert('상태 변경 실패: ' + err.message);
-	      this.checked = !this.checked;
-	    });
-	  });
+			},
+			*/
+			success: function() {
+				// 성공 시 특별한 동작 없음
+			},
+			error: function(jqXHR, textStatus, errorThrown) {
+				alert('상태 변경 실패: ' + errorThrown);
+				$this.prop('checked', !$this.prop('checked')); // 실패 시 체크박스 원상 복구
+			}
+		});
 	});
 });

@@ -88,7 +88,7 @@ public class AdminUserController {
 	@PostMapping("/user/modify")
 	public String update(@ModelAttribute User user, RedirectAttributes attrs) {
         userService.update(user);
-        attrs.addFlashAttribute("successMessage", "사용자 정보가 수정되었습니다.");
+        attrs.addFlashAttribute("successMessage", "Your user information has been modified.");
         return "redirect:/admin/user";
     }
 	
@@ -99,7 +99,7 @@ public class AdminUserController {
             attrs.addFlashAttribute("errorMessage", "Select the user you want to delete.");
         } else {
         	int deleted = userService.deleteUsers(ids);
-            attrs.addFlashAttribute("successMessage", deleted + "user has been deleted.");
+            attrs.addFlashAttribute("successMessage", deleted + " user has been deleted.");
         }
         return "redirect:/admin/user";
     }

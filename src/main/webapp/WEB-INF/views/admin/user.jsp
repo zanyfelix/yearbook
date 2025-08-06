@@ -7,10 +7,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/user.css"/>
-    <script src="<c:url value='/js/admin/user.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -191,5 +191,7 @@
 window.contextPath = '${pageContext.request.contextPath}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/user.js'/>"></script>
 </body>
 </html>
