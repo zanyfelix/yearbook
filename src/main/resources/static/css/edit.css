@@ -894,7 +894,7 @@ body {
 /* 텍스트 상자 기본 스타일 */
 .text-box {
     /* ✨ 테두리 스타일을 점선(dotted)으로 변경하고 투명하게 설정 */
-    border: 2px dotted transparent; 
+    border: 1px dashed transparent; 
     padding: 8px;
     background-color: transparent;
     transition: background-color 0.2s ease;
@@ -911,7 +911,7 @@ body {
 /* 편집 상태 (녹색 실선으로 유지) */
 .text-box.editing {
     cursor: text;
-    border: 1px dotted #FF0000; /* 편집 시에는 실선으로 명확하게 표시 */
+    border: 1px dashed #FF0000; /* 편집 시에는 실선으로 명확하게 표시 */
 }
 
 /* 편집 상태 & 포커스 상태 */

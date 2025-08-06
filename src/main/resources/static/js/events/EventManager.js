@@ -227,6 +227,11 @@ class EventManager {
 		textBox.on('mousedown', function(e) {
 			e.stopPropagation();
 			const $this = $(this);
+			
+			// 브라우저의 기본 동작(텍스트 선택 및 포커스)을 항상 막아 깜박임 현상을 방지합니다.
+			if (!$this.hasClass('editing')) {
+				e.preventDefault();
+			}
 
 			// '선택' 상태이고 '편집' 상태가 아닐 때만 드래그를 허용합니다.
 			if ($this.hasClass('selected') && !$this.hasClass('editing')) {
