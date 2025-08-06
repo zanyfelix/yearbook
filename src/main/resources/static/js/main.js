@@ -7,6 +7,12 @@ $(document).ready(function() {
 	window.selectionManager = new SelectionManager();
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
+	
+	// ▼▼▼▼▼ 로딩 화면 제어 함수 추가 ▼▼▼▼▼
+	const $loader = $('#preview-loader');
+	function showLoader() { $loader.show(); }
+	function hideLoader() { $loader.hide(); }
+	// ▲▲▲▲▲ 로딩 화면 제어 함수 추가 ▲▲▲▲▲
 
 	// 전역 함수 래핑 (기존 코드 호환성)
 	window.clearSelection = () => window.selectionManager.clearSelection();
@@ -20,6 +26,8 @@ $(document).ready(function() {
 
 	// Save 버튼 클릭 이벤트
 	$('#btn-save').on('click', function() {
+		showLoader(); // <--- 로더 보이기
+		
 		const captureArea = $('#page-preview');
 		const elementsToHide = $('#safe-line-overlay, .photo-selection-box');
 
@@ -141,6 +149,7 @@ $(document).ready(function() {
 				},
 				complete: function() {
 					elementsToHide.removeClass('hide-for-capture');
+					hideLoader(); // <--- 작업 완료 후 로더 숨기기
 				}
 			});
 		});
@@ -301,6 +310,8 @@ $(document).ready(function() {
 	$('.content').on('click', '.edit-btn', function() {
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
 		const yearbookId = activePageThumb.data('yearbook-id');
+		
+		showLoader(); // <--- 로더 보이기
 
 		// yearbookId가 있을 경우 (저장된 페이지) -> 서버에서 데이터를 가져옴
 		if (yearbookId) {
@@ -320,11 +331,16 @@ $(document).ready(function() {
 				error: function() {
 					alert("페이지 데이터를 불러오는 데 실패했습니다.");
 					renderPage(null); // 실패 시 기본 배경으로 시작
+				},
+				complete: function() {
+					// 렌더링 시간을 고려하여 약간의 지연 후 로더 숨기기
+					setTimeout(hideLoader, 300); // <--- 로더 숨기기
 				}
 			});
 		} else {
 			// yearbookId가 없을 경우 (새 페이지) -> 기본 배경으로 시작
 			renderPage(null);
+			setTimeout(hideLoader, 100); // <--- 새 페이지 로드 시에도 로더 숨기기
 		}
 	});
 	

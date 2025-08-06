@@ -71,7 +71,11 @@
             <div class="modal-content border-0 rounded-0" style="height: 100vh;">
 
                 <div class="modal-body d-flex p-0" style="height: 100vh;">
-                    <!-- 좌측 버튼 영역 (고정 너비) -->
+
+					<div id="preview-loader" style="display: none;">
+						<div class="spinner"></div>
+					</div>
+						<!-- 좌측 버튼 영역 (고정 너비) -->
                     <div class="d-flex flex-column p-3 border-end" style="min-width: 150px;">
                     	<div class="editor-panel-spacer"></div>
                         <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
@@ -183,7 +187,7 @@
                                 <div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
                                     <img id="page-preview-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="rounded">
                                 </div>
-                                <div id="save-confirmation-message" style="display:none;"></div>
+								<div id="save-confirmation-message" style="display:none;"></div>
                                 <div id="frame-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
                                 <div id="safe-line-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
                                 <input type="file" id="image-upload-input" accept="image/*" style="display: none;">

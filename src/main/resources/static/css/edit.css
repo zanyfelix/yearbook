@@ -1679,3 +1679,34 @@ button:focus,
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
 }
+
+/* ===========================================
+   30. 미리보기 로딩 화면 스타일
+   =========================================== */
+#preview-loader {
+    position: fixed; /* fixed로 변경하여 화면 전체를 덮도록 설정 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    /* z-index를 Bootstrap 모달(1055)보다 높게 설정 */
+    z-index: 1060; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3; /* 연한 회색 트랙 */
+    border-top: 4px solid #007bff; /* 파란색 스피너 */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
