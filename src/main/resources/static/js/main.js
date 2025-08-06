@@ -8,7 +8,6 @@ $(document).ready(function() {
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
 	
-	// ▼▼▼▼▼ 로딩 화면 제어 함수 추가 ▼▼▼▼▼
 	const $loader = $('#preview-loader');
 	function showLoader() { $loader.show(); }
 	function hideLoader() { $loader.hide(); }
@@ -33,7 +32,7 @@ $(document).ready(function() {
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-		if (!actualBgRect) return;
+		if (!actualBgRect) return; // 배경 위치 계산 불가 시 중단
 
 		// 퍼센트(%)를 현재 배경 크기에 맞는 픽셀(px)로 변환
 		const newPixelPos = {
