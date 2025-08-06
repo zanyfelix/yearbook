@@ -35,15 +35,17 @@ public class AdminContactUsController {
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
 		
-	    User user = (User) session.getAttribute("loginUser");
+    	User loginUser = (User) session.getAttribute("loginUser");
+	    model.addAttribute("loginUser", loginUser);
 	    
+	    //사용자 리스트(항상)
+	    List<User> allUsers = userService.findAll();
+	    model.addAttribute("allUsers", allUsers);
+	    
+	    //관리자메일
 	    List<User> admin = userService.getUser("userId", "admin");
 	    model.addAttribute("mail", admin.get(0).getMail());
     	model.addAttribute("id", admin.get(0).getId());
-	    
-	    //사용자 리스트(항상)
-	    List<ContactUs> allUsers = contactUsService.findAll();
-	    model.addAttribute("allUsers", allUsers);
 	    
 	    List<ContactUs> contacts = contactUsService.getContactUs(type, keyword);
 	    model.addAttribute("type", type);

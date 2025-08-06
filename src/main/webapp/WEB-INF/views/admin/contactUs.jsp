@@ -1,15 +1,16 @@
+<!DOCTYPE html>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page session="true" %>
 <%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
-<!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>Contact Us</title>
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Contact Us</title>
+	<link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/contactUs.css"/>
-    <script src="<c:url value='/js/admin/contactUs.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -32,14 +33,12 @@
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
     
-    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
-    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
-    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
-    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
+    <a href="/admin/user?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+    <a href="/admin/submission?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+    <a href="/admin/yearbook?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+    <a href="/admin/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 <div class="content">
-	<div class="top-bar">
-	</div>
 
 	<div class="container-fluid">
     
@@ -147,8 +146,8 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-              <button type="submit" class="btn btn-primary">저장</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save</button>
             </div>
           </form>
         </div>
@@ -186,5 +185,7 @@ window.contextPath = '${pageContext.request.contextPath}';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/contactUs.js'/>"></script>
 </body>
 </html>

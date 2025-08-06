@@ -18,7 +18,7 @@
     <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
         <button type="submit" class="btn btn-secondary w-100">Logout</button>
     </form>
-    <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+    <a href="/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Progress Report</a>
     <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submit to MBIZ</a>
