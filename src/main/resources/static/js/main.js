@@ -30,34 +30,78 @@ $(document).ready(function() {
 	window.updateElementPosition = function($element, state) {
 		const relativeState = state || $element.data('relativeState');
 		if (!relativeState) return;
+		
+		let baseRect; // 위치 계산의 기준이 될 사각형
+		let baseOffset = { left: 0, top: 0 }; // 최종 위치에 더해줄 오프셋
 
-		const bg = $('#page-preview-img');
-		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-		if (!actualBgRect) return;
+		if ($element.hasClass('uploaded-photo')) {
+			// 1. 요소가 사진일 경우, 기준은 '부모 프레임'입니다.
+			const $frame = $element.closest('.frame-group');
+			if (!$frame.length) return;
 
-		// 퍼센트(%)를 현재 배경 크기에 맞는 픽셀(px)로 변환
+			baseRect = {
+				width: $frame.width(),
+				height: $frame.height()
+			};
+			// 사진의 left, top은 프레임 내부 기준이므로 오프셋은 0입니다.
+
+		} else {
+			// 2. 사진이 아닐 경우(프레임, 텍스트 등), 기준은 '배경 이미지'입니다.
+			const bg = $('#page-preview-img');
+			baseRect = window.safeLineManager.getActualImagePosition(bg);
+			if (!baseRect) return; // 배경 위치 계산 불가 시 중단
+
+			// 최종 위치는 배경의 시작점(left, top)을 더해줘야 합니다.
+			baseOffset = { left: baseRect.left, top: baseRect.top };
+		}
+
+		// 퍼센트(%)를 현재 기준 사각형(baseRect)에 맞는 픽셀(px)로 변환
 		const newPixelPos = {
-			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
-			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top,
+			left: (relativeState.position.left / 100) * baseRect.width + baseOffset.left,
+			top: (relativeState.position.top / 100) * baseRect.height + baseOffset.top,
 		};
 		const newPixelSize = {
-			width: (relativeState.size.width / 100) * actualBgRect.width,
-			height: $element.hasClass('text-box') ? 'auto' : (relativeState.size.height / 100) * actualBgRect.height,
+			width: (relativeState.size.width / 100) * baseRect.width,
+			height: $element.hasClass('text-box') ? 'auto' : (relativeState.size.height / 100) * baseRect.height,
 		};
 
 		const transform = relativeState.transform || 'matrix(1, 0, 0, 1, 0, 0)';
 		$element.css({ ...newPixelPos, ...newPixelSize, transform: transform });
 	}
 
-	/**
-	 * 페이지 위의 모든 가변 요소들의 위치와 크기를 업데이트합니다.
-	 */
 	window.updateAllPositions = function() {
 		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
 			window.updateElementPosition($(this));
+
+			// ✨ 추가: 프레임 안의 사진 위치도 함께 업데이트
+			const $photo = $(this).find('.uploaded-photo');
+			if ($photo.length && $photo.data('relativeState')) {
+				window.updateElementPosition($photo);
+			}
 		});
 	}
 	// ✨ =======================================================================
+
+	// ✨ 모달 초기화 함수 추가
+	function initializeModal() {
+		// 1. 컨테이너 비우기
+		$('#frame-container').empty();
+		
+		// 2. 선택 상태 초기화
+		window.selectionManager.clearSelection();
+		
+		// 3. 저장 상태 초기화
+		hasSaved = false;
+		
+		// 4. 메시지 숨기기
+		$('#save-confirmation-message').hide();
+		
+		// 5. 기본 배경 로드
+		loadDefaultBackground();
+		
+		// 6. 배경 탭 활성화
+		$('#btn-background').trigger('click');
+	}
 
 	// Edit 버튼 클릭 시, 어떤 썸네일을 편집할지 activePageThumb 변수에 저장
 	$('.content').on('click', '.edit-btn', function() {
@@ -268,10 +312,8 @@ $(document).ready(function() {
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
 		if (confirm("모든 디자인이 삭제됩니다. 계속하시겠습니까?")) {
-			// ✨ 기본 배경으로 초기화
-			loadDefaultBackground();
-			$('#frame-container').empty();
-			window.selectionManager.clearSelection();
+			// ✨ 초기화 함수 사용
+			initializeModal();
 		}
 	});
 
@@ -339,13 +381,10 @@ $(document).ready(function() {
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
 	function renderPage(pageData) {
-	    console.log('=== renderPage 시작 ===');
-	    console.log('pageData:', pageData);
 	    
 	    $('#frame-container').empty();
 	    
 	    if (!pageData || !pageData.designData) {
-	        console.log('pageData 없음 - 기본 배경 로드');
 	        loadDefaultBackground();
 	        return;
 	    }
@@ -353,7 +392,6 @@ $(document).ready(function() {
 	    let design;
 	    try {
 	        design = JSON.parse(pageData.designData);
-	        console.log('파싱된 designData:', design);
 	    } catch (e) {
 	        console.error('JSON 파싱 에러:', e);
 	        loadDefaultBackground();
@@ -364,11 +402,9 @@ $(document).ready(function() {
 
 	    // 프레임과 텍스트박스를 렌더링하는 공통 함수
 	    function renderElements() {
-	        console.log('=== renderElements 실행 시작 ===');
 	        
 	        // SafeLine 업데이트 먼저 실행
 	        if (window.safeLineManager) {
-	            console.log('SafeLine 업데이트 중...');
 	            window.safeLineManager.update();
 	        }
 
@@ -376,12 +412,9 @@ $(document).ready(function() {
 
 	        // 프레임 렌더링
 	        if (design.frames && design.frames.length > 0) {
-	            console.log(`${design.frames.length}개의 프레임 렌더링 시작`);
 	            design.frames.forEach((frameData, index) => {
-	                console.log(`프레임 ${index} 렌더링:`, frameData);
 	                try {
 	                    FrameManager.applyFrame(frameData.theme, frameData);
-	                    console.log(`프레임 ${index} 렌더링 완료`);
 	                } catch (e) {
 	                    console.error(`프레임 ${index} 렌더링 실패:`, e);
 	                }
@@ -392,9 +425,7 @@ $(document).ready(function() {
 
 	        // 텍스트박스 렌더링
 	        if (design.textBoxes && design.textBoxes.length > 0) {
-	            console.log(`${design.textBoxes.length}개의 텍스트박스 렌더링 시작`);
 	            design.textBoxes.forEach((boxData, index) => {
-	                console.log(`텍스트박스 ${index} 렌더링:`, boxData);
 	                try {
 	                    const $box = $('<div class="text-box" contenteditable="true"></div>')
 	                        .html(boxData.html)
@@ -407,7 +438,6 @@ $(document).ready(function() {
 	                    EventManager.setupTextEvents($box);
 	                    $box.data('relativeState', boxData);
 	                    window.updateElementPosition($box);
-	                    console.log(`텍스트박스 ${index} 렌더링 완료`);
 	                } catch (e) {
 	                    console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
 	                }
@@ -415,28 +445,20 @@ $(document).ready(function() {
 	        } else {
 	            console.log('렌더링할 텍스트박스가 없음');
 	        }
-	        
-	        console.log('=== renderElements 실행 완료 ===');
-	        console.log('현재 frame-container 내용:', $('#frame-container').html());
 	    }
 
 	    // 배경 이미지 처리
 	    if (design.background && !design.background.includes('data:image/gif;base64')) {
 	        const currentSrc = bgImg.attr('src');
-	        console.log('현재 배경:', currentSrc);
-	        console.log('새 배경:', design.background);
-	        
-	        // 현재 배경과 같은 이미지라면 즉시 렌더링
+
+				        // 현재 배경과 같은 이미지라면 즉시 렌더링
 	        if (currentSrc === design.background) {
-	            console.log('같은 배경 이미지 - 즉시 렌더링');
 	            setTimeout(() => {
 	                renderElements();
 	            }, 200); // 시간을 좀 더 늘려봅시다
 	        } else {
-	            console.log('다른 배경 이미지 - 로드 후 렌더링');
 	            // 다른 이미지라면 로드 완료 후 렌더링
 	            bgImg.off('load.render').on('load.render', function() {
-	                console.log('배경 이미지 로드 완료');
 	                setTimeout(() => {
 	                    renderElements();
 	                }, 200);
@@ -446,18 +468,15 @@ $(document).ready(function() {
 	            
 	            // 이미지가 캐시되어 있을 경우를 대비
 	            if (bgImg[0].complete) {
-	                console.log('배경 이미지가 이미 로드됨 - 트리거');
 	                bgImg.trigger('load.render');
 	            }
 	        }
 	    } else {
-	        console.log('기본 배경 사용');
 	        // 기본 배경 로드
 	        loadDefaultBackground();
 	        
 	        // 기본 배경 로드 후 렌더링
 	        bgImg.off('load.render').on('load.render', function() {
-	            console.log('기본 배경 로드 완료');
 	            setTimeout(() => {
 	                renderElements();
 	            }, 200);
@@ -465,7 +484,6 @@ $(document).ready(function() {
 	        
 	        // 기본 배경이 이미 로드되어 있을 경우
 	        if (bgImg[0].complete) {
-	            console.log('기본 배경이 이미 로드됨 - 렌더링');
 	            setTimeout(() => {
 	                renderElements();
 	            }, 200);
@@ -473,12 +491,16 @@ $(document).ready(function() {
 	    }
 	}
 
-	// Edit 버튼 클릭 시, AJAX로 페이지 데이터를 가져와 편집창에 렌더링
+	// ✨ Edit 버튼 클릭 시 모달 초기화 및 데이터 로드
 	$('.content').on('click', '.edit-btn', function() {
+		
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
 		const yearbookId = activePageThumb.data('yearbook-id');
 		
 		showLoader();
+
+		// 먼저 모달을 초기화 (모든 케이스에서 공통)
+		initializeModal();
 
 		// yearbookId가 있을 경우 (저장된 페이지) -> 서버에서 데이터를 가져옴
 		if (yearbookId) {
@@ -495,19 +517,19 @@ $(document).ready(function() {
 						displayLastSaveTime(pageData.lastSaved);
 					}
 				},
-				error: function() {
+				error: function(xhr, status, error) {
+					console.error("페이지 데이터 로드 실패:", status, error);
 					alert("페이지 데이터를 불러오는 데 실패했습니다.");
-					renderPage(null); // 실패 시 기본 배경으로 시작
+					// 실패 시에도 기본 배경은 이미 초기화에서 로드됨
 				},
 				complete: function() {
 					// 렌더링 시간을 고려하여 약간의 지연 후 로더 숨기기
-					setTimeout(hideLoader, 300); // <--- 로더 숨기기
+					setTimeout(hideLoader, 300);
 				}
 			});
 		} else {
-			// yearbookId가 없을 경우 (새 페이지) -> 기본 배경으로 시작
-			renderPage(null);
-			setTimeout(hideLoader, 100); // <--- 새 페이지 로드 시에도 로더 숨기기
+			// yearbookId가 없을 경우 (새 페이지) -> 이미 초기화됨
+			setTimeout(hideLoader, 100);
 		}
 	});
 	
@@ -534,15 +556,12 @@ $(document).ready(function() {
 		$('#save-confirmation-message').html(message).show();
 	}
 
-	// ✨ 모달이 열릴 때 기본 설정 적용
+	// ✨ 모달 이벤트 핸들러 수정
 	$('#editModal').on('show.bs.modal', function() {
-		hasSaved = false;
-		$('#save-confirmation-message').show();
-
-		// 기본 배경이 설정되어 있지 않다면 로드
-		const currentSrc = $('#page-preview-img').attr('src');
-		if (!currentSrc || currentSrc.includes('data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')) {
-			loadDefaultBackground();
+		// Edit 버튼에서 이미 초기화가 진행되므로 여기서는 최소한만 처리
+		if (!activePageThumb) {
+			// Edit 버튼을 거치지 않고 모달이 열린 경우에만 초기화
+			initializeModal();
 		}
 	});
 
@@ -551,6 +570,9 @@ $(document).ready(function() {
 		setTimeout(() => {
 			if (window.safeLineManager) {
 				window.safeLineManager.update();
+			}
+			if (window.updateAllPositions) {
+				window.updateAllPositions();
 			}
 		}, 200);
 	});
@@ -562,5 +584,8 @@ $(document).ready(function() {
 		}
 		const $message = $('#save-confirmation-message');
 		$message.removeClass('show');
+		
+		// 모달 닫을 때 activePageThumb 초기화
+		activePageThumb = null;
 	});
 });
