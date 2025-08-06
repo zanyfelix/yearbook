@@ -82,30 +82,53 @@ $(document).ready(function() {
 	}
 	// ✨ =======================================================================
 
-	// ✨ 모달 초기화 함수 추가
-	function initializeModal() {
-		// 1. 컨테이너 비우기
-		$('#frame-container').empty();
-		
-		// 2. 선택 상태 초기화
-		window.selectionManager.clearSelection();
-		
-		// 3. 저장 상태 초기화
-		hasSaved = false;
-		
-		// 4. 메시지 숨기기
-		$('#save-confirmation-message').hide();
-		
-		// 5. 기본 배경 로드
-		loadDefaultBackground();
-		
-		// 6. 배경 탭 활성화
-		$('#btn-background').trigger('click');
-	}
+	// ✨ --- 핵심 수정: Edit 버튼 클릭 시 데이터 로드를 먼저 수행합니다. --- ✨
+	$('.content').on('click', '.edit-btn', function(e) {
+		e.preventDefault();
 
-	// Edit 버튼 클릭 시, 어떤 썸네일을 편집할지 activePageThumb 변수에 저장
-	$('.content').on('click', '.edit-btn', function() {
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
+		const yearbookId = activePageThumb.data('yearbook-id');
+
+		showLoader();
+
+		// ✨ 핵심: 모달이 열리기 전에 완전 초기화
+		forceCompleteReset();
+
+		if (yearbookId) {
+			$.ajax({
+				url: `${ctx}/edit/pageData`,
+				method: 'GET',
+				data: { id: yearbookId },
+				success: function(pageData) {
+					// ✨ 데이터 로드 후에도 한번 더 정리하고 렌더링
+					setTimeout(() => {
+						$('#frame-container').empty(); // 한번 더 비우기
+						renderPage(pageData);
+						if (pageData && pageData.lastSaved) {
+							displayLastSaveTime(pageData.lastSaved);
+						}
+					}, 100);
+				},
+				error: function() {
+					alert("페이지 데이터를 불러오는 데 실패했습니다.");
+					setTimeout(() => {
+						$('#frame-container').empty();
+						renderPage(null);
+					}, 100);
+				},
+				complete: function() {
+					$('#editModal').modal('show');
+					setTimeout(hideLoader, 300);
+				}
+			});
+		} else {
+			setTimeout(() => {
+				$('#frame-container').empty();
+				renderPage(null);
+				$('#editModal').modal('show');
+				setTimeout(hideLoader, 100);
+			}, 100);
+		}
 	});
 
 	// Save 버튼 클릭 이벤트
@@ -312,8 +335,8 @@ $(document).ready(function() {
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
 		if (confirm("모든 디자인이 삭제됩니다. 계속하시겠습니까?")) {
-			// ✨ 초기화 함수 사용
-			initializeModal();
+			forceCompleteReset();
+			loadDefaultBackground();
 		}
 	});
 
@@ -346,33 +369,22 @@ $(document).ready(function() {
 	function loadDefaultBackground() {
 		const defaultBgPath = `${ctx}/images/background.png`;
 		const bgImg = $('#page-preview-img');
-		const currentSrc = bgImg.attr('src');
-
-		// 이미 기본 배경이 로드되어 있다면 SafeLine만 업데이트
-		if (currentSrc === defaultBgPath) {
+		bgImg.off('load error');
+		
+		bgImg.one('load', function() {
+			console.log('기본 배경 로드 완료');
 			setTimeout(() => {
 				if (window.safeLineManager) {
 					window.safeLineManager.update();
 				}
-			}, 100);
-			return;
-		}
-
-		// 새로운 배경 이미지 설정
-		bgImg.attr('src', defaultBgPath);
-
-		// 이미지 로드 완료 후 safeline 업데이트
-		bgImg.off('load.defaultBg').on('load.defaultBg', function() {
-			setTimeout(() => {
-				if (window.safeLineManager) {
-					window.safeLineManager.update();
-				}
-			}, 100);
+			}, 150);
 		});
 
-		// 이미지가 이미 캐시되어 있을 경우
+		bgImg.attr('src', defaultBgPath);
+
+		// 이미지가 캐시되어 있을 경우 대비
 		if (bgImg[0].complete) {
-			bgImg.trigger('load.defaultBg');
+			bgImg.trigger('load');
 		}
 	}
 
@@ -381,158 +393,136 @@ $(document).ready(function() {
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
 	function renderPage(pageData) {
-	    
-	    $('#frame-container').empty();
-	    
-	    if (!pageData || !pageData.designData) {
-	        loadDefaultBackground();
-	        return;
-	    }
+		console.log('=== renderPage 시작 ===', pageData ? 'with data' : 'empty page');
+		
+		// Step 1: 렌더링 전 완전 정리
+		$('#frame-container').empty().html('');
+		
+		// Step 2: 모든 선택 상태 완전 초기화
+		if (window.selectionManager) {
+			window.selectionManager.clearSelection();
+		}
+		
+		// Step 3: 빈 페이지 처리
+		if (!pageData || !pageData.designData) {
+			console.log('빈 페이지 - 기본 배경만 로드');
+			loadDefaultBackground();
+			return;
+		}
 
-	    let design;
-	    try {
-	        design = JSON.parse(pageData.designData);
-	    } catch (e) {
-	        console.error('JSON 파싱 에러:', e);
-	        loadDefaultBackground();
-	        return;
-	    }
+		// Step 4: JSON 파싱
+		let design;
+		try {
+			design = JSON.parse(pageData.designData);
+			console.log('디자인 데이터 파싱 성공:', design);
+		} catch (e) {
+			console.error('JSON 파싱 에러:', e);
+			loadDefaultBackground();
+			return;
+		}
 
-	    const bgImg = $('#page-preview-img');
+		const bgImg = $('#page-preview-img');
 
-	    // 프레임과 텍스트박스를 렌더링하는 공통 함수
-	    function renderElements() {
-	        
-	        // SafeLine 업데이트 먼저 실행
-	        if (window.safeLineManager) {
-	            window.safeLineManager.update();
-	        }
+		// Step 5: 요소 렌더링 함수 (지연 실행으로 안정화)
+		function renderElementsSafely() {
+			console.log('=== 요소 렌더링 시작 ===');
+			
+			// 5-1: 컨테이너 한번 더 정리
+			$('#frame-container').empty();
+			
+			// 5-2: SafeLine 먼저 업데이트
+			setTimeout(() => {
+				if (window.safeLineManager) {
+					window.safeLineManager.update();
+				}
+			}, 100);
 
-	        $('#frame-container').empty();
+			// 5-3: 프레임 렌더링 (순차적으로)
+			if (design.frames && design.frames.length > 0) {
+				console.log(`${design.frames.length}개 프레임 렌더링 시작`);
+				design.frames.forEach((frameData, index) => {
+					setTimeout(() => {
+						try {
+							console.log(`프레임 ${index} 렌더링:`, frameData.theme);
+							FrameManager.applyFrame(frameData.theme, frameData);
+						} catch (e) {
+							console.error(`프레임 ${index} 렌더링 실패:`, e);
+						}
+					}, index * 100); // 간격을 더 벌려서 안정화
+				});
+			}
 
-	        // 프레임 렌더링
-	        if (design.frames && design.frames.length > 0) {
-	            design.frames.forEach((frameData, index) => {
-	                try {
-	                    FrameManager.applyFrame(frameData.theme, frameData);
-	                } catch (e) {
-	                    console.error(`프레임 ${index} 렌더링 실패:`, e);
-	                }
-	            });
-	        } else {
-	            console.log('렌더링할 프레임이 없음');
-	        }
+			// 5-4: 텍스트박스 렌더링 (프레임 후에)
+			if (design.textBoxes && design.textBoxes.length > 0) {
+				const frameDelay = (design.frames ? design.frames.length : 0) * 100;
+				console.log(`${design.textBoxes.length}개 텍스트박스 렌더링 시작`);
+				
+				design.textBoxes.forEach((boxData, index) => {
+					setTimeout(() => {
+						try {
+							console.log(`텍스트박스 ${index} 렌더링:`, boxData);
+							const $box = $('<div class="text-box" contenteditable="true"></div>')
+								.html(boxData.html)
+								.css({ 
+									position: 'absolute', 
+									...boxData.styles 
+								});
+							
+							$('#frame-container').append($box);
+							EventManager.setupTextEvents($box);
+							$box.data('relativeState', boxData);
+							
+							// 위치 업데이트는 더 나중에
+							setTimeout(() => {
+								window.updateElementPosition($box);
+							}, 100);
+							
+						} catch (e) {
+							console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
+						}
+					}, frameDelay + index * 100);
+				});
+			}
+			
+			console.log('=== 요소 렌더링 완료 ===');
+		}
 
-	        // 텍스트박스 렌더링
-	        if (design.textBoxes && design.textBoxes.length > 0) {
-	            design.textBoxes.forEach((boxData, index) => {
-	                try {
-	                    const $box = $('<div class="text-box" contenteditable="true"></div>')
-	                        .html(boxData.html)
-	                        .css({ 
-	                            position: 'absolute', 
-	                            ...boxData.styles 
-	                        });
-	                    
-	                    $('#frame-container').append($box);
-	                    EventManager.setupTextEvents($box);
-	                    $box.data('relativeState', boxData);
-	                    window.updateElementPosition($box);
-	                } catch (e) {
-	                    console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
-	                }
-	            });
-	        } else {
-	            console.log('렌더링할 텍스트박스가 없음');
-	        }
-	    }
+		// Step 6: 배경 이미지 처리
+		if (design.background && !design.background.includes('data:image/gif;base64')) {
+			const currentSrc = bgImg.attr('src');
+			console.log('저장된 배경 로딩:', design.background);
 
-	    // 배경 이미지 처리
-	    if (design.background && !design.background.includes('data:image/gif;base64')) {
-	        const currentSrc = bgImg.attr('src');
-
-				        // 현재 배경과 같은 이미지라면 즉시 렌더링
-	        if (currentSrc === design.background) {
-	            setTimeout(() => {
-	                renderElements();
-	            }, 200); // 시간을 좀 더 늘려봅시다
-	        } else {
-	            // 다른 이미지라면 로드 완료 후 렌더링
-	            bgImg.off('load.render').on('load.render', function() {
-	                setTimeout(() => {
-	                    renderElements();
-	                }, 200);
-	            });
-	            
-	            bgImg.attr('src', design.background);
-	            
-	            // 이미지가 캐시되어 있을 경우를 대비
-	            if (bgImg[0].complete) {
-	                bgImg.trigger('load.render');
-	            }
-	        }
-	    } else {
-	        // 기본 배경 로드
-	        loadDefaultBackground();
-	        
-	        // 기본 배경 로드 후 렌더링
-	        bgImg.off('load.render').on('load.render', function() {
-	            setTimeout(() => {
-	                renderElements();
-	            }, 200);
-	        });
-	        
-	        // 기본 배경이 이미 로드되어 있을 경우
-	        if (bgImg[0].complete) {
-	            setTimeout(() => {
-	                renderElements();
-	            }, 200);
-	        }
-	    }
+			if (currentSrc === design.background) {
+				// 같은 이미지면 바로 렌더링
+				setTimeout(renderElementsSafely, 500);
+			} else {
+				// 다른 이미지면 로드 후 렌더링
+				bgImg.off('load.render').one('load.render', function() {
+					console.log('배경 이미지 로드 완료');
+					setTimeout(renderElementsSafely, 500);
+				});
+				
+				bgImg.attr('src', design.background);
+				
+				if (bgImg[0].complete) {
+					bgImg.trigger('load.render');
+				}
+			}
+		} else {
+			// 기본 배경 사용
+			console.log('기본 배경 사용');
+			loadDefaultBackground();
+			
+			bgImg.off('load.render').one('load.render', function() {
+				setTimeout(renderElementsSafely, 500);
+			});
+			
+			if (bgImg[0].complete) {
+				setTimeout(renderElementsSafely, 500);
+			}
+		}
 	}
 
-	// ✨ Edit 버튼 클릭 시 모달 초기화 및 데이터 로드
-	$('.content').on('click', '.edit-btn', function() {
-		
-		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
-		const yearbookId = activePageThumb.data('yearbook-id');
-		
-		showLoader();
-
-		// 먼저 모달을 초기화 (모든 케이스에서 공통)
-		initializeModal();
-
-		// yearbookId가 있을 경우 (저장된 페이지) -> 서버에서 데이터를 가져옴
-		if (yearbookId) {
-			$.ajax({
-				url: `${ctx}/edit/pageData`,
-				method: 'GET',
-				data: { id: yearbookId },
-				success: function(pageData) {
-					// 성공적으로 데이터를 받으면, renderPage 함수를 호출해 편집창을 복원
-					renderPage(pageData);
-					
-					// last_save 값이 있으면 표시
-					if (pageData && pageData.lastSaved) {
-						displayLastSaveTime(pageData.lastSaved);
-					}
-				},
-				error: function(xhr, status, error) {
-					console.error("페이지 데이터 로드 실패:", status, error);
-					alert("페이지 데이터를 불러오는 데 실패했습니다.");
-					// 실패 시에도 기본 배경은 이미 초기화에서 로드됨
-				},
-				complete: function() {
-					// 렌더링 시간을 고려하여 약간의 지연 후 로더 숨기기
-					setTimeout(hideLoader, 300);
-				}
-			});
-		} else {
-			// yearbookId가 없을 경우 (새 페이지) -> 이미 초기화됨
-			setTimeout(hideLoader, 100);
-		}
-	});
-	
 	// 저장 시간 표시 함수
 	function displayLastSaveTime(lastSaved) {
 		const savedDate = new Date(lastSaved);
@@ -555,17 +545,18 @@ $(document).ready(function() {
 
 		$('#save-confirmation-message').html(message).show();
 	}
-
-	// ✨ 모달 이벤트 핸들러 수정
+	
+	// ✨ 3. 모달 이벤트에 추가 초기화 로직 추가
 	$('#editModal').on('show.bs.modal', function() {
-		// Edit 버튼에서 이미 초기화가 진행되므로 여기서는 최소한만 처리
-		if (!activePageThumb) {
-			// Edit 버튼을 거치지 않고 모달이 열린 경우에만 초기화
-			initializeModal();
+		console.log('모달 열리기 직전 - 추가 정리');
+		// 모달이 열리는 순간에도 한번 더 정리
+		$('#frame-container').empty();
+		if (window.selectionManager) {
+			window.selectionManager.clearSelection();
 		}
+		$("#btn-background").trigger('click');
 	});
-
-	// 모달이 완전히 열린 후 safeline 업데이트
+	
 	$('#editModal').on('shown.bs.modal', function() {
 		setTimeout(() => {
 			if (window.safeLineManager) {
@@ -579,6 +570,9 @@ $(document).ready(function() {
 
 	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.
 	$('#editModal').on('hidden.bs.modal', function() {
+		
+		forceCompleteReset();
+		
 		if (hasSaved) {
 			location.reload();
 		}
@@ -588,4 +582,79 @@ $(document).ready(function() {
 		// 모달 닫을 때 activePageThumb 초기화
 		activePageThumb = null;
 	});
+	
+	// ✨ 2. 강력한 완전 초기화 함수
+	function forceCompleteReset() {
+		console.log('=== 강력한 완전 초기화 시작 ===');
+		
+		// Step 1: 모든 DOM 요소 강제 제거
+		$('#frame-container').empty().html(''); // 완전히 비우기
+		$('#page-preview').find('.frame-group, .text-box, .photo-selection-box, .rotate-handle, .rotate-line, .selection-handle, .element-resize-handle, #photo-full-overlay, .photo-silhouette').remove();
+		
+		// Step 2: 모든 이벤트 리스너 완전 해제
+		$(document).off('.photoDrag .photoRotate .photoResize .frameDrag .elementDrag .textDrag');
+		$('#frame-container').off(); // 컨테이너의 모든 이벤트 해제
+		$('.frame-group, .uploaded-photo, .text-box').off(); // 기존 요소들의 이벤트 해제
+		
+		// Step 3: 전역 변수 완전 초기화
+		window.selectedFrame = null;
+		window.selectedPhotoWrapper = null;
+		window.selectedBox = null;
+		selectedFrame = null;
+		selectedPhotoWrapper = null;
+		selectedBox = null;
+		hasSaved = false;
+		
+		// Step 4: 매니저 인스턴스들 완전 초기화
+		if (window.selectionManager) {
+			window.selectionManager.selectedMode = null;
+			window.selectionManager.currentFrame = null;
+			window.selectionManager.currentPhoto = null;
+			window.selectionManager.currentElement = null;
+			window.selectionManager.photoOverlay = null;
+			window.selectionManager.safeConstraintsCache = null;
+		}
+		
+		if (window.safeLineManager) {
+			window.safeLineManager.safeConstraintsCache = null;
+			// SafeLine 컨테이너 재생성
+			$('#safe-line-overlay').remove();
+			window.safeLineManager.createContainer();
+		}
+		
+		// Step 5: PhotoManager 완전 정리
+		if (typeof PhotoManager !== 'undefined') {
+			PhotoManager.photoOverlay = null;
+			PhotoManager.removeSelectionUI();
+			PhotoManager.hideOverlay();
+		}
+		
+		// Step 6: UI 상태 완전 초기화
+		$('#save-confirmation-message').hide().empty();
+		
+		// 모든 툴바 숨기기
+		$('#frame-controls, #photo-controls, #text-controls, #element-controls').addClass('d-none');
+		$('#editor-toolbar .context-controls > div').addClass('d-none');
+		
+		// Step 7: 패널 상태 강제 초기화
+		$('#btn-background, #btn-photo-frame, #btn-textbox-frame, #btn-text, #btn-element').removeClass('active');
+		$('#background-panel, #frame-panel, #text-panel, #element-panel').addClass('d-none');
+		$('#photoFrameList, #textboxFrameList').addClass('d-none');
+		
+		// Background 패널을 기본으로 설정
+		$('#btn-background').addClass('active');
+		$('#background-panel').removeClass('d-none');
+		
+		// Step 8: CSS 스타일 강제 정리
+		$('*').removeClass('selected-frame selected-photo selected editing dragging selected-element selected-thumbnail');
+		
+		// Step 9: 배경 이미지 강제 초기화
+		const $bgImg = $('#page-preview-img');
+		$bgImg.off('.render .defaultBg'); // 기존 이벤트 제거
+		
+		// Step 10: 입력 요소 초기화
+		$('#image-upload-input').val('').removeData();
+		
+		console.log('=== 강력한 완전 초기화 완료 ===');
+	}
 });
