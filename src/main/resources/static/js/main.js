@@ -103,7 +103,9 @@ $(document).ready(function() {
 					// ✨ 데이터 로드 후에도 한번 더 정리하고 렌더링
 					setTimeout(() => {
 						$('#frame-container').empty(); // 한번 더 비우기
-						renderPage(pageData);
+						renderPage(pageData, function() {
+							hideLoader(); // 렌더링 완료 후 로딩 해제
+						});
 						if (pageData && pageData.lastSaved) {
 							displayLastSaveTime(pageData.lastSaved);
 						}
@@ -118,7 +120,6 @@ $(document).ready(function() {
 				},
 				complete: function() {
 					$('#editModal').modal('show');
-					setTimeout(hideLoader, 300);
 				}
 			});
 		} else {
@@ -392,7 +393,7 @@ $(document).ready(function() {
 	 * 서버에서 받은 디자인 데이터(JSON)를 사용해 편집 페이지의 내용을 복원하는 함수
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
-	function renderPage(pageData) {
+	function renderPage(pageData, onComplete) {
 		console.log('=== renderPage 시작 ===', pageData ? 'with data' : 'empty page');
 		
 		// Step 1: 렌더링 전 완전 정리
@@ -407,6 +408,9 @@ $(document).ready(function() {
 		if (!pageData || !pageData.designData) {
 			console.log('빈 페이지 - 기본 배경만 로드');
 			loadDefaultBackground();
+			if (typeof onComplete === 'function') {
+				setTimeout(onComplete, 500);
+			}
 			return;
 		}
 
@@ -418,6 +422,9 @@ $(document).ready(function() {
 		} catch (e) {
 			console.error('JSON 파싱 에러:', e);
 			loadDefaultBackground();
+			if (typeof onComplete === 'function') {
+				setTimeout(onComplete, 500);
+			}
 			return;
 		}
 
@@ -436,55 +443,87 @@ $(document).ready(function() {
 					window.safeLineManager.update();
 				}
 			}, 100);
+			
+			// ✨ 렌더링 진행 상황 추적 변수
+			const totalFrames = (design.frames ? design.frames.length : 0);
+			const totalTextBoxes = (design.textBoxes ? design.textBoxes.length : 0);
+			const totalElements = totalFrames + totalTextBoxes;
+			let completedElements = 0;
+
+			// ✨ 요소 완료 체크 함수
+			function checkRenderingComplete() {
+				completedElements++;
+				console.log(`렌더링 진행: ${completedElements}/${totalElements}`);
+
+				if (completedElements >= totalElements) {
+					console.log('=== 모든 요소 렌더링 완료 ===');
+					// 모든 위치 업데이트 완료 후 콜백 실행
+					setTimeout(() => {
+						if (typeof onComplete === 'function') {
+							onComplete();
+						}
+					}, 200); // 위치 조정 시간 고려
+				}
+			}
 
 			// 5-3: 프레임 렌더링 (순차적으로)
-			if (design.frames && design.frames.length > 0) {
-				console.log(`${design.frames.length}개 프레임 렌더링 시작`);
+			if (totalFrames > 0) {
+				console.log(`${totalFrames}개 프레임 렌더링 시작`);
 				design.frames.forEach((frameData, index) => {
 					setTimeout(() => {
 						try {
 							console.log(`프레임 ${index} 렌더링:`, frameData.theme);
 							FrameManager.applyFrame(frameData.theme, frameData);
+							checkRenderingComplete(); // ✨ 완료 체크
 						} catch (e) {
 							console.error(`프레임 ${index} 렌더링 실패:`, e);
+							checkRenderingComplete(); // ✨ 실패해도 카운트
 						}
-					}, index * 100); // 간격을 더 벌려서 안정화
+					}, index * 100);
 				});
 			}
 
 			// 5-4: 텍스트박스 렌더링 (프레임 후에)
-			if (design.textBoxes && design.textBoxes.length > 0) {
-				const frameDelay = (design.frames ? design.frames.length : 0) * 100;
-				console.log(`${design.textBoxes.length}개 텍스트박스 렌더링 시작`);
-				
+			if (totalTextBoxes > 0) {
+				const frameDelay = totalFrames * 100;
+				console.log(`${totalTextBoxes}개 텍스트박스 렌더링 시작`);
+
 				design.textBoxes.forEach((boxData, index) => {
 					setTimeout(() => {
 						try {
 							console.log(`텍스트박스 ${index} 렌더링:`, boxData);
 							const $box = $('<div class="text-box" contenteditable="true"></div>')
 								.html(boxData.html)
-								.css({ 
-									position: 'absolute', 
-									...boxData.styles 
+								.css({
+									position: 'absolute',
+									...boxData.styles
 								});
-							
+
 							$('#frame-container').append($box);
 							EventManager.setupTextEvents($box);
 							$box.data('relativeState', boxData);
-							
+
 							// 위치 업데이트는 더 나중에
 							setTimeout(() => {
 								window.updateElementPosition($box);
+								checkRenderingComplete(); // ✨ 완료 체크
 							}, 100);
-							
+
 						} catch (e) {
 							console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
+							checkRenderingComplete(); // ✨ 실패해도 카운트
 						}
 					}, frameDelay + index * 100);
 				});
 			}
-			
-			console.log('=== 요소 렌더링 완료 ===');
+
+			// ✨ 요소가 하나도 없는 경우 즉시 완료 처리
+			if (totalElements === 0) {
+				console.log('렌더링할 요소가 없음 - 즉시 완료');
+				if (typeof onComplete === 'function') {
+					setTimeout(onComplete, 200);
+				}
+			}
 		}
 
 		// Step 6: 배경 이미지 처리
@@ -501,9 +540,9 @@ $(document).ready(function() {
 					console.log('배경 이미지 로드 완료');
 					setTimeout(renderElementsSafely, 500);
 				});
-				
+
 				bgImg.attr('src', design.background);
-				
+
 				if (bgImg[0].complete) {
 					bgImg.trigger('load.render');
 				}
@@ -512,11 +551,11 @@ $(document).ready(function() {
 			// 기본 배경 사용
 			console.log('기본 배경 사용');
 			loadDefaultBackground();
-			
+
 			bgImg.off('load.render').one('load.render', function() {
 				setTimeout(renderElementsSafely, 500);
 			});
-			
+
 			if (bgImg[0].complete) {
 				setTimeout(renderElementsSafely, 500);
 			}
