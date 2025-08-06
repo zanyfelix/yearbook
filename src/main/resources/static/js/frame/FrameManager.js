@@ -3,18 +3,17 @@
 // ============================================================================
 class FrameManager {
 	static applyFrame(frameTheme, savedState = null) {
+		
 		const frameContainer = $('#frame-container');
 		const frameGroup = $('<div class="frame-group"></div>').css({
 			position: 'absolute', cursor: 'move', zIndex: 15
 		});
 
 		// frameTheme에 category 정보가 있는지 확인
-		const isTextboxFrame = frameTheme.category === 'textboxframe' ||
-			frameTheme.type === 'textbox' ||
+		const isTextboxFrame = frameTheme.category === 'textboxframe' || frameTheme.type === 'textbox' ||
 			frameTheme.name?.toLowerCase().includes('text');
 			
-		const isElement = frameTheme.category === 'element' ||
-			frameTheme.type === 'element';
+		const isElement = frameTheme.category === 'element' || frameTheme.type === 'element';
 
 		let frameOverlay; // frameOverlay를 상위 스코프에 선언
 
@@ -79,55 +78,31 @@ class FrameManager {
 		frameContainer.append(frameGroup);
 		frameGroup.data('frameTheme', frameTheme);
 
-		frameOverlay.on('load', () => {
-			if (savedState) {
-				// 저장된 상태(savedState)가 있으면, 그 정보로 프레임 복원
-				frameGroup.css({
-					left: savedState.position.left + 'px',
-					top: savedState.position.top + 'px',
-					width: savedState.size.width + 'px',
-					height: savedState.size.height + 'px',
-					transform: savedState.transform
-				});
+		// DB에서 width/height를 가져오므로 프리로딩 없이 바로 진행
+		frameOverlay.attr('src', frameTheme.editPath);
 
-				if (!isTextboxFrame && savedState.photo && savedState.photo.src) {
-					const uploadedPhoto = frameGroup.find('.uploaded-photo');
-					const placeholderLink = frameGroup.find('.place-image-here-link');
-
-					uploadedPhoto.attr('src', savedState.photo.src)
-						.css({
-							display: 'block',
-							left: savedState.photo.position.left + 'px',
-							top: savedState.photo.position.top + 'px',
-							width: savedState.photo.size.width + 'px',
-							height: savedState.photo.size.height + 'px',
-							transform: savedState.photo.transform
-						});
-					placeholderLink.hide();
-				}
-			} else {
-				// 저장된 상태가 없으면, 새로 추가하는 로직
-				this.setupPosition(frameGroup, frameTheme);
-				// Element는 selectElement, 나머지는 selectFrame 호출
-				if (isElement) {
-					window.selectionManager.selectElement(frameGroup);
-				} else {
-					window.selectionManager.selectFrame(frameGroup);
-				}
-			}
-
-			// 텍스트박스프레임은 포토 이벤트가 필요없음
-			if (!isTextboxFrame && !isElement) {
-				const placeholderLink = frameGroup.find('.place-image-here-link');
+		if (savedState) {
+			frameGroup.data('relativeState', savedState);
+			window.updateElementPosition(frameGroup);
+			// 사진 로드 로직
+			if (!isTextboxFrame && !isElement && savedState.photo && savedState.photo.src) {
 				const uploadedPhoto = frameGroup.find('.uploaded-photo');
-				const maskContainer = frameGroup.find('.mask-container');
-				EventManager.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
-			} else if (isTextboxFrame) {
-				EventManager.setupTextboxFrameEvents(frameGroup);
-			} else if (isElement) {
-				EventManager.setupElementEvents(frameGroup);
+				const placeholderLink = frameGroup.find('.place-image-here-link');
+				uploadedPhoto.attr('src', savedState.photo.src).css('display', 'block');
+				placeholderLink.hide();
+				window.updateElementPosition(uploadedPhoto, savedState.photo);
 			}
-		});
+		} else {
+			// 새로운 프레임 추가
+			this.setupPosition(frameGroup, frameTheme);
+			if (isElement) window.selectionManager.selectElement(frameGroup);
+			else window.selectionManager.selectFrame(frameGroup);
+		}
+
+		// 이벤트 핸들러 바인딩
+		if (!isTextboxFrame && !isElement) EventManager.setupFrameEvents(frameGroup, frameGroup.find('.place-image-here-link'), frameGroup.find('.uploaded-photo'), frameGroup.find('.mask-container'));
+		else if (isTextboxFrame) EventManager.setupTextboxFrameEvents(frameGroup);
+		else if (isElement) EventManager.setupElementEvents(frameGroup);
 	}
     
     static applyMasking(container, frameTheme) {
@@ -145,51 +120,53 @@ class FrameManager {
         img.src = frameTheme.editMaskPath;
     }
     
-    static setupPosition(frameGroup, frameTheme) {
-        const bg = $('#page-preview-img');
-        const bgWidth = bg.width();
-        const bgHeight = bg.height();
-        const bgPos = bg.position();
-        
-		const frameOverlay = frameGroup.find('.frame-overlay');
-		    
-		// 실제 이미지 크기 기반으로 설정
-		const img = frameOverlay[0];
-		const frameWidth = img.naturalWidth || frameTheme.width || 200;
-		const frameHeight = img.naturalHeight || frameTheme.height || 250;
+	static setupPosition(frameGroup, frameTheme) {
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
 
-		// 또는 비율 기반 크기 조정
-		const maxSize = 300; // 최대 크기 제한
-		let finalWidth = frameWidth;
-		let finalHeight = frameHeight;
+		// DB에서 가져온 프레임의 원본 크기 (px)
+		const originalFrameWidth = frameTheme.editWidth;
+		const originalFrameHeight = frameTheme.editHeight;
 
-		if (frameWidth > maxSize || frameHeight > maxSize) {
-			const ratio = Math.min(maxSize / frameWidth, maxSize / frameHeight);
-			finalWidth = frameWidth * ratio;
-			finalHeight = frameHeight * ratio;
+		if (!originalFrameWidth || !originalFrameHeight) {
+			console.error("프레임의 원본 크기(editWidth, editHeight) 데이터가 없습니다.", frameTheme);
+			return;
 		}
-        
-        const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * bgWidth;
-        const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * bgHeight;
-        
-        const safeLeft = bgPos.left + safeMarginX;
-        const safeTop = bgPos.top + safeMarginY;
-        const safeRight = bgPos.left + bgWidth - safeMarginX;
-        const safeBottom = bgPos.top + bgHeight - safeMarginY;
-        
-        const safeWidth = safeRight - safeLeft;
-        const safeHeight = safeBottom - safeTop;
-        
-        const left = safeLeft + (safeWidth - frameWidth) / 2;
-        const top = safeTop + (safeHeight - frameHeight) / 2;
-        
-        frameGroup.css({
-            left: `${Math.max(safeLeft, Math.min(left, safeRight - frameWidth))}px`,
-            top: `${Math.max(safeTop, Math.min(top, safeBottom - frameHeight))}px`,
-            width: `${frameWidth}px`,
-            height: `${frameHeight}px`
-        });
-    }
+
+		// ✨ 핵심 수정: 기준이 되는 편집용 웹 배경의 원본 크기를 상수로 정의
+		const TEMPLATE_WEB_BG_WIDTH = 786; // 편집용 배경 이미지의 원본 너비
+
+		// 1. 편집용 웹 배경 대비 프레임의 상대적 너비 비율 계산
+		const widthRatio = originalFrameWidth / TEMPLATE_WEB_BG_WIDTH;
+
+		// 2. 프레임의 가로세로 비율 계산
+		const frameAspectRatio = originalFrameWidth / originalFrameHeight;
+
+		// 3. 현재 보이는 배경에 상대 비율을 적용하여 새 프레임의 크기 계산
+		const newWidth = actualBgRect.width * widthRatio;
+		const newHeight = newWidth / frameAspectRatio;
+
+		// 계산된 위치/크기를 적용 (화면 중앙에 배치)
+		const left = actualBgRect.left + (actualBgRect.width - newWidth) / 2;
+		const top = actualBgRect.top + (actualBgRect.height - newHeight) / 2;
+
+		frameGroup.css({ left: `${left}px`, top: `${top}px`, width: `${newWidth}px`, height: `${newHeight}px` });
+
+		// 퍼센트(%)로 변환하여 data 속성에 저장
+		const relativeState = {
+			position: {
+				left: ((left - actualBgRect.left) / actualBgRect.width) * 100,
+				top: ((top - actualBgRect.top) / actualBgRect.height) * 100
+			},
+			size: {
+				width: (newWidth / actualBgRect.width) * 100,
+				height: (newHeight / actualBgRect.height) * 100
+			},
+			transform: 'matrix(1, 0, 0, 1, 0, 0)'
+		};
+		frameGroup.data('relativeState', relativeState);
+	}
     
 	static addRotationHandle(frameGroup) {
 	    $('.rotate-handle, .rotate-line').remove();

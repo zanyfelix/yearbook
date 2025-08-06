@@ -116,13 +116,11 @@ class DataLoader {
 			// ✨ 모달 안의 썸네일을 클릭했을 때, 배경을 최종 적용합니다.
 			const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
 				window.selectionManager.clearSelection();
-
 				// category 정보를 frameTheme 객체에 추가
 				const frameData = {
 					...result,
 					category: category
 				};
-
 				FrameManager.applyFrame(frameData);
 				setTimeout(() => window.safeLineManager.update(), 500);
 				$('#frameModal').modal('hide');

@@ -18,6 +18,46 @@ $(document).ready(function() {
 	window.clearSelection = () => window.selectionManager.clearSelection();
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
+	
+	// ✨ =======================================================================
+	// ✨ === 상대 위치/크기 조정을 위한 핵심 함수들 ===
+	// ✨ =======================================================================
+	/**
+	 * 특정 요소의 위치와 크기를 현재 배경에 맞게 업데이트합니다.
+	 * @param {jQuery} $element - .frame-group, .text-box, .uploaded-photo 등
+	 * @param {object} [state] - $element.data('relativeState')를 대신할 외부 상태 객체
+	 */
+	window.updateElementPosition = function($element, state) {
+		const relativeState = state || $element.data('relativeState');
+		if (!relativeState) return;
+
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
+
+		// 퍼센트(%)를 현재 배경 크기에 맞는 픽셀(px)로 변환
+		const newPixelPos = {
+			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
+			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top,
+		};
+		const newPixelSize = {
+			width: (relativeState.size.width / 100) * actualBgRect.width,
+			height: $element.hasClass('text-box') ? 'auto' : (relativeState.size.height / 100) * actualBgRect.height,
+		};
+
+		const transform = relativeState.transform || 'matrix(1, 0, 0, 1, 0, 0)';
+		$element.css({ ...newPixelPos, ...newPixelSize, transform: transform });
+	}
+
+	/**
+	 * 페이지 위의 모든 가변 요소들의 위치와 크기를 업데이트합니다.
+	 */
+	window.updateAllPositions = function() {
+		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
+			window.updateElementPosition($(this));
+		});
+	}
+	// ✨ =======================================================================
 
 	// Edit 버튼 클릭 시, 어떤 썸네일을 편집할지 activePageThumb 변수에 저장
 	$('.content').on('click', '.edit-btn', function() {
@@ -27,51 +67,73 @@ $(document).ready(function() {
 	// Save 버튼 클릭 이벤트
 	$('#btn-save').on('click', function() {
 		showLoader(); // <--- 로더 보이기
-		
+
 		const captureArea = $('#page-preview');
 		const elementsToHide = $('#safe-line-overlay, .photo-selection-box');
 
 		window.selectionManager.clearSelection();
 		elementsToHide.addClass('hide-for-capture');
 
-		// ✨ --- 핵심 수정: 누락되었던 designData 수집 로직 추가 --- ✨
 		const designData = {
 			background: $('#page-preview-img').attr('src'),
 			frames: [],
 			textBoxes: []
 		};
 
-		// 모든 프레임 정보 수집
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) {
+			alert("배경 이미지 정보를 찾을 수 없어 저장할 수 없습니다.");
+			return;
+		}
+
+		// 모든 프레임 정보 수집 (픽셀 -> 퍼센트로 변환)
 		captureArea.find('.frame-group').each(function() {
 			const $frame = $(this);
+			const framePos = $frame.position();
+			const frameW = $frame.width();
+			const frameH = $frame.height();
 			const $photo = $frame.find('.uploaded-photo');
-			designData.frames.push({
-				theme: $frame.data('frameTheme'),
-				position: $frame.position(),
-				size: { width: $frame.width(), height: $frame.height() },
-				transform: $frame.css('transform'),
-				photo: {
+			let photoData = null;
+
+			if ($photo.length && $photo.is(':visible')) {
+				const photoPos = $photo.position();
+				photoData = {
 					src: $photo.attr('src'),
-					position: $photo.position(),
-					size: { width: $photo.width(), height: $photo.height() },
+					position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
+					size: { width: ($photo.width() / frameW) * 100, height: ($photo.height() / frameH) * 100 },
 					transform: $photo.css('transform')
-				}
-			});
+				};
+			}
+
+			const latestRelativeState = {
+				position: { left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 },
+				size: { width: (frameW / actualBgRect.width) * 100, height: (frameH / actualBgRect.height) * 100 },
+				transform: $frame.css('transform'),
+				photo: photoData
+			};
+			$frame.data('relativeState', latestRelativeState);
+
+			designData.frames.push({ theme: $frame.data('frameTheme'), ...latestRelativeState });
 		});
 
-		// 모든 텍스트 상자 정보 수집
+		// 모든 텍스트 상자 정보 수집 (픽셀 -> 퍼센트로 변환)
 		captureArea.find('.text-box').each(function() {
 			const $box = $(this);
+			const boxPos = $box.position();
+			const boxW = $box.outerWidth();
+			const boxH = $box.outerHeight();
+
+			const latestRelativeState = {
+				position: { left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 },
+				size: { width: (boxW / actualBgRect.width) * 100, height: (boxH / actualBgRect.height) * 100 }
+			};
+			$box.data('relativeState', latestRelativeState);
+
 			designData.textBoxes.push({
 				html: $box.html(),
-				position: $box.position(),
-				size: { width: $box.outerWidth(), height: $box.outerHeight() },
-				styles: {
-					color: $box.css('color'),
-					fontSize: $box.css('font-size'),
-					fontWeight: $box.css('font-weight'),
-					textAlign: $box.css('text-align')
-				}
+				...latestRelativeState,
+				styles: { color: $box.css('color'), fontSize: $box.css('font-size'), fontWeight: $box.css('font-weight'), textAlign: $box.css('text-align') }
 			});
 		});
 		// ✨ --- 데이터 수집 로직 끝 --- ✨
@@ -232,12 +294,12 @@ $(document).ready(function() {
 	// 브라우저 창 크기가 조절될 때마다 세이프라인을 다시 계산하도록 이벤트 리스너 추가
 	// debounce 함수를 사용하여 0.25초마다 한 번씩만 실행되도록 하여 성능을 최적화합니다.
 	$(window).on('resize', debounce(function() {
-		// 모달창이 열려 있을 때만 업데이트를 실행합니다.
 		if ($('#editModal').is(':visible')) {
 			window.safeLineManager.update();
+			window.updateAllPositions(); // 명시적으로 호출
 		}
 	}, 250));
-
+	
 	// ✨ 기본 배경 이미지 로드 함수
 	function loadDefaultBackground() {
 		const defaultBgPath = `${ctx}/images/background.png`;
@@ -258,50 +320,57 @@ $(document).ready(function() {
 	 * @param {object} pageData - yearbook 객체 전체
 	 */
 	function renderPage(pageData) {
+		$('#frame-container').empty();
 		if (!pageData || !pageData.designData) {
-			console.log("디자인 데이터가 없어 기본 배경으로 시작합니다.");
-			// ✨ 기본 배경으로 초기화
 			loadDefaultBackground();
-			$('#frame-container').empty();
 			return;
 		}
 
 		const design = JSON.parse(pageData.designData);
+		const bgImg = $('#page-preview-img');
 
-		// 1. 기존 내용 초기화
-		$('#frame-container').empty();
+		// 배경 이미지 로드가 완료된 후 프레임과 텍스트를 렌더링해야 정확한 위치 계산 가능
+		bgImg.off('load.render').on('load.render', function() {
+			$('#frame-container').empty(); // 로드 완료 후 다시 비움
+			if (design.frames) {
+				design.frames.forEach(frameData => FrameManager.applyFrame(frameData.theme, frameData));
+			}
+			if (design.textBoxes) {
+				design.textBoxes.forEach(boxData => {
+					const $box = $('<div class="text-box" contenteditable="true"></div>').html(boxData.html).css({ position: 'absolute', ...boxData.styles });
+					$('#frame-container').append($box);
+					EventManager.setupTextEvents($box);
+					$box.data('relativeState', boxData);
+					window.updateElementPosition($box);
+				});
+			}
+		});
 
-		// 2. 배경 이미지 복원 (없으면 기본 배경 사용)
 		if (design.background && !design.background.includes('data:image/gif;base64')) {
-			$('#page-preview-img').attr('src', design.background);
+			bgImg.attr('src', design.background);
 		} else {
 			loadDefaultBackground();
+			bgImg.trigger('load.render'); // 기본 배경일 경우 즉시 트리거
 		}
 
-		// 3. 저장된 프레임들 복원
+		// ✨ 수정: 프레임 복원 시 비율 기반 로직 사용
 		if (design.frames) {
 			design.frames.forEach(frameData => {
-				// FrameManager.applyFrame을 호출하여 프레임을 생성하고,
-				// 콜백을 통해 저장된 위치, 크기, 회전, 사진 정보를 적용합니다.
 				FrameManager.applyFrame(frameData.theme, frameData);
 			});
 		}
 
-		// 4. 저장된 텍스트 상자들 복원
+		// ✨ 수정: 텍스트 상자 복원 시 비율 기반 로직 사용
 		if (design.textBoxes) {
 			design.textBoxes.forEach(boxData => {
 				const $box = $('<div class="text-box" contenteditable="true"></div>')
 					.html(boxData.html)
-					.css({
-						position: 'absolute',
-						left: boxData.position.left + 'px',
-						top: boxData.position.top + 'px',
-						width: boxData.size.width + 'px',
-						height: boxData.size.height + 'px',
-						...boxData.styles
-					});
+					.css({ position: 'absolute', ...boxData.styles });
 				$('#frame-container').append($box);
 				EventManager.setupTextEvents($box);
+
+				$box.data('relativeState', boxData);
+				window.updateElementPosition($box);
 			});
 		}
 	}

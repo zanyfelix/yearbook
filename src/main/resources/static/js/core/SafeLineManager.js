@@ -1,5 +1,5 @@
 // ============================================================================
-// 📁 js/core/SafeLineManager.js - 빗금 패턴 SafeLine
+// 📁 js/core/SafeLineManager.js (역할 분리 및 오류 수정)
 // ============================================================================
 class SafeLineManager {
     constructor() {
@@ -18,10 +18,7 @@ class SafeLineManager {
     }
     
     createContainer() {
-        // 기존 컨테이너 제거
         $('#safe-line-overlay').remove();
-        
-        // 메인 오버레이 컨테이너
         this.container = $('<div id="safe-line-overlay"></div>').css({
             position: 'absolute',
             top: 0,
@@ -31,55 +28,34 @@ class SafeLineManager {
             pointerEvents: 'none',
             zIndex: 5
         });
-        
         $('#page-preview').append(this.container);
     }
     
     watchChanges() {
         const img = $('#page-preview-img')[0];
         
-        // 이미지 로드 이벤트
         $(img).on('load', () => {
             setTimeout(() => this.update(), 150);
         });
         
-        // ResizeObserver로 이미지 크기 변화 감지
         if (window.ResizeObserver) {
-            if (this.resizeObserver) {
-                this.resizeObserver.disconnect();
-            }
-            
-            this.resizeObserver = new ResizeObserver((entries) => {
-                for (let entry of entries) {
-                    clearTimeout(this.resizeTimeout);
-                    this.resizeTimeout = setTimeout(() => {
-                        this.update();
-                    }, 100);
-                }
+            if (this.resizeObserver) this.resizeObserver.disconnect();
+            this.resizeObserver = new ResizeObserver(() => {
+                clearTimeout(this.resizeTimeout);
+                this.resizeTimeout = setTimeout(() => this.update(), 100);
             });
             this.resizeObserver.observe(img);
         }
         
-        // 윈도우 리사이즈 이벤트
         $(window).on('resize.safeline', () => {
             clearTimeout(this.windowResizeTimeout);
             this.windowResizeTimeout = setTimeout(() => {
-                if ($('#editModal').is(':visible')) {
-                    this.update();
-                }
+                if ($('#editModal').is(':visible')) this.update();
             }, 150);
         });
         
-        // 이미지 src 변경 감지
-        this.watchImageSrcChanges(img);
-    }
-    
-    watchImageSrcChanges(img) {
         if (window.MutationObserver) {
-            if (this.srcObserver) {
-                this.srcObserver.disconnect();
-            }
-            
+            if (this.srcObserver) this.srcObserver.disconnect();
             this.srcObserver = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
@@ -87,11 +63,7 @@ class SafeLineManager {
                     }
                 });
             });
-            
-            this.srcObserver.observe(img, {
-                attributes: true,
-                attributeFilter: ['src']
-            });
+            this.srcObserver.observe(img, { attributes: true, attributeFilter: ['src'] });
         }
     }
     
@@ -101,134 +73,72 @@ class SafeLineManager {
         const img = $('#page-preview-img');
         const src = img.attr('src');
 
-        // 배경 이미지가 없는 경우 숨김
-        if (!src || src.includes('data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')) {
+        if (!src || src.includes('data:image/gif;base64')) {
             this.container.hide();
             this.clearSelectionCache();
             return;
         }
 
-        // 실제 렌더링된 이미지 크기 정확히 계산
         const imgElement = img[0];
-        const imgWidth = img.width();
-        const imgHeight = img.height();
-        
-        if (imgWidth === 0 || imgHeight === 0 || !imgElement.complete) {
+        if (img.width() === 0 || img.height() === 0 || !imgElement.complete) {
             this.container.hide();
             return;
         }
 
-        // 이미지의 실제 위치 계산
         const imgPosition = this.getActualImagePosition(img);
         if (!imgPosition) {
             this.container.hide();
             return;
         }
 
-        // 안전선 표시
         this.container.show();
         
-        // 실제 이미지 크기 기준으로 안전 마진 계산
-        const actualImgWidth = imgPosition.width;
-        const actualImgHeight = imgPosition.height;
-        
-        const marginX = (this.safeMargin / this.actualWidth) * actualImgWidth;
-        const marginY = (this.safeMargin / this.actualHeight) * actualImgHeight;
+        const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
+        const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
 
-        // ✨ 빗금 패턴으로 안전선 영역 그리기
         this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
 		
 		const $message = $('#save-confirmation-message');
-		if ($message.length > 0) {
-			// 이미지 실제 위치의 하단에서 5px 아래에 위치하도록 top 설정
+		if ($message.length > 0 && $message.is(':visible')) {
 			const newTop = imgPosition.top + imgPosition.height;
-			// 이미지 실제 위치의 수평 중앙에 위치하도록 left 설정
 			const newLeft = imgPosition.left;
-
-			$message.css({
-				top: `${newTop}px`,
-				left: `${newLeft}px`
-			});
+			$message.css({ top: `${newTop}px`, left: `${newLeft}px` });
 		}
-
-        // SelectionManager의 캐시 무효화
+		
         this.clearSelectionCache();
         
-        // 기존 프레임들 위치 조정
-        setTimeout(() => this.adjustFrames(), 50);
+        // ✨ --- 핵심 수정 --- ✨
+        // 이 파일의 역할은 안전선 계산 및 그리기로 한정합니다.
+        // 다른 요소들의 위치를 재조정하는 코드를 제거하여, 불필요한 이동 현상을 방지합니다.
+        // 모든 요소의 위치 업데이트는 main.js의 resize 이벤트 핸들러가 전담합니다.
     }
     
-    // ✨ 빗금 패턴 안전선 영역 그리기
     drawHatchedSafeAreas(imgPosition, marginX, marginY) {
-        // 기존 안전선 영역 제거
         this.container.empty();
-        
         const { left, top, width, height } = imgPosition;
-        
-        // 4개 영역 정의 (상, 하, 좌, 우)
         const areas = [
-            // 상단
-            { 
-                left: left, 
-                top: top, 
-                width: width, 
-                height: marginY,
-                className: 'safe-area-top'
-            },
-            // 하단
-            { 
-                left: left, 
-                top: top + height - marginY, 
-                width: width, 
-                height: marginY,
-                className: 'safe-area-bottom'
-            },
-            // 좌측 (상하 마진 제외)
-            { 
-                left: left, 
-                top: top + marginY, 
-                width: marginX, 
-                height: height - (marginY * 2),
-                className: 'safe-area-left'
-            },
-            // 우측 (상하 마진 제외)
-            { 
-                left: left + width - marginX, 
-                top: top + marginY, 
-                width: marginX, 
-                height: height - (marginY * 2),
-                className: 'safe-area-right'
-            }
+            { left: left, top: top, width: width, height: marginY },
+            { left: left, top: top + height - marginY, width: width, height: marginY },
+            { left: left, top: top + marginY, width: marginX, height: height - (marginY * 2) },
+            { left: left + width - marginX, top: top + marginY, width: marginX, height: height - (marginY * 2) }
         ];
-        
-        // 각 안전선 영역을 빗금 패턴으로 생성
         areas.forEach(area => {
             if (area.width > 0 && area.height > 0) {
-                const safeDiv = $(`<div class="safe-area-hatched ${area.className}"></div>`).css({
-                    position: 'absolute',
-                    left: `${area.left}px`,
-                    top: `${area.top}px`,
-                    width: `${area.width}px`,
-                    height: `${area.height}px`,
-                    pointerEvents: 'none',
-                    opacity: 0.8
+                const safeDiv = $(`<div class="safe-area-hatched"></div>`).css({
+                    position: 'absolute', left: `${area.left}px`, top: `${area.top}px`,
+                    width: `${area.width}px`, height: `${area.height}px`
                 });
-                
                 this.container.append(safeDiv);
             }
         });
     }
     
-    // object-fit: contain이 적용된 이미지의 실제 위치와 크기 계산
     getActualImagePosition($imgElement) {
         const img = $imgElement[0];
         const containerWidth = $imgElement.width();
         const containerHeight = $imgElement.height();
         const containerPosition = $imgElement.position();
-        
-        if (!img.naturalWidth || !img.naturalHeight) {
-            return null;
-        }
+        if (!img.naturalWidth || !img.naturalHeight) return null;
         
         const naturalRatio = img.naturalWidth / img.naturalHeight;
         const containerRatio = containerWidth / containerHeight;
@@ -236,13 +146,11 @@ class SafeLineManager {
         let actualWidth, actualHeight, offsetX, offsetY;
         
         if (naturalRatio > containerRatio) {
-            // 이미지가 더 넓음 - 가로를 기준으로 맞춤
             actualWidth = containerWidth;
             actualHeight = containerWidth / naturalRatio;
             offsetX = 0;
             offsetY = (containerHeight - actualHeight) / 2;
         } else {
-            // 이미지가 더 높음 - 세로를 기준으로 맞춤
             actualWidth = containerHeight * naturalRatio;
             actualHeight = containerHeight;
             offsetX = (containerWidth - actualWidth) / 2;
@@ -263,64 +171,12 @@ class SafeLineManager {
         }
     }
     
-    adjustFrames() {
-        $('.frame-group, .text-box').each((i, el) => {
-            const $element = $(el);
-            const currentLeft = parseFloat($element.css('left')) || 0;
-            const currentTop = parseFloat($element.css('top')) || 0;
-            
-            if (window.selectionManager) {
-                const constrained = window.selectionManager.applySafeLineConstraints(currentLeft, currentTop, $element);
-                
-                if (constrained.left !== currentLeft || constrained.top !== currentTop) {
-                    $element.css({
-                        left: `${constrained.left}px`,
-                        top: `${constrained.top}px`
-                    });
-                }
-            }
-        });
-    }
-    
-    // SelectionManager에서 사용하는 제약조건 정보
-    getSafeConstraints() {
-        const img = $('#page-preview-img');
-        const imgPosition = this.getActualImagePosition(img);
-        
-        if (!imgPosition) {
-            return null;
-        }
-        
-        const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
-        const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
-        
-        return {
-            safeLeft: imgPosition.left + marginX,
-            safeTop: imgPosition.top + marginY,
-            safeRight: imgPosition.left + imgPosition.width - marginX,
-            safeBottom: imgPosition.top + imgPosition.height - marginY,
-            imageLeft: imgPosition.left,
-            imageTop: imgPosition.top,
-            imageWidth: imgPosition.width,
-            imageHeight: imgPosition.height,
-            marginX: marginX,
-            marginY: marginY
-        };
-    }
-    
-    // 정리 함수
     destroy() {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
-        if (this.srcObserver) {
-            this.srcObserver.disconnect();
-        }
+        if (this.resizeObserver) this.resizeObserver.disconnect();
+        if (this.srcObserver) this.srcObserver.disconnect();
         $(window).off('resize.safeline');
         clearTimeout(this.resizeTimeout);
         clearTimeout(this.windowResizeTimeout);
-        if (this.container) {
-            this.container.remove();
-        }
+        if (this.container) this.container.remove();
     }
 }

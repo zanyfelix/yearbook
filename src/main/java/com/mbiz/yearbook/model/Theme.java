@@ -49,6 +49,12 @@ public class Theme extends BaseTimeEntity {
     @Column(name = "parent_id")
     private Long parentId;
     
+    @Column(name = "edit_width")
+    private int editWidth;
+    
+    @Column(name = "edit_height")
+    private int editHeight;
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

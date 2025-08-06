@@ -277,4 +277,46 @@ class UIManager {
 			}
 		});
 	}
+	
+	/**
+		 * 특정 요소의 위치와 크기를 현재 배경에 맞게 업데이트합니다.
+		 * @param {jQuery} $element - .frame-group 또는 .text-box 요소
+		 */
+	static updateElementPosition($element) {
+		const relativeState = $element.data('relativeState');
+		if (!relativeState) return;
+
+		const bg = $('#page-preview-img');
+		const bgWidth = bg.width();
+		const bgHeight = bg.height();
+
+		const newPixelPos = {
+			left: (relativeState.position.left / 100) * bgWidth,
+			top: (relativeState.position.top / 100) * bgHeight,
+		};
+		const newPixelSize = {
+			width: (relativeState.size.width / 100) * bgWidth,
+			height: (relativeState.size.height / 100) * bgHeight,
+		};
+
+		$element.css({
+			...newPixelPos,
+			...newPixelSize,
+			transform: relativeState.transform
+		});
+
+		// 사진, 선택 UI 등 내부 요소도 업데이트 필요
+		if ($element.hasClass('selected-photo')) {
+			PhotoManager.updateSelectionUI($element);
+		}
+	}
+
+	/**
+	 * 페이지 위의 모든 가변 요소들의 위치와 크기를 업데이트합니다.
+	 */
+	static updateAllPositions() {
+		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
+			UIManager.updateElementPosition($(this));
+		});
+	}
 }
