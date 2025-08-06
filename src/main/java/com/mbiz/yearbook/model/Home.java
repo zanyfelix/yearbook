@@ -46,6 +46,6 @@ public class Home {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "modified_at", nullable = false)
-    private LocalDateTime modifiedAt;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }

@@ -7,10 +7,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theme</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/theme.css"/>
-    <script src="<c:url value='/js/admin/theme.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -37,8 +37,8 @@
 	<a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Home</a>	
     <a href="/admin/theme?userId=${userId}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
     <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
-    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+    <a href="/admin/submissionuserId=${userId}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+    <a href="/admin/yearbookuserId=${userId}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
 </div>
 
 <div class="content">
@@ -203,12 +203,13 @@
 
     </div><!-- /.container-fluid -->
   </div><!-- /.content -->
-
-<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script>
 const ctx      = '${pageContext.request.contextPath}';
 const userId   = '${userId}';
 const category = '${category}';
 </script>
+<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/theme.js'/>"></script>
 </body>
 </html>

@@ -1,83 +1,52 @@
-// src/main/resources/static/js/admin/user.js
-
-document.addEventListener('DOMContentLoaded', () => {
-  // 전체 선택/해제
-  document.getElementById('selectAll')
-    .addEventListener('click', function() {
-      document.querySelectorAll('.selectBox').forEach(cb => cb.checked = this.checked);
-    });
+$(document).ready(function() {
 	
-	const registerModalEl = document.getElementById('registerModal');
-	  const registerModal   = new bootstrap.Modal(registerModalEl);
-	  const form            = document.getElementById('registerForm');
-	  const titleEl         = document.getElementById('registerModalLabel');
-	  const submitBtn       = document.getElementById('registerSubmitBtn');
+	function changeAction(select) {
+	    const selectedOption = select.options[select.selectedIndex];
+	    const actionUrl = selectedOption.getAttribute('data-action');
+	    document.getElementById('userForm').action = actionUrl;
+	    select.form.submit();
+	}
 
-	  // --- 1) REGISTER 버튼 클릭 ---
-	  document.getElementById('btn-register').addEventListener('click', () => {
-	    form.reset();                       // 폼 초기화
-	    document.getElementById('idHidden').value = '';
-	    form.action = window.contextPath +'/admin/home/register';
-	    titleEl.textContent = 'HOME REGISTRATION';
-	    submitBtn.textContent = '등록';
-	    registerModal.show();
-	  });
+    // 3. 'Create' 버튼 클릭 이벤트
+    $('#btn-create').on('click', function() {
+        const newBlockHtml = `
+            <div class="settings-block new-block" data-id="0">
+                <input type="checkbox" name="selectedIds" value="0">
+                <div class="block-content">
+                    <input type="text" name="title" class="title-input" placeholder="Title">
+                    <textarea name="content" class="text-input" placeholder="text here"></textarea>
+                </div>
+            </div>`;
+        $('#content-block-container').append(newBlockHtml);
+    });
 
-	  // --- 2) MODIFY 버튼 클릭 ---
-	  document.getElementById('btn-modify').addEventListener('click', () => {
-	    const checked = document.querySelectorAll('.selectBox:checked');
-	    if (checked.length !== 1) {
-	      alert('수정할 사용자를 하나만 선택하세요.');
-	      return;
-	    }
-	    const row = checked[0].closest('tr');
+    // 4. 'Edit' 버튼 클릭 이벤트
+    $('#btn-edit').on('click', function() {
+        const checked = $('.settings-block input[type="checkbox"]:checked');
+        if (checked.length === 0) {
+            alert("수정할 항목을 선택하세요.");
+            return;
+        }
+        
+        checked.each(function() {
+            const block = $(this).closest('.settings-block');
+            // 'readonly' 속성을 제거하여 편집 가능하게 만듦
+            block.find('.title-input, .text-input').prop('readonly', false);
+        });
+    });
 
-	    // 1) PK 채우기
-	    const id = checked[0].value;
-	    document.getElementById('userIdHidden').value = id;
+    // 'Delete' 버튼 로직 (선택된 항목 삭제)
+    $('#btn-delete').on('click', function() {
+        // ... 선택된 항목을 화면에서 제거하는 로직 ...
+    });
 
-	    // 2) 나머지 필드 읽어와서 채우기
-	    document.getElementById('userIdInput').value    = row.children[2].textContent.trim();
-	    document.getElementById('passwordInput').value  = row.children[3].textContent.trim();
-	    document.getElementById('nameInput').value      = row.children[4].textContent.trim();
-	    document.getElementById('schoolInput').value    = row.children[5].textContent.trim();
-	    document.getElementById('mailInput').value      = row.children[6].textContent.trim();
-	    let roleText = row.children[7].textContent.trim();
-		roleText = roleText.toLowerCase();
-		const roleSelect = document.getElementById('roleSelect');
-		roleSelect.value = roleText;
-		
-	    // 3) 모달 설정 변경
-	    form.action = window.contextPath +'/admin/home/modify';
-	    titleEl.textContent = 'USER MODIFY';
-	    submitBtn.textContent = '수정';
+    // 'APPLY' 버튼 로직 (모든 변경사항 서버로 전송)
+    $('#btn-apply, #btn-apply-all').on('click', function() {
+        // ... 폼 데이터를 수집하여 AJAX로 서버에 전송하는 로직 ...
+    });
 
-	    registerModal.show();
-	  });
-
-	//active변경
-	const toggleUrl = window.contextPath + '/admin/home/toggle-active';
-	document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach(chk => {
-	  chk.addEventListener('change', function() {
-	    const payload = {
-	      id:     +this.dataset.userId,
-	      active: this.checked
-	    };
-	    //const token  = document.querySelector('meta[name="_csrf"]').content;
-	    //const header = document.querySelector('meta[name="_csrf_header"]').content;
-
-	    fetch(toggleUrl, {
-	      method: 'POST',
-	      headers: {
-	        'Content-Type': 'application/json'
-	      },
-	      body: JSON.stringify(payload)
-	    })
-	    .then(res => { if (!res.ok) throw new Error(res.statusText); })
-	    .catch(err => {
-	      alert('상태 변경 실패: ' + err.message);
-	      this.checked = !this.checked;
-	    });
-	  });
-	});
+    // 2. 파일 업로드 감지 및 처리
+    $('#guidanceUpload').on('change', function() {
+        // ... 파일이 선택되면 폼을 submit 하거나 AJAX로 업로드하는 로직 ...
+    });
 });

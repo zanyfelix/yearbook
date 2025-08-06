@@ -27,7 +27,7 @@ public class HomeService {
     	
     	//기본 값은 0
     	home.setCreatedAt(LocalDateTime.now());
-    	home.setModifiedAt(LocalDateTime.now());
+    	home.setUpdatedAt(LocalDateTime.now());
     	repo.save(home);
     }
 

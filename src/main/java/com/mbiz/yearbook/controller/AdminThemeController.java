@@ -21,7 +21,6 @@ import com.mbiz.yearbook.service.UserService;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
-@RequestMapping("/admin")
 public class AdminThemeController {
 	
 	@Autowired
@@ -30,7 +29,7 @@ public class AdminThemeController {
 	@Autowired
     private ThemeService themeService;
 	
-	@GetMapping("/theme")
+	@GetMapping("/admin/theme")
 	public String showForm(HttpSession session, @RequestParam Long userId, 
 			@RequestParam(defaultValue = "background") String category, Model model) {
 		
@@ -39,6 +38,7 @@ public class AdminThemeController {
 	    
 	    List<User> allUsers = userService.findAll();
 	    model.addAttribute("allUsers", allUsers);
+	    //현재 사용자에 대한 아이디 값
 	    model.addAttribute("userId", userId);
 	    model.addAttribute("currentMenu", "theme");
 	    
