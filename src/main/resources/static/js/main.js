@@ -8,6 +8,7 @@ $(document).ready(function() {
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
 	
+	// ▼▼▼▼▼ 로딩 화면 제어 함수 추가 ▼▼▼▼▼
 	const $loader = $('#preview-loader');
 	function showLoader() { $loader.show(); }
 	function hideLoader() { $loader.hide(); }
@@ -32,7 +33,7 @@ $(document).ready(function() {
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-		if (!actualBgRect) return; // 배경 위치 계산 불가 시 중단
+		if (!actualBgRect) return;
 
 		// 퍼센트(%)를 현재 배경 크기에 맞는 픽셀(px)로 변환
 		const newPixelPos = {
@@ -328,12 +329,14 @@ $(document).ready(function() {
 		const design = JSON.parse(pageData.designData);
 		const bgImg = $('#page-preview-img');
 
-		// 배경 이미지 로드가 완료된 후 프레임과 텍스트를 렌더링해야 정확한 위치 계산 가능
+		// 1. 배경 이미지 로드가 완료되면 실행될 렌더링 로직을 미리 정의합니다.
 		bgImg.off('load.render').on('load.render', function() {
-			$('#frame-container').empty(); // 로드 완료 후 다시 비움
+			$('#frame-container').empty();
+
 			if (design.frames) {
 				design.frames.forEach(frameData => FrameManager.applyFrame(frameData.theme, frameData));
 			}
+
 			if (design.textBoxes) {
 				design.textBoxes.forEach(boxData => {
 					const $box = $('<div class="text-box" contenteditable="true"></div>').html(boxData.html).css({ position: 'absolute', ...boxData.styles });
@@ -345,32 +348,17 @@ $(document).ready(function() {
 			}
 		});
 
+		// 2. 배경 이미지 소스를 설정합니다.
 		if (design.background && !design.background.includes('data:image/gif;base64')) {
 			bgImg.attr('src', design.background);
 		} else {
 			loadDefaultBackground();
-			bgImg.trigger('load.render'); // 기본 배경일 경우 즉시 트리거
 		}
 
-		// ✨ 수정: 프레임 복원 시 비율 기반 로직 사용
-		if (design.frames) {
-			design.frames.forEach(frameData => {
-				FrameManager.applyFrame(frameData.theme, frameData);
-			});
-		}
-
-		// ✨ 수정: 텍스트 상자 복원 시 비율 기반 로직 사용
-		if (design.textBoxes) {
-			design.textBoxes.forEach(boxData => {
-				const $box = $('<div class="text-box" contenteditable="true"></div>')
-					.html(boxData.html)
-					.css({ position: 'absolute', ...boxData.styles });
-				$('#frame-container').append($box);
-				EventManager.setupTextEvents($box);
-
-				$box.data('relativeState', boxData);
-				window.updateElementPosition($box);
-			});
+		// 3. 이미지가 캐시되어 'load' 이벤트가 발생하지 않을 경우를 대비하여,
+		//    이미지 로드가 완료되었는지 직접 확인하고 수동으로 렌더링을 트리거합니다.
+		if (bgImg[0].complete) {
+			bgImg.trigger('load.render');
 		}
 	}
 
