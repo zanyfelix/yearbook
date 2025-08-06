@@ -176,10 +176,10 @@
 		        <div class="modal-footer">
 		          <button type="button"
 		                  class="btn btn-secondary"
-		                  data-bs-dismiss="modal">취소</button>
+		                  data-bs-dismiss="modal">Cancel</button>
 		          <button type="submit"
 		                  class="btn btn-primary"
-		                  id="registerSubmitBtn">등록</button>
+		                  id="registerSubmitBtn">Save</button>
 		        </div>
 		      </form>
 		    </div>
