@@ -92,12 +92,12 @@ class SelectionManager {
 
     clearSelection() {
 		$('.frame-group').removeClass('selected-frame').css({
-			'border': '2px solid transparent',  // 'none' 대신 transparent로 변경
+			'border': '1px solid transparent',  // 'none' 대신 transparent로 변경
 			'box-shadow': 'none'
 		});
 		
 		$('.frame-group.element-frame').removeClass('selected-element').css({
-			'border': '2px solid transparent',
+			'border': '1px solid transparent',
 			'box-shadow': 'none'
 		});
 		
