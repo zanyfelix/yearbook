@@ -146,11 +146,26 @@ class EventManager {
 					}
 				});
 				
-				// document에 mouseup 이벤트 추가
+				// ✨ --- 핵심 수정: 드래그가 끝나는 시점에 위치 저장 --- ✨
 				$(document).on('mouseup.frameDrag', function() {
 					$(document).off('mousemove.frameDrag mouseup.frameDrag');
 					frameGroup.removeClass('dragging');
 					isDragging = false;
+
+					// ▼▼▼▼▼ 이 블록 추가 ▼▼▼▼▼
+					const bg = $('#page-preview-img');
+					const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+					if (actualBgRect) {
+						const framePos = frameGroup.position();
+						const currentState = frameGroup.data('relativeState') || {};
+
+						currentState.position = {
+							left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100,
+							top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100
+						};
+						frameGroup.data('relativeState', currentState);
+					}
+					// ▲▲▲▲▲ 추가 종료 ▲▲▲▲▲
 				});
 			}
 		});
@@ -252,8 +267,24 @@ class EventManager {
 					});
 				});
 
+				// ✨ --- 핵심 수정: 텍스트 상자 드래그 종료 시 위치 저장 --- ✨
 				$(document).on('mouseup.textDrag', function() {
 					$(document).off('.textDrag');
+
+					// ▼▼▼▼▼ 이 블록 추가 ▼▼▼▼▼
+					const bg = $('#page-preview-img');
+					const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+					if (actualBgRect) {
+						const boxPos = textBox.position();
+						const currentState = textBox.data('relativeState') || {};
+
+						currentState.position = {
+							left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
+							top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
+						};
+						textBox.data('relativeState', currentState);
+					}
+					// ▲▲▲▲▲ 추가 종료 ▲▲▲▲▲
 				});
 			}
 		});
@@ -352,11 +383,26 @@ class EventManager {
 	                }
 	            });
 	            
-	            $(document).on('mouseup.elementDrag', function() {
-	                $(document).off('mousemove.elementDrag mouseup.elementDrag');
-	                frameGroup.removeClass('dragging');
-	                isDragging = false;
-	            });
+				$(document).on('mouseup.elementDrag', function() {
+					$(document).off('mousemove.elementDrag mouseup.elementDrag');
+					frameGroup.removeClass('dragging');
+					isDragging = false;
+
+					// ▼▼▼▼▼ 이 블록 추가 ▼▼▼▼▼
+					const bg = $('#page-preview-img');
+					const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+					if (actualBgRect) {
+						const framePos = frameGroup.position();
+						const currentState = frameGroup.data('relativeState') || {};
+
+						currentState.position = {
+							left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100,
+							top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100
+						};
+						frameGroup.data('relativeState', currentState);
+					}
+					// ▲▲▲▲▲ 추가 종료 ▲▲▲▲▲
+				});
 	        }
 	    });
 	}
