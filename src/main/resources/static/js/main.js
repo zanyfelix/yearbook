@@ -496,6 +496,7 @@ $(document).ready(function() {
 								.html(boxData.html)
 								.css({
 									position: 'absolute',
+									zIndex: 100,
 									...boxData.styles
 								});
 

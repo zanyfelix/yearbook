@@ -5,15 +5,20 @@ class FrameManager {
 	static applyFrame(frameTheme, savedState = null) {
 		
 		const frameContainer = $('#frame-container');
-		const frameGroup = $('<div class="frame-group"></div>').css({
-			position: 'absolute', cursor: 'move', zIndex: 15
-		});
-
-		// frameTheme에 category 정보가 있는지 확인
+		
+		let baseZIndex = 15;
 		const isTextboxFrame = frameTheme.category === 'textboxframe' || frameTheme.type === 'textbox' ||
-			frameTheme.name?.toLowerCase().includes('text');
-			
+					frameTheme.name?.toLowerCase().includes('text');
 		const isElement = frameTheme.category === 'element' || frameTheme.type === 'element';
+		
+		if (isTextboxFrame) {
+				baseZIndex = 10; // 텍스트박스(z-index: 100)보다 낮게
+			}
+				
+		const frameGroup = $('<div class="frame-group"></div>').css({
+			position: 'absolute', cursor: 'move', zIndex: baseZIndex
+		});
+		
 
 		let frameOverlay; // frameOverlay를 상위 스코프에 선언
 
@@ -22,7 +27,7 @@ class FrameManager {
 			frameOverlay = $('<img class="frame-overlay">').attr('src', frameTheme.editPath).css({
 				position: 'absolute', top: 0, left: 0,
 				width: '100%', height: '100%',
-				zIndex: 20, pointerEvents: 'none'
+				zIndex: isTextboxFrame ? 5 : 20, pointerEvents: 'none'
 			});
 
 			frameGroup.append(frameOverlay);
@@ -84,19 +89,36 @@ class FrameManager {
 		if (savedState) {
 			frameGroup.data('relativeState', savedState);
 			window.updateElementPosition(frameGroup);
-			// 사진 로드 로직
+			
 			if (!isTextboxFrame && !isElement && savedState.photo && savedState.photo.src) {
 				const uploadedPhoto = frameGroup.find('.uploaded-photo');
 				const placeholderLink = frameGroup.find('.place-image-here-link');
+
+				uploadedPhoto.on('load', function() {
+					console.log('프레임 내 사진 로드 완료');
+					placeholderLink.hide();
+					window.updateElementPosition(uploadedPhoto, savedState.photo);
+
+					if (typeof onComplete === 'function') {
+						setTimeout(onComplete, 50);
+					}
+				});
+
 				uploadedPhoto.attr('src', savedState.photo.src).css('display', 'block');
-				placeholderLink.hide();
-				window.updateElementPosition(uploadedPhoto, savedState.photo);
+			} else {
+				if (typeof onComplete === 'function') {
+					setTimeout(onComplete, 50);
+				}
 			}
 		} else {
 			// 새로운 프레임 추가
 			this.setupPosition(frameGroup, frameTheme);
 			if (isElement) window.selectionManager.selectElement(frameGroup);
 			else window.selectionManager.selectFrame(frameGroup);
+			
+			if (typeof onComplete === 'function') {
+				setTimeout(onComplete, 50);
+			}
 		}
 
 		// 이벤트 핸들러 바인딩
