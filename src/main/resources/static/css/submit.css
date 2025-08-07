@@ -1,0 +1,260 @@
+@charset "UTF-8";
+
+body {
+	margin: 0;
+	padding: 0;
+	background-color: #f4f4f4;
+}
+
+.sidebar {
+	width: 200px;
+	background-color: #333;
+	color: white;
+	position: fixed;
+	height: 100%;
+	padding-top: 20px;
+}
+
+.sidebar h5 {
+	text-align: center;
+	margin-bottom: 30px;
+	font-size: 1.1rem;
+}
+
+.sidebar a {
+	display: block;
+	padding: 12px 20px;
+	color: white;
+	text-decoration: none;
+}
+
+.sidebar a:hover {
+	background-color: #555;
+}
+
+.content {
+	margin-left: 200px;
+	padding: 20px 30px;
+}
+
+.top-bar {
+	background-color: #d2f4e8;
+	border: 1px solid #ccc;
+	padding: 10px 20px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.top-bar .badge {
+	font-size: 0.95rem;
+	padding: 10px 16px;
+}
+
+.section-box {
+	background-color: white;
+	padding: 20px;
+	margin-bottom: 20px;
+	border-left: 5px solid #ccc;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-box h5 {
+	font-weight: bold;
+	margin-bottom: 12px;
+}
+
+.section-box ul {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.sidebar a.active {
+	background-color: #28a745;
+	font-weight: bold;
+}
+/* 오버레이 */
+.modal-overlay {
+  display: none;      /* 기본 숨김 */
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* 모달 박스 */
+.modal-box {
+  width: 380px;
+  background: #e0e0e0;            /* 연회색 바디 배경 */
+  border: 4px solid #001f3f;      /* 진한 네이비 테두리 */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+
+/* 헤더 */
+.modal-header {
+  background: #ffffff;            /* 헤더는 흰색 */
+  color: #001f3f;                 /* 네이비 텍스트 */
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 2px solid #001f3f;
+}
+
+/* 바디 */
+.modal-body {
+  padding: 20px;
+  text-align: center;
+}
+
+/* Deadline 텍스트 */
+#deadlineText {
+  color: #b22222; /* 진한 빨강 */
+  margin-bottom: 16px;
+  font-weight: bold;
+}
+
+/* Bootstrap 스타일을 차용한 체크박스 */
+.form-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.form-check-input {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+}
+.form-check-label {
+  font-size: 0.95rem;
+}
+
+.progress-container {
+	width: 90%;
+	background-color: #e0e0e0;
+	margin-bottom: 20px;
+	height: 20px;
+	position: relative;
+}
+
+.progress-bar {
+	height: 100%;
+	text-align: center;
+	color: white;
+	line-height: 20px; /* Centers the text vertically */
+}
+
+.percentage-text {
+	position: absolute;
+	right: -40px; /* Positions text on the right */
+	top: 50%;
+	transform: translateY(-50%); /* Centers text vertically */
+	color: black;
+	font-weight: bold;
+}
+
+/* Close 버튼 */
+.btn-custom {
+  background: #87cefa;            /* 하늘색 */
+  color: #000;
+  border: 1px solid #001f3f;
+  border-radius: 4px;
+  padding: 8px 24px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-custom:hover {
+  background: #add8e6;
+}
+
+/* 모달 대화 상자 스타일 */
+.modal-dialog {
+    /* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
+    max-width: 600px; 
+}
+
+/* 모달 내용 전체 스타일 */
+.modal-content {
+    /* 스크랩북 배경 이미지 */
+    background-image: url('https://www.transparenttextures.com/patterns/crumpled-paper.png');
+    border: 2px solid #a58e7c; /* 갈색 계열 테두리 */
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* 이미지와 화살표를 감싸는 부모 컨테이너 */
+.preview-container {
+    position: relative;
+}
+
+/* 이미지는 컨테이너에 꽉 차게 */
+#previewImage {
+    width: 100%;
+    display: block;
+}
+
+/* 화살표 버튼 스타일 수정 */
+.arrow-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(100, 100, 100, 0.5); /* 반투명 회색 */
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    width: 40px;
+    height: 70px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    transition: background-color 0.2s;
+}
+
+.arrow-btn:hover {
+    background-color: rgba(50, 50, 50, 0.7);
+}
+
+.prev-btn {
+    left: 0px; /* 왼쪽 가장자리에 붙임 */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.next-btn {
+    right: 0px; /* 오른쪽 가장자리에 붙임 */
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* 닫기 버튼 컨테이너는 제거하고 버튼에 직접 스타일 적용 */
+.close-btn-container {
+     margin-top: 20px;
+     text-align: center;
+}
+
+/* CLOSE 버튼 커스텀 스타일 */
+.custom-close-btn {
+    background-color: #2c3e50; /* 진한 남색 */
+    color: white;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 18px;
+    border: 3px solid #34495e; /* 버튼 배경보다 약간 밝은 테두리 */
+    border-radius: 5px;
+    padding: 10px 40px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.custom-close-btn:hover {
+    background-color: #34495e;
+}
