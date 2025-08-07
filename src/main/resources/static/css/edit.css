@@ -218,9 +218,6 @@ body {
 
     /* 기존 스타일 유지 */
     display: block;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    background-color: #ffffff;
     
     /* 부드러운 전환 효과 */
     transition: all 0.3s ease;
