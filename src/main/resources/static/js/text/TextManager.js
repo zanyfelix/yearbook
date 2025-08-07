@@ -15,10 +15,14 @@ class TextManager {
 				'font-size': '24px',
 				'font-weight': 'bold'
 			};
-		} else {
-			// 그 외('Sub-Title', 'text')의 경우: 기본 스타일
+		} if (param === 'Sub-Title') {
 			textStyles = {
 				'font-size': '16px',
+				'font-weight': 'normal'
+			};
+		} if (param === 'text') {
+			textStyles = {
+				'font-size': '12px',
 				'font-weight': 'normal'
 			};
 		}
