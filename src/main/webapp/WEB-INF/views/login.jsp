@@ -45,7 +45,7 @@
             </c:if>
 
             <div class="d-grid">
-                <button type="submit" class="btn btn-primary">로그인</button>
+                <button type="submit" class="btn btn-primary">LOG IN</button>
             </div>
         </form>
     </div>
