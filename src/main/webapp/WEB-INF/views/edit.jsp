@@ -147,7 +147,18 @@
 	                                </div>
 	                            </div>
 	                            <div id="text-controls" class="d-none w-100">
-	                                <select id="tooltip-size" class="form-select form-select-sm"><option value="12px">12px</option><option value="16px" selected>16px</option><option value="20px">20px</option><option value="24px">24px</option><option value="32px">32px</option></select>
+	                                <select id="tooltip-size" class="form-select form-select-sm">
+	                                	<option value="10px">10px</option>
+	                                	<option value="11px">11px</option>
+	                                	<option value="12px">12px</option>
+	                                	<option value="14px">14px</option>
+	                                	<option value="16px">16px</option>
+	                                	<option value="18px">18px</option>
+	                                	<option value="20px">20px</option>
+	                                	<option value="24px">24px</option>
+	                                	<option value="28px">28px</option>
+	                                	<option value="32px">32px</option>
+	                                </select>
 	    							<select id="tooltip-align" class="form-select form-select-sm"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
 	    							<input type="color" id="tooltip-color" title="Color">
 	    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
