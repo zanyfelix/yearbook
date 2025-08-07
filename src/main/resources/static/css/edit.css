@@ -150,9 +150,8 @@ body {
     opacity: 0;
     transition: opacity 0.3s ease;
     display: flex;
-    align-items: flex-end; /* 버튼을 하단으로 정렬 */
+    align-items: center;
     justify-content: center;
-    padding-bottom: 20px; /* 하단에서 20px만큼 여백을 주어 위치 조정 */
 }
 
 .thumbnail-wrapper:hover img + .overlay {
