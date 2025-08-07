@@ -64,8 +64,6 @@ class TextManager {
 		const newLeft = bgPos.left + (bgWidth - boxWidth) / 2;
 		const newTop = bgPos.top + (bgHeight - boxHeight) / 2;
 		
-		$('#frame-container').append(textBox);
-
 		textBox.css({
 			top: `${newTop}px`,
 			left: `${newLeft}px`,
@@ -76,8 +74,6 @@ class TextManager {
 		textBox.data('originalFontSize', baseFontSize + 'px');
 
 		if (actualBgRect) {
-			const boxWidth = textBox.outerWidth();
-			const boxHeight = textBox.outerHeight();
 
 			const relativeState = {
 				position: {
