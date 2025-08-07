@@ -1,6 +1,7 @@
 package com.mbiz.yearbook.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.ContactUsService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -27,14 +29,17 @@ public class AdminContactUsController {
     private ContactUsService contactUsService;
     
     @Autowired
+	private UserRepository userRepository;
+    
+    @Autowired
     private UserService userService;
 
     @GetMapping("/contactUs")
-    public String showForm(HttpSession session,
+    public String showForm(HttpSession session, @RequestParam Long id, 
 			@RequestParam(value = "type", defaultValue = "userId") String type,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
-		
+    	
     	User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    

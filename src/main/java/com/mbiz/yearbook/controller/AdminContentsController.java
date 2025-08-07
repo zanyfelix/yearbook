@@ -1,6 +1,7 @@
 package com.mbiz.yearbook.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -15,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.UserService;
 import com.mbiz.yearbook.util.DuplicateUserIdException;
@@ -31,18 +33,35 @@ public class AdminContentsController {
 	@Autowired
     private ContentsService contentsService;
 	
+	@Autowired
+	private UserRepository userRepository;
+	
 	@GetMapping("/contents")
-	public String showForm(HttpSession session, @RequestParam(required = false) Long userId, Model model) {
+	public String showForm(HttpSession session, 
+			@RequestParam(required = false) Long id,
+			Model model) {
+		
+		if (id != null) {
+			Optional<User> selectedUser = userRepository.findById(id);
+			if (selectedUser.isPresent()) {
+			    User user = selectedUser.get();
+			    String role = user.getRole(); // 안전함
+			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
+		        if ("admin".equals(role)) {
+		            return "redirect:/admin/user?id=" + user.getId();
+		        }
+			}
+	    }
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
 	    List<User> allUsers = userService.findAll();
 	    model.addAttribute("allUsers", allUsers);
-	    model.addAttribute("userId", userId);
+	    model.addAttribute("id", id);
 	    model.addAttribute("currentMenu", "contents");
 	    
-	    List<Contents> list = contentsService.findByUserId(userId);
+	    List<Contents> list = contentsService.findByUserId(id);
 	    model.addAttribute("list", list);
 	    
 	    return "admin/contents";

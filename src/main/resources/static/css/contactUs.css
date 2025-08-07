@@ -1,0 +1,176 @@
+@charset "UTF-8";
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar {
+	width: 200px;
+	background-color: #333;
+	color: white;
+	position: fixed;
+	height: 100%;
+	padding-top: 20px;
+}
+
+.sidebar h5 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+.sidebar a {
+	display: block;
+	padding: 12px 20px;
+	color: white;
+	text-decoration: none;
+}
+
+.sidebar a:hover {
+	background-color: #555;
+}
+
+.sidebar a.active {
+	background-color: #28a745;
+	font-weight: bold;
+}
+
+.content {
+  margin-left: 200px;
+  /* 기존 패딩 유지 */
+  padding: 20px 30px;
+
+  /* flex 설정 추가 */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;           /* 뷰포트 전체 높이 사용 */
+  box-sizing: border-box;
+}
+
+.top-bar {
+	background-color: #d2f4e8;
+	border: 1px solid #ccc;
+	padding: 10px 20px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.top-bar .badge {
+	font-size: 0.95rem;
+	padding: 10px 16px;
+}
+
+.contact-card {
+  background-color: #888;
+  padding: 30px;
+  border-radius: 8px;
+
+  flex: 1;                  /* 세로 방향 남은 공간 꽉 채우기 */
+  overflow-y: auto;         /* 내용 넘칠 때 스크롤 */
+  box-sizing: border-box;
+}
+
+.contact-card h2 {
+	text-align: center;
+	margin-bottom: 10px;
+}
+
+.contact-card p.subtitle {
+	text-align: center;
+	margin-bottom: 30px;
+	font-size: 0.9rem;
+	color: #eee;
+}
+
+.form-group {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.form-group label {
+	width: 100px;
+	background-color: #0047AB;
+	color: white;
+	text-align: center;
+	padding: 10px;
+	border-radius: 4px 0 0 4px;
+	margin: 0;
+}
+
+.form-group .form-control {
+	border-radius: 0 4px 4px 0;
+	border: none;
+	height: 40px;
+}
+
+.form-group textarea.form-control {
+	height: 150px;
+	resize: vertical;
+}
+
+.form-group-file {
+	display: flex;
+	align-items: center;
+	margin-bottom: 5px;
+}
+
+.form-group-file label {
+	width: 100px;
+	background-color: #0047AB;
+	color: white;
+	text-align: center;
+	padding: 10px;
+	border-radius: 4px 0 0 4px;
+	margin: 0;
+}
+
+.form-group-file input[type="file"] {
+	border-radius: 0 4px 4px 0;
+	border: none;
+}
+
+.note {
+	font-size: 0.75rem;
+	color: #ddd;
+	margin-bottom: 20px;
+	margin-left: 100px;
+}
+
+label {
+	font-weight: bold;
+	margin-bottom: 12px; /* 라벨과 인풋 사이 간격 넓힘 */
+	font-size: 15px;
+}
+
+input[type="text"], input[type="email"], input[type="file"], textarea {
+	width: 100%;
+	padding: 10px;
+	font-size: 14px;
+	box-sizing: border-box;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+}
+
+textarea {
+	height: 130px;
+	resize: vertical;
+	text-align: left;
+	vertical-align: top;
+}
+
+.btn-submit {
+	display: block;
+	margin: 0 auto;
+	background-color: #0047AB;
+	color: white;
+	padding: 10px 30px;
+	border: none;
+	border-radius: 4px;
+	font-size: 1rem;
+}

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.service.UserService;
@@ -22,16 +23,17 @@ public class HomeController {
 	UserService userService;
 
 	@GetMapping("/home")
-	public String home(HttpSession session, Model model) {
+	public String home(HttpSession session, @RequestParam Long id, Model model) {
 		
-	    User user = (User) session.getAttribute("loginUser");
+	    User loginUser = (User) session.getAttribute("loginUser");
+	    model.addAttribute("loginUser", loginUser);
 	    
 	    //사용자 마감일을 yyyy-MM-dd 포맷 문자열로 변환
-	    String deadlineStr = new SimpleDateFormat("yyyy-MM-dd").format(user.getDeadline());
+	    String deadlineStr = new SimpleDateFormat("yyyy-MM-dd").format(loginUser.getDeadline());
 	    model.addAttribute("deadline", deadlineStr);
 
 	    LocalDate today = LocalDate.now();
-	    LocalDate deadline = user.getDeadline()
+	    LocalDate deadline = loginUser.getDeadline()
 	                             .toInstant()
 	                             .atZone(ZoneId.systemDefault())
 	                             .toLocalDate();

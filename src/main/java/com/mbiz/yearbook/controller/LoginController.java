@@ -40,9 +40,9 @@ public class LoginController {
             User user = userService.login(userId, password);
             session.setAttribute("loginUser", user);
             if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-                return "redirect:/admin/user"; // 관리자 전용 페이지
+                return "redirect:/admin/user?id="+user.getId(); // 관리자 전용 페이지
             } else {
-                return "redirect:/home";  // 일반 사용자
+                return "redirect:/home?id="+user.getId();  // 일반 사용자
             }
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());

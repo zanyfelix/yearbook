@@ -6,24 +6,29 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AdminHome</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/home.css"/>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
-  <div class="alert alert-success">${successMessage}</div>
+  <script>
+    alert("${successMessage}");
+  </script>
 </c:if>
 <c:if test="${not empty errorMessage}">
-  <div class="alert alert-warning">${errorMessage}</div>
+  <script>
+    alert("${errorMessage}");
+  </script>
 </c:if>
 <div class="sidebar">
 
 	<div class="mb-3">
 		<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
-		<select name="userId" class="form-select" onchange="this.form.submit()">
+		<select name="id" class="form-select" onchange="this.form.submit()">
 		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-		    		<option value="${item.id}" <c:if test="${item.id == userId}">selected</c:if>>${item.schoolName}</option>
+		    		<option value="${item.id}" <c:if test="${item.id == id}">selected</c:if>>${item.schoolName}</option>
 		    	</c:forEach>
 		    </select>
 		</form>
@@ -32,11 +37,12 @@
 	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
-    <a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/submission?userId=${userId}" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
-    <a href="/admin/yearbook?userId=${userId}" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
-    <a href="/admin/contactUs?userId=${userId}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
+	
+    <a href="/admin/home?id=${id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+    <a href="/admin/contents?id=${id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+    <a href="/admin/theme?id=${id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+    <a href="/admin/yearbook?id=${id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+    <a href="/admin/submission?id=${id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
 </div>
 
 <div class="content">

@@ -22,13 +22,13 @@
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Progress Report</a>
     <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submit to MBIZ</a>
-    <a href="/contactUs" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
+    <a href="/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
 </div>
 
 <div class="content">
     <input type="hidden" id="id" name="id" value="${sessionScope.loginUser.id}"/>
     <div class="top-bar">
-        <span class="badge bg-success text-dark">Yearbook Due: Mar. 31st. 2026 (D-${remainDays} days left)</span>
+        <span class="badge bg-success text-dark">Yearbook Due: ${deadline} (D-${remainDays} days left)</span>
         <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
         <span class="badge bg-success text-dark">Event Photo Page: ${eventProgress}%</span>
     </div>
@@ -288,6 +288,5 @@ function scrollRight(index) {
     }
 }
 </script>
-
 </body>
 </html>

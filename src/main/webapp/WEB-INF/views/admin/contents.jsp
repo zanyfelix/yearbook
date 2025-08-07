@@ -7,10 +7,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theme</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/contents.css"/>
-    <script src="<c:url value='/js/admin/contents.js'/>"></script>
 </head>
 <body>
 <c:if test="${not empty successMessage}">
@@ -24,25 +24,26 @@
   </script>
 </c:if>
 <div class="sidebar">
+
     <div class="mb-3">
-	<form action="<c:url value='/admin/contents' />" method="get">
-		<select name="userId" class="form-select" onchange="this.form.submit()">
-	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-	    		<option value="${item.id}" ${item.id == userId ? 'selected="selected"' : ''}>${item.schoolName}</option>
-	    	</c:forEach>
-	    </select>
-	</form>
+		<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
+		<select name="id" class="form-select" onchange="this.form.submit()">
+		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
+		    		<option value="${item.id}" <c:if test="${item.id == id}">selected</c:if>>${item.schoolName}</option>
+		    	</c:forEach>
+		    </select>
+		</form>
 	</div>
 	
 	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 		
-	<a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Home</a>	
-    <a href="/admin/theme?userId=${userId}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Contents</a>
-    <a href="/admin/submission?userId=${userId}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
-    <a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+	<a href="/admin/home?id=${id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+    <a href="/admin/contents?id=${id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+    <a href="/admin/theme?id=${id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+    <a href="/admin/yearbook?id=${id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+    <a href="/admin/submission?id=${id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
 </div>
 
 <div class="content">
@@ -50,7 +51,7 @@
     
     
     <form id="deleteForm"
-        action="${pageContext.request.contextPath}/admin/contents/delete?userId=${userId}"
+        action="${pageContext.request.contextPath}/admin/contents/delete?id=${id}"
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the selected contents?');">
         
@@ -102,7 +103,6 @@
 		        </div>
 		        <div class="modal-body">
 		          <!-- 수정 시 채울 hidden PK -->
-		          <input type="hidden" id="userId" name="userId"/>
 		          <input type="hidden" id="id" name="id"/>
 					
 				  <div class="mb-3">
@@ -136,10 +136,12 @@
 		</div>
 	</div>
 </div>
-<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script>
 const ctx = '${pageContext.request.contextPath}';
-const userId = '${userId}';
+const id = '${id}';
 </script>
+<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/contents.js'/>"></script>
 </body>
 </html>

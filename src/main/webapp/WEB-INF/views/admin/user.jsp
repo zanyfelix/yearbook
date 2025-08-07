@@ -21,7 +21,7 @@
 <div class="sidebar">
 	<div class="mb-3">
 	<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
-	<select name="userId" class="form-select" onchange="this.form.submit()">
+	<select name="id" class="form-select" onchange="this.form.submit()">
 	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
 	    		<option value="${item.id}">${item.schoolName}</option>
 	    	</c:forEach>

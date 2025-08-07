@@ -2,6 +2,7 @@ package com.mbiz.yearbook.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.ThemeService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -29,9 +31,24 @@ public class AdminThemeController {
 	@Autowired
     private ThemeService themeService;
 	
+	@Autowired
+	private UserRepository userRepository;
+	
 	@GetMapping("/admin/theme")
-	public String showForm(HttpSession session, @RequestParam Long userId, 
+	public String showForm(HttpSession session, @RequestParam Long id, 
 			@RequestParam(defaultValue = "background") String category, Model model) {
+		
+		if (id != null) {
+			Optional<User> selectedUser = userRepository.findById(id);
+			if (selectedUser.isPresent()) {
+			    User user = selectedUser.get();
+			    String role = user.getRole(); // 안전함
+			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
+		        if ("admin".equals(role)) {
+		            return "redirect:/admin/user?id=" + user.getId();
+		        }
+			}
+	    }
 		
 	    User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
@@ -39,12 +56,12 @@ public class AdminThemeController {
 	    List<User> allUsers = userService.findAll();
 	    model.addAttribute("allUsers", allUsers);
 	    //현재 사용자에 대한 아이디 값
-	    model.addAttribute("userId", userId);
+	    model.addAttribute("id", id);
 	    model.addAttribute("currentMenu", "theme");
 	    
 	    model.addAttribute("category", category);
 	    
-	    List<Long> selectedIds = themeService.findThemeIdsByUserAndCategory(userId, category);
+	    List<Long> selectedIds = themeService.findThemeIdsByUserAndCategory(id, category);
 	    model.addAttribute("selectedIds", selectedIds);
 	    
 	    // 카테고리별 테마 리스트

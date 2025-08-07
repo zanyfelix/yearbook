@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.CustomDateEditor;
@@ -23,6 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.UserService;
 import com.mbiz.yearbook.util.DuplicateUserIdException;
 
@@ -35,6 +37,9 @@ public class AdminUserController {
 	@Autowired
     private UserService userService;
 	
+	@Autowired
+	private UserRepository userRepository;
+	
 	@InitBinder
     public void initBinder(WebDataBinder binder) {
         var df = new SimpleDateFormat("yyyy-MM-dd");
@@ -44,8 +49,8 @@ public class AdminUserController {
     }
 
 	@GetMapping("/user")
-	public String showForm(HttpSession session,
-			@RequestParam(value = "type", defaultValue = "userId") String type,
+	public String showForm(HttpSession session, @RequestParam Long id, 
+			@RequestParam(value = "type", defaultValue = "userId", required = false) String type,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
 		

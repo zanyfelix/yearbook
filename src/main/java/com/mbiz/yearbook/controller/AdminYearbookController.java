@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.HomeService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -38,14 +40,30 @@ public class AdminYearbookController {
     private UserService userService;
 	
 	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
     private HomeService homeService;
 	
 	private final String UPLOAD_DIR = "uploads/";
 
 	@GetMapping("/yearbook")
 	public String showForm(HttpSession session,
+			@RequestParam Long id,
             @RequestParam(value = "keyword", required = false) String keyword,
 			Model model) {
+		
+		if (id != null) {
+			Optional<User> selectedUser = userRepository.findById(id);
+			if (selectedUser.isPresent()) {
+			    User user = selectedUser.get();
+			    String role = user.getRole(); // 안전함
+			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
+		        if ("admin".equals(role)) {
+		            return "redirect:/admin/user?id=" + user.getId();
+		        }
+			}
+	    }
 		
 	    User user = (User) session.getAttribute("loginUser");
 	    

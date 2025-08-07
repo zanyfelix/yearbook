@@ -37,16 +37,16 @@ public class AdminHomeController {
 	private final String UPLOAD_DIR = "uploads/";
 
 	@GetMapping("/admin/home")
-	public String showForm(HttpSession session, @RequestParam Long userId, Model model) {
+	public String showForm(HttpSession session, @RequestParam Long id, Model model) {
 		
-		if (userId != null) {
-			Optional<User> selectedUser = userRepository.findById(userId);
+		if (id != null) {
+			Optional<User> selectedUser = userRepository.findById(id);
 			if (selectedUser.isPresent()) {
 			    User user = selectedUser.get();
 			    String role = user.getRole(); // 안전함
 			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
 		        if ("admin".equals(role)) {
-		            return "redirect:/admin/user?userId=" + userId;
+		            return "redirect:/admin/user?id=" + user.getId();
 		        }
 			}
 	    }
@@ -62,7 +62,7 @@ public class AdminHomeController {
 	    model.addAttribute("homeList", homeList);
 	    
 	    //현재 사용자에 대한 아이디 값
-	    model.addAttribute("userId", userId);
+	    model.addAttribute("id", id);
 	    model.addAttribute("currentMenu", "home");
 
 	    return "admin/home";

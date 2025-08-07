@@ -14,31 +14,36 @@
 </head>
 <body>
 <c:if test="${not empty successMessage}">
-  <div class="alert alert-success">${successMessage}</div>
+  <script>
+    alert("${successMessage}");
+  </script>
 </c:if>
 <c:if test="${not empty errorMessage}">
-  <div class="alert alert-warning">${errorMessage}</div>
+  <script>
+    alert("${errorMessage}");
+  </script>
 </c:if>
 <div class="sidebar">
-    <div class="mb-3">
-	<form action="<c:url value='/admin/theme' />" method="get">
-		<select name="userId" class="form-select" onchange="this.form.submit()">
-	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-	    		<option value="${item.id}" ${item.id == userId ? 'selected="selected"' : ''}>${item.schoolName}</option>
-	    	</c:forEach>
-	    </select>
-	</form>
+
+   <div class="mb-3">
+		<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
+		<select name="id" class="form-select" onchange="this.form.submit()">
+		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
+		    		<option value="${item.id}" <c:if test="${item.id == id}">selected</c:if>>${item.schoolName}</option>
+		    	</c:forEach>
+		    </select>
+		</form>
 	</div>
 	
 	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 		
-	<a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Home</a>	
-    <a href="/admin/theme?userId=${userId}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/submissionuserId=${userId}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
-    <a href="/admin/yearbookuserId=${userId}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+	<a href="/admin/home?id=${id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+    <a href="/admin/contents?id=${id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+    <a href="/admin/theme?id=${id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+    <a href="/admin/yearbook?id=${id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
+    <a href="/admin/submission?id=${id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
 </div>
 
 <div class="content">
@@ -47,8 +52,8 @@
       <!-- themeForm: userIdBySchool + categoryType 를 POST -->
       <form id="themeForm"
             action="<c:url value='/admin/theme'/>"
-            method="post">
-        <input type="hidden" name="userId" value="${userId}" />
+            method="get">
+        <input type="hidden" name="id" value="${id}" />
 
         <!-- 1) Nav Tabs -->
         <ul class="nav nav-tabs mb-4" role="tablist">
@@ -108,7 +113,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='${item.path}'/>"
+                    <img src="/${item.thumbnailPath}"
                          class="img-thumbnail"
                          width="60"/>
                   </td>
@@ -146,7 +151,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='${item.path}'/>"
+                    <img src="<c:url value='${item.thumbnailPath}'/>"
                          class="img-thumbnail"
                          width="60"/>
                   </td>
@@ -184,7 +189,7 @@
 		          </td> 
 		          <td>${item.filename}</td>														
                   <td>
-                    <img src="<c:url value='${item.path}'/>"
+                    <img src="<c:url value='${item.thumbnailPath}'/>"
                          class="img-thumbnail"
                          width="60"/>
                   </td>
@@ -205,8 +210,10 @@
   </div><!-- /.content -->
 <script>
 const ctx      = '${pageContext.request.contextPath}';
-const userId   = '${userId}';
+const id   = '${id}';
 const category = '${category}';
+const serverName      = '${pageContext.request.serverName}';
+const serverPort      = '${pageContext.request.serverPort}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
