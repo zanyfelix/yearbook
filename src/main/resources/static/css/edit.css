@@ -1711,3 +1711,10 @@ button:focus,
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+/* ===========================================
+   31. 사용자 정의
+   =========================================== */
+.panelBtn {
+	margin-bottom: 0.75rem !important;	
+}
+   

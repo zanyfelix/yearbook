@@ -78,10 +78,10 @@
 						<!-- 좌측 버튼 영역 (고정 너비) -->
                     <div class="d-flex flex-column p-3 border-end" style="min-width: 150px;">
                     	<div class="editor-panel-spacer"></div>
-                        <button id="btn-background" class="btn btn-outline-secondary w-100 mb-2">Background</button>
-                        <button id="btn-photo-frame" class="btn btn-outline-secondary w-100 mb-2">PhotoFrame</button>
-                        <button id="btn-textbox-frame" class="btn btn-outline-secondary w-100 mb-2">TextBoxFrame</button>
-                        <button id="btn-text" class="btn btn-outline-secondary w-100 mb-2">Text</button>
+                        <button id="btn-background" class="btn btn-outline-secondary w-100 panelBtn">Background</button>
+                        <button id="btn-photo-frame" class="btn btn-outline-secondary w-100 panelBtn">PhotoFrame</button>
+                        <button id="btn-textbox-frame" class="btn btn-outline-secondary w-100 panelBtn">TextBoxFrame</button>
+                        <button id="btn-text" class="btn btn-outline-secondary w-100 panelBtn">Text</button>
                         <button id="btn-element" class="btn btn-outline-secondary w-100">Element</button>
                     </div>
 
