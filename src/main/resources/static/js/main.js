@@ -136,7 +136,7 @@ $(document).ready(function() {
 	$('#btn-save').on('click', function() {
 		showLoader(); // <--- 로더 보이기
 
-		const captureArea = $('#page-preview');
+		const captureArea = $('.page-preview-container');
 		const elementsToHide = $('#safe-line-overlay, .photo-selection-box');
 
 		window.selectionManager.clearSelection();
