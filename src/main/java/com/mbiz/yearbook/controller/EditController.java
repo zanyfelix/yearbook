@@ -60,6 +60,7 @@ public class EditController {
     
     @Autowired
     private ContentsRepository contentsRepository;
+    
     @Autowired
     private YearbookRepository yearbookRepository;
     
@@ -72,9 +73,7 @@ public class EditController {
 		User loginUser = (User) session.getAttribute("loginUser");
 		model.addAttribute("loginUser", loginUser);
 		
-		//사용자 마감일을 yyyy-MM-dd 포맷 문자열로 변환
-	    String deadlineStr = new SimpleDateFormat("yyyy-MM-dd").format(loginUser.getDeadline());
-	    model.addAttribute("deadline", deadlineStr);
+		model.addAttribute("deadline", loginUser.getDeadline());
 
 	    LocalDate today = LocalDate.now();
 	    LocalDate deadline = loginUser.getDeadline()
@@ -83,9 +82,29 @@ public class EditController {
 	                             .toLocalDate();
 	    
 	    long remainDays = ChronoUnit.DAYS.between(today, deadline);
-
-	    int groupProgress = 60; // 예시: 실제 DB 조회 필요
-	    int eventProgress = 45;
+	    
+	    int groupCompleted = 0;
+        int groupTotal = 0;
+        int eventCompleted = 0;
+        int eventTotal = 0;
+        
+        List<Contents> allGroupContents = contentsRepository.findByUserIdAndCategory(loginUser.getId(), "group");
+        List<Contents> allEventContents = contentsRepository.findByUserIdAndCategory(loginUser.getId(), "event");
+        
+        for(Contents content : allGroupContents) {
+        	groupTotal += content.getPages();
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	groupCompleted += existingPages.size();
+        }
+        
+        for(Contents content : allEventContents) {
+        	eventTotal += content.getPages();
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	eventCompleted += existingPages.size();
+        }
+        
+        int groupProgress = (groupTotal != 0) ? (groupCompleted * 100) / groupTotal : 0;
+        int eventProgress = (eventTotal != 0) ? (eventCompleted * 100) / eventTotal : 0;
 
 	    model.addAttribute("remainDays", remainDays);
 	    model.addAttribute("groupProgress", groupProgress);

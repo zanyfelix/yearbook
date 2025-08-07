@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <%@ page session="true" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -22,14 +23,14 @@
 	</form>
     <a href="/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
-    <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Progress Report</a>
-    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submit to MBIZ</a>
+    <a href="/progress?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
+    <a href="/submit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
     <a href="/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">Contact Us</a>
 </div>
 
 <div class="content">
     <div class="top-bar">
-        <span class="badge bg-success text-dark">Yearbook Due: ${deadline} (D-${remainDays} days left)</span>
+        <span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate value="${deadline}" pattern="MMMM dd, yyyy"/> (D-${remainDays} days left)</span>
         <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
         <span class="badge bg-success text-dark">Event Photo Page: ${eventProgress}%</span>
     </div>
@@ -96,6 +97,7 @@
 </div>
 
 <script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
 <script src="<c:url value='/js/home.js'/>"></script>
 </body>
 </html>

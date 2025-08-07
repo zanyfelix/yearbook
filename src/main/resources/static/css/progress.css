@@ -136,17 +136,26 @@ body {
   font-size: 0.95rem;
 }
 
-/* Close 버튼 */
-.btn-custom {
-  background: #87cefa;            /* 하늘색 */
-  color: #000;
-  border: 1px solid #001f3f;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background 0.2s;
+.progress-container {
+	width: 90%;
+	background-color: #e0e0e0;
+	margin-bottom: 20px;
+	height: 20px;
+	position: relative;
 }
-.btn-custom:hover {
-  background: #add8e6;
+
+.progress-bar {
+	height: 100%;
+	text-align: center;
+	color: white;
+	line-height: 20px; /* Centers the text vertically */
+}
+
+.percentage-text {
+	position: absolute;
+	right: -40px; /* Positions text on the right */
+	top: 50%;
+	transform: translateY(-50%); /* Centers text vertically */
+	color: black;
+	font-weight: bold;
 }
