@@ -37,6 +37,11 @@ html, body {
 	font-weight: bold;
 }
 
+#contact {
+	justify-self : anchor-center;
+	width : 50%;
+}
+
 .content {
   margin-left: 200px;
   /* 기존 패딩 유지 */
