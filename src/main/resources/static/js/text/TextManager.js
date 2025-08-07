@@ -8,23 +8,35 @@ class TextManager {
 	static addTextBox(param) {
 		let textStyles = {}; // 스타일을 담을 빈 객체 생성
 
-		// ✨ 추가된 부분: 파라미터 값에 따라 스타일을 다르게 적용
+		let baseFontSize = 12; // 기본값
 		if (param === 'Title') {
-			// 'Title'일 경우: 글자 크기 24px, 굵게
-			textStyles = {
-				'font-size': '24px',
-				'font-weight': 'bold'
-			};
-		} if (param === 'Sub-Title') {
-			textStyles = {
-				'font-size': '16px',
-				'font-weight': 'normal'
-			};
-		} if (param === 'text') {
-			textStyles = {
-				'font-size': '12px',
-				'font-weight': 'normal'
-			};
+			baseFontSize = 24;
+			textStyles['font-weight'] = 'bold';
+		} else if (param === 'Sub-Title') {
+			baseFontSize = 16;
+			textStyles['font-weight'] = 'normal';
+		} else if (param === 'text') {
+			baseFontSize = 12;
+			textStyles['font-weight'] = 'normal';
+		}
+		
+		// ✨ 배경 이미지 비율 계산 추가
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+		if (actualBgRect) {
+			// 편집용 웹 배경의 원본 크기 (FrameManager와 동일한 상수 사용)
+			const TEMPLATE_WEB_BG_WIDTH = 786;
+
+			// 현재 표시되는 배경의 비율 계산
+			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+
+			// 폰트 크기를 비율에 맞게 조정
+			const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
+			textStyles['font-size'] = adjustedFontSize + 'px';
+		} else {
+			// 배경 정보를 얻을 수 없는 경우 기본값 사용
+			textStyles['font-size'] = baseFontSize + 'px';
 		}
 
 		const textBox = $('<div class="text-box" contenteditable="true"></div>')
@@ -40,7 +52,6 @@ class TextManager {
 		// (이하 위치 계산 및 이벤트 설정 로직은 기존과 동일합니다)
 		$('#frame-container').append(textBox);
 
-		const bg = $('#page-preview-img');
 		const bgPos = bg.position();
 		if (!bgPos) return;
 

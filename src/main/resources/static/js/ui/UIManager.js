@@ -222,16 +222,31 @@ class UIManager {
 			}).join("");
 		}
 
-		// 2. 가져온 값으로 툴팁 컨트롤의 현재 상태를 설정합니다.
-		$('#tooltip-size').val(currentSize);
-		if(currentAlign == 'start') {
+		const textContent = textBox.text();
+		let defaultSize = '12px';
+
+		if (textContent.includes('Title') && !textContent.includes('Sub-Title')) {
+			defaultSize = '24px';
+		} else if (textContent.includes('Sub-Title')) {
+			defaultSize = '16px';
+		} else if (textContent.includes('text')) {
+			defaultSize = '12px';
+		}
+
+		// ✨ 비율이 적용된 실제 크기가 아닌, 원본 기본값을 드롭다운에 설정
+		// 텍스트가 방금 생성된 경우 기본값 사용, 아니면 저장된 원본 사이즈 사용
+		const originalSize = textBox.data('originalFontSize') || defaultSize;
+		$('#tooltip-size').val(originalSize);
+
+		// 2. 나머지 값들 설정
+		if (currentAlign == 'start') {
 			$('#tooltip-align').val('left');
 		} else {
-			$('#tooltip-align').val(currentAlign || 'left');	
+			$('#tooltip-align').val(currentAlign || 'left');
 		}
 		$('#tooltip-color').val(rgbToHex(currentColorRGB));
 
-		// 3. 툴팁 컨트롤에 이벤트를 바인딩합니다. (기존과 동일)
+		// 3. 툴팁 컨트롤에 이벤트를 바인딩합니다.
 		this.bindTextTooltipEvents(textBox);
 	}
 
@@ -246,7 +261,23 @@ class UIManager {
 			textBox.css('color', $(this).val());
 		});
 		$('#tooltip-size').on('change', function() {
-			textBox.css('font-size', $(this).val());
+			const selectedSize = parseInt($(this).val()); // px 제거하고 숫자만 추출
+
+			// ✨ 선택된 원본 사이즈를 data 속성에 저장
+			textBox.data('originalFontSize', $(this).val());
+
+			// 배경 이미지 비율 계산
+			const bg = $('#page-preview-img');
+			const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+			if (actualBgRect) {
+				const TEMPLATE_WEB_BG_WIDTH = 786;
+				const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+				const adjustedFontSize = Math.round(selectedSize * scaleRatio);
+				textBox.css('font-size', adjustedFontSize + 'px');
+			} else {
+				textBox.css('font-size', $(this).val());
+			}
 		});
 		$('#tooltip-align').on('change', function() {
 			textBox.css('text-align', $(this).val());
