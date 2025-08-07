@@ -19,23 +19,19 @@
   </script>
 </c:if>
 <div class="sidebar">
-	<div class="mb-3">
-	<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
-	<select name="id" class="form-select" onchange="this.form.submit()">
-	    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-	    		<option value="${item.id}">${item.schoolName}</option>
-	    	</c:forEach>
-	    </select>
-	</form>
-	</div>
+	<h5>${sessionScope.loginUser.schoolName}</h5>
     
 	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 	
 	<a href="/admin/user?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
-    <%-- <a href="/admin/submission?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
-    <a href="/admin/yearbook?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a> --%>
+	<a href="/admin/theme?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+	<a href="/admin/deadline?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
+	<a href="/admin/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submission?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
+	<a href="/admin/yearbook?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
     <a href="/admin/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 

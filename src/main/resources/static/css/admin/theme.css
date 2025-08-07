@@ -57,13 +57,10 @@ html, body {
 
 .content {
   margin-left: 200px;
-  /* 기존 패딩 유지 */
   padding: 20px 30px;
-
-  /* flex 설정 추가 */
   display: flex;
   flex-direction: column;
-  height: 100vh;           /* 뷰포트 전체 높이 사용 */
+  height: 100vh;
   box-sizing: border-box;
 }
 
@@ -84,22 +81,25 @@ html, body {
 }
 
 /* ── 검색 바 ── */
-.container-fluid > form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
+/* .search-form 클래스로 스타일을 통합하고 정리합니다. */
+.search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    width: 20%;
+	  min-width: 250px;
 }
-.container-fluid form select,
-.container-fluid form input[type="text"] {
+.search-form select,
+.search-form input[type="text"] {
   padding: 8px 12px;
   border: 1px solid #ced4da;
   border-radius: 4px;
   background-color: #fff;
   font-size: 0.95rem;
+  flex-grow: 1; /* select 요소가 남는 공간을 모두 차지하도록 설정 */
 }
-.container-fluid form button {
+.search-form button {
   padding: 8px 16px;
   border: none;
   background-color: #007bff;
@@ -109,7 +109,7 @@ html, body {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-.container-fluid form button:hover {
+.search-form button:hover {
   background-color: #0056b3;
 }
 
@@ -226,13 +226,10 @@ html, body {
 /* 전체 선택 / 개별 선택 체크박스 공통 */
 #selectAll,
 .selectBox {
-  /* 체크박스 크기를 조금 키우고 커서 포인터 추가 */
   width: 1.25rem;
   height: 1.25rem;
   cursor: pointer;
-  /* 체크되었을 때 색상 (초록) */
   accent-color: #28a745;
-  /* 호버 시 조금 진한 초록으로 */
   transition: accent-color 0.2s;
 }
 #selectAll:hover,
@@ -251,8 +248,11 @@ html, body {
     margin-left: 0;
     padding: 20px;
   }
+  /* 문제가 되던 부분을 제거하여 작은 화면에서도 가로 정렬을 유지합니다. */
+  /*
   .container-fluid > form {
     flex-direction: column;
     align-items: stretch;
   }
+  */
 }
