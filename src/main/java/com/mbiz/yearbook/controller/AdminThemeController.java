@@ -36,7 +36,7 @@ public class AdminThemeController {
 	private UserRepository userRepository;
 	
 	@GetMapping("/admin/theme")
-	public String showForm(HttpSession session, @RequestParam(required = false)Long id, 
+	public String showForm(HttpSession session, @RequestParam(required = false) Long id, 
 			@RequestParam(defaultValue = "background") String category, Model model) {
 		
 		User loginUser = (User) session.getAttribute("loginUser");

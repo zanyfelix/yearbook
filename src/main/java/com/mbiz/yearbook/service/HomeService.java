@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.Home;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.HomeRepository;
@@ -16,23 +17,27 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HomeService {
 
-    private final HomeRepository repo;
+    private final HomeRepository homeRepository;
     
     public List<Home> findAll() {
-        return repo.findAll();
+        return homeRepository.findAll();
     }
     
-
+    public void save(Home home) {
+    	home.setCreatedAt(LocalDateTime.now());
+        homeRepository.save(home);
+    }
+    
     public void register(Home home) {
     	
     	//기본 값은 0
     	home.setCreatedAt(LocalDateTime.now());
     	home.setUpdatedAt(LocalDateTime.now());
-    	repo.save(home);
+    	homeRepository.save(home);
     }
 
     @Transactional
     public void delete(Long id) {
-        repo.deleteById(id);
+    	homeRepository.deleteById(id);
     }
 }

@@ -24,82 +24,141 @@
 </c:if>
 <div class="sidebar">
 
-	<div class="mb-3">
-		<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
-		<select name="id" class="form-select" onchange="this.form.submit()">
-		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-		    		<option value="${item.id}" <c:if test="${item.id == id}">selected</c:if>>${item.schoolName}</option>
-		    	</c:forEach>
-		    </select>
-		</form>
-	</div>
+	<h5>${sessionScope.loginUser.schoolName}</h5>
 	
 	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 	
-    <a href="/admin/home?id=${id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/admin/contents?id=${id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/theme?id=${id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/yearbook?id=${id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
-    <a href="/admin/submission?id=${id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+	<a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
+	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
+	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 
 <div class="content">
-
-		<div class="btn-wrapper">
-			<button type="button" id="btn-create">Create</button>
-			<button type="button" id="btn-delete">Delete</button>
-			<button type="button" id="btn-edit">Edit</button>
-		</div>
-
-		<c:forEach var="item" items="${homeList}" varStatus="st">
-			<div class="section-box">
-				<h5>${item.title}</h5>
-				<textarea rows="3" cols="110" disabled>${item.description}</textarea>
-			</div>
-		</c:forEach>
-
-		<%-- <form id="settingsForm" method="post" enctype="multipart/form-data">
-			<div class="settings-block" data-id="${guidanceFile.id}">
-				<input type="checkbox" name="selectedIds" value="${guidanceFile.id}">
-				<div class="block-content">
-					<span>Yearbook Guidance</span>
-					<p>
-						- Please click <a href="<c:url value='/admin/download/guidance'/>">HERE</a>
-						to download the guidance(manual) for this program
-					</p>
-				</div>
-				<div class="file-upload-area">
-					<span>${guidanceFile.originalFileName}</span> <input type="file"
-						id="guidanceUpload" name="guidanceFile" style="display: none;">
-					<button type="button" class="btn-upload"
-						onclick="$('#guidanceUpload').click();">Upload</button>
-				</div>
-			</div>
-		
-			<div id="content-block-container">
-				<c:forEach var="block" items="${contentBlocks}">
-					<div class="settings-block" data-id="${block.id}">
-						<input type="checkbox" name="selectedIds" value="${block.id}">
-						<div class="block-content">
-							<input type="text" name="title" class="title-input"
-								value="${block.title}" readonly>
-							<textarea name="content" class="text-input" readonly>${block.content}</textarea>
-						</div>
-					</div>
-				</c:forEach>
-			</div>
-		</form> --%>
+	<div class="container-fluid">
 	
-	<%-- 하단 적용 버튼 --%>
-    <div class="bottom-buttons">
-    	<button type="button" id="btn-apply">APPLY</button>
-        <button type="button" id="btn-apply-all">APPLY ALL</button>
-    </div>
+		<!-- 검색 바 -->
+		<form method="get" action="${pageContext.request.contextPath}/admin/home" class="search-form">
+		    <select name="id" class="form-select">
+		        <c:forEach var="item" items="${allUsers}" varStatus="st">
+		        	<c:if test="${item.role ne 'admin'}">
+		            	<option value="${item.id}" <c:if test="${item.id eq id}">selected</c:if>>${item.schoolName}</option>
+		            </c:if>
+		        </c:forEach>
+		    </select>
+		    <button type="submit" class="btn btn-primary">SEARCH</button>
+		</form>
+		
+		<form id="homeForm" action="<c:url value='/uploadGuidance'/>" method="post" enctype="multipart/form-data">
+			<input type="hidden" name="id" value="${guidanceHome.id}"/>
+			<div class="section-box">
+				<h5>Yearbook Guidance</h5>
+				<%-- 파일 존재 여부에 따라 분기 처리 --%>
+			    <c:choose>
+			        <%-- 1. 첨부파일이 있는 경우 --%>
+			        <c:when test="${not empty guidanceHome.attachmentPath}">
+			            <p>- Please click <a href="<c:url value='/downloadGuidance?id=${guidanceHome.id}'/>"><strong>HERE</strong></a> to download the manual for this program</p>
+			        </c:when>
+			        <%-- 2. 첨부파일이 없는 경우 (링크 없음) --%>
+			        <c:otherwise>
+			            <p>- Please click HERE to download the manual for this program</p>
+			        </c:otherwise>
+			    </c:choose>
+				<p>- Please review all the guidelines prior to commencing work on the yearbook pages</p>
+				<p>- If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</p>
+				<%-- 현재 저장된 파일명을 표시하는 부분 추가 --%>
+			    <c:if test="${not empty guidanceFileName}">
+			        <div class="current-file-display">
+			            <strong>Current File:</strong>
+			            <span>${guidanceFileName}</span>
+			        </div>
+			    </c:if>
+				<div class="form-group-file">
+		        	<label for="file">FILE</label>
+		        	<input type="file" name="file" id="file" class="form-control"/>
+		      	</div>
+		      	
+			</div>
+			<div class="btn-wrapper">
+			    <button id="btn-apply" type="button">SAVE</button>
+		    </div>
+	    </form>
+	    
+		<table>
+	      <thead>
+	      	<tr>
+		      <th>
+		         <input type="checkbox" id="selectAll" onclick="toggleAll(this)"/>
+		      </th>
+		      <th>TITLE</th>
+		      <th>DESCRIPTION</th>
+		    </tr>
+	      </thead>
+	      <tbody>
+	       <c:forEach var="item" items="${homeList}" varStatus="st">
+	          <tr>
+	          	<td>
+		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
+		        </td>
+	            <td>${item.title}</td>
+	            <td>
+	            	<textarea rows="3" cols="110" disabled>${item.description}</textarea>
+	            </td>
+	          </tr>
+	        </c:forEach>
+	      </tbody>
+	    </table>
+	    
+		<div class="btn-wrapper">
+		    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
+		    <button id="btn-modify" type="button">MODIFY</button>
+		    <button id="btn-delete" type="button">DELETE</button>
+		    <button id="btn-apply" type="button">APPLY</button>
+	    </div>
+	    
+	    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+		  <div class="modal-dialog">
+		    <div class="modal-content">
+		      <form id="registerForm"
+			      action="${pageContext.request.contextPath}/admin/home/register"
+			      method="post">
+			      <input type="hidden" name="userId" value="${id}"/>
+			  <div class="modal-header">
+			    <h5 class="modal-title" id="registerModalLabel">REGISTRATION</h5>
+			    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			  </div>
+			  <div class="modal-body">
+			    <input type="hidden" id="homeId" name="id" />
+			    <input type="hidden" id="currentUserId" name="userId" value="${id}" />
+			
+			    <div class="mb-3">
+			      <label for="title" class="form-label">TITLE</label>
+			      <input type="text" class="form-control" id="title" name="title" required />
+			    </div>
+			    <div class="mb-3">
+			      <label for="description" class="form-label">DESCRIPTION</label>
+			      <textarea class="form-control" id="description" name="description" rows="3" cols="110"></textarea>
+			    </div>
+			  </div>
+			  <div class="modal-footer">
+			    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+			    <button type="submit" class="btn btn-primary" id="registerSubmitBtn">Save</button>
+			  </div>
+			</form>
+		    </div>
+		  </div>
+		</div>
+	    
+	</div>
 </div>
 <script>
-	window.contextPath = '${pageContext.request.contextPath}';
+const ctx  = '${pageContext.request.contextPath}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>

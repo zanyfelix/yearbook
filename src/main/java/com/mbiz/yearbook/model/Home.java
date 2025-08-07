@@ -48,4 +48,15 @@ public class Home {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+    
+    @Column(name = "attachment_path")
+    private String attachmentPath;
+    
+    @Column(name = "user_id")
+    private Long userId;
+    
+    @Column(name = "type")
+    private String type;
+    
+    
 }

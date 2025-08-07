@@ -1,52 +1,120 @@
-$(document).ready(function() {
-	
-	function changeAction(select) {
-	    const selectedOption = select.options[select.selectedIndex];
-	    const actionUrl = selectedOption.getAttribute('data-action');
-	    document.getElementById('userForm').action = actionUrl;
-	    select.form.submit();
-	}
+// js/admin/home.js
 
-    // 3. 'Create' 버튼 클릭 이벤트
-    $('#btn-create').on('click', function() {
-        const newBlockHtml = `
-            <div class="settings-block new-block" data-id="0">
-                <input type="checkbox" name="selectedIds" value="0">
-                <div class="block-content">
-                    <input type="text" name="title" class="title-input" placeholder="Title">
-                    <textarea name="content" class="text-input" placeholder="text here"></textarea>
-                </div>
-            </div>`;
-        $('#content-block-container').append(newBlockHtml);
+$(function() {
+    // 최상단의 SAVE 버튼(#btn-apply) 클릭 이벤트 (Yearbook Guidance 파일 저장용)
+	$('#homeForm #btn-apply').on('click', function() {
+		var formData = new FormData($('#homeForm')[0]);
+		if ($('#file')[0].files.length === 0) {
+			alert('업로드할 파일을 선택해주세요.');
+			return;
+		}
+		// ... (기존 AJAX 파일 업로드 로직) ...
+        $.ajax({
+            url: $('#homeForm').attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                alert("Saved successfully.");
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        });
+	});
+
+    // --- 하단 테이블용 버튼 기능 ---
+
+    // REGISTER 버튼 클릭: 모달 초기화 후 열기
+    $('#btn-register').on('click', function() {
+        // 폼 초기화
+        $('#registerForm')[0].reset();
+        $('#homeId').val(''); // id 필드 초기화
+        
+        // 모달 제목 변경
+        $('#registerModalLabel').text('REGISTRATION');
+        
+        // 모달 열기는 data-bs-toggle 속성으로 자동 처리됨
     });
 
-    // 4. 'Edit' 버튼 클릭 이벤트
-    $('#btn-edit').on('click', function() {
-        const checked = $('.settings-block input[type="checkbox"]:checked');
-        if (checked.length === 0) {
-            alert("수정할 항목을 선택하세요.");
+    // MODIFY 버튼 클릭: 선택된 데이터로 모달 채우고 열기
+    $('#btn-modify').on('click', function() {
+        const checkedBoxes = $('.selectBox:checked');
+
+        if (checkedBoxes.length !== 1) {
+            alert('Please select only one item to edit.');
+            return;
+        }
+
+        const checkedRow = checkedBoxes.closest('tr');
+        const id = checkedBoxes.val();
+        const title = checkedRow.find('td:eq(1)').text().trim();
+        const description = checkedRow.find('td:eq(2) textarea').val().trim();
+
+        // 모달 필드 채우기
+        $('#homeId').val(id);
+        $('#title').val(title);
+        $('#description').val(description);
+
+        // 모달 제목 변경 및 열기
+        $('#registerModalLabel').text('MODIFY');
+        new bootstrap.Modal($('#registerModal')).show();
+    });
+
+    // DELETE 버튼 클릭: 선택된 항목 삭제
+    $('#btn-delete').on('click', function() {
+        const checkedIds = getCheckedIds();
+        if (checkedIds.length === 0) {
+            alert('Please select one or more items to delete.');
+            return;
+        }
+
+        if (confirm(checkedIds.length + 'Are you sure you want to delete items?')) {
+            performAjaxAction('/admin/home/delete', checkedIds, '삭제');
+        }
+    });
+
+    // 하단의 APPLY 버튼 클릭: 선택된 항목 활성화
+    $('.btn-wrapper > button#btn-apply').on('click', function() {
+        const checkedIds = getCheckedIds();
+        if (checkedIds.length === 0) {
+            alert('Please select one or more items to apply.');
             return;
         }
         
-        checked.each(function() {
-            const block = $(this).closest('.settings-block');
-            // 'readonly' 속성을 제거하여 편집 가능하게 만듦
-            block.find('.title-input, .text-input').prop('readonly', false);
+        if (confirm(checkedIds.length + 'Would you like to apply (activate) the items?')) {
+            performAjaxAction('/admin/home/apply', checkedIds, '적용');
+        }
+    });
+
+    // 체크된 체크박스의 id 배열을 반환하는 헬퍼 함수
+    function getCheckedIds() {
+        return $('.selectBox:checked').map(function() {
+            return $(this).val();
+        }).get();
+    }
+
+    // 삭제/적용 AJAX 요청을 처리하는 공통 함수
+    function performAjaxAction(url, ids, actionType) {
+        $.ajax({
+            url: ctx + url,
+            type: 'POST',
+            data: { ids: ids }, // Spring에서 List<Long>으로 받기 위해 객체 형태로 전송
+            traditional: true, // 배열을 올바르게 전송하기 위한 jQuery 설정
+            success: function(response) {
+                alert(response);
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert(actionType + ' 중 오류가 발생했습니다.');
+            }
         });
-    });
-
-    // 'Delete' 버튼 로직 (선택된 항목 삭제)
-    $('#btn-delete').on('click', function() {
-        // ... 선택된 항목을 화면에서 제거하는 로직 ...
-    });
-
-    // 'APPLY' 버튼 로직 (모든 변경사항 서버로 전송)
-    $('#btn-apply, #btn-apply-all').on('click', function() {
-        // ... 폼 데이터를 수집하여 AJAX로 서버에 전송하는 로직 ...
-    });
-
-    // 2. 파일 업로드 감지 및 처리
-    $('#guidanceUpload').on('change', function() {
-        // ... 파일이 선택되면 폼을 submit 하거나 AJAX로 업로드하는 로직 ...
-    });
+    }
+    
+    // 전체 선택 체크박스
+    window.toggleAll = function(source) {
+		$('.selectBox').prop('checked', source.checked);
+	}
 });

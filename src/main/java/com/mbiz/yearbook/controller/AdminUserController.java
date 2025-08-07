@@ -49,7 +49,7 @@ public class AdminUserController {
     }
 
 	@GetMapping("/user")
-	public String showForm(HttpSession session, @RequestParam Long id, 
+	public String showForm(HttpSession session, @RequestParam(required = false)Long id,
 			@RequestParam(value = "type", defaultValue = "userId", required = false) String type,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {

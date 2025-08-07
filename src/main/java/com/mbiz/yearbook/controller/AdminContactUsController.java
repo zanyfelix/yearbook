@@ -35,7 +35,7 @@ public class AdminContactUsController {
     private UserService userService;
 
     @GetMapping("/contactUs")
-    public String showForm(HttpSession session, @RequestParam Long id, 
+    public String showForm(HttpSession session, @RequestParam(required = false) Long id, 
 			@RequestParam(value = "type", defaultValue = "userId") String type,
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {

@@ -31,14 +31,14 @@
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
 		
-	<a href="/admin/user?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
-	<a href="/admin/theme?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-	<a href="/admin/deadline?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
-	<a href="/admin/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-	<a href="/admin/contents?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-	<a href="/admin/submission?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
-	<a href="/admin/yearbook?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
-    <a href="/admin/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
+	<a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+	<a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
+	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
+	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 
 <div class="content">
@@ -99,7 +99,7 @@
     </div><!-- /.container-fluid -->
   </div><!-- /.content -->
 <script>
-const ctx      = '${pageContext.request.contextPath}';
+const ctx  = '${pageContext.request.contextPath}';
 const id   = '${id}';
 const category = '${category}';
 </script>
