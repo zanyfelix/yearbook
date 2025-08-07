@@ -7,7 +7,7 @@ class TextManager {
      */
 	static addTextBox(param) {
 		let textStyles = {}; // 스타일을 담을 빈 객체 생성
-
+		
 		let baseFontSize = 12; // 기본값
 		if (param === 'Title') {
 			baseFontSize = 24;
@@ -63,6 +63,8 @@ class TextManager {
 
 		const newLeft = bgPos.left + (bgWidth - boxWidth) / 2;
 		const newTop = bgPos.top + (bgHeight - boxHeight) / 2;
+		
+		$('#frame-container').append(textBox);
 
 		textBox.css({
 			top: `${newTop}px`,
@@ -70,9 +72,27 @@ class TextManager {
 			visibility: 'visible'
 		});
 
+		// ✨ 원본 폰트 크기와 relativeState 저장
+		textBox.data('originalFontSize', baseFontSize + 'px');
+
+		if (actualBgRect) {
+			const boxWidth = textBox.outerWidth();
+			const boxHeight = textBox.outerHeight();
+
+			const relativeState = {
+				position: {
+					left: ((newLeft - actualBgRect.left) / actualBgRect.width) * 100,
+					top: ((newTop - actualBgRect.top) / actualBgRect.height) * 100
+				},
+				size: {
+					width: (boxWidth / actualBgRect.width) * 100,
+					height: (boxHeight / actualBgRect.height) * 100
+				}
+			};
+			textBox.data('relativeState', relativeState);
+		}
+
 		EventManager.setupTextEvents(textBox);
-		
-		// ✨ 핵심 수정: 생성된 텍스트 상자를 즉시 선택 상태로 만듭니다.
 		window.selectionManager.selectTextBox(textBox);
 	}
 }

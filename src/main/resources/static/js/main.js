@@ -60,13 +60,41 @@ $(document).ready(function() {
 			left: (relativeState.position.left / 100) * baseRect.width + baseOffset.left,
 			top: (relativeState.position.top / 100) * baseRect.height + baseOffset.top,
 		};
+		
 		const newPixelSize = {
 			width: (relativeState.size.width / 100) * baseRect.width,
-			height: $element.hasClass('text-box') ? 'auto' : (relativeState.size.height / 100) * baseRect.height,
+			height: (relativeState.size.height / 100) * baseRect.height
 		};
+		
+		// ✨ 텍스트 박스의 경우 폰트 크기도 비율에 맞게 조정
+		if ($element.hasClass('text-box')) {
+			const originalFontSize = $element.data('originalFontSize');
+			if (originalFontSize) {
+				const fontSize = parseInt(originalFontSize);
+				const bg = $('#page-preview-img');
+				const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+				if (actualBgRect) {
+					const TEMPLATE_WEB_BG_WIDTH = 786;
+					const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+					const adjustedFontSize = Math.round(fontSize * scaleRatio);
+					$element.css('font-size', adjustedFontSize + 'px');
+
+					// ✨ 패딩도 비율에 맞게 조정
+					const basePadding = 10; // 기본 패딩값
+					const adjustedPadding = Math.round(basePadding * scaleRatio);
+					$element.css('padding', adjustedPadding + 'px');
+				}
+			}
+		}
 
 		const transform = relativeState.transform || 'matrix(1, 0, 0, 1, 0, 0)';
 		$element.css({ ...newPixelPos, ...newPixelSize, transform: transform });
+
+		// ✨ 사진의 선택 UI도 업데이트
+		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
+			PhotoManager.updateSelectionUI($element);
+		}
+
 	}
 
 	window.updateAllPositions = function() {
