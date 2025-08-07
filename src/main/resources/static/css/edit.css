@@ -210,7 +210,7 @@ body {
 #page-preview-img {
     /* ✨ 핵심 수정: 배경 이미지가 비율을 유지하면서 컨테이너에 맞게 조절 */
     max-width: 100%;
-    max-height: 97%;
+    max-height: 100%;
     width: auto;               /* 가로는 자동 조절 */
     height: auto;              /* 세로는 자동 조절 */
     object-fit: contain;       /* 비율 유지하면서 컨테이너 안에 맞춤 */
@@ -1552,13 +1552,13 @@ button:focus,
    29. 저장 완료 메시지 스타일
    =========================================== */
 #save-confirmation-message {
-    position: absolute !important;
-    color: black; /* 글자색 검은색으로 변경 */
-    font-size: 15px;
-    z-index: 1050;
-    text-align: left;
-    line-height: 1.5;
-    white-space: nowrap;
+	min-height: 24px; /* 툴바 공간을 항상 고정 */
+    align-items: center;
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+    background-color: transparent;
+    justify-content: center; /* ✨ 왼쪽과 오른쪽 요소를 양 끝으로 분리 */
+    font-size: 11px;
 }
 
 /* 반응형 디자인 */
