@@ -56,7 +56,7 @@ public class ContentsService {
     }
     
     @Transactional
-    public int deleteUsers(List<Long> ids) {
+    public int deleteContents(List<Long> ids) {
     	if (ids == null || ids.isEmpty()) {
             return 0;
         }

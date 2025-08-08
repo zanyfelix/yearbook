@@ -45,10 +45,10 @@
     
     <!-- 검색 바 -->
 	<form method="get" action="${pageContext.request.contextPath}/admin/contents" class="search-form">
-	    <select name="id" class="form-select">
+	    <select name="userId" class="form-select">
 	        <c:forEach var="item" items="${allUsers}" varStatus="st">
 	        	<c:if test="${item.role ne 'admin'}">
-	            	<option value="${item.id}" <c:if test="${item.id eq id}">selected</c:if>>${item.schoolName}</option>
+	            	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
 	            </c:if>
 	        </c:forEach>
 	    </select>
@@ -56,7 +56,7 @@
 	</form>
     
     <form id="deleteForm"
-        action="${pageContext.request.contextPath}/admin/contents/delete?id=${id}"
+        action="${pageContext.request.contextPath}/admin/contents/delete?userId=${userId}"
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the selected contents?');">
         
@@ -144,7 +144,7 @@
 </div>
 <script>
 const ctx = '${pageContext.request.contextPath}';
-const userId = '${id}';
+const userId = '${userId}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>

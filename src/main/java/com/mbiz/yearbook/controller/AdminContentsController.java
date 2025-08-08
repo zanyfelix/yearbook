@@ -44,23 +44,20 @@ public class AdminContentsController {
 	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
 		
-	    if (id == null) {
-	        List<User> users = userRepository.findAll();
+	    if (userId == null) {
+	        List<User> users = userRepository.findByRole("user");
 	        model.addAttribute("users", users);
+	        //사용자 id 값 없을 경우 첫번째 보여준다.
+	        userId = users.get(0).getId();
 	    } else {
-	        userRepository.findById(id).ifPresent(user -> model.addAttribute("users", List.of(user)));
+	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
 	    }
 	    
-	    if(id == null) {
-	    	id = (long) 11;
-	    }
-	    
-	    //현재 사용자에 대한 아이디 값
-	    model.addAttribute("id", id);
+	    model.addAttribute("userId", userId);
 	    
 	    model.addAttribute("currentMenu", "contents");
 	    
-	    List<Contents> list = contentsService.findByUserId(id);
+	    List<Contents> list = contentsService.findByUserId(userId);
 	    model.addAttribute("list", list);
 	    
 	    return "admin/contents";
@@ -98,7 +95,7 @@ public class AdminContentsController {
         if (ids == null || ids.isEmpty()) {
             attrs.addFlashAttribute("errorMessage", "Select the contents you want to delete.");
         } else {
-        	int deleted = contentsService.deleteUsers(ids);
+        	int deleted = contentsService.deleteContents(ids);
             attrs.addFlashAttribute("successMessage", deleted + " contents has been deleted.");
         }
         return "redirect:/admin/contents?userId=" + userId;
