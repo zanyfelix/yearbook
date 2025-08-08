@@ -216,7 +216,35 @@ class EventManager {
 	
 	static setupTextEvents(textBox) {
 		// 기존 이벤트를 모두 초기화
-		textBox.off('click dblclick mousedown keydown');
+		textBox.off('click dblclick mousedown keydown input');
+		
+		// ✨ 추가: 텍스트박스 크기 자동 조정 함수
+		const autoResizeTextBox = function($box) {
+			// 임시 span 요소를 생성하여 텍스트 실제 크기 측정
+			const $temp = $('<span>')
+				.text($box.text() || ' ')  // 빈 텍스트일 때 공백 하나 추가
+				.css({
+					'font-size': $box.css('font-size'),
+					'font-family': $box.css('font-family'),
+					'font-weight': $box.css('font-weight'),
+					'white-space': 'nowrap',
+					'position': 'absolute',
+					'visibility': 'hidden'
+				});
+
+			$('body').append($temp);
+			const textWidth = $temp.width() + 20; // 여백 20px 추가
+			const textHeight = $temp.height() + 16; // 여백 16px 추가
+			$temp.remove();
+
+			// 텍스트박스 크기를 측정된 크기로 설정
+			$box.css({
+				'width': 'auto',
+				'min-width': textWidth + 'px',
+				'height': 'auto',
+				'min-height': textHeight + 'px'
+			});
+		};
 
 		// 한 번 클릭: '선택' 상태로 전환
 		textBox.on('click', function(e) {
@@ -235,12 +263,18 @@ class EventManager {
 			if ($this.hasClass('selected')) {
 				$this.addClass('editing');
 				$this.focus(); // 텍스트 커서 활성화
+				
+				// ✨ 편집 모드 진입 시 자동 크기 조정
+				autoResizeTextBox($this);
 			}
 		});
 		
 		// ✨ 텍스트 입력 시 크기 저장 추가
 		textBox.on('input', function() {
 			const $this = $(this);
+
+			// 자동 크기 조정
+			autoResizeTextBox($this);
 
 			// 짧은 지연 후 크기 측정 (렌더링 완료 대기)
 			setTimeout(() => {
@@ -257,12 +291,15 @@ class EventManager {
 						left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 						top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
 					};
+
+					// ✨ 중요: 크기를 auto로 저장하지 않고 비율만 저장
 					currentState.size = {
 						width: (boxW / actualBgRect.width) * 100,
-						height: (boxH / actualBgRect.height) * 100
+						height: (boxH / actualBgRect.height) * 100,
+						autoSize: true  // 자동 크기 조정 플래그 추가
 					};
-					
-					// ✨ transform 유지
+
+					// transform 유지
 					if (!currentState.transform) {
 						currentState.transform = $this.css('transform') || 'none';
 					}
@@ -270,6 +307,19 @@ class EventManager {
 					$this.data('relativeState', currentState);
 				}
 			}, 10);
+		});
+		
+		textBox.on('blur', function() {
+			const $this = $(this);
+			$this.removeClass('editing');
+
+			// 텍스트가 비어있으면 기본 텍스트 설정
+			if ($this.text().trim() === '') {
+				$this.text('Enter Text Here');
+			}
+
+			// 크기 재조정
+			autoResizeTextBox($this);
 		});
 
 		// 마우스 다운: '선택' 상태일 때만 드래그 시작
@@ -352,7 +402,8 @@ class EventManager {
 						// ✨ 크기 정보도 함께 저장
 						currentState.size = {
 							width: (textBox.outerWidth() / actualBgRect.width) * 100,
-							height: (textBox.outerHeight() / actualBgRect.height) * 100
+							height: (textBox.outerHeight() / actualBgRect.height) * 100,
+							autoSize: true  // 자동 크기 조정 플래그
 						};
 
 						// transform 정보 유지

@@ -139,7 +139,7 @@
 	                                <div class="control-buttons">
 	                                    <button id="frame-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);"></button>
 	                                    <button id="frame-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전"><img src="/images/icon/transform.png" alt="Rotate Right"></button>
-	                                    <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
+	                                    <button id="btn-delete-frame" class="control-btn delete-btn" title="프레임 삭제"><img src="/images/icon/trash.png" alt="trash" style="width: 16px; height: 16px"></button>
 	                                </div>
 	                            </div>
 	                            <div id="photo-controls" class="d-none w-100">
@@ -190,7 +190,7 @@
 									</div>
 								</div>
 								</div>
-                            <div id="main-actions" class="d-flex align-items-center gap-2" style="margin-right:8px;">
+                            <div id="main-actions" class="d-flex align-items-center gap-2" style="margin-right:15px;">
 						        <button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
 						        <button id="btn-save" class="btn btn-primary">Save</button>
 						        <button id="btn-close-modal" class="btn btn-danger">Close</button>

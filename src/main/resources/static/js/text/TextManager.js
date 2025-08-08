@@ -94,3 +94,78 @@ class TextManager {
 		window.selectionManager.selectTextBox(textBox);
 	}
 }
+
+// 텍스트박스 복원 시 자동 크기 조정 함수
+function restoreTextBoxWithAutoSize(textBox) {
+    const relativeState = textBox.data('relativeState');
+    
+    if (relativeState && relativeState.size && relativeState.size.autoSize) {
+        // autoSize 플래그가 있으면 고정 크기를 설정하지 않음
+        textBox.css({
+            'width': 'auto',
+            'height': 'auto',
+            'white-space': 'nowrap',
+            'min-width': '50px'
+        });
+        
+        // 텍스트 내용에 맞게 크기 자동 조정
+        setTimeout(() => {
+            autoResizeTextBox(textBox);
+        }, 10);
+    } else if (relativeState && relativeState.size) {
+        // autoSize 플래그가 없으면 기존 방식대로 크기 복원
+        const bg = $('#page-preview-img');
+        const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+        
+        if (actualBgRect) {
+            const width = (relativeState.size.width * actualBgRect.width) / 100;
+            const height = (relativeState.size.height * actualBgRect.height) / 100;
+            
+            textBox.css({
+                'width': width + 'px',
+                'height': height + 'px'
+            });
+        }
+    }
+}
+
+// 텍스트박스 크기 자동 조정 함수 (전역으로 사용)
+function autoResizeTextBox($box) {
+    // 임시 span 요소를 생성하여 텍스트 실제 크기 측정
+    const $temp = $('<span>')
+        .text($box.text() || ' ')
+        .css({
+            'font-size': $box.css('font-size'),
+            'font-family': $box.css('font-family'),
+            'font-weight': $box.css('font-weight'),
+            'white-space': 'nowrap',
+            'position': 'absolute',
+            'visibility': 'hidden'
+        });
+    
+    $('body').append($temp);
+    const textWidth = $temp.width() + 20; // 여백 20px 추가
+    const textHeight = $temp.height() + 16; // 여백 16px 추가
+    $temp.remove();
+    
+    // 텍스트박스 크기를 측정된 크기로 설정
+    $box.css({
+        'width': 'auto',
+        'min-width': textWidth + 'px',
+        'height': 'auto',
+        'min-height': textHeight + 'px'
+    });
+}
+
+// 브라우저 리사이즈 시 텍스트박스 처리
+$(window).on('resize', function() {
+    $('.text-box').each(function() {
+        const $this = $(this);
+        const relativeState = $this.data('relativeState');
+        
+        if (relativeState && relativeState.size && relativeState.size.autoSize) {
+            // autoSize가 설정된 텍스트박스는 자동 크기 조정
+            autoResizeTextBox($this);
+        }
+    });
+});
