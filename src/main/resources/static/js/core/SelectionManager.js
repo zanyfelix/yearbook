@@ -86,8 +86,75 @@ class SelectionManager {
 		textBox.removeClass('editing').addClass('selected');
 		textBox.blur(); // 텍스트 편집 커서가 활성화되지 않도록 포커스를 해제합니다.
 
+		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 		textBox.addClass('selected');
+	}
+	
+	// ✨ 텍스트박스용 회전 핸들 추가 메서드
+	addTextRotationHandle(textBox) {
+	    $('.text-rotate-handle, .text-rotate-line').remove();
+	    
+		const handle = $('<div class="text-rotate-handle"></div>');
+		const line = $('<div class="text-rotate-line"></div>');
+
+		textBox.append(handle).append(line);
+	    
+	    // 회전 이벤트 바인딩
+	    this.makeTextRotatable(textBox, handle);
+	}
+
+	// ✨ 텍스트박스 회전 기능
+	makeTextRotatable(textBox, handle) {
+	    handle.on('mousedown', (e) => {
+	        e.preventDefault();
+	        e.stopPropagation();
+	        
+	        const boxCenter = {
+	            x: textBox.offset().left + textBox.width() / 2,
+	            y: textBox.offset().top + textBox.height() / 2
+	        };
+	        
+	        // 현재 회전 각도 가져오기
+	        const getCurrentRotation = () => {
+	            const transform = textBox.css('transform');
+	            if (!transform || transform === 'none') return 0;
+	            
+	            const match = transform.match(/rotate\(([-\d.]+)deg\)/);
+	            if (match) return parseFloat(match[1]);
+	            
+	            const matrix = transform.match(/matrix\((.+)\)/);
+	            if (matrix) {
+	                const values = matrix[1].split(',').map(Number);
+	                return Math.atan2(values[1], values[0]) * (180 / Math.PI);
+	            }
+	            return 0;
+	        };
+	        
+	        const initialAngle = getCurrentRotation();
+	        const startAngleRad = Math.atan2(e.clientY - boxCenter.y, e.clientX - boxCenter.x);
+	        
+	        $(document).on('mousemove.textRotate', (ev) => {
+	            const currentAngleRad = Math.atan2(ev.clientY - boxCenter.y, ev.clientX - boxCenter.x);
+	            const deltaAngle = (currentAngleRad - startAngleRad) * (180 / Math.PI);
+	            const newAngle = initialAngle + deltaAngle;
+	            
+	            textBox.css('transform', `rotate(${newAngle}deg)`);
+	        });
+	        
+	        $(document).on('mouseup.textRotate', () => {
+	            $(document).off('mousemove.textRotate mouseup.textRotate');
+	            
+	            // ✨ 회전 상태 저장
+	            const bg = $('#page-preview-img');
+	            const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+	            if (actualBgRect) {
+	                const currentState = textBox.data('relativeState') || {};
+	                currentState.transform = textBox.css('transform');
+	                textBox.data('relativeState', currentState);
+	            }
+	        });
+	    });
 	}
 
     clearSelection() {
@@ -118,6 +185,8 @@ class SelectionManager {
 		$('.selection-handle, .rotate-handle, .rotate-line').remove();
 		$('#frame-controls-tooltip, #photo-controls-tooltip, #text-tooltip').addClass('d-none');
 
+		$('.text-rotate-handle, .text-rotate-line').remove();
+		
 		PhotoManager.removeSelectionUI();
 		PhotoManager.hideOverlay();
         

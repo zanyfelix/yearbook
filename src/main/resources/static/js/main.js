@@ -230,7 +230,9 @@ $(document).ready(function() {
 
 			const latestRelativeState = {
 				position: { left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 },
-				size: { width: (boxW / actualBgRect.width) * 100, height: (boxH / actualBgRect.height) * 100 }
+				size: { width: (boxW / actualBgRect.width) * 100, height: (boxH / actualBgRect.height) * 100 },
+				// ✨ transform 정보 추가
+				transform: $box.css('transform') || 'none'
 			};
 			$box.data('relativeState', latestRelativeState);
 
@@ -554,12 +556,19 @@ $(document).ready(function() {
 								.css({
 									position: 'absolute',
 									zIndex: 100,
-									...boxData.styles
+									...boxData.styles,
+									transform: boxData.transform || 'none'
 								});
 
 							$('#frame-container').append($box);
 							EventManager.setupTextEvents($box);
-							$box.data('relativeState', boxData);
+							
+							const relativeState = {
+								position: boxData.position,
+								size: boxData.size,
+								transform: boxData.transform || 'none'
+							};
+							$box.data('relativeState', relativeState);
 
 							// 위치 업데이트는 더 나중에
 							setTimeout(() => {

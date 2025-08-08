@@ -74,7 +74,7 @@ class TextManager {
 		textBox.data('originalFontSize', baseFontSize + 'px');
 
 		if (actualBgRect) {
-
+			
 			const relativeState = {
 				position: {
 					left: ((newLeft - actualBgRect.left) / actualBgRect.width) * 100,
@@ -83,7 +83,9 @@ class TextManager {
 				size: {
 					width: (boxWidth / actualBgRect.width) * 100,
 					height: (boxHeight / actualBgRect.height) * 100
-				}
+				},
+				// ✨ transform 기본값 추가
+				transform: 'none'
 			};
 			textBox.data('relativeState', relativeState);
 		}

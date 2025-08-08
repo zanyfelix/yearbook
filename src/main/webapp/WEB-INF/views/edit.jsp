@@ -162,6 +162,12 @@
 	                                </select>
 	    							<select id="tooltip-align" class="form-select form-select-sm"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
 	    							<input type="color" id="tooltip-color" title="Color">
+	    							<button id="text-rotate-left" class="control-btn rotate-btn" title="왼쪽 회전">
+								        <img src="/images/icon/transform.png" alt="Rotate Left" style="transform: scaleX(-1);">
+								    </button>
+								    <button id="text-rotate-right" class="control-btn rotate-btn" title="오른쪽 회전">
+								        <img src="/images/icon/transform.png" alt="Rotate Right">
+								    </button>
 	    							<button type="button" id="tooltip-remove" class="control-btn delete-btn" title="텍스트 삭제"><img src="/images/icon/trash.png" alt="trash"></button>
 	                            </div>
 								<div id="element-controls" class="d-none w-100">

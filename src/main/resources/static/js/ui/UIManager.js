@@ -256,7 +256,9 @@ class UIManager {
 	static bindTextTooltipEvents(textBox) {
 		// 기존 이벤트를 제거하여 중복 바인딩 방지
 		$('#tooltip-color, #tooltip-size, #tooltip-align, #tooltip-remove').off();
-
+		
+		this.bindTextRotationEvents(textBox);
+		
 		$('#tooltip-color').on('input', function() {
 			textBox.css('color', $(this).val());
 		});
@@ -279,9 +281,11 @@ class UIManager {
 				textBox.css('font-size', $(this).val());
 			}
 		});
+		
 		$('#tooltip-align').on('change', function() {
 			textBox.css('text-align', $(this).val());
 		});
+		
 		$('#tooltip-remove').on('click', function() {
 			if (confirm('텍스트 상자를 삭제하시겠습니까?')) {
 				textBox.remove();
@@ -340,6 +344,103 @@ class UIManager {
 		if ($element.hasClass('selected-photo')) {
 			PhotoManager.updateSelectionUI($element);
 		}
+	}
+	
+	static bindTextRotationEvents(textBox) {
+		
+		$('#text-rotate-left, #text-rotate-right').off('click');
+		
+	    // 현재 회전 각도 가져오기 (프레임과 동일한 로직)
+	    function getCurrentRotation() {
+	        const currentTransform = textBox.css('transform');
+	        
+	        if (!currentTransform || currentTransform === 'none') {
+	            return 0;
+	        }
+	        
+	        // rotate(Xdeg) 형태 파싱
+	        const rotateMatch = currentTransform.match(/rotate\(([-+]?\d*\.?\d+)(deg|rad)?\)/i);
+	        if (rotateMatch && rotateMatch[1]) {
+	            let angle = parseFloat(rotateMatch[1]);
+	            if (rotateMatch[2] === 'rad') {
+	                angle = angle * (180 / Math.PI);
+	            }
+	            const normalizedAngle = (angle % 360 + 360) % 360;
+	            return Math.round(normalizedAngle);
+	        }
+	        
+	        // matrix() 형태 파싱
+	        const matrixMatch = currentTransform.match(/matrix\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)/);
+	        if (matrixMatch) {
+	            const a = parseFloat(matrixMatch[1]);
+	            const b = parseFloat(matrixMatch[2]);
+	            const angleRad = Math.atan2(b, a);
+	            const angleDeg = angleRad * (180 / Math.PI);
+	            const normalizedAngle = (angleDeg % 360 + 360) % 360;
+	            return Math.round(normalizedAngle);
+	        }
+	        
+	        return 0;
+	    }
+	    
+		// 수정된 스냅 함수들
+		function snapAngleLeft(angle) {
+			// 정확한 90도 단위로 스냅
+			if (angle === 0 || angle === 360) return 270;
+			if (angle === 90) return 0;
+			if (angle === 180) return 90;
+			if (angle === 270) return 180;
+
+			// 근사값 처리
+			if (angle > 0 && angle < 90) return 0;
+			if (angle > 90 && angle < 180) return 90;
+			if (angle > 180 && angle < 270) return 180;
+			if (angle > 270 && angle < 360) return 270;
+
+			return 0;
+		}
+
+		function snapAngleRight(angle) {
+			// 정확한 90도 단위로 스냅
+			if (angle === 0 || angle === 360) return 90;
+			if (angle === 90) return 180;
+			if (angle === 180) return 270;
+			if (angle === 270) return 0;
+
+			// 근사값 처리
+			if (angle > 0 && angle < 90) return 90;
+			if (angle > 90 && angle < 180) return 180;
+			if (angle > 180 && angle < 270) return 270;
+			if (angle > 270 && angle < 360) return 0;
+
+			return 90;
+		}
+	    
+	    // 반시계방향 회전
+	    $('#text-rotate-left').off('click').on('click', function() {
+	        const currentRotation = getCurrentRotation();
+	        const newRotation = snapAngleLeft(currentRotation);
+	        
+	        textBox.css('transform', `rotate(${newRotation}deg)`);
+	        
+	        // 상태 저장
+	        const currentState = textBox.data('relativeState') || {};
+	        currentState.transform = `rotate(${newRotation}deg)`;
+	        textBox.data('relativeState', currentState);
+	    });
+	    
+	    // 시계방향 회전
+	    $('#text-rotate-right').off('click').on('click', function() {
+	        const currentRotation = getCurrentRotation();
+	        const newRotation = snapAngleRight(currentRotation);
+	        
+	        textBox.css('transform', `rotate(${newRotation}deg)`);
+	        
+	        // 상태 저장
+	        const currentState = textBox.data('relativeState') || {};
+	        currentState.transform = `rotate(${newRotation}deg)`;
+	        textBox.data('relativeState', currentState);
+	    });
 	}
 
 	/**

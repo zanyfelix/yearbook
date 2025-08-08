@@ -261,6 +261,11 @@ class EventManager {
 						width: (boxW / actualBgRect.width) * 100,
 						height: (boxH / actualBgRect.height) * 100
 					};
+					
+					// ✨ transform 유지
+					if (!currentState.transform) {
+						currentState.transform = $this.css('transform') || 'none';
+					}
 
 					$this.data('relativeState', currentState);
 				}
@@ -333,7 +338,6 @@ class EventManager {
 				$(document).on('mouseup.textDrag', function() {
 					$(document).off('.textDrag');
 
-					// ▼▼▼▼▼ 이 블록 추가 ▼▼▼▼▼
 					const bg = $('#page-preview-img');
 					const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 					if (actualBgRect) {
@@ -344,9 +348,17 @@ class EventManager {
 							left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 							top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
 						};
+
+						// ✨ 크기 정보도 함께 저장
+						currentState.size = {
+							width: (textBox.outerWidth() / actualBgRect.width) * 100,
+							height: (textBox.outerHeight() / actualBgRect.height) * 100
+						};
+
+						// transform 정보 유지
+						currentState.transform = textBox.css('transform') || 'none';
 						textBox.data('relativeState', currentState);
 					}
-					// ▲▲▲▲▲ 추가 종료 ▲▲▲▲▲
 				});
 			}
 		});
