@@ -77,7 +77,7 @@ $(function() {
     });
 
     // 하단의 APPLY 버튼 클릭: 선택된 항목 활성화
-    $('.btn-wrapper > button#btn-apply').on('click', function() {
+    $('.btn-wrapper > button#btn-apply-status').on('click', function() {
         const checkedIds = getCheckedIds();
         if (checkedIds.length === 0) {
             alert('Please select one or more items to apply.');

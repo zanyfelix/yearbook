@@ -118,7 +118,7 @@
 		    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
 		    <button id="btn-modify" type="button">MODIFY</button>
 		    <button id="btn-delete" type="button">DELETE</button>
-		    <button id="btn-apply" type="button">APPLY</button>
+		    <button id="btn-apply-status" type="button">APPLY</button>
 	    </div>
 	    
 	    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
