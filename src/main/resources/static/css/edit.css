@@ -1549,11 +1549,6 @@ button:focus,
     font-weight: bold;
 }
 
-.text-rotate-handle:hover {
-    transform: translateX(-50%) scale(1.2);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-}
-
 .text-rotate-handle:active {
     cursor: grabbing;
 }
