@@ -37,9 +37,8 @@
     
     <%-- <c:forEach var="item" items="${submitList}" varStatus="st"> --%>
     
-    <c:if test="${item.type eq 'Overview'}">
 	    <div class="section-box">
-	        <h5>${item.title}</h5>
+	        <h5>Submit to MBIZ</h5>
 	        <div>
 	            <h6>Overview</h6>
 	            <p class="mb-1">1. Please review all yearbook pages by checking all previews below and click the check box (Page Confirm).</p>
@@ -48,7 +47,6 @@
 	            <p class="mb-1">4. Please ensure that final submission is carefully reviewed as no further modifications will be possible after submission.</p>
 	        </div>
 	    </div>
-    </c:if>
     
     <div class="section-box">
     	<div class="row">
