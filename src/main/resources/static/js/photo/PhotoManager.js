@@ -137,6 +137,25 @@ class PhotoManager {
 		const onMouseUp = () => {
 			if (rafId) cancelAnimationFrame(rafId);
 			$(document).off('mousemove.photoDrag mouseup.photoDrag');
+			
+			// ✨ 아래 코드 블록 추가 ✨
+			const frameW = frameGroup.width();
+			const frameH = frameGroup.height();
+			const photoPos = photo.position();
+
+			const currentState = photo.data('relativeState') || {};
+			currentState.position = {
+				left: (photoPos.left / frameW) * 100,
+				top: (photoPos.top / frameH) * 100
+			};
+			if (!currentState.size) {
+				currentState.size = {
+					width: (photo.width() / frameW) * 100,
+					height: (photo.height() / frameH) * 100
+				};
+			}
+			currentState.transform = photo.css('transform') || 'none';
+			photo.data('relativeState', currentState);
 		};
 
 		$(document).on('mousemove.photoDrag', onMouseMove).on('mouseup.photoDrag', onMouseUp);
@@ -243,6 +262,26 @@ class PhotoManager {
 			$(document).on('mouseup.photoResize', () => {
 				// 마우스 업 시, 이벤트 핸들러만 제거하고 선택 상태는 유지합니다.
 				$(document).off('mousemove.photoResize mouseup.photoResize');
+				
+				const frameGroup = photo.closest('.frame-group');
+				if (frameGroup.length) {
+					const frameW = frameGroup.width();
+					const frameH = frameGroup.height();
+					const photoPos = photo.position();
+
+					const currentState = {
+						position: {
+							left: (photoPos.left / frameW) * 100,
+							top: (photoPos.top / frameH) * 100
+						},
+						size: {
+							width: (photo.width() / frameW) * 100,
+							height: (photo.height() / frameH) * 100
+						},
+						transform: photo.css('transform') || 'none'
+					};
+					photo.data('relativeState', currentState);
+				}
 			});
 		});
 	}

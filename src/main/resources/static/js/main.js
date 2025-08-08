@@ -91,10 +91,18 @@ $(document).ready(function() {
 		$element.css({ ...newPixelPos, ...newPixelSize, transform: transform });
 
 		// ✨ 사진의 선택 UI도 업데이트
-		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
-			PhotoManager.updateSelectionUI($element);
+		if ($element.hasClass('uploaded-photo')) {
+		    // 사진 요소일 경우 크기도 함께 업데이트
+		    $element.css({
+		        width: `${newPixelSize.width}px`,
+		        height: `${newPixelSize.height}px`
+		    });
+		    
+		    // 선택 UI가 있다면 업데이트
+		    if ($element.hasClass('selected-photo')) {
+		        PhotoManager.updateSelectionUI($element);
+		    }
 		}
-
 	}
 
 	window.updateAllPositions = function() {
@@ -345,6 +353,9 @@ $(document).ready(function() {
 					newWidth = maskWidth * 1.2;
 					newHeight = newWidth / imgRatio;
 				}
+				
+				const newLeft = (maskWidth - newWidth) / 2;
+				const newTop = (maskHeight - newHeight) / 2;
 
 				photo.css({
 					width: `${newWidth}px`,
@@ -352,6 +363,23 @@ $(document).ready(function() {
 					left: `${(maskWidth - newWidth) / 2}px`,
 					top: `${(maskHeight - newHeight) / 2}px`
 				});
+				
+				// ✨ 아래 코드 블록 추가 ✨
+				const frameW = frameGroup.width();
+				const frameH = frameGroup.height();
+
+				const initialState = {
+				    position: {
+				        left: (newLeft / frameW) * 100,
+				        top: (newTop / frameH) * 100
+				    },
+				    size: {
+				        width: (newWidth / frameW) * 100,
+				        height: (newHeight / frameH) * 100
+				    },
+				    transform: 'none'
+				};
+				photo.data('relativeState', initialState);
 
 				window.selectionManager.clearSelection();
 			});
