@@ -8,47 +8,60 @@
     <meta charset="UTF-8">
     <title>Progress</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
-    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/submit.css"/>
-    <script>
-    	// 서버에서 yyyy-MM-dd 포맷으로 전달된 deadline
-    	var deadlineStr = '${deadline}';
-    </script>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/submit.css"/>
 </head>
 <body>
-
+<c:if test="${not empty successMessage}">
+  <script>
+    alert("${successMessage}");
+  </script>
+</c:if>
+<c:if test="${not empty errorMessage}">
+  <script>
+    alert("${errorMessage}");
+  </script>
+</c:if>
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
-    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+	
+	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
-    <a href="/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
-    <a href="/progress?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
-    <a href="/submit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
-    <a href="/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">Contact Us</a>
+	
+    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submission</a>
+	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 
 <div class="content">
-    <div class="top-bar">
-        <span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate value="${deadline}" pattern="MMMM dd, yyyy"/> (D-${remainDays} days left)</span>
-        <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
-        <span class="badge bg-success text-dark">Event Photo Page: ${eventProgress}%</span>
+	<div class="container-fluid">
+	
+	<!-- 검색 바 -->
+	<form method="get" action="${pageContext.request.contextPath}/admin/yearbook" class="search-form">
+	    <select name="id" class="form-select">
+	        <c:forEach var="item" items="${allUsers}" varStatus="st">
+	        	<c:if test="${item.role ne 'admin'}">
+	            	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
+	            </c:if>
+	        </c:forEach>
+	    </select>
+	    <button type="submit" class="btn btn-primary">SEARCH</button>
+	</form>
+    
+    <div class="section-box">
+        <h5>Submit to MBIZ</h5>
+        <div>
+            <h6>Overview</h6>
+            <p class="mb-1">1. Please review all yearbook pages by checking all previews below and click the check box (Page Confirm).</p>
+            <p class="mb-1">2. Once all previews are confirmed, proceed to "Page Submission".</p>
+            <p class="mb-1">3. Upon submission, a final review will be conducted by MBIZ. In this final review, MBIZ is not responsible for the contents including images, text, and layout of the pages designed by users.</p>
+            <p class="mb-1">4. Please ensure that final submission is carefully reviewed as no further modifications will be possible after submission.</p>
+        </div>
     </div>
-    
-    <%-- <c:forEach var="item" items="${submitList}" varStatus="st"> --%>
-    
-    <c:if test="${item.type eq 'Overview'}">
-	    <div class="section-box">
-	        <h5>${item.title}</h5>
-	        <div>
-	            <h6>Overview</h6>
-	            <p class="mb-1">1. Please review all yearbook pages by checking all previews below and click the check box (Page Confirm).</p>
-	            <p class="mb-1">2. Once all previews are confirmed, proceed to "Page Submission".</p>
-	            <p class="mb-1">3. Upon submission, a final review will be conducted by MBIZ. In this final review, MBIZ is not responsible for the contents including images, text, and layout of the pages designed by users.</p>
-	            <p class="mb-1">4. Please ensure that final submission is carefully reviewed as no further modifications will be possible after submission.</p>
-	        </div>
-	    </div>
-    </c:if>
     
     <div class="section-box">
     	<div class="row">
@@ -102,8 +115,6 @@
         <button class="btn btn-secondary" type="submit">Page Submit</button>
     </div>
     
-    <%-- </c:forEach> --%>
-    
     <!-- 프레임 선택용 모달 -->
 	<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
 	    <div class="modal-dialog modal-dialog-centered"> 
@@ -125,12 +136,14 @@
 	        </div>
 	    </div>
     </div>
+    
+    </div>
 </div>
 <script>
 const ctx = '${pageContext.request.contextPath}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
-<script src="<c:url value='/js/submit.js'/>"></script>
+<script src="<c:url value='/js/admin/submit.js'/>"></script>
 </body>
 </html>

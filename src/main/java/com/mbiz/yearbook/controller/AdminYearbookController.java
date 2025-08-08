@@ -33,7 +33,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
-@RequestMapping("/admin")
 public class AdminYearbookController {
 	
 	@Autowired
@@ -47,99 +46,29 @@ public class AdminYearbookController {
 	
 	private final String UPLOAD_DIR = "uploads/";
 
-	@GetMapping("/yearbook")
-	public String showForm(HttpSession session,
-			@RequestParam Long id,
-            @RequestParam(value = "keyword", required = false) String keyword,
-			Model model) {
+	@GetMapping("/admin/yearbook")
+	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
 		
-		if (id != null) {
-			Optional<User> selectedUser = userRepository.findById(id);
-			if (selectedUser.isPresent()) {
-			    User user = selectedUser.get();
-			    String role = user.getRole(); // 안전함
-			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
-		        if ("admin".equals(role)) {
-		            return "redirect:/admin/user?id=" + user.getId();
-		        }
-			}
+		User loginUser = (User) session.getAttribute("loginUser");
+	    model.addAttribute("loginUser", loginUser);
+	    
+	    List<User> allUsers = userRepository.findAll();
+	    model.addAttribute("allUsers", allUsers);
+		
+	    if (userId == null) {
+	        List<User> users = userRepository.findByRole("user");
+	        model.addAttribute("users", users);
+	        //사용자 id 값 없을 경우 첫번째 보여준다.
+	        userId = users.get(0).getId();
+	    } else {
+	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
 	    }
-		
-	    User user = (User) session.getAttribute("loginUser");
 	    
-	    List<User> users = userService.getUser("schoolName", keyword);
+	    model.addAttribute("id", id);
+	    model.addAttribute("userId", userId);
 	    
-	    model.addAttribute("users", users);
 	    model.addAttribute("currentMenu", "yearbook");
 
 	    return "admin/yearbook";
 	}
-	
-//	@PostMapping("/home/register")
-//	public String register(@RequestParam("title") String title,
-//            @RequestParam("description") String description,
-//            @RequestParam(value = "displayOrder", required = false) Integer displayOrder,
-//            @RequestParam(value = "id", required = false) Long id,
-//            @RequestParam(value = "file", required = false) MultipartFile file,
-//            HttpServletRequest request) {
-//
-//		String filePath = null;
-//
-//		try {
-//			if (!file.isEmpty()) {
-//	            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-//	            Path filepath = Paths.get(UPLOAD_DIR, filename);
-//	            Files.createDirectories(filepath.getParent());
-//	            Files.write(filepath, file.getBytes());
-//	            home.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));
-//	        }
-//			
-//			homeService.save(home);
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//
-//		HomeEntity home;
-//		if (id != null) {
-//			home = homeRepository.findById(id).orElse(new HomeEntity());
-//		} else {
-//			home = new HomeEntity();
-//		}
-//
-//		home.setTitle(title);
-//		home.setDescription(description);
-//		home.setDisplayOrder(displayOrder != null ? displayOrder : 0);
-//		if (filePath != null) {
-//			home.setFilePath(filePath);
-//		}
-//
-//		homeRepository.save(home);
-//
-//		return "redirect:/admin/home";
-//	}
-//	
-//	@PostMapping("/home/modify")
-//	public String update(@ModelAttribute User user, RedirectAttributes attrs) {
-//        userService.update(user);
-//        attrs.addFlashAttribute("successMessage", "사용자 정보가 수정되었습니다.");
-//        return "redirect:/admin/home";
-//    }
-//	
-//	@PostMapping("/home/delete")
-//    public String delete(@RequestParam(value = "ids", required = false) List<Long> ids,
-//                         RedirectAttributes attrs) {
-//        if (ids == null || ids.isEmpty()) {
-//            attrs.addFlashAttribute("errorMessage", "삭제할 사용자를 선택하세요.");
-//        } else {
-//        	int deleted = userService.deleteUsers(ids);
-//            attrs.addFlashAttribute("successMessage", deleted + "명의 사용자가 삭제되었습니다.");
-//        }
-//        return "redirect:/admin/home";
-//    }
-//	
-//	@PostMapping("/home/toggle-active")
-//	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
-//		userService.updateActive(dto.getId(), dto.isActive());
-//        return ResponseEntity.ok().build();
-//	}
 }

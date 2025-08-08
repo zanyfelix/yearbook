@@ -68,6 +68,15 @@ public class User {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private Date deadline;
     
+    @Column(name = "file_name")
+    private String fileName;
+    
+    @Column(name = "submit_file_path")
+    private String submitFilePath;
+    
+    @Column(name = "download")
+    private Long download;
+    
     //@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     //private List<Yearbook> yearbookPages = new ArrayList<>();
 }

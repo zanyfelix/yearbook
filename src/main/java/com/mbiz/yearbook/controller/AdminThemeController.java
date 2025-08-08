@@ -46,7 +46,7 @@ public class AdminThemeController {
 	    model.addAttribute("allUsers", allUsers);
 		
 	    if (id == null) {
-	        List<User> users = userRepository.findAll();
+	    	List<User> users = userRepository.findByRole("user");
 	        model.addAttribute("users", users);
 	    } else {
 	        userRepository.findById(id).ifPresent(user -> model.addAttribute("users", List.of(user)));

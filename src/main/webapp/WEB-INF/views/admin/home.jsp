@@ -34,7 +34,7 @@
 	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
 	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
 	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-	<a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
+	<a href="/admin/submit" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
 	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
     <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
@@ -47,7 +47,7 @@
 		    <select name="id" class="form-select">
 		        <c:forEach var="item" items="${allUsers}" varStatus="st">
 		        	<c:if test="${item.role ne 'admin'}">
-		            	<option value="${item.id}" <c:if test="${item.id eq id}">selected</c:if>>${item.schoolName}</option>
+		            	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
 		            </c:if>
 		        </c:forEach>
 		    </select>
@@ -149,8 +149,8 @@
 			    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			  </div>
 			  <div class="modal-body">
-			    <input type="hidden" id="homeId" name="id" />
-			    <input type="hidden" id="currentUserId" name="userId" value="${id}" />
+			    <input type="hidden" id="id" name="id" />
+			    <input type="hidden" id="currentUserId" name="userId" value="${userId}" />
 			
 			    <div class="mb-3">
 			      <label for="title" class="form-label">TITLE</label>

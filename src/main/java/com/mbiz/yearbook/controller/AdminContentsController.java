@@ -57,6 +57,7 @@ public class AdminContentsController {
 	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
 	    }
 	    
+	    model.addAttribute("id", id);
 	    model.addAttribute("userId", userId);
 	    
 	    model.addAttribute("currentMenu", "contents");

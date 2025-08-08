@@ -1,6 +1,8 @@
 package com.mbiz.yearbook.controller;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -9,6 +11,11 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,13 +33,6 @@ import com.mbiz.yearbook.repository.HomeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.HomeService;
 import com.mbiz.yearbook.service.UserService;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import java.net.MalformedURLException;
-import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -54,8 +54,7 @@ public class AdminHomeController {
 	private final String UPLOAD_DIR = "uploads/";
 
 	@GetMapping("/admin/home")
-	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long homeId, 
-			Model model) {
+	public String showForm(HttpSession session, @RequestParam(required = false) Long userId, @RequestParam(required = false) Long id, Model model) {
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
@@ -63,23 +62,20 @@ public class AdminHomeController {
 	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
 		
-	    if (id == null) {
-	        List<User> users = userRepository.findAll();
+	    if (userId == null) {
+	    	List<User> users = userRepository.findByRole("user");
 	        model.addAttribute("users", users);
+	      //사용자 id 값 없을 경우 첫번째 보여준다.
+	        userId = users.get(0).getId();
 	    } else {
-	        userRepository.findById(id).ifPresent(user -> model.addAttribute("users", List.of(user)));
+	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
 	    }
 	    
-	    //Yearkbook Guidance 고정값
-	    if(id == null) {
-	    	id = (long) 11;
-	    }
-	    
-	    //현재 사용자에 대한 아이디 값
 	    model.addAttribute("id", id);
+	    model.addAttribute("userId", userId);
 	    
 	    // 수정된 부분: homeId 대신 guidanceHome 객체와 guidanceFileName을 모델에 추가
-	    Home guidanceHome = homeRepository.findByUserIdAndType(id,"main").get(0);
+	    Home guidanceHome = homeRepository.findByUserIdAndType(userId,"main").get(0);
 	    model.addAttribute("guidanceHome", guidanceHome);
 	    
 	    // 첨부파일이 있을 경우, 원본 파일명을 추출하여 모델에 추가
@@ -90,7 +86,7 @@ public class AdminHomeController {
 	        model.addAttribute("guidanceFileName", originalFileName);
 	    }
 	    
-	    List<Home> homeList = homeRepository.findByUserIdAndType(id, "content");
+	    List<Home> homeList = homeRepository.findByUserIdAndType(userId, "content");
 	    model.addAttribute("homeList", homeList);
 	    
 	    model.addAttribute("currentMenu", "home");
