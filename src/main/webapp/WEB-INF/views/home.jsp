@@ -38,45 +38,25 @@
     <div class="section-box">
         <h5>Yearbook Guidance</h5>
         <ul>
-            <li>Please click HERE to download the manual for this program</li>
-            <li>Please review all the guidelines prior to commencing work on the yearbook pages</li>
-            <li>If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</li>
+        <c:choose>
+        	<c:when test="${not empty guidanceHome.attachmentPath}">
+				<li>- Please click <a href="<c:url value='/userDownloadGuidance?id=${guidanceHome.id}'/>"><strong>HERE</strong></a> to download the manual for this program<//li>
+			</c:when>
+			<c:otherwise>
+			    <li>- Please click HERE to download the manual for this program</li>
+			</c:otherwise>
+		</c:choose>
+            <li>- Please review all the guidelines prior to commencing work on the yearbook pages</li>
+            <li>- If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</li>
         </ul>
     </div>
 
-    <div class="section-box">
-        <h5>NOTICE</h5>
-        <ul>
-            <li>The Due date for yearbook page submission is March 31st, 2026</li>
-            <li>Please review the following guidelines below prior to commencing work on the yearbook</li>
-            <li>If you have any difficulties using this program, please send your inquiries by email to
-                <a href="mailto:chris.kim@mbizkr.com">chris.kim@mbizkr.com</a></li>
-        </ul>
-    </div>
-
-    <div class="section-box">
-        <h5>Yearbook Edit</h5>
-        <ul>
-            <li>Click “+” to start making yearbook pages</li>
-            <li>Please customize the pages by utilizing preferred backgrounds, frames, and text</li>
-            <li>The number of pages per category is restricted by the administrator. Should additional pages be required, please contact the administrator.</li>
-        </ul>
-    </div>
-
-    <div class="section-box">
-        <h5>Progress Report</h5>
-        <ul>
-            <li>Please ensure that all submissions are finalized before the designated deadline, as modifications to any page will not be possible thereafter.</li>
-        </ul>
-    </div>
-
-    <div class="section-box">
-        <h5>Submit to MBIZ</h5>
-        <ul>
-            <li>Final Submission Date is March 31st, 2026</li>
-            <li>Please ensure that all submissions are finalized before the designated deadline, as modifications to any page will not be possible thereafter.</li>
-        </ul>
-    </div>
+	<c:forEach var="item" items="${homeList}" varStatus="st">
+		<div class="section-box">
+	        <h5>${item.title}</h5>
+	        <textarea class="auto-resize-textarea" disabled>${item.description}</textarea>
+	    </div>
+	</c:forEach>
     
 	<!-- 페이지 어디든, body 끝 직전에 위치시켜 주세요 -->
 	<div id="deadlineModalOverlay" class="modal-overlay">

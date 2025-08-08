@@ -1,3 +1,11 @@
+// 높이 조절 로직을 재사용 가능하도록 함수로 분리합니다.
+function resizeAllTextareas() {
+    $('.auto-resize-textarea').each(function() {
+        // jQuery의 .css()를 사용하면 좀 더 일관성 있습니다.
+        $(this).css('height', 'auto');
+        $(this).css('height', this.scrollHeight + 'px');
+    });
+}
 $(function() { // $(document).ready()의 축약형입니다.
   // 서버에서 넘겨준 deadlineStr 변수가 없으면 실행을 중단합니다.
   if (typeof deadlineStr === 'undefined' || !deadlineStr) {
@@ -53,4 +61,13 @@ $(function() { // $(document).ready()의 축약형입니다.
     // 모달을 숨깁니다.
     $overlay.hide();
   });
+  
+  // 페이지 로드 시 높이 조절 함수 호출
+      resizeAllTextareas();
+});
+
+// 2. 페이지의 모든 리소스(이미지, 폰트 등) 로딩이 완료된 후 한 번 더 실행
+// 렌더링 시간 차이로 인한 문제를 해결해 줍니다.
+$(window).on('load', function() {
+    resizeAllTextareas();
 });
