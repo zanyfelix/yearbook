@@ -237,6 +237,35 @@ class EventManager {
 				$this.focus(); // 텍스트 커서 활성화
 			}
 		});
+		
+		// ✨ 텍스트 입력 시 크기 저장 추가
+		textBox.on('input', function() {
+			const $this = $(this);
+
+			// 짧은 지연 후 크기 측정 (렌더링 완료 대기)
+			setTimeout(() => {
+				const bg = $('#page-preview-img');
+				const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+				if (actualBgRect) {
+					const boxPos = $this.position();
+					const boxW = $this.outerWidth();
+					const boxH = $this.outerHeight();
+
+					const currentState = $this.data('relativeState') || {};
+
+					currentState.position = {
+						left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
+						top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
+					};
+					currentState.size = {
+						width: (boxW / actualBgRect.width) * 100,
+						height: (boxH / actualBgRect.height) * 100
+					};
+
+					$this.data('relativeState', currentState);
+				}
+			}, 10);
+		});
 
 		// 마우스 다운: '선택' 상태일 때만 드래그 시작
 		textBox.on('mousedown', function(e) {
@@ -256,15 +285,48 @@ class EventManager {
 				const startY = e.clientY;
 				const initialLeft = $this.position().left;
 				const initialTop = $this.position().top;
+				
+				// ✨ 현재 박스가 세이프라인을 넘었는지 체크
+				const bg = $('#page-preview-img');
+				const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+				const boxWidth = $this.outerWidth();
+				const boxHeight = $this.outerHeight();
+
+				let isAlreadyOverflowing = false;
+				if (actualBgRect) {
+					const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
+					const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
+					const safeRight = actualBgRect.left + actualBgRect.width - safeMarginX;
+					const safeBottom = actualBgRect.top + actualBgRect.height - safeMarginY;
+
+					// 현재 이미 세이프라인을 넘었는지 확인
+					if (initialLeft + boxWidth > safeRight || initialTop + boxHeight > safeBottom) {
+						isAlreadyOverflowing = true;
+					}
+				}
 
 				$(document).on('mousemove.textDrag', function(ev) {
 					const newLeft = initialLeft + (ev.clientX - startX);
 					const newTop = initialTop + (ev.clientY - startY);
-					const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, $this);
-					$this.css({
-						left: constrained.left + 'px',
-						top: constrained.top + 'px'
-					});
+					
+					// ✨ 이미 넘친 박스는 세이프라인 제약을 적용하지 않음
+					if (isAlreadyOverflowing) {
+						// 화면 밖으로만 나가지 않도록 최소한의 제약
+						const minLeft = actualBgRect ? actualBgRect.left : 0;
+						const minTop = actualBgRect ? actualBgRect.top : 0;
+
+						$this.css({
+							left: Math.max(minLeft, newLeft) + 'px',
+							top: Math.max(minTop, newTop) + 'px'
+						});
+					} else {
+						// 기존 세이프라인 제약 적용
+						const constrained = window.selectionManager.applySafeLineConstraints(newLeft, newTop, $this);
+						$this.css({
+							left: constrained.left + 'px',
+							top: constrained.top + 'px'
+						});
+					}
 				});
 
 				// ✨ --- 핵심 수정: 텍스트 상자 드래그 종료 시 위치 저장 --- ✨
