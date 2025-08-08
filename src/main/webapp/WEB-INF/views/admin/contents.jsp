@@ -25,30 +25,36 @@
 </c:if>
 <div class="sidebar">
 
-    <div class="mb-3">
-		<form action="<c:url value='/admin/home' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
-		<select name="id" class="form-select" onchange="this.form.submit()">
-		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
-		    		<option value="${item.id}" <c:if test="${item.id == id}">selected</c:if>>${item.schoolName}</option>
-		    	</c:forEach>
-		    </select>
-		</form>
-	</div>
-	
-	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+	<h5>${sessionScope.loginUser.schoolName}</h5>
+
+    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100">Logout</button>
 	</form>
-		
-	<a href="/admin/home?id=${id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-    <a href="/admin/contents?id=${id}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-    <a href="/admin/theme?id=${id}" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-    <a href="/admin/yearbook?id=${id}" class="${currentMenu eq 'yearbook' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Yearbook</a>
-    <a href="/admin/submission?id=${id}" class="${currentMenu eq 'submisstion' ? 'active' : ''}" onclick="alert('준비중입니다.'); return false;">Submission</a>
+	
+    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
+	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
+	<a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
+	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
+	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
+    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
 </div>
 
 <div class="content">
     <div class="container-fluid">
     
+    <!-- 검색 바 -->
+	<form method="get" action="${pageContext.request.contextPath}/admin/contents" class="search-form">
+	    <select name="id" class="form-select">
+	        <c:forEach var="item" items="${allUsers}" varStatus="st">
+	        	<c:if test="${item.role ne 'admin'}">
+	            	<option value="${item.id}" <c:if test="${item.id eq id}">selected</c:if>>${item.schoolName}</option>
+	            </c:if>
+	        </c:forEach>
+	    </select>
+	    <button type="submit" class="btn btn-primary">SEARCH</button>
+	</form>
     
     <form id="deleteForm"
         action="${pageContext.request.contextPath}/admin/contents/delete?id=${id}"
@@ -104,6 +110,7 @@
 		        <div class="modal-body">
 		          <!-- 수정 시 채울 hidden PK -->
 		          <input type="hidden" id="id" name="id"/>
+		          <input type="hidden" id="userId" name="userId" value="${id}" />
 					
 				  <div class="mb-3">
 		            <label for="categorySelect" class="form-label">CATEGORY</label>
@@ -138,7 +145,7 @@
 </div>
 <script>
 const ctx = '${pageContext.request.contextPath}';
-const id = '${id}';
+const userId = '${id}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>

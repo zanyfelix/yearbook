@@ -24,7 +24,6 @@ import com.mbiz.yearbook.util.DuplicateUserIdException;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
-@RequestMapping("/admin")
 public class AdminContentsController {
 	
 	@Autowired
@@ -36,29 +35,29 @@ public class AdminContentsController {
 	@Autowired
 	private UserRepository userRepository;
 	
-	@GetMapping("/contents")
-	public String showForm(HttpSession session, 
-			@RequestParam(required = false) Long id,
-			Model model) {
-		
-		if (id != null) {
-			Optional<User> selectedUser = userRepository.findById(id);
-			if (selectedUser.isPresent()) {
-			    User user = selectedUser.get();
-			    String role = user.getRole(); // 안전함
-			    // 사용자 역할에 따라 다른 페이지로 리다이렉트
-		        if ("admin".equals(role)) {
-		            return "redirect:/admin/user?id=" + user.getId();
-		        }
-			}
-	    }
+	@GetMapping("/admin/contents")
+	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
-	    List<User> allUsers = userService.findAll();
+	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
+		
+	    if (id == null) {
+	        List<User> users = userRepository.findAll();
+	        model.addAttribute("users", users);
+	    } else {
+	        userRepository.findById(id).ifPresent(user -> model.addAttribute("users", List.of(user)));
+	    }
+	    
+	    if(id == null) {
+	    	id = (long) 11;
+	    }
+	    
+	    //현재 사용자에 대한 아이디 값
 	    model.addAttribute("id", id);
+	    
 	    model.addAttribute("currentMenu", "contents");
 	    
 	    List<Contents> list = contentsService.findByUserId(id);
@@ -67,7 +66,7 @@ public class AdminContentsController {
 	    return "admin/contents";
 	}
 	
-	@PostMapping("/contents/register")
+	@PostMapping("/admin/contents/register")
 	public String register(@ModelAttribute Contents contents, BindingResult br, Model model, RedirectAttributes redirectAttributes) {
         if (br.hasErrors()) {
         	model.addAttribute("contents", contentsService.findAll());
@@ -86,14 +85,14 @@ public class AdminContentsController {
         return "redirect:/admin/contents?userId=" + contents.getUserId();
     }
 	
-	@PostMapping("/contents/modify")
+	@PostMapping("/admin/contents/modify")
 	public String update(@ModelAttribute Contents contents, RedirectAttributes attrs, Model model) {
 		contentsService.update(contents);
         attrs.addFlashAttribute("successMessage", "Content information has been modified.");
         return "redirect:/admin/contents?userId=" + contents.getUserId();
     }
 	
-	@PostMapping("/contents/delete")
+	@PostMapping("/admin/contents/delete")
     public String delete(@RequestParam(value = "ids", required = false) List<Long> ids, @RequestParam(required = false) Long userId, 
                          RedirectAttributes attrs) {
         if (ids == null || ids.isEmpty()) {
