@@ -28,12 +28,12 @@ $(function() { // $(document).ready()의 축약형입니다.
   ];
 
   // --- deadline 파싱 & D-day 계산 (이 부분은 순수 JavaScript 로직이므로 그대로 사용합니다)
-  const [y, m, d] = deadlineStr.split('-').map(Number);
-  const deadline = new Date(y, m - 1, d);
+  const deadline = new Date(deadlineStr);
+  deadline.setHours(0, 0, 0, 0); // D-day 계산을 위해 시간을 0으로 맞춥니다.
   const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
 
   // --- jQuery를 사용하여 마감일 메시지를 설정합니다.
-  const $textEl = $('#deadlineText');
+  const $textEl = $('#deadlineText');  
   if (diffDays > 0) {
     $textEl.text(
       'The deadline for submitting yearbook content is ' +
