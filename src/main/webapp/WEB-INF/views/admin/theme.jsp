@@ -33,7 +33,6 @@
 		
 	<a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
 	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-	<a href="/admin/deadline" class="${currentMenu eq 'deadline' ? 'active' : ''}">Deadline</a>
 	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
 	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
 	<a href="/admin/submission" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
