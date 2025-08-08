@@ -137,15 +137,4 @@ public class UserService {
         // save() 불필요 — 트랜잭션 커밋 시점에 JPA가 자동 업데이트합니다.
     }
     
-//    @Transactional
-//    public int updateApply(List<Long> ids, boolean active) {
-//    	if (ids == null || ids.isEmpty()) {
-//            return 0;
-//        }
-//    	List<User> users = userRepository.findAllById(ids);
-//        for (User user : users) {
-//        	user.setApply(true);
-//        }
-//    	userRepository.saveAll(users);
-//    }
 }

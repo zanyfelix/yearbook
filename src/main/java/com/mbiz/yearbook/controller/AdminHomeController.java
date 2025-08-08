@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +14,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.Home;
+import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.HomeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
@@ -189,5 +192,11 @@ public class AdminHomeController {
 	    } catch (Exception e) {
 	        return ResponseEntity.status(500).body("적용 중 오류가 발생했습니다.");
 	    }
+	}
+	
+	@PostMapping("/admin/home/toggle-active")
+	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
+		homeService.updateActive(dto.getId(), dto.isActive());
+        return ResponseEntity.ok().build();
 	}
 }

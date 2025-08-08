@@ -117,4 +117,39 @@ $(function() {
     window.toggleAll = function(source) {
 		$('.selectBox').prop('checked', source.checked);
 	}
+	
+	// active 토글 스위치 변경
+	$('.toggle-switch input[type="checkbox"]').on('change', function() {
+		const $this = $(this);
+
+		const payload = {
+			id: +$this.data('id'),
+			active: this.checked
+		};
+
+		// fetch를 jQuery.ajax로 변경
+		$.ajax({
+			url: ctx + '/admin/home/toggle-active',
+			type: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify(payload),
+			// CSRF 토큰이 필요하다면 아래 주석을 해제하고 설정
+			/*
+			beforeSend: function(xhr) {
+			  const token = $('meta[name="_csrf"]').attr('content');
+			  const header = $('meta[name="_csrf_header"]').attr('content');
+			  if (token && header) {
+				xhr.setRequestHeader(header, token);
+			  }
+			},
+			*/
+			success: function() {
+				// 성공 시 특별한 동작 없음
+			},
+			error: function(jqXHR, textStatus, errorThrown) {
+				alert('상태 변경 실패: ' + errorThrown);
+				$this.prop('checked', !$this.prop('checked')); // 실패 시 체크박스 원상 복구
+			}
+		});
+	});
 });

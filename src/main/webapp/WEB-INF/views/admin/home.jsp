@@ -97,6 +97,7 @@
 		      </th>
 		      <th>TITLE</th>
 		      <th>DESCRIPTION</th>
+		      <th>APPLY</th>
 		    </tr>
 	      </thead>
 	      <tbody>
@@ -109,6 +110,21 @@
 	            <td>
 	            	<textarea rows="3" cols="110" disabled>${item.description}</textarea>
 	            </td>
+	            <td>
+				  <label class="toggle-switch">
+				    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->
+				    <input type="hidden" name="active" value="0"/>
+				    <!-- 체크된 경우에만 value="1" 이 넘어갑니다 -->
+				    <input
+				      type="checkbox"
+				      name="active"
+				      value="1"
+				      data-id="${item.id}"
+				      ${item.isActive == true ? "checked" : ""}
+				    />
+				    <span class="slider"></span>
+				  </label>
+				</td>
 	          </tr>
 	        </c:forEach>
 	      </tbody>

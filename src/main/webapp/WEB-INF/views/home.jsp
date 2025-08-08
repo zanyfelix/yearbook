@@ -52,10 +52,12 @@
     </div>
 
 	<c:forEach var="item" items="${homeList}" varStatus="st">
-		<div class="section-box">
-	        <h5>${item.title}</h5>
-	        <textarea class="auto-resize-textarea" disabled>${item.description}</textarea>
-	    </div>
+		<c:if test="${item.isActive eq true}">
+			<div class="section-box">
+		        <h5>${item.title}</h5>
+		        <textarea class="auto-resize-textarea" disabled>${item.description}</textarea>
+		    </div>
+		</c:if>
 	</c:forEach>
     
 	<!-- 페이지 어디든, body 끝 직전에 위치시켜 주세요 -->
