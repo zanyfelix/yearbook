@@ -87,7 +87,7 @@
                     </div>
 
                     <!-- 중앙 썸네일 선택 영역 (40% - 2/5 비율) -->
-                    <div class="d-flex flex-column border-end" style="width: 40%; max-height: 100vh;">
+                    <div class="d-flex flex-column p-3 border-end" style="width: 40%; max-height: 100vh;">
                     	<div class="editor-panel-spacer"></div>
                         <!-- 공통 컨테이너 -->
                         <div id="thumbnail-area" class="px-3 py-3 overflow-auto">
