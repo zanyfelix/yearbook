@@ -218,33 +218,45 @@ class EventManager {
 		// 기존 이벤트를 모두 초기화
 		textBox.off('click dblclick mousedown keydown input');
 		
-		// ✨ 추가: 텍스트박스 크기 자동 조정 함수
+		// ▼▼▼▼▼ 이 함수를 수정합니다. ▼▼▼▼▼
 		const autoResizeTextBox = function($box) {
-			// 임시 span 요소를 생성하여 텍스트 실제 크기 측정
-			const $temp = $('<span>')
-				.text($box.text() || ' ')  // 빈 텍스트일 때 공백 하나 추가
+			const htmlContent = $box.html();
+			// 1. 텍스트 내용에 줄바꿈 태그(<br>, <div>)가 있는지 확인합니다.
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+
+			// 2. 임시 요소를 만들어 실제 크기를 측정합니다.
+			const $temp = $('<div>')
+				.html(htmlContent || ' ')
 				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'height': 'auto',
+					'width': 'auto',
+					// 3. 줄바꿈 유무에 따라 white-space 속성을 동적으로 설정합니다.
+					'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
 					'font-size': $box.css('font-size'),
 					'font-family': $box.css('font-family'),
 					'font-weight': $box.css('font-weight'),
-					'white-space': 'nowrap',
-					'position': 'absolute',
-					'visibility': 'hidden'
+					'padding': $box.css('padding'),
+					'border': $box.css('border'),
+					'box-sizing': 'border-box',
+					'max-width': '500px'
 				});
 
 			$('body').append($temp);
-			const textWidth = $temp.width() + 20; // 여백 20px 추가
-			const textHeight = $temp.height() + 16; // 여백 16px 추가
+
+			const measuredWidth = $temp.outerWidth();
+			const measuredHeight = $temp.outerHeight();
 			$temp.remove();
 
-			// 텍스트박스 크기를 측정된 크기로 설정
+			// 4. 실제 텍스트박스에 계산된 크기와 white-space 속성을 모두 적용합니다.
 			$box.css({
-				'width': 'auto',
-				'min-width': textWidth + 'px',
-				'height': 'auto',
-				'min-height': textHeight + 'px'
+				'width': measuredWidth + 'px',
+				'height': measuredHeight + 'px',
+				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
 			});
 		};
+		// ▲▲▲▲▲ 함수 수정 끝 ▲▲▲▲▲
 
 		// 한 번 클릭: '선택' 상태로 전환
 		textBox.on('click', function(e) {

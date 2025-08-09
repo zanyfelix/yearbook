@@ -31,79 +31,66 @@ $(document).ready(function() {
 		const relativeState = state || $element.data('relativeState');
 		if (!relativeState) return;
 		
-		let baseRect; // 위치 계산의 기준이 될 사각형
-		let baseOffset = { left: 0, top: 0 }; // 최종 위치에 더해줄 오프셋
+		let baseRect, baseOffset = { left: 0, top: 0 };
 
 		if ($element.hasClass('uploaded-photo')) {
-			// 1. 요소가 사진일 경우, 기준은 '부모 프레임'입니다.
 			const $frame = $element.closest('.frame-group');
 			if (!$frame.length) return;
-
-			baseRect = {
-				width: $frame.width(),
-				height: $frame.height()
-			};
-			// 사진의 left, top은 프레임 내부 기준이므로 오프셋은 0입니다.
-
+			baseRect = { width: $frame.width(), height: $frame.height() };
 		} else {
-			// 2. 사진이 아닐 경우(프레임, 텍스트 등), 기준은 '배경 이미지'입니다.
 			const bg = $('#page-preview-img');
 			baseRect = window.safeLineManager.getActualImagePosition(bg);
-			if (!baseRect) return; // 배경 위치 계산 불가 시 중단
-
-			// 최종 위치는 배경의 시작점(left, top)을 더해줘야 합니다.
+			if (!baseRect) return;
 			baseOffset = { left: baseRect.left, top: baseRect.top };
 		}
 
-		// 퍼센트(%)를 현재 기준 사각형(baseRect)에 맞는 픽셀(px)로 변환
 		const newPixelPos = {
 			left: (relativeState.position.left / 100) * baseRect.width + baseOffset.left,
 			top: (relativeState.position.top / 100) * baseRect.height + baseOffset.top,
 		};
 		
-		const newPixelSize = {
+		let newPixelSize = {
 			width: (relativeState.size.width / 100) * baseRect.width,
 			height: (relativeState.size.height / 100) * baseRect.height
 		};
 		
-		// ✨ 텍스트 박스의 경우 폰트 크기도 비율에 맞게 조정
+		const transform = relativeState.transform || 'none';
+
+		// 텍스트박스인 경우에만 폰트 크기 및 autoSize를 처리합니다.
 		if ($element.hasClass('text-box')) {
 			const originalFontSize = $element.data('originalFontSize');
 			if (originalFontSize) {
 				const fontSize = parseInt(originalFontSize);
-				const bg = $('#page-preview-img');
-				const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-				if (actualBgRect) {
-					const TEMPLATE_WEB_BG_WIDTH = 786;
-					const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-					const adjustedFontSize = Math.round(fontSize * scaleRatio);
-					$element.css('font-size', adjustedFontSize + 'px');
+				const scaleRatio = baseRect.width / 786;
+				const adjustedFontSize = Math.round(fontSize * scaleRatio);
+				$element.css('font-size', adjustedFontSize + 'px');
+			}
 
-					// ✨ 패딩도 비율에 맞게 조정
-					const basePadding = 10; // 기본 패딩값
-					const adjustedPadding = Math.round(basePadding * scaleRatio);
-					$element.css('padding', adjustedPadding + 'px');
-				}
+			// 'autoSize' 플래그가 있으면 크기를 내용에 맞게 재계산합니다.
+			if (relativeState.size?.autoSize) {
+				const htmlContent = $element.html();
+				const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+				$element.css('white-space', hasLineBreaks ? 'pre-wrap' : 'nowrap');
+				
+				// 크기를 재계산하여 newPixelSize를 덮어씁니다.
+				newPixelSize.width = $element.outerWidth();
+				newPixelSize.height = $element.outerHeight();
 			}
 		}
+		
+		// 최종 계산된 위치/크기/변환을 모든 요소에 일괄 적용합니다.
+		$element.css({
+			left: newPixelPos.left,
+			top: newPixelPos.top,
+			width: newPixelSize.width,
+			height: newPixelSize.height,
+			transform: transform
+		});
 
-		const transform = relativeState.transform || 'matrix(1, 0, 0, 1, 0, 0)';
-		$element.css({ ...newPixelPos, ...newPixelSize, transform: transform });
-
-		// ✨ 사진의 선택 UI도 업데이트
-		if ($element.hasClass('uploaded-photo')) {
-		    // 사진 요소일 경우 크기도 함께 업데이트
-		    $element.css({
-		        width: `${newPixelSize.width}px`,
-		        height: `${newPixelSize.height}px`
-		    });
-		    
-		    // 선택 UI가 있다면 업데이트
-		    if ($element.hasClass('selected-photo')) {
-		        PhotoManager.updateSelectionUI($element);
-		    }
+		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
+			PhotoManager.updateSelectionUI($element);
 		}
-	}
+	};
 
 	window.updateAllPositions = function() {
 		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
