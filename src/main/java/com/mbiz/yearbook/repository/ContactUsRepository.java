@@ -14,16 +14,15 @@ import jakarta.transaction.Transactional;
 
 public interface ContactUsRepository extends JpaRepository<ContactUs, Long> {
 	
-	List<ContactUs> findByUserId(String userId);
+	List<ContactUs> findByUserId(Long userId);
 	List<ContactUs> findByName(String name);
-	List<ContactUs> findByUserIdAndName(String userId, String name);
+	List<ContactUs> findByUserIdAndName(Long userId, String name);
 	
 	@Modifying
 	@Transactional
     @Query("UPDATE ContactUs c SET c.status = 'Replied' WHERE c.id IN :ids")
     int markAsRepliedByIds(@Param("ids") List<Long> ids);
 	
-	List<ContactUs> findByUserIdContainingIgnoreCase(String userId);
     List<ContactUs> findByNameContainingIgnoreCase(String name);
     List<ContactUs> findBySchoolNameContainingIgnoreCase(String schoolName);
     List<ContactUs> findBySubjectContainingIgnoreCase(String subject);

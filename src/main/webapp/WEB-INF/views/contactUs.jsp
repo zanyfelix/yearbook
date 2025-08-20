@@ -26,7 +26,7 @@
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
     <a href="/submit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
-    <a href="/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">Contact Us</a>
+    <a href="/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">Contact Us</a>
 </div>
 <div class="content">
   	<div class="top-bar">
@@ -39,6 +39,7 @@
     	<p class="subtitle">Please use the form below to submit any inquiries regarding the use of program</p>
 
     <form:form method="POST" modelAttribute="contact" enctype="multipart/form-data">
+    	<form:input type="hidden" path="userId" id="userId" value="${sessionScope.loginUser.id}"  />
       <div class="form-group">
         <label for="name">NAME</label>
         <form:input path="name" id="name" cssClass="form-control" placeholder="Your name" />

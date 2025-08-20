@@ -48,7 +48,7 @@ public class ContactUsController {
     private final String UPLOAD_DIR = "uploads/";
 
     @GetMapping("/contactUs")
-    public String contactMain(HttpSession session, @RequestParam Long id, Model model) {
+    public String contactMain(HttpSession session, Model model) {
     	
     	User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
@@ -96,7 +96,7 @@ public class ContactUsController {
         return "contactUs";
     }
 
-    @PostMapping
+    @PostMapping("/contactUs")
     public String submitForm(@ModelAttribute ContactUs contact,
                               @RequestParam("file") MultipartFile file,
                               RedirectAttributes redirectAttributes) throws IOException {

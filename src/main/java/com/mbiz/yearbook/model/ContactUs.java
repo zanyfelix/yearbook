@@ -19,7 +19,8 @@ public class ContactUs {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String userId;
+    @Column(name = "user_id")
+    private Long userId;
     private String name;
     private String email;
     private String subject;

@@ -27,8 +27,6 @@ public class ContactUsService {
         }
     	
     	switch (type) {
-        case "userId":
-            return contactUsRepository.findByUserIdContainingIgnoreCase(keyword);
         case "name":
             return contactUsRepository.findByNameContainingIgnoreCase(keyword);
         case "schoolName":
