@@ -97,6 +97,7 @@
 	      </thead>
 	      <tbody>
 	       <c:forEach var="item" items="${homeList}" varStatus="st">
+	       	  <c:if test="${item.type eq 'content'}">
 	          <tr>
 	          	<td>
 		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
@@ -121,6 +122,7 @@
 				  </label>
 				</td>
 	          </tr>
+	          </c:if>
 	        </c:forEach>
 	      </tbody>
 	    </table>
