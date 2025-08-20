@@ -381,7 +381,7 @@ $(document).ready(function() {
 
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
-		if (confirm("모든 디자인이 삭제됩니다. 계속하시겠습니까?")) {
+		if (confirm("All designs on this page will be reset. Please click “Confirm” to proceed.")) {
 			forceCompleteReset();
 			loadDefaultBackground();
 		}

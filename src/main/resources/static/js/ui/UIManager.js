@@ -105,7 +105,7 @@ class UIManager {
 	    
 	    // 프레임 삭제 버튼
 	    $('#btn-delete-frame').off('click').on('click', function() {
-	        if (confirm("프레임을 삭제하시겠습니까?")) {
+	        if (confirm("Do you want to delete the frame?")) {
 	            frameGroup.remove();
 	            window.selectionManager.clearSelection();
 	        }
@@ -192,7 +192,7 @@ class UIManager {
 		this.bindPhotoRotationEvents(photo);
 
 		$('#btn-delete-photo').on('click', () => {
-			if (confirm("사진을 삭제하시겠습니까?")) {
+			if (confirm("Are you sure you want to delete the photo?")) {
 				const placeholderLink = frameGroup.find('.place-image-here-link');
 				photo.hide().attr('src', '');
 				placeholderLink.show();
@@ -287,7 +287,7 @@ class UIManager {
 		});
 		
 		$('#tooltip-remove').on('click', function() {
-			if (confirm('텍스트 상자를 삭제하시겠습니까?')) {
+			if (confirm('Do you want to delete the text box?')) {
 				textBox.remove();
 				window.selectionManager.clearSelection();
 			}
@@ -306,7 +306,7 @@ class UIManager {
 
 		// Element 삭제 버튼
 		$('#btn-delete-element').off('click').on('click', function() {
-			if (confirm("Element를 삭제하시겠습니까?")) {
+			if (confirm("Do you want to delete the element?")) {
 				elementGroup.remove();
 				window.selectionManager.clearSelection();
 			}

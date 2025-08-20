@@ -5,7 +5,7 @@ $(function() {
 	$('#homeForm #btn-apply').on('click', function() {
 		var formData = new FormData($('#homeForm')[0]);
 		if ($('#file')[0].files.length === 0) {
-			alert('업로드할 파일을 선택해주세요.');
+			alert('Please select the file you want to upload.');
 			return;
 		}
 		// ... (기존 AJAX 파일 업로드 로직) ...
@@ -20,7 +20,7 @@ $(function() {
                 location.reload();
             },
             error: function(xhr, status, error) {
-                alert('저장 중 오류가 발생했습니다.');
+                alert('An error occurred while saving.');
             }
         });
 	});

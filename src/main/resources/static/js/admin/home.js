@@ -25,7 +25,7 @@ $(function() {
                 location.reload();
             },
             error: function(xhr, status, error) {
-                alert('저장 중 오류가 발생했습니다.');
+                alert('An error occurred while saving.');
             }
         });
 	});
@@ -115,7 +115,7 @@ $(function() {
                 location.reload();
             },
             error: function(xhr, status, error) {
-                alert(actionType + ' 중 오류가 발생했습니다.');
+                alert(actionType + ' an error occurred.');
             }
         });
     }
@@ -154,7 +154,7 @@ $(function() {
 				// 성공 시 특별한 동작 없음
 			},
 			error: function(jqXHR, textStatus, errorThrown) {
-				alert('상태 변경 실패: ' + errorThrown);
+				alert('State change failed: ' + errorThrown);
 				$this.prop('checked', !$this.prop('checked')); // 실패 시 체크박스 원상 복구
 			}
 		});
