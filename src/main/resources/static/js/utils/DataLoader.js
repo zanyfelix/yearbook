@@ -6,13 +6,16 @@ class DataLoader {
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
 		$.ajax({
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify({ id: 11, category: "background" }),
+			method: 'GET',
+			data: {
+				userId: 11, category: "background"
+			},
 			success: function(representativeData) {
 				const panel = $('#background-panel').empty();
 
 				representativeData.forEach(result => {
+					console.log(result);
+					console.log(result.theme);
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
 					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
 
@@ -75,9 +78,10 @@ class DataLoader {
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
 		$.ajax({
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify({ id: 11, category: "photoframe" }),
+			method: 'GET',
+			data: {
+				userId: 11, category: "photoframe"
+			},
 			success: function(representativeData) {
 				const panel = $('#photoFrameList').empty();
 
@@ -149,9 +153,10 @@ class DataLoader {
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
 		$.ajax({
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify({ id: 11, category: "textboxframe" }),
+			method: 'GET',
+			data: {
+				userId: 11, category: "textboxframe"
+			},
 			success: function(representativeData) {
 				const panel = $('#textboxFrameList').empty();
 
@@ -197,9 +202,10 @@ class DataLoader {
 
 		$.ajax({
 			url: `${ctx}/edit/theme`,
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify({ id: 11, category: "element" }),
+			method: 'GET',
+			data: {
+				userId: 11, category: "element"
+			},
 			success: function(data) {
 				const panel = $('#element-panel');
 

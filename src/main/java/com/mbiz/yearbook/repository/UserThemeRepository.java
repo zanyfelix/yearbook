@@ -12,7 +12,7 @@ import com.mbiz.yearbook.model.UserTheme;
 @Repository
 public interface UserThemeRepository extends JpaRepository<UserTheme, Long> {
 
-	@Query("SELECT ut FROM UserTheme ut JOIN FETCH ut.theme WHERE ut.userId = :userId AND ut.category = :category")
-	List<UserTheme> findByUserIdAndCategory(@Param("userId") Long userId, @Param("category") String category);
+	@Query("SELECT ut FROM UserTheme ut JOIN FETCH ut.user u JOIN FETCH ut.theme t WHERE ut.user.id = :userId AND ut.category = :category")
+	List<UserTheme> findWithUserAndThemeByUserIdAndCategory(@Param("userId") Long userId, @Param("category") String category);
     
 }

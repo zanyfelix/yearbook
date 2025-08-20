@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -37,6 +36,7 @@ import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.ThemeService;
+import com.mbiz.yearbook.service.ThumbnailRenderingService;
 import com.mbiz.yearbook.service.YearbookService;
 
 import jakarta.servlet.http.HttpSession;
@@ -66,6 +66,9 @@ public class EditController {
     
     @Autowired
     private ThemeRepository themeRepository;
+    
+    @Autowired
+    private ThumbnailRenderingService thumbnailRenderingService;
 
 	@GetMapping("/edit")
 	public String editMain(HttpSession session, @RequestParam Long id, Model model) {
@@ -159,12 +162,10 @@ public class EditController {
 		return "edit";
 	}
     
-    @PostMapping("/edit/theme")
+	@GetMapping("/edit/theme")
     @ResponseBody
-    public List<UserTheme> backgroundList(@RequestBody Map<String, Object> param) {
-    	Long id = Long.parseLong(param.get("id").toString());
-        String category = (String) param.get("category");
-        return themeService.findByUserIdAndCategory(id, category);
+    public List<UserTheme> backgroundList(@RequestParam Long userId, @RequestParam String category) {
+        return themeService.findByUserIdAndCategory(userId, category);
     }
     
     /**
@@ -172,7 +173,7 @@ public class EditController {
      */
     @GetMapping("/edit/themesByParent") // 새로운 GET 요청 주소
     @ResponseBody
-    public List<Theme> getThemesByParentId(@RequestParam("themeId") Long themeId) {
+    public List<Theme> getThemesByParentId(@RequestParam Long themeId) {
         // 1. 전달받은 themeId로 현재 테마를 조회하여 parentId를 얻습니다.
         Theme currentTheme = themeRepository.findById(themeId)
                 .orElseThrow(() -> new RuntimeException("Theme not found with id: " + themeId));
@@ -226,7 +227,14 @@ public class EditController {
         
         int updatedSavedCount = yearbookRepository.findByContentsId(savedPage.getContentsId()).size();
 
-        String newImagePath = saveThumbnailFile(imageData, savedPage.getId());
+        // 변경: 서버에서 designData를 기반으로 직접 썸네일 렌더링
+        String newImagePath = null;
+        try {
+            newImagePath = thumbnailRenderingService.generateThumbnail(designDataJson, savedPage.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 썸네일 생성 실패 시 에러 처리 (예: 기본 이미지 경로 반환 또는 null 처리)
+        }
         
         savedPage.setThumbnailPath(newImagePath);
         yearbookRepository.save(savedPage);
@@ -240,38 +248,6 @@ public class EditController {
         response.put("contentsId", savedPage.getContentsId());
         
         return response;
-    }
-    
-    /**
-     * Base64 이미지 데이터를 서버에 파일로 저장하고 웹 경로를 반환하는 메서드
-     * @param imageData Base64로 인코딩된 이미지 데이터
-     * @param yearbookId 파일명을 생성하기 위한 페이지 ID
-     * @return 웹에서 접근 가능한 파일 경로 (예: /thumbnails/thumbnail_123.png)
-     */
-    private String saveThumbnailFile(String imageData, Long yearbookId) {
-        if (imageData == null || imageData.isEmpty()) {
-            return null;
-        }
-
-        // "data:image/png;base64," 부분 제거
-        String base64Image = imageData.split(",")[1];
-        byte[] imageBytes = Base64.getDecoder().decode(base64Image);
-
-        // 파일명 생성 (이름이 겹치지 않도록 시간 정보 추가)
-        String filename = "thumbnail_" + yearbookId + "_" + System.currentTimeMillis() + ".png";
-        
-        try {
-            // 지정된 경로에 파일 저장
-            Path destinationFile = Paths.get(uploadPath, filename);
-            Files.write(destinationFile, imageBytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-            // 실제 프로덕션 코드에서는 로깅 및 예외 처리가 필요합니다.
-            return null;
-        }
-
-        // WebMvcConfig에 설정한 URL 경로를 기준으로 최종 경로 반환
-        return "/thumbnails/" + filename;
     }
     
     /**

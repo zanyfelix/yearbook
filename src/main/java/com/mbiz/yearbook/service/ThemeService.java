@@ -31,39 +31,32 @@ public class ThemeService {
     }
     
     @Transactional
-    public void saveUserTheme(Long id, String category, List<Long> themeIds) {
+    public void saveUserTheme(Long userId, String category, Long themeId) {
     	
-    	User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
-    
-    	List<UserTheme> newMappings = new ArrayList<>();
-    	for (int i = 0; i < themeIds.size(); i++) {
-    		Long themeId = themeIds.get(i);
-    	    Theme theme = themeRepository.findById(themeId)
-    	                     .orElseThrow(() -> new EntityNotFoundException("Theme not found: " + themeId));
-
-    	    UserTheme ut = new UserTheme();
-    	    ut.setUserId(id);
-    	    ut.setTheme(theme);
-    	    ut.setCategory(category);
-    	    ut.setCreatedAt(LocalDateTime.now());
-    	    ut.setUpdatedAt(LocalDateTime.now());
-    	    newMappings.add(ut);
-    	}
+    	UserTheme ut = new UserTheme();
     	
-    	userThemeRepository.saveAll(newMappings);
+    	User userReference = userRepository.getReferenceById(userId);
+        Theme themeReference = themeRepository.getReferenceById(themeId);
+    	
+    	ut.setUser(userReference);
+	    ut.setTheme(themeReference);
+	    ut.setCategory(category);
+	    ut.setCreatedAt(LocalDateTime.now());
+	    ut.setUpdatedAt(LocalDateTime.now());
+    	
+    	userThemeRepository.save(ut);
     }
     
     public List<Long> findThemeIdsByUserAndCategory(Long userId, String category) {
     	return userThemeRepository
-                .findByUserIdAndCategory(userId, category)
+                .findWithUserAndThemeByUserIdAndCategory(userId, category)
                 .stream()
                 .map(ut -> ut.getTheme().getId())  // ✅ theme 객체에서 id 꺼냄
                 .collect(Collectors.toList());
     }
     
     public List<UserTheme> findByUserIdAndCategory (Long userId, String category) {
-    	return userThemeRepository.findByUserIdAndCategory(userId, category);
+    	return userThemeRepository.findWithUserAndThemeByUserIdAndCategory(userId, category);
     }
     
     

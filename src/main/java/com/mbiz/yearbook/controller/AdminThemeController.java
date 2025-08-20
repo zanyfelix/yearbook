@@ -66,7 +66,7 @@ public class AdminThemeController {
 	
 	@PostMapping("/theme/save")
 	public ResponseEntity<Map<String, String>> save(@RequestBody UserTheme userTheme) {
-		themeService.saveUserTheme(userTheme.getId(), userTheme.getCategory(), userTheme.getThemeIds());
+		themeService.saveUserTheme(userTheme.getUser().getId(), userTheme.getCategory(), userTheme.getTheme().getId());
 		return ResponseEntity.ok(Map.of("status", "success"));
 	}
 	
