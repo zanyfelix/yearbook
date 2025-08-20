@@ -59,35 +59,26 @@ public class AdminHomeController {
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
-	    List<User> allUsers = userRepository.findAll();
-	    model.addAttribute("allUsers", allUsers);
+	    List<User> users = userRepository.findByRole("user");
+        model.addAttribute("users", users);
 		
-	    if (userId == null) {
-	    	List<User> users = userRepository.findByRole("user");
-	        model.addAttribute("users", users);
-	      //사용자 id 값 없을 경우 첫번째 보여준다.
-	        userId = users.get(0).getId();
-	    } else {
-	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
-	    }
-	    
 	    model.addAttribute("id", id);
 	    model.addAttribute("userId", userId);
 	    
-	    // 수정된 부분: homeId 대신 guidanceHome 객체와 guidanceFileName을 모델에 추가
-	    Home guidanceHome = homeRepository.findByUserIdAndType(userId,"main").get(0);
-	    model.addAttribute("guidanceHome", guidanceHome);
-	    
-	    // 첨부파일이 있을 경우, 원본 파일명을 추출하여 모델에 추가
-	    if (guidanceHome.getAttachmentPath() != null && !guidanceHome.getAttachmentPath().isEmpty()) {
-	        String attachmentPath = guidanceHome.getAttachmentPath();
-	        String storedFileName = attachmentPath.substring(attachmentPath.lastIndexOf("/") + 1);
-	        String originalFileName = storedFileName.substring(storedFileName.indexOf("_") + 1);
-	        model.addAttribute("guidanceFileName", originalFileName);
-	    }
-	    
-	    List<Home> homeList = homeRepository.findByUserIdAndType(userId, "content");
+	    List<Home> homeList = homeRepository.findByUserId(userId);
 	    model.addAttribute("homeList", homeList);
+	    //메인은 사용자별 1개
+	    List<Home> mainList = homeRepository.findByUserIdAndType(userId, "main");
+	    
+	    if(mainList.size() > 0) {
+	    	model.addAttribute("main", mainList.get(0));
+	    	 if (mainList.get(0).getAttachmentPath() != null && !mainList.get(0).getAttachmentPath().isEmpty()) {
+	 	        String attachmentPath = mainList.get(0).getAttachmentPath();
+	 	        String storedFileName = attachmentPath.substring(attachmentPath.lastIndexOf("/") + 1);
+	 	        String originalFileName = storedFileName.substring(storedFileName.indexOf("_") + 1);
+	 	        model.addAttribute("guidanceFileName", originalFileName);
+	 	    }
+	    }
 	    
 	    model.addAttribute("currentMenu", "home");
 
@@ -95,12 +86,12 @@ public class AdminHomeController {
 	}
 	
 	@PostMapping("/uploadGuidance")
-	public String admitHomeSubmit(@RequestParam("id") Long id, // 1. Home 객체 대신 id를 직접 받습니다.
+	public String admitHomeSubmit(@RequestParam("mainId") Long mainId, // 1. Home 객체 대신 id를 직접 받습니다.
 	                          @RequestParam("file") MultipartFile file,
 	                          RedirectAttributes redirectAttributes) throws IOException {
 
-		Home homeToUpdate = homeRepository.findById(id)
-	            .orElseThrow(() -> new IllegalArgumentException("Invalid home Id:" + id));
+		Home homeToUpdate = homeRepository.findById(mainId)
+	            .orElseThrow(() -> new IllegalArgumentException("Invalid home Id:" + mainId));
 
 	    if (!file.isEmpty()) {
 	        // 파일 저장 로직은 동일합니다.
@@ -119,9 +110,9 @@ public class AdminHomeController {
     }
 	
 	@GetMapping("/downloadGuidance")
-	public ResponseEntity<Resource> downloadGuidanceFile(@RequestParam("id") Long id) {
+	public ResponseEntity<Resource> downloadGuidanceFile(@RequestParam("mainId") Long mainId) {
 	    // 1. ID로 Home 객체를 찾아 첨부파일 경로를 가져옵니다.
-	    Home home = homeRepository.findById(id)
+	    Home home = homeRepository.findById(mainId)
 	            .orElseThrow(() -> new RuntimeException("Error: File not found."));
 
 	    String storedFileName = home.getAttachmentPath().substring(home.getAttachmentPath().lastIndexOf("/") + 1);

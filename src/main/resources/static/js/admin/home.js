@@ -1,11 +1,16 @@
 // js/admin/home.js
 
 $(function() {
+	//userId가 없을 경우 첫번째 강제 선택
+	if($("#userId").val() == '') {
+		$("#search").trigger('click');
+	}
+	
     // 최상단의 SAVE 버튼(#btn-apply) 클릭 이벤트 (Yearbook Guidance 파일 저장용)
 	$('#homeForm #btn-apply').on('click', function() {
 		var formData = new FormData($('#homeForm')[0]);
 		if ($('#file')[0].files.length === 0) {
-			alert('업로드할 파일을 선택해주세요.');
+			alert('Please select the file you want to upload.');
 			return;
 		}
 		// ... (기존 AJAX 파일 업로드 로직) ...

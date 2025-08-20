@@ -263,3 +263,24 @@ html, body {
   }
   */
 }
+
+.file-upload-group {
+	display: flex;
+	align-items: center;
+	gap: 15px; /* 요소들 사이의 간격 */
+	width: 50%;
+}
+
+.file-upload-group .form-control {
+	flex: 1; /* 파일 입력창이 남은 공간을 차지하도록 설정 */
+}
+
+.file-upload-group .current-file-display {
+	white-space: nowrap; /* 파일명이 길어도 줄바꿈되지 않도록 설정 */
+	color: #6c757d;
+	font-size: 0.9em;
+}
+
+.file-upload-group button {
+	flex-shrink: 0; /* 버튼 크기가 줄어들지 않도록 고정 */
+}

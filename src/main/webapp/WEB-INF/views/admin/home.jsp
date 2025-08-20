@@ -44,25 +44,23 @@
 	
 		<!-- 검색 바 -->
 		<form method="get" action="${pageContext.request.contextPath}/admin/home" class="search-form">
-		    <select name="id" class="form-select">
-		        <c:forEach var="item" items="${allUsers}" varStatus="st">
-		        	<c:if test="${item.role ne 'admin'}">
-		            	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
-		            </c:if>
+		    <select name="userId" class="form-select">
+		        <c:forEach var="item" items="${users}" varStatus="st">
+		        	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
 		        </c:forEach>
 		    </select>
-		    <button type="submit" class="btn btn-primary">SEARCH</button>
+		    <button type="submit" class="btn btn-primary" id="search">SEARCH</button>
 		</form>
 		
-		<form id="homeForm" action="<c:url value='/uploadGuidance'/>" method="post" enctype="multipart/form-data">
-			<input type="hidden" name="id" value="${guidanceHome.id}"/>
+		<form id="homeForm" class="mb-4" action="<c:url value='/uploadGuidance'/>" method="post" enctype="multipart/form-data">
+			<input type="hidden" name="mainId" value="${main.id}"/>
 			<div class="section-box">
 				<h5>Yearbook Guidance</h5>
 				<%-- 파일 존재 여부에 따라 분기 처리 --%>
 			    <c:choose>
 			        <%-- 1. 첨부파일이 있는 경우 --%>
-			        <c:when test="${not empty guidanceHome.attachmentPath}">
-			            <p>- Please click <a href="<c:url value='/downloadGuidance?id=${guidanceHome.id}'/>"><strong>HERE</strong></a> to download the manual for this program</p>
+			        <c:when test="${not empty guidanceFileName}">
+			            <p>- Please click <a href="<c:url value='/downloadGuidance?mainId=${main.id}'/>"><strong>HERE</strong></a> to download the manual for this program</p>
 			        </c:when>
 			        <%-- 2. 첨부파일이 없는 경우 (링크 없음) --%>
 			        <c:otherwise>
@@ -72,21 +70,18 @@
 				<p>- Please review all the guidelines prior to commencing work on the yearbook pages</p>
 				<p>- If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</p>
 				<%-- 현재 저장된 파일명을 표시하는 부분 추가 --%>
-			    <c:if test="${not empty guidanceFileName}">
-			        <div class="current-file-display">
-			            <strong>Current File:</strong>
-			            <span>${guidanceFileName}</span>
-			        </div>
-			    </c:if>
-				<div class="form-group-file">
-		        	<label for="file">FILE</label>
-		        	<input type="file" name="file" id="file" class="form-control"/>
-		      	</div>
-		      	
+			    <div class="file-upload-group">
+					<input type="file" name="file" id="file" class="form-control"/>
+					
+					<c:if test="${not empty guidanceFileName}">
+						<div class="current-file-display">
+							<span>${guidanceFileName}</span>
+						</div>
+					</c:if>
+					
+					<button id="btn-apply" class="btn btn-primary" type="button">SAVE</button>
+                </div>
 			</div>
-			<div class="btn-wrapper">
-			    <button id="btn-apply" type="button">SAVE</button>
-		    </div>
 	    </form>
 	    
 		<table>
@@ -143,13 +138,13 @@
 		      <form id="registerForm"
 			      action="${pageContext.request.contextPath}/admin/home/register"
 			      method="post">
-			      <input type="hidden" name="userId" value="${id}"/>
+			      <input type="hidden" id="userId" name="userId" value="${userId}"/>
 			  <div class="modal-header">
 			    <h5 class="modal-title" id="registerModalLabel">REGISTRATION</h5>
 			    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			  </div>
 			  <div class="modal-body">
-			    <input type="hidden" id="id" name="id" />
+			    <input type="hidden" id="id" name="id" value="${id}"/>
 			    <input type="hidden" id="currentUserId" name="userId" value="${userId}" />
 			
 			    <div class="mb-3">
