@@ -14,45 +14,42 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class LoginController {
 
-    private final UserService userService;
+	private final UserService userService;
 
-    public LoginController(UserService userService) {
-        this.userService = userService;
-    }
-    
-    @GetMapping("/")
-    public String redirectToLogin() {
-        return "redirect:/login";
-    }
+	public LoginController(UserService userService) {
+		this.userService = userService;
+	}
 
-    @GetMapping("/login")
-    public String loginForm() {
-        return "login"; // login.jsp
-    }
+	@GetMapping("/")
+	public String redirectToLogin() {
+		return "redirect:/login";
+	}
 
-    @PostMapping("/login")
-    public String login(@RequestParam String userId,
-                        @RequestParam String password,
-                        HttpSession session,
-                        Model model) {
+	@GetMapping("/login")
+	public String loginForm() {
+		return "login"; // login.jsp
+	}
 
-        try {
-            User user = userService.login(userId, password);
-            session.setAttribute("loginUser", user);
-            if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-                return "redirect:/admin/user?id="+user.getId(); // 관리자 전용 페이지
-            } else {
-                return "redirect:/home?id="+user.getId();  // 일반 사용자
-            }
-        } catch (Exception e) {
-            model.addAttribute("error", e.getMessage());
-            return "login";
-        }
-    }
+	@PostMapping("/login")
+	public String login(@RequestParam String userId, @RequestParam String password, HttpSession session, Model model) {
 
-    @PostMapping("/logout")
-    public String logout(HttpSession session) {
-        session.invalidate();
-        return "redirect:/login";
-    }
+		try {
+			User user = userService.login(userId, password.toLowerCase());
+			session.setAttribute("loginUser", user);
+			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+				return "redirect:/admin/user?id=" + user.getId(); // 관리자 전용 페이지
+			} else {
+				return "redirect:/home?id=" + user.getId(); // 일반 사용자
+			}
+		} catch (Exception e) {
+			model.addAttribute("error", e.getMessage());
+			return "login";
+		}
+	}
+
+	@PostMapping("/logout")
+	public String logout(HttpSession session) {
+		session.invalidate();
+		return "redirect:/login";
+	}
 }
