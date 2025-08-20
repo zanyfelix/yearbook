@@ -53,7 +53,7 @@
         method="post"
         onsubmit="return confirm('Are you sure you want to delete the selected users?');">
     
-	    <table>
+	    <table class="user-table">
 	      <thead>
 	      	<tr>
 		      <th>
@@ -78,11 +78,7 @@
 		        </td>
 	            <td>${st.index + 1}</td>
 	            <td>${item.userId}</td>
-	            <td>
-	            	<input type="text" value="******" readonly
-              	 style="border: none; background: transparent; pointer-events: none;" />
-        			<input type="hidden" name="password" value="${item.password}" />
-	            </td>
+	            <td>${item.password}</td>
 	            <td>${item.name}</td>
 	            <td>${item.schoolName}</td>
 	            <td>${item.mail}</td>

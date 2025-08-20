@@ -245,3 +245,33 @@ button.btn-primary {
     align-items: stretch;
   }
 }
+
+/* 테이블 전체 레이아웃 설정 */
+.user-table {
+  width: 100%; /* 테이블 전체 너비 */
+  table-layout: fixed; /* 너비 고정, 이 속성이 중요합니다! */
+  border-collapse: collapse; /* 셀 사이의 경계를 합칩니다 */
+}
+
+/* th와 td에 공통 스타일 적용 (선택 사항) */
+.user-table th, .user-table td {
+  padding: 8px;
+  text-align: center;
+  /* 내용이 길어질 경우 ... 으로 표시 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* 각 th(열)의 너비를 개별적으로 지정 */
+.user-table th:nth-child(1) { width: 5%; }   /* 체크박스 */
+.user-table th:nth-child(2) { width: 5%; }   /* No */
+.user-table th:nth-child(3) { width: 10%; }  /* USER_ID */
+.user-table th:nth-child(4) { width: 10%; }  /* PASSWORD */
+.user-table th:nth-child(5) { width: 10%; }  /* NAME */
+.user-table th:nth-child(6) { width: 15%; }  /* SCHOOL_NAME */
+.user-table th:nth-child(7) { width: 15%; }  /* MAIL */
+.user-table th:nth-child(8) { width: 10%; }  /* DEADLINE */
+.user-table th:nth-child(9) { width: 10%; }  /* ROLE */
+.user-table th:nth-child(10) { width: 10%; } /* ACTIVE */

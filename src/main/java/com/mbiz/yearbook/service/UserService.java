@@ -8,7 +8,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.mbiz.yearbook.model.Home;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.HomeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.util.DuplicateUserIdException;
 
@@ -21,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
+    
+    private final HomeRepository homeRepository;
     
     public List<User> findAll() {
         return userRepository.findAll();
@@ -70,6 +74,17 @@ public class UserService {
     	user.setCreatedAt(LocalDateTime.now());
     	user.setModifiedAt(LocalDateTime.now());
     	userRepository.save(user);
+    	
+    	//사용자 생성시 home 화면 메인 생성
+    	Home newUser = new Home();
+    	newUser.setDisplayOrder(0);
+    	newUser.setIsActive(true);
+    	newUser.setCreatedAt(LocalDateTime.now());
+    	newUser.setUpdatedAt(LocalDateTime.now());
+    	newUser.setType("main");
+    	newUser.setUserId(user.getId());
+    	homeRepository.save(newUser);
+    	
     }
     
     @Transactional
