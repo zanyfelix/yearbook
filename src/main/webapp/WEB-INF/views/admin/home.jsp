@@ -141,14 +141,13 @@
 			      action="${pageContext.request.contextPath}/admin/home/register"
 			      method="post">
 			      <input type="hidden" id="userId" name="userId" value="${userId}"/>
+			      <input type="hidden" id="homeId" name="id" value=""/>
+			      <input type="hidden" id="isActive" name="isActive" value=""/>
 			  <div class="modal-header">
 			    <h5 class="modal-title" id="registerModalLabel">REGISTRATION</h5>
 			    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			  </div>
 			  <div class="modal-body">
-			    <input type="hidden" id="id" name="id" value="${id}"/>
-			    <input type="hidden" id="currentUserId" name="userId" value="${userId}" />
-			
 			    <div class="mb-3">
 			      <label for="title" class="form-label">TITLE</label>
 			      <input type="text" class="form-control" id="title" name="title" required />

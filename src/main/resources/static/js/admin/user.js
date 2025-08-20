@@ -38,7 +38,7 @@ $(document).ready(function() {
 		// 1) PK 및 나머지 필드 채우기
 		$('#userIdHidden').val(id);
 		$('#userIdInput').val($row.children().eq(2).text().trim());
-		$('#passwordInput').val($row.find('input[name="password"]').val().trim());
+		$('#passwordInput').val($row.children().eq(3).text().trim());
 		$('#nameInput').val($row.children().eq(4).text().trim());
 		$('#schoolInput').val($row.children().eq(5).text().trim());
 		$('#mailInput').val($row.children().eq(6).text().trim());

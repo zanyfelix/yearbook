@@ -82,7 +82,7 @@
 	            </td>
 	            <td>
 	            	<select class="form-select">
-	            		<option>F_Funicorn</option>
+	            		<option>Funicorn</option>
 	            	</select>
 	            </td>
 	          </tr>

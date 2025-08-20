@@ -57,11 +57,13 @@ $(function() {
         const id = checkedBoxes.val();
         const title = checkedRow.find('td:eq(1)').text().trim();
         const description = checkedRow.find('td:eq(2) textarea').val().trim();
+		const isActive = checkedRow.find('td:eq(3)').val().trim();
 
         // 모달 필드 채우기
         $('#homeId').val(id);
         $('#title').val(title);
         $('#description').val(description);
+		$('#isActive').val(isActive);
 
         // 모달 제목 변경 및 열기
         $('#registerModalLabel').text('MODIFY');

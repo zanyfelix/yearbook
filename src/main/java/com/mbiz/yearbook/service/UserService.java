@@ -73,6 +73,7 @@ public class UserService {
     	user.setActive(false);
     	user.setCreatedAt(LocalDateTime.now());
     	user.setModifiedAt(LocalDateTime.now());
+    	user.setPassword(user.getPassword().toLowerCase());
     	userRepository.save(user);
     	
     	//사용자 생성시 home 화면 메인 생성
@@ -99,7 +100,7 @@ public class UserService {
             persisted.setUserId(userFromForm.getUserId());
         }
         if (StringUtils.hasText(userFromForm.getPassword())) {
-            persisted.setPassword(userFromForm.getPassword());
+            persisted.setPassword(userFromForm.getPassword().toLowerCase());
         }
         if (StringUtils.hasText(userFromForm.getName())) {
             persisted.setName(userFromForm.getName());

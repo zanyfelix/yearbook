@@ -150,9 +150,9 @@ public class AdminHomeController {
 	    home.setUserId(userId);
 	    homeService.save(home);
 	    
-	    redirectAttributes.addFlashAttribute("successMessage", "성공적으로 저장되었습니다.");
+	    redirectAttributes.addFlashAttribute("successMessage", "saved successfully.");
 	    // 작업 후 현재 보고있던 사용자의 페이지로 리다이렉트
-	    return "redirect:/admin/home?id=" + userId;
+	    return "redirect:/admin/home?userId=" + userId;
 	}
 
 	// DELETE(삭제) 처리
