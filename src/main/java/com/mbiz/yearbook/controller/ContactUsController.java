@@ -26,6 +26,7 @@ import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.repository.ContentsRepository;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContactUsService;
 
@@ -41,6 +42,9 @@ public class ContactUsController {
     
     @Autowired
     private YearbookRepository yearbookRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
 	
 	@Autowired
     private ContentsRepository contentsRepository;
@@ -109,6 +113,9 @@ public class ContactUsController {
             contact.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));
         }
 
+        User userInfo = userRepository.getById(contact.getUserId());
+        contact.setSchoolName(userInfo.getSchoolName());
+        
         contactUsService.save(contact);
         redirectAttributes.addFlashAttribute("success", true);
         return "redirect:/contactUs";

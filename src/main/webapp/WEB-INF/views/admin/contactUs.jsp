@@ -40,7 +40,6 @@
 		<!-- 검색 바 -->
 	    <form method="get" action="${pageContext.request.contextPath}/admin/user">
 	      <select name="type">
-	        <option value="userId" ${type=='userId'? 'selected':''}>USER_ID</option>
 	        <option value="name" ${type=='name'? 'selected':''}>NAME</option>
 	        <option value="schoolName" ${type=='schoolName'? 'selected':''}>SCHOOL_NAME</option>
 	        <option value="subject" ${type=='subject'? 'selected':''}>SUBJECT</option>
@@ -73,7 +72,6 @@
 		  	<input type="checkbox" id="selectAll" onclick="toggleAll(this)"/>
 		  </th>
 	      <th>No</th>
-	      <th>USER_ID</th>
 	      <th>Name</th>
 	      <th>Email</th>
 	      <th>SCHOOL_NAME</th>
@@ -89,7 +87,6 @@
 		    	<input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
 		    </td>
             <td>${st.index + 1}</td>
-            <td>${item.userId}</td>
             <td>${item.name}</td>
             <td>${item.email}</td>
             <td>${item.schoolName}</td>
