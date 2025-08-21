@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.HomeService;
+import com.mbiz.yearbook.service.JpgRenderingService;
 import com.mbiz.yearbook.service.PdfRenderingService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -38,6 +41,9 @@ public class AdminYearbookController {
 	
 	@Autowired
 	private PdfRenderingService pdfRenderingService;
+	
+	@Autowired
+	private JpgRenderingService jpgRenderingService;
 	
 	private final String UPLOAD_DIR = "uploads/";
 
@@ -68,85 +74,148 @@ public class AdminYearbookController {
 	}
 	
 	@GetMapping("/admin/yearbook/download")
-	public void downloadYearbooks(@RequestParam("ids") List<Long> userIds, HttpServletResponse response)
-			throws IOException {
-
-		List<File> renderedPdfs = new ArrayList<>();
-
-		// 1. Render a PDF for each selected user and store it temporarily
-		for (Long userId : userIds) {
-			// This service method should find the user, render their yearbook,
-			// and return the generated temporary file.
-			File userPdf = pdfRenderingService.renderAndSavePdfForUser(userId);
-			if (userPdf != null) {
-				renderedPdfs.add(userPdf);
-			}
-		}
-
-		if (renderedPdfs.isEmpty()) {
-			// Handle case where no PDFs could be generated
-			response.sendError(HttpServletResponse.SC_NOT_FOUND,
-					"No submittable yearbooks found for the selected users.");
-			return;
-		}
-
-		// 2. Prepare the ZIP file and stream it for download
-		File zipFile = null;
-		try {
-			if (renderedPdfs.size() == 1) {
-				// If only one file, download it directly without zipping
-				File pdf = renderedPdfs.get(0);
-				response.setContentType("application/pdf");
-				response.setHeader("Content-Disposition", "attachment; filename=\"" + pdf.getName() + "\"");
-				streamFileToResponse(pdf, response);
-			} else {
-				// If multiple files, create a ZIP archive
-				zipFile = createZipArchive(renderedPdfs);
-				response.setContentType("application/zip");
-				response.setHeader("Content-Disposition", "attachment; filename=\"yearbooks.zip\"");
-				streamFileToResponse(zipFile, response);
-			}
-		} finally {
-			// 3. Clean up all temporary files (PDFs and ZIP)
-			for (File pdf : renderedPdfs) {
-				pdf.delete();
-			}
-			if (zipFile != null) {
-				zipFile.delete();
-			}
-		}
+	public void downloadYearbooks(@RequestParam("ids") List<Long> userIds, 
+	                             @RequestParam(value = "format", defaultValue = "jpg") String format,
+	                             HttpServletResponse response) throws IOException {
+	    List<File> renderedFiles = new ArrayList<>();
+	    
+	 // 형식 검증
+	    String normalizedFormat = format.toLowerCase();
+	    if (!isValidFormat(normalizedFormat)) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, 
+	            "지원하지 않는 형식입니다. 지원 형식: jpg, png, tiff");
+	        return;
+	    }
+	    
+	    // 1. 각 선택된 사용자에 대해 이미지 파일 렌더링 및 임시 저장
+	    for (Long userId : userIds) {
+	        File userFile = jpgRenderingService.renderAndSaveImageForUser(userId, normalizedFormat);
+	        if (userFile != null) {
+	            renderedFiles.add(userFile);
+	        }
+	    }
+	    
+	    if (renderedFiles.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_NOT_FOUND,
+	                "선택된 사용자들에 대한 제출 가능한 yearbook을 찾을 수 없습니다.");
+	        return;
+	    }
+	    
+	    // 2. 파일 준비 및 다운로드 스트리밍
+	    File finalFile = null;
+	    try {
+	        if (renderedFiles.size() == 1) {
+	            // 한 명의 사용자만 선택된 경우, 해당 파일을 직접 다운로드
+	            File userFile = renderedFiles.get(0);
+	            String fileName = userFile.getName();
+	            
+	            if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+	                response.setContentType("image/jpeg");
+	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+	                streamFileToResponse(userFile, response);
+	            } else if (fileName.endsWith(".png")) {
+	                response.setContentType("image/png");
+	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+	                streamFileToResponse(userFile, response);
+	            } else if (fileName.endsWith(".tiff") || fileName.endsWith(".tif")) {
+	                response.setContentType("image/tiff");
+	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+	                streamFileToResponse(userFile, response);
+	            } else if (fileName.endsWith(".zip")) {
+	                response.setContentType("application/zip");
+	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+	                streamFileToResponse(userFile, response);
+	            }
+	        } else {
+	            // 여러 사용자가 선택된 경우, 모든 파일을 포함하는 마스터 ZIP 생성
+	            finalFile = createMasterZipArchive(renderedFiles);
+	            response.setContentType("application/zip");
+	            
+	            String zipFileName = "yearbooks_collection_" + normalizedFormat + ".zip";
+	            response.setHeader("Content-Disposition", "attachment; filename=\"" + zipFileName + "\"");
+	            streamFileToResponse(finalFile, response);
+	        }
+	    } finally {
+	        // 3. 모든 임시 파일 정리
+	        for (File file : renderedFiles) {
+	            if (file != null && file.exists()) {
+	                file.delete();
+	            }
+	        }
+	        if (finalFile != null && finalFile.exists()) {
+	            finalFile.delete();
+	        }
+	    }
 	}
 
+	private boolean isValidFormat(String format) {
+	    return "jpg".equals(format) || "jpeg".equals(format) || 
+	           "png".equals(format) || "tiff".equals(format) || "tif".equals(format);
+	}
+	
 	/**
-	 * Creates a temporary ZIP file containing all the provided PDF files.
+	 * Creates a master ZIP archive containing all user files (JPGs or ZIPs)
 	 */
-	private File createZipArchive(List<File> files) throws IOException {
-		File zipFile = File.createTempFile("yearbooks_", ".zip");
-		try (FileOutputStream fos = new FileOutputStream(zipFile); ZipOutputStream zos = new ZipOutputStream(fos)) {
-
-			for (File file : files) {
-				zos.putNextEntry(new ZipEntry(file.getName()));
-				try (FileInputStream fis = new FileInputStream(file)) {
-					byte[] buffer = new byte[1024];
-					int len;
-					while ((len = fis.read(buffer)) > 0) {
-						zos.write(buffer, 0, len);
-					}
-				}
-				zos.closeEntry();
-			}
-		}
-		return zipFile;
+	private File createMasterZipArchive(List<File> userFiles) throws IOException {
+	    File masterZipFile = File.createTempFile("yearbooks_collection", ".zip");
+	    
+	    try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(masterZipFile))) {
+	        for (File userFile : userFiles) {
+	            if (userFile.getName().endsWith(".jpg")) {
+	                // Direct JPG file - add to ZIP
+	                ZipEntry zipEntry = new ZipEntry(userFile.getName());
+	                zipOut.putNextEntry(zipEntry);
+	                java.nio.file.Files.copy(userFile.toPath(), zipOut);
+	                zipOut.closeEntry();
+	            } else if (userFile.getName().endsWith(".zip")) {
+	                // User's ZIP file - extract and add contents to master ZIP
+	                extractZipToMasterZip(userFile, zipOut);
+	            }
+	        }
+	    }
+	    
+	    return masterZipFile;
 	}
 
 	/**
-	 * Writes a file's content to the HttpServletResponse output stream.
+	 * Extracts contents of a user's ZIP file and adds them to the master ZIP
+	 */
+	private void extractZipToMasterZip(File userZipFile, ZipOutputStream masterZipOut) throws IOException {
+	    try (ZipInputStream userZipIn = new ZipInputStream(new FileInputStream(userZipFile))) {
+	        ZipEntry entry;
+	        while ((entry = userZipIn.getNextEntry()) != null) {
+	            // Create a new entry in the master ZIP
+	            ZipEntry newEntry = new ZipEntry(entry.getName());
+	            masterZipOut.putNextEntry(newEntry);
+	            
+	            // Copy the file content
+	            byte[] buffer = new byte[8192];
+	            int length;
+	            while ((length = userZipIn.read(buffer)) != -1) {
+	                masterZipOut.write(buffer, 0, length);
+	            }
+	            
+	            masterZipOut.closeEntry();
+	            userZipIn.closeEntry();
+	        }
+	    }
+	}
+
+	/**
+	 * Streams a file to the HTTP response
 	 */
 	private void streamFileToResponse(File file, HttpServletResponse response) throws IOException {
-		response.setContentLength((int) file.length());
-		try (FileInputStream fis = new FileInputStream(file)) {
-			org.apache.commons.io.IOUtils.copy(fis, response.getOutputStream());
-		}
-		response.flushBuffer();
+	    response.setContentLength((int) file.length());
+	    
+	    try (FileInputStream fileInputStream = new FileInputStream(file);
+	         OutputStream responseOutputStream = response.getOutputStream()) {
+	        
+	        byte[] buffer = new byte[8192];
+	        int bytesRead;
+	        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+	            responseOutputStream.write(buffer, 0, bytesRead);
+	        }
+	        responseOutputStream.flush();
+	    }
 	}
 }
