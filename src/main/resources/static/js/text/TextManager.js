@@ -62,7 +62,24 @@ class TextManager {
 		const boxHeight = textBox.outerHeight();
 
 		const newLeft = bgPos.left + (bgWidth - boxWidth) / 2;
-		const newTop = bgPos.top + (bgHeight - boxHeight) / 2;
+		let newTop;
+
+		// param 값에 따라 초기 수직 위치를 조정합니다.
+		switch (param) {
+			case 'Title':
+				// Title은 배경 상단에서 15% 지점에 위치시킵니다.
+				newTop = bgPos.top + (bgHeight * 0.01);
+				break;
+			case 'Sub-Title':
+				// Sub-Title은 배경 상단에서 30% 지점에 위치시킵니다.
+				newTop = bgPos.top + (bgHeight * 0.1);
+				break;
+			case 'text':
+			default:
+				// 'text' 및 기타 경우는 기존과 같이 중앙에 배치합니다.
+				newTop = bgPos.top + (bgHeight - boxHeight) / 2;
+				break;
+		}
 		
 		textBox.css({
 			top: `${newTop}px`,
