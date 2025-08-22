@@ -12,6 +12,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
 import java.util.Base64;
 import java.util.List;
 
@@ -35,6 +36,7 @@ import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
+import com.sun.management.OperatingSystemMXBean;
 
 import jakarta.annotation.PostConstruct;
 
@@ -92,6 +94,19 @@ public class JpgRenderingService {
         if (pages.isEmpty()) {
             return null;
         }
+        
+     // --- [추가] 성능 측정을 위한 변수 초기화 ---
+        long startTime = System.currentTimeMillis();
+        Runtime runtime = Runtime.getRuntime();
+        OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+        
+        // 가비지 컬렉션을 제안하여 더 정확한 메모리 사용량 측정
+        runtime.gc(); 
+        long usedMemoryBefore = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
+
+        System.out.println("\n--- 렌더링 성능 측정 시작 (User ID: " + userId + ") ---");
+        System.out.println("시작 전 사용 메모리: " + usedMemoryBefore + " MB");
+        // -------------------------------------------
 
         try {
             User user = userRepository.findById(userId).orElseThrow();
@@ -102,6 +117,21 @@ public class JpgRenderingService {
             
             File tempImageFile = File.createTempFile(fileName, "." + format);
             saveImageWithDPI(renderedImage, tempImageFile, format);
+            
+         // --- [추가] 성능 측정 결과 출력 ---
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            long usedMemoryAfter = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
+            long memoryUsedForTask = usedMemoryAfter - usedMemoryBefore;
+            double processCpuLoad = osBean.getProcessCpuLoad() * 100;
+
+            System.out.println("\n--- 렌더링 성능 측정 종료 (User ID: " + userId + ") ---");
+            System.out.println("총 소요 시간: " + duration + " ms (" + (duration / 1000.0) + " 초)");
+            System.out.println("종료 후 사용 메모리: " + usedMemoryAfter + " MB");
+            System.out.println("이번 작업에 사용된 메모리 (추정치): " + memoryUsedForTask + " MB");
+            System.out.printf("최근 JVM CPU 사용량: %.2f%%\n", processCpuLoad);
+            System.out.println("-------------------------------------------------");
+            // -----------------------------------
             
             return tempImageFile;
             
