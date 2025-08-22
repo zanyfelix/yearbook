@@ -68,7 +68,7 @@
 			        </c:otherwise>
 			    </c:choose>
 				<p>- Please review all the guidelines prior to commencing work on the yearbook pages</p>
-				<p>- If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</p>
+				<p>- If you have any difficulties of using this program, please direct your inquiries by email to CAPTURECORD Yearbook Consultant.</p>
 				<%-- 현재 저장된 파일명을 표시하는 부분 추가 --%>
 			    <div class="file-upload-group">
 					<input type="file" name="file" id="file" class="form-control"/>

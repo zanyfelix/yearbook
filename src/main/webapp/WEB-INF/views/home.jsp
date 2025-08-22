@@ -47,7 +47,7 @@
 			</c:otherwise>
 		</c:choose>
             <li>- Please review all the guidelines prior to commencing work on the yearbook pages</li>
-            <li>- If you have any difficulties of using this program, please direct your inquiries by email to chris.kim@mbizkr.com</li>
+            <li>- If you have any difficulties of using this program, please direct your inquiries by email to CAPTURECORD Yearbook Consultant.</li>
         </ul>
     </div>
 
