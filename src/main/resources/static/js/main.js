@@ -764,4 +764,74 @@ $(document).ready(function() {
 		
 		console.log('=== 강력한 완전 초기화 완료 ===');
 	}
+	
+	//편집 화면 세션 타임아웃 관리 로직
+	const SessionManager = {
+		timeout: 1800 * 1000, // 30분 (밀리초 단위)
+		timer: null,
+
+		// 타이머를 시작하고 초기화하는 함수
+		reset: function() {
+			// 기존 타이머가 있으면 중지
+			clearTimeout(this.timer);
+			console.log("사용자 활동 감지. 세션 타이머를 재시작합니다.");
+
+			// 새로운 30분 타이머 설정
+			this.timer = setTimeout(() => {
+				console.log("세션 만료 시간이 임박하여 자동 저장을 시작합니다.");
+				this.autoSaveAndLogout();
+			}, this.timeout);
+		},
+
+		// 타이머 완전 중지 함수
+		stop: function() {
+			clearTimeout(this.timer);
+			console.log("세션 타이머를 중지합니다.");
+		},
+
+		autoSaveAndLogout: function() {
+			if (!activePageThumb) {
+				console.log("저장할 대상이 없어 로그아웃만 진행합니다.");
+				this.logout();
+				return;
+			}
+
+			$('#btn-save').trigger('click');
+
+			$(document).one('saveComplete', () => {
+				setTimeout(() => {
+					this.logout();
+				}, 1000);
+			});
+		},
+
+		logout: function() {
+			const form = document.createElement('form');
+			form.method = 'POST';
+			form.action = `${ctx}/logout`;
+			document.body.appendChild(form);
+			form.submit();
+		}
+	};
+
+	// 모달이 열릴 때 세션 타이머 시작
+	$('#editModal').on('show.bs.modal', function() {
+		console.log("모달이 열렸습니다. 세션 관리를 시작합니다.");
+		SessionManager.reset(); // 시작 시 타이머 설정
+
+		// 편집 영역(#page-preview) 내에서 발생하는 모든 활동을 감지
+		// mousedown: 마우스 클릭
+		// keydown: 키보드 입력
+		//mousemove: 마우스 이동
+		$('#page-preview').on('mousedown.session keydown.session', function() {
+			SessionManager.reset();
+		});
+	});
+
+	// 모달이 닫힐 때 세션 타이머 중지 및 이벤트 핸들러 제거
+	$('#editModal').on('hidden.bs.modal', function() {
+		console.log("모달이 닫혔습니다. 세션 관리를 중지합니다.");
+		SessionManager.stop();
+		$('#page-preview').off('.session'); // 네임스페이스로 추가한 이벤트만 제거
+	});
 });
