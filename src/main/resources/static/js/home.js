@@ -38,7 +38,7 @@ $(function() { // $(document).ready()의 축약형입니다.
     $textEl.text(
       'The deadline for submitting yearbook content is ' +
       months[deadline.getMonth()] + ' ' + deadline.getDate() + ', ' + deadline.getFullYear() +
-      ', with ' + diffDays + ' days left.'
+      ', with a remaining' + diffDays + ' days.'
     );
   } else if (diffDays === 0) {
     $textEl.text('Today is the deadline for submitting yearbook content.');
