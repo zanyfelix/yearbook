@@ -1,6 +1,7 @@
 // js/admin/home.js
 
 $(function() {
+	
 	//userId가 없을 경우 첫번째 강제 선택
 	if($("#userId").val() == '') {
 		$("#search").trigger('click');

@@ -1,7 +1,6 @@
 // $(document).ready()의 축약형입니다.
 // DOM이 완전히 로드된 후 스크립트가 실행되도록 보장합니다.
 $(function() {
-
   // 전체 선택/해제
   $('#selectAll').on('click', function() {
     // this는 #selectAll 체크박스 자체를 가리킵니다.
@@ -72,4 +71,77 @@ $(function() {
 
     registerModal.show();
   });
+  
+  // --- 일괄적용 ---
+    $('#btn-apply').on('click', function() {
+		const checkedIds = getCheckedIds();
+		if (checkedIds.length === 0) {
+			alert('Please select one or more items to apply.');
+			return;
+		}
+
+		if (confirm(checkedIds.length + ' Would you like to apply (activate) the items?')) {
+			performAjaxAction('/admin/contents/apply', checkedIds, $("#userId").val(), '적용');
+		}
+    });
+	
+	// 체크된 체크박스의 id 배열을 반환하는 헬퍼 함수
+	function getCheckedIds() {
+		return $('.selectBox:checked').map(function() {
+			return $(this).val();
+		}).get();
+	}
+	
+	// 삭제/적용 AJAX 요청을 처리하는 공통 함수
+	function performAjaxAction(url, ids, userId, actionType) {
+		$.ajax({
+			url: ctx + url,
+			type: 'POST',
+			data: { ids: ids,
+				userId : userId
+			 }, // Spring에서 List<Long>으로 받기 위해 객체 형태로 전송
+			traditional: true, // 배열을 올바르게 전송하기 위한 jQuery 설정
+			success: function(response) {
+				location.reload();
+			},
+			error: function(xhr, status, error) {
+				alert(actionType + ' an error occurred.');
+			}
+		});
+	}
+  
+  // active 토글 스위치 변경
+  	$('.toggle-switch input[type="checkbox"]').on('change', function() {
+  		const $this = $(this);
+
+  		const payload = {
+  			id: +$this.data('id'),
+  			active: this.checked
+  		};
+		
+  		// fetch를 jQuery.ajax로 변경
+  		$.ajax({
+  			url: ctx + '/admin/contents/toggle-active',
+  			type: 'POST',
+  			contentType: 'application/json',
+  			data: JSON.stringify(payload),
+  			// CSRF 토큰이 필요하다면 아래 주석을 해제하고 설정
+  			/*
+  			beforeSend: function(xhr) {
+  			  const token = $('meta[name="_csrf"]').attr('content');
+  			  const header = $('meta[name="_csrf_header"]').attr('content');
+  			  if (token && header) {
+  				xhr.setRequestHeader(header, token);
+  			  }
+  			},
+  			*/
+  			success: function() {
+  				// 성공 시 특별한 동작 없음
+  			},
+  			error: function(jqXHR, textStatus, errorThrown) {
+  				alert('상태 변경 실패: ' + errorThrown);
+  				$this.prop('checked', !$this.prop('checked')); // 실패 시 체크박스 원상 복구
+  			}
+  		});
+  	});
 });

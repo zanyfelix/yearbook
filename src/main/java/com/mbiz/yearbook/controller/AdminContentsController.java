@@ -2,7 +2,6 @@ package com.mbiz.yearbook.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,13 +12,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.Contents;
+import com.mbiz.yearbook.model.Home;
 import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.UserService;
@@ -37,6 +37,9 @@ public class AdminContentsController {
     private ContentsService contentsService;
 	
 	@Autowired
+    private ContentsRepository contentsRepository;
+	
+	@Autowired
 	private UserRepository userRepository;
 	
 	@GetMapping("/admin/contents")
@@ -45,25 +48,25 @@ public class AdminContentsController {
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
-	    List<User> allUsers = userRepository.findAll();
-	    model.addAttribute("allUsers", allUsers);
-		
-	    if (userId == null) {
-	        List<User> users = userRepository.findByRole("user");
-	        model.addAttribute("users", users);
-	        //사용자 id 값 없을 경우 첫번째 보여준다.
-	        userId = users.get(0).getId();
-	    } else {
-	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
-	    }
-	    
-	    model.addAttribute("id", id);
+	    List<User> users = userRepository.findByRole("user");
+        model.addAttribute("users", users);
+        
+        model.addAttribute("id", id);
 	    model.addAttribute("userId", userId);
+        
+        List<Contents> contents = contentsRepository.findByUserId(userId);
+        
+        int totalPages = 0;
+        for(Contents content : contents) {
+        	totalPages += content.getPages();
+        }
 	    
+	    model.addAttribute("totalPages", totalPages);
 	    model.addAttribute("currentMenu", "contents");
 	    
-	    List<Contents> list = contentsService.findByUserId(userId);
-	    model.addAttribute("list", list);
+	    List<Contents> contentsList = contentsService.findByUserId(userId);
+	    model.addAttribute("contentsList", contentsList);
+	    model.addAttribute("contentsSize", contentsList.size());
 	    
 	    return "admin/contents";
 	}
@@ -105,4 +108,21 @@ public class AdminContentsController {
         }
         return "redirect:/admin/contents?userId=" + userId;
     }
+	
+	@PostMapping("/admin/contents/apply")
+    public String apply(@RequestParam(value = "ids", required = false) List<Long> ids, @RequestParam(required = false) Long userId, RedirectAttributes attrs) {
+		
+		List<Contents> contentsUpdate = contentsRepository.findAllById(ids);
+        for (Contents contents : contentsUpdate) {
+        	contents.setActive(true);
+        }
+        contentsRepository.saveAll(contentsUpdate);
+        return "redirect:/admin/contents?userId=" + userId;
+    }
+	
+	@PostMapping("/admin/contents/toggle-active")
+	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
+		contentsService.updateActive(dto.getId(), dto.isActive());
+        return ResponseEntity.ok().build();
+	}
 }

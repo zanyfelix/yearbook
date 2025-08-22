@@ -66,4 +66,13 @@ public class ContentsService {
         return count;
     }
     
+    @Transactional
+    public void updateActive(Long id, boolean active) {
+        Contents contents = contentsRepository.findById(id)
+            .orElseThrow(() ->
+                new IllegalArgumentException("해당 사용자가 없습니다. id=" + id));
+        contents.setActive(active);
+        // save() 불필요 — 트랜잭션 커밋 시점에 JPA가 자동 업데이트합니다.
+    }
+    
 }

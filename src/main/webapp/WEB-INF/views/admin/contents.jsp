@@ -8,7 +8,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme</title>
+    <title>Contents</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/contents.css"/>
 </head>
@@ -45,15 +45,19 @@
     
     <!-- 검색 바 -->
 	<form method="get" action="${pageContext.request.contextPath}/admin/contents" class="search-form">
-	    <select name="userId" class="form-select">
-	        <c:forEach var="item" items="${allUsers}" varStatus="st">
-	        	<c:if test="${item.role ne 'admin'}">
-	            	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
-	            </c:if>
+	    <select id="userId" name="userId" class="form-select">
+	        <c:forEach var="item" items="${users}" varStatus="st">
+	        	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
 	        </c:forEach>
 	    </select>
-	    <button type="submit" class="btn btn-primary">SEARCH</button>
+	    <button type="submit" class="btn btn-primary" id="search">SEARCH</button>
 	</form>
+	
+	<p>
+      Total Pages:
+      <strong id="totalPages">${totalPages}</strong>
+      <!-- 수정 버튼 -->
+    </p>
     
     <form id="deleteForm"
         action="${pageContext.request.contextPath}/admin/contents/delete?userId=${userId}"
@@ -70,10 +74,11 @@
 		      <th>CATEGORY</th>
 		      <th>TITLE</th>
 		      <th>PAGES</th>
+		      <th>ACTIVE</th>
 		    </tr>
 	      </thead>
 	      <tbody>
-	       <c:forEach var="item" items="${list}" varStatus="st">
+	       <c:forEach var="item" items="${contentsList}" varStatus="st">
 	          <tr>
 	          	<td>
 		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
@@ -82,6 +87,21 @@
 	            <td>${item.category}</td>
 	            <td>${item.title}</td>
 	            <td>${item.pages}</td>
+	            <td>
+				  <label class="toggle-switch">
+				    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->
+				    <input type="hidden" name="active" value="0"/>
+				    <!-- 체크된 경우에만 value="1" 이 넘어갑니다 -->
+				    <input
+				      type="checkbox"
+				      name="active"
+				      value="1"
+				      data-id="${item.id}"
+				      ${item.active == true ? "checked" : ""}
+				    />
+				    <span class="slider"></span>
+				  </label>
+				</td>
 	          </tr>
 	        </c:forEach>
 	      </tbody>
@@ -91,6 +111,7 @@
 		    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
 		    <button id="btn-modify" type="button">MODIFY</button>
 		    <button id="btn-delete" type="submit">DELETE</button>
+		    <button id="btn-apply" type="button">APPLY</button>
 	    </div>
     </form>
 
