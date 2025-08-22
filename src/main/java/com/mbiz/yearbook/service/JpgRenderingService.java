@@ -42,8 +42,8 @@ import jakarta.annotation.PostConstruct;
 public class JpgRenderingService {
 
     // --- 상수 및 의존성 주입 (기존과 동일) ---
-    private static final int RENDER_WIDTH = 2480;
-    private static final int RENDER_HEIGHT = 3508;
+    private static final int RENDER_WIDTH = 2621;
+    private static final int RENDER_HEIGHT = 3371;
     private static final double EDIT_WIDTH = 786.0;
     private static final double EDIT_HEIGHT = 1011.0;
     private static final String BASE_IMAGE_PATH = "E:/spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64/workspace/yearbook/src/main/resources/static/";
