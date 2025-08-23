@@ -259,4 +259,27 @@ public class EditController {
         return yearbookRepository.findById(yearbookId)
                 .orElseThrow(() -> new RuntimeException("Yearbook page not found with id: " + yearbookId));
     }
+    
+    /**
+     * 페이지 디자인을 리셋(삭제)하는 메소드
+     * @param id yearbookId
+     * @return 성공 여부를 담은 JSON 객체
+     */
+    @PostMapping("/edit/resetPage")
+    @ResponseBody // JSON 형태로 응답하기 위함
+    public Map<String, Object> resetPage(@RequestParam("id") Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // 여기에 yearbookId(id)를 사용하여 데이터베이스에서
+            // 해당 레코드를 삭제하는 서비스 로직을 호출합니다.
+            // 예: yearbookService.deletePage(id);
+        	yearbookRepository.deleteById(id);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            // 로그 기록
+        }
+        return response;
+    }
 }

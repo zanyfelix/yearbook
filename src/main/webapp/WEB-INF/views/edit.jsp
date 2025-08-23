@@ -43,23 +43,28 @@
 	            <div class="slide-container" id="slider-${st.index}">
 	                <c:forEach var="page" items="${item.yearbookPages}">
 	                    <div class="page-card" draggable="true">
-	                        <%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
-	                        <c:set var="yearbookId" value="${not empty page.id ? page.id : ''}" />
-	                        <c:set var="contentsId" value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
-	                        <c:set var="pageNo" value="${not empty page.pageNo ? page.pageNo : i}" />
-	
-	                        <c:choose>
-	                            <c:when test="${not empty page.thumbnailPath}">
-	                                <img src="${pageContext.request.contextPath}${page.thumbnailPath}" class="page-thumb"
-	                                     data-yearbook-id="${yearbookId}" data-contents-id="${contentsId}" data-page-no="${page.pageNo}"/>
-	                            </c:when>
-	                            <c:otherwise>
-	                                <img src="/images/placeholder.png" class="page-thumb"
-	                                     data-yearbook-id="${yearbookId}" data-contents-id="${contentsId}" data-page-no="${page.pageNo}"/>
-	                            </c:otherwise>
-	                        </c:choose>
-	                        <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
-	                    </div>
+					        <%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
+					        <c:set var="yearbookId" value="${not empty page.id ? page.id : ''}" />
+					        <c:set var="contentsId" value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
+					        <c:set var="pageNo" value="${not empty page.pageNo ? page.pageNo : i}" />
+					
+					        <div class="menu-container">
+							    <button class="menu-dots-btn" aria-label="More options" data-yearbook-id="${yearbookId}">⋮</button>
+							</div>
+					
+					        <c:choose>
+					            <c:when test="${not empty page.thumbnailPath}">
+					                <img src="${pageContext.request.contextPath}${page.thumbnailPath}" class="page-thumb"
+					                     data-yearbook-id="${yearbookId}" data-contents-id="${contentsId}" data-page-no="${page.pageNo}"/>
+					            </c:when>
+					            <c:otherwise>
+					                <img src="/images/placeholder.png" class="page-thumb"
+					                     data-yearbook-id="${yearbookId}" data-contents-id="${contentsId}" data-page-no="${page.pageNo}"/>
+					            </c:otherwise>
+					        </c:choose>
+					        <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+					
+						</div>
 	                </c:forEach>
 	            </div>
 	        </div>

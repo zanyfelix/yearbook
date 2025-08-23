@@ -260,6 +260,9 @@ $(document).ready(function() {
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 						if (response.newYearbookId) {
 							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
+							
+							const dotButton = activePageThumb.closest('.page-card').find('.menu-dots-btn');
+							dotButton.attr('data-yearbook-id', response.newYearbookId);
 						}
 
 						// --- ✨ 핵심 수정: 메시지 표시 로직 ---
@@ -833,5 +836,57 @@ $(document).ready(function() {
 		console.log("모달이 닫혔습니다. 세션 관리를 중지합니다.");
 		SessionManager.stop();
 		$('#page-preview').off('.session'); // 네임스페이스로 추가한 이벤트만 제거
+	});
+	
+	$('.content').on('click', '.menu-dots-btn', function(e) {
+		e.stopPropagation(); // 이벤트 버블링 방지
+		// 다른 드롭다운은 닫고, 현재 클릭한 것만 토글
+		$('.menu-dropdown').not($(this).next('.menu-dropdown')).hide();
+		$(this).next('.menu-dropdown').toggle();
+	});
+	
+	// 문서 전체를 클릭했을 때 드롭다운 닫기
+	$(document).on('click', function() {
+		$('.menu-dropdown').hide();
+	});
+	
+	// 'Page Reset' 버튼 클릭 시 confirm 대화상자로 바로 처리
+	$('.content').on('click', '.menu-dots-btn', function(e) {
+	    e.stopPropagation(); // 이벤트 버블링 방지
+	    const yearbookIdToReset = $(this).data('yearbook-id');
+
+	    // yearbookId가 없으면 (저장되지 않은 페이지) 경고창 표시 후 종료
+	    if (!yearbookIdToReset) {
+	        alert("This page has not been saved yet and cannot be reset.");
+	        return;
+	    }
+
+	    // confirm 대화상자를 사용
+	    if (confirm("All designs on this page will be reset. Please click “Confirm” to proceed.")) {
+	        showLoader(); // 로딩 화면 표시
+
+	        // 서버에 페이지 리셋(삭제) 요청
+	        $.ajax({
+	            url: `${ctx}/edit/resetPage`,
+	            method: 'POST',
+	            data: {
+	                id: yearbookIdToReset
+	            },
+	            success: function(response) {
+	                if (response.success) {
+	                    alert("The page has been reset successfully.");
+	                    location.reload(); // 성공 시 페이지 새로고침
+	                } else {
+	                    alert("Failed to reset the page. " + (response.message || ""));
+	                }
+	            },
+	            error: function() {
+	                alert("An error occurred while communicating with the server.");
+	            },
+	            complete: function() {
+	                hideLoader(); // 로딩 화면 숨김
+	            }
+	        });
+	    }
 	});
 });
