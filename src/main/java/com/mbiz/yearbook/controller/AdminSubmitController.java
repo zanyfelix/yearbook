@@ -73,7 +73,7 @@ public class AdminSubmitController {
 	    List<ContentsData> contentsListForView = new ArrayList<>();
 	    
 	    for (Contents content : allContents) {
-	    	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+	    	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
 	    	List<Yearbook> fullPageList = new ArrayList<>();
 	    	
 			for (int i = 1; i <= content.getPages(); i++) {

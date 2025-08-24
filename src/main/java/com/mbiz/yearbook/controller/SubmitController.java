@@ -65,13 +65,13 @@ public class SubmitController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         
@@ -86,7 +86,7 @@ public class SubmitController {
 	    List<ContentsData> contentsListForView = new ArrayList<>();
 	    
 	    for (Contents content : allContents) {
-	    	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+	    	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
 	    	List<Yearbook> fullPageList = new ArrayList<>();
 	    	
 			for (int i = 1; i <= content.getPages(); i++) {
@@ -123,6 +123,6 @@ public class SubmitController {
     @ResponseBody
     public List<Yearbook> backgroundList(@RequestBody Map<String, Object> param) {
     	Long contentsId = Long.parseLong(param.get("contentsId").toString());
-        return yearbookRepository.findByContentsId(contentsId);
+        return yearbookRepository.findByContentsIdOrderByPageNoAsc(contentsId);
     }
 }

@@ -42,7 +42,7 @@
 	        <div class="position-relative">
 	            <div class="slide-container" id="slider-${st.index}">
 	                <c:forEach var="page" items="${item.yearbookPages}">
-	                    <div class="page-card" draggable="true">
+	                    <div class="page-card" draggable="false" id="card-${page.id}">
 					        <%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
 					        <c:set var="yearbookId" value="${not empty page.id ? page.id : ''}" />
 					        <c:set var="contentsId" value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
@@ -70,8 +70,17 @@
 	        </div>
 	    </div>
 	</c:forEach>
-    
-    <!-- Bootstrap Modal - 전체 화면 크기 -->
+
+	<div class="d-flex align-items-center">
+		<label class="move-pages-label me-2">Move Pages</label> <label
+			class="switch-text"> <input type="checkbox"
+			id="toggle-page-move"> <span class="slider-text round">
+				<span class="on-text">ON</span> <span class="off-text">OFF</span>
+		</span>
+		</label>
+	</div>
+
+		<!-- Bootstrap Modal - 전체 화면 크기 -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true" data-bs-keyboard="false">
         <div class="modal-dialog" style="max-width: 100vw; width: 100vw; height: 100vh; margin: 0;">
             <div class="modal-content border-0 rounded-0" style="height: 100vh;">

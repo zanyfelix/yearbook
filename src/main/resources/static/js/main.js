@@ -838,55 +838,159 @@ $(document).ready(function() {
 		$('#page-preview').off('.session'); // 네임스페이스로 추가한 이벤트만 제거
 	});
 	
-	$('.content').on('click', '.menu-dots-btn', function(e) {
-		e.stopPropagation(); // 이벤트 버블링 방지
-		// 다른 드롭다운은 닫고, 현재 클릭한 것만 토글
-		$('.menu-dropdown').not($(this).next('.menu-dropdown')).hide();
-		$(this).next('.menu-dropdown').toggle();
-	});
-	
-	// 문서 전체를 클릭했을 때 드롭다운 닫기
-	$(document).on('click', function() {
-		$('.menu-dropdown').hide();
-	});
-	
-	// 'Page Reset' 버튼 클릭 시 confirm 대화상자로 바로 처리
-	$('.content').on('click', '.menu-dots-btn', function(e) {
-	    e.stopPropagation(); // 이벤트 버블링 방지
-	    const yearbookIdToReset = $(this).data('yearbook-id');
+	// ================= ▼▼▼ [최종 통합본] Page Reset 및 순서 이동 기능 ▼▼▼ =================
 
-	    // yearbookId가 없으면 (저장되지 않은 페이지) 경고창 표시 후 종료
+	// --- Page Reset 기능 (중복 제거된 최종 버전) ---
+	$('.content').on('click', '.menu-dots-btn', function(e) {
+	    e.stopPropagation();
+	    const cardId = $(this).closest('.page-card').attr('id');
+	    const yearbookIdToReset = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+
 	    if (!yearbookIdToReset) {
 	        alert("This page has not been saved yet and cannot be reset.");
 	        return;
 	    }
 
-	    // confirm 대화상자를 사용
 	    if (confirm("All designs on this page will be reset. Please click “Confirm” to proceed.")) {
-	        showLoader(); // 로딩 화면 표시
-
-	        // 서버에 페이지 리셋(삭제) 요청
 	        $.ajax({
 	            url: `${ctx}/edit/resetPage`,
 	            method: 'POST',
-	            data: {
-	                id: yearbookIdToReset
-	            },
+	            data: { id: yearbookIdToReset },
 	            success: function(response) {
 	                if (response.success) {
 	                    alert("The page has been reset successfully.");
-	                    location.reload(); // 성공 시 페이지 새로고침
+	                    location.reload();
 	                } else {
 	                    alert("Failed to reset the page. " + (response.message || ""));
 	                }
 	            },
 	            error: function() {
 	                alert("An error occurred while communicating with the server.");
-	            },
-	            complete: function() {
-	                hideLoader(); // 로딩 화면 숨김
 	            }
 	        });
 	    }
 	});
+
+
+	// ================= ▼▼▼ [최종 안정화 버전] 페이지 순서 이동 기능 ▼▼▼ =================
+
+	let isMoveModeActive = false;
+	let draggedCardId = null;
+
+	// 'Move Pages' 토글 스위치 변경 이벤트
+	$('#toggle-page-move').on('change', function() {
+	    isMoveModeActive = $(this).is(':checked');
+	    const $pageCards = $('.page-card');
+
+	    if (isMoveModeActive) {
+	        $pageCards.attr('draggable', 'true');
+	    } else {
+	        $pageCards.attr('draggable', 'false');
+	    }
+	});
+
+	// 드래그 시작
+	$('.content').on('dragstart', '.page-card', function(e) {
+	    if (!isMoveModeActive) return;
+	    draggedCardId = this.id;
+	    $(this).addClass('dragging');
+	    e.originalEvent.dataTransfer.setData('text/plain', this.id);
+	    e.originalEvent.dataTransfer.effectAllowed = 'move';
+	});
+
+	// 드래그 종료
+	$('.content').on('dragend', '.page-card', function() {
+	    $(this).removeClass('dragging');
+	    $('.drop-placeholder').remove();
+	    draggedCardId = null;
+	});
+
+	// [안정 버전 로직] dragover 이벤트를 .slide-container에서 처리
+	$('.content').on('dragover', '.slide-container', function(e) {
+	    e.preventDefault();
+	    if (!isMoveModeActive) return;
+
+	    const afterElement = getDragAfterElement(this, e.originalEvent.clientX);
+	    const placeholder = $(this).find('.drop-placeholder');
+
+	    if (placeholder.length === 0) {
+	        $(this).append('<div class="drop-placeholder"></div>');
+	    }
+
+	    if (afterElement == null) {
+	        $(this).append(placeholder);
+	    } else {
+	        $(afterElement).before(placeholder);
+	    }
+	});
+
+	// [안정 버전 로직] drop 이벤트 처리 후 자동 저장 함수 호출
+	$('.content').on('drop', '.slide-container', function(e) {
+	    e.preventDefault();
+	    const placeholder = $(this).find('.drop-placeholder');
+	    const draggedElement = document.getElementById(draggedCardId);
+
+	    if (placeholder.length > 0 && draggedElement) {
+	        placeholder.replaceWith(draggedElement);
+	        // ✨ 드롭 성공 시 자동 저장 함수 호출
+	        savePageOrder();
+	    }
+	});
+
+
+	// [안정 버전 로직] 드롭 위치 계산 헬퍼 함수
+	function getDragAfterElement(container, x) {
+	    const draggableElements = [...$(container).find('.page-card:not(.dragging)')];
+
+	    return draggableElements.reduce((closest, child) => {
+	        const box = child.getBoundingClientRect();
+	        const offset = x - box.left - box.width / 2;
+	        if (offset < 0 && offset > closest.offset) {
+	            return { offset: offset, element: child };
+	        } else {
+	            return closest;
+	        }
+	    }, { offset: Number.NEGATIVE_INFINITY }).element;
+	}
+
+
+	// 자동 저장을 위한 AJAX 함수
+	function savePageOrder() {
+	    const orderData = [];
+	    $('.slide-container').each(function() {
+	        $(this).find('.page-card').each(function(index) {
+	            const cardId = $(this).attr('id');
+	            const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+	            
+	            if (yearbookId) {
+	                orderData.push({
+	                    id: yearbookId,
+	                    pageNo: index + 1
+	                });
+	            }
+	        });
+	    });
+
+	    if (orderData.length === 0) {
+	        return;
+	    }
+
+	    $.ajax({
+	        url: `${ctx}/edit/updatePageOrder`,
+	        method: 'POST',
+	        contentType: 'application/json',
+	        data: JSON.stringify(orderData),
+	        success: function(response) {
+	            if (response.success) {
+	                console.log("페이지 순서가 성공적으로 자동 저장되었습니다.");
+	            } else {
+	                alert("오류: 페이지 순서 저장에 실패했습니다.");
+	            }
+	        },
+	        error: function() {
+	            alert("오류: 서버 통신 중 페이지 순서 저장에 실패했습니다.");
+	        }
+	    });
+	}
+	// ================= ▲▲▲ [최종 안정화 버전] 페이지 순서 이동 기능 ▲▲▲ =================
 });

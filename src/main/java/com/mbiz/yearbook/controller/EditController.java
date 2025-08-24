@@ -96,13 +96,13 @@ public class EditController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         
@@ -119,7 +119,7 @@ public class EditController {
 
 		for (Contents content : allContents) {
 			// 1. 해당 contents에 대해 DB에 이미 저장된 yearbook 페이지들을 가져옵니다.
-			List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+			List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
 
 			// 2. contents.pages 개수만큼 채울 최종 페이지 리스트를 생성합니다.
 			List<Yearbook> fullPageList = new ArrayList<>();
@@ -225,7 +225,7 @@ public class EditController {
 
         Yearbook savedPage = yearbookRepository.save(page);
         
-        int updatedSavedCount = yearbookRepository.findByContentsId(savedPage.getContentsId()).size();
+        int updatedSavedCount = yearbookRepository.findByContentsIdOrderByPageNoAsc(savedPage.getContentsId()).size();
 
         // 변경: 서버에서 designData를 기반으로 직접 썸네일 렌더링
         String newImagePath = null;
@@ -282,4 +282,37 @@ public class EditController {
         }
         return response;
     }
+    
+    public static class PageOrderDTO {
+        private Long id;
+        private int pageNo;
+        // Getters and Setters
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public int getPageNo() { return pageNo; }
+        public void setPageNo(int pageNo) { this.pageNo = pageNo; }
+    }
+    
+    /**
+     * 페이지 순서를 업데이트하는 메소드
+     * @param pageOrders yearbookId와 새로운 pageNo가 담긴 리스트
+     * @return 성공 여부를 담은 JSON 객체
+     */
+	@PostMapping("/edit/updatePageOrder")
+	@ResponseBody
+	public Map<String, Object> updatePageOrder(@RequestBody List<PageOrderDTO> pageOrders) {
+		Map<String, Object> response = new HashMap<>();
+		try {
+			// 여기에 yearbookService를 통해 받은 pageOrders 리스트를
+			// 반복하면서 각 페이지의 pageNo를 업데이트하는 로직을 호출합니다.
+			// 예: yearbookService.updatePageOrder(pageOrders);
+			yearbookService.updatePageOrder(pageOrders);
+			response.put("success", true);
+		} catch (Exception e) {
+			response.put("success", false);
+			response.put("message", e.getMessage());
+			e.printStackTrace();
+		}
+		return response;
+	}
 }

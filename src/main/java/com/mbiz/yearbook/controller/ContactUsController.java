@@ -77,13 +77,13 @@ public class ContactUsController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsId(content.getId());
+        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         

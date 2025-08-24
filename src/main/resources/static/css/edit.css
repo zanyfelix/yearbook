@@ -1956,3 +1956,124 @@ button:focus,
 .menu-dropdown .btn-page-reset:hover {
     background-color: #f5f5f5;
 }
+
+/* ===========================================
+   페이지 순서 이동 기능 (Drag and Drop)
+   =========================================== */
+
+/* 기능 활성화/비활성화 컨트롤 영역 */
+.page-move-controls {
+    position: fixed;
+    bottom: 0;
+    left: 200px; /* 사이드바 너비만큼 띄움 */
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: #343a40;
+    color: white;
+    z-index: 999;
+    border-top: 1px solid #495057;
+}
+
+.move-pages-label {
+    margin-bottom: 0;
+    font-weight: bold;
+    cursor: default;
+}
+
+/* 텍스트 스위치 컨테이너 */
+.switch-text {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+}
+.switch-text input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider-text {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    display: flex;
+    align-items: center;
+    overflow: hidden; /* 텍스트가 밖으로 나가지 않도록 설정 */
+}
+.slider-text:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    z-index: 2; /* 텍스트보다 위에 오도록 설정 */
+}
+input:checked + .slider-text {
+    background-color: #28a745; /* 활성화 시 녹색 */
+}
+input:checked + .slider-text:before {
+    transform: translateX(30px); /* 슬라이더 원 오른쪽으로 이동 */
+}
+.slider-text.round {
+    border-radius: 34px;
+}
+.slider-text.round:before {
+    border-radius: 50%;
+}
+
+.on-text, .off-text {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    transition: opacity 0.2s ease, transform 0.4s ease;
+    z-index: 1;
+}
+
+.on-text {
+    left: 8px;
+    opacity: 0; /* 기본적으로 숨김 */
+}
+
+.off-text {
+    right: 8px;
+    opacity: 1; /* 기본적으로 보임 */
+}
+
+input:checked + .slider-text .on-text {
+    opacity: 1; /* 활성화 시 ON 텍스트 보임 */
+}
+
+input:checked + .slider-text .off-text {
+    opacity: 0; /* 활성화 시 OFF 텍스트 숨김 */
+}
+
+
+/* --- 드래그 앤 드롭 시각 효과 (기존 코드 유지) --- */
+
+.page-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.drop-placeholder {
+    width: 120px;
+    height: 150px;
+    background-color: #e9ecef;
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
