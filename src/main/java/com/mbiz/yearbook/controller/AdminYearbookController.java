@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -77,75 +78,69 @@ public class AdminYearbookController {
 	public void downloadYearbooks(@RequestParam("ids") List<Long> userIds, 
 	                             @RequestParam(value = "format", defaultValue = "jpg") String format,
 	                             HttpServletResponse response) throws IOException {
-	    List<File> renderedFiles = new ArrayList<>();
-	    
-	 // 형식 검증
-	    String normalizedFormat = format.toLowerCase();
-	    if (!isValidFormat(normalizedFormat)) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, 
-	            "지원하지 않는 형식입니다. 지원 형식: jpg, png, tiff");
+		String normalizedFormat = format.toLowerCase();
+	    if (!"jpg".equals(normalizedFormat)) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "지원하지 않는 형식입니다. jpg만 가능합니다.");
 	        return;
 	    }
-	    
-	    // 1. 각 선택된 사용자에 대해 이미지 파일 렌더링 및 임시 저장
-	    for (Long userId : userIds) {
-	        File userFile = jpgRenderingService.renderAndSaveImageForUser(userId, normalizedFormat);
-	        if (userFile != null) {
-	            renderedFiles.add(userFile);
-	        }
-	    }
-	    
-	    if (renderedFiles.isEmpty()) {
-	        response.sendError(HttpServletResponse.SC_NOT_FOUND,
-	                "선택된 사용자들에 대한 제출 가능한 yearbook을 찾을 수 없습니다.");
-	        return;
-	    }
-	    
-	    // 2. 파일 준비 및 다운로드 스트리밍
-	    File finalFile = null;
+
+	    List<File> userZipFiles = new ArrayList<>();
+	    File masterZipFile = null; // 마스터 ZIP 파일도 finally에서 정리하기 위해 밖으로 뺍니다.
+
 	    try {
-	        if (renderedFiles.size() == 1) {
-	            // 한 명의 사용자만 선택된 경우, 해당 파일을 직접 다운로드
-	            File userFile = renderedFiles.get(0);
-	            String fileName = userFile.getName();
-	            
-	            if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
-	                response.setContentType("image/jpeg");
-	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-	                streamFileToResponse(userFile, response);
-	            } else if (fileName.endsWith(".png")) {
-	                response.setContentType("image/png");
-	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-	                streamFileToResponse(userFile, response);
-	            } else if (fileName.endsWith(".tiff") || fileName.endsWith(".tif")) {
-	                response.setContentType("image/tiff");
-	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-	                streamFileToResponse(userFile, response);
-	            } else if (fileName.endsWith(".zip")) {
-	                response.setContentType("application/zip");
-	                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-	                streamFileToResponse(userFile, response);
+	        for (Long userId : userIds) {
+	            // JpgRenderingService에서 사용자별로 폴더 구조화된 ZIP 파일을 생성합니다.
+	            File userZip = jpgRenderingService.renderAndZipUserYearbook(userId, normalizedFormat);
+	            if (userZip != null) {
+	                userZipFiles.add(userZip);
 	            }
-	        } else {
-	            // 여러 사용자가 선택된 경우, 모든 파일을 포함하는 마스터 ZIP 생성
-	            finalFile = createMasterZipArchive(renderedFiles);
+	        }
+
+	        if (userZipFiles.isEmpty()) {
+	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "렌더링할 페이지가 없습니다.");
+	            return;
+	        }
+
+	        if (userZipFiles.size() == 1) {
+	            // 사용자가 한 명이면 해당 ZIP 파일을 바로 다운로드
+	            File fileToDownload = userZipFiles.get(0);
 	            response.setContentType("application/zip");
+	            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileToDownload.getName() + "\"");
+	            streamFileToResponse(fileToDownload, response);
+	        } else {
+	            // 사용자가 여러 명이면, 마스터 ZIP으로 묶어서 다운로드
+	            masterZipFile = createMasterZipFromZips(userZipFiles);
+	            response.setContentType("application/zip");
+	            response.setHeader("Content-Disposition", "attachment; filename=\"Yearbooks_Collection.zip\"");
 	            
-	            String zipFileName = "yearbooks_collection_" + normalizedFormat + ".zip";
-	            response.setHeader("Content-Disposition", "attachment; filename=\"" + zipFileName + "\"");
-	            streamFileToResponse(finalFile, response);
+	            // ▼▼▼ [핵심 수정] 올바른 인자로 메소드 호출 ▼▼▼
+	            streamFileToResponse(masterZipFile, response);
 	        }
+
 	    } finally {
-	        // 3. 모든 임시 파일 정리
-	        for (File file : renderedFiles) {
-	            if (file != null && file.exists()) {
-	                file.delete();
+	        // 모든 임시 파일들을 안전하게 삭제
+	        for (File zipFile : userZipFiles) {
+	            if (zipFile != null && zipFile.exists()) {
+	                zipFile.delete();
 	            }
 	        }
-	        if (finalFile != null && finalFile.exists()) {
-	            finalFile.delete();
+	        if (masterZipFile != null && masterZipFile.exists()) {
+	            masterZipFile.delete();
 	        }
 	    }
+	}
+	
+    // 여러 개의 ZIP 파일을 하나의 마스터 ZIP으로 묶는 헬퍼 메소드
+	private File createMasterZipFromZips(List<File> zipFiles) throws IOException {
+	    File masterZip = File.createTempFile("master_collection_", ".zip");
+	    try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(masterZip))) {
+	        for (File zipFile : zipFiles) {
+	            zos.putNextEntry(new ZipEntry(zipFile.getName()));
+	            Files.copy(zipFile.toPath(), zos);
+	            zos.closeEntry();
+	        }
+	    }
+	    return masterZip;
 	}
 
 	private boolean isValidFormat(String format) {
