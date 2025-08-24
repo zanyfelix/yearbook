@@ -29,6 +29,8 @@
 </div>
 
 <div class="content">
+	<input type="hidden" id="userId" value="${sessionScope.loginUser.id}">
+	
     <div class="top-bar">
         <span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate value="${deadline}" pattern="MMMM dd, yyyy"/> (D-${remainDays} days left)</span>
         <span class="badge bg-success text-dark">Group Photo Page: ${groupProgress}%</span>
@@ -60,21 +62,24 @@
 				    </thead>
 				    <tbody>
 				        <c:forEach var="item" items="${contentsList}" varStatus="st">
-				            <tr>
-				                <td>
-				                    <c:if test="${item.savedPagesCount eq item.contentsInfo.pages}">
-				                        <label style="color: red; cursor: pointer;" data-bs-toggle="modal" onclick="loadPreviewData('${item.contentsInfo.id}')">${item.contentsInfo.title}</label>
-				                    </c:if>
-				                    <c:if test="${item.savedPagesCount ne item.contentsInfo.pages}">
-				                        <label style="color: blue; cursor: pointer;" data-bs-toggle="modal" onclick="loadPreviewData('${item.contentsInfo.id}')">${item.contentsInfo.title}</label>
-				                    </c:if>
-				                </td>
-				                <td>
-				                    <span>Page Confirm</span>
-				                    <input type="checkbox" id="acknowledge" name="acknowledge">
-				                </td>
-				            </tr>
-				        </c:forEach>
+					        <%-- ▼▼▼ [핵심 수정] <tr> 태그에 data-completed 속성 추가 ▼▼▼ --%>
+					        <tr data-completed="${item.savedPagesCount eq item.contentsInfo.pages}">
+					            <td>
+					                <%-- Preview Title (기존 코드와 동일) --%>
+					                <c:if test="${item.savedPagesCount ne item.contentsInfo.pages}">
+					                    <label style="color: red; cursor: pointer;" data-bs-toggle="modal" onclick="loadPreviewData('${item.contentsInfo.id}')">${item.contentsInfo.title}</label>
+					                </c:if>
+					                <c:if test="${item.savedPagesCount eq item.contentsInfo.pages}">
+					                    <label style="color: blue; cursor: pointer;" data-bs-toggle="modal" onclick="loadPreviewData('${item.contentsInfo.id}')">${item.contentsInfo.title}</label>
+					                </c:if>
+					            </td>
+					            <td>
+					                <span>Page Confirm</span>
+					                <input type="checkbox" id="confirm-${item.contentsInfo.id}" name="pageConfirmCheck"
+					                <c:if test="${isAlreadySubmitted}">checked disabled</c:if>>
+					            </td>
+					        </tr>
+					    </c:forEach>
 				    </tbody>
 				</table>
     		</div>
@@ -88,19 +93,19 @@
     <div class="section-box">
         <h5>Page Submission</h5>
         <div class="checklist mb-4">
-            <input type="checkbox" id="acknowledge" name="acknowledge">
+            <input type="checkbox" id="acknowledge" name="acknowledge" class="submission-check"<c:if test="${isAlreadySubmitted}">checked disabled</c:if>>
             <label for="acknowledge">I hereby acknowledge that I have reviewed and understand the aforementioned "Overview".</label><br>
-            <input type="checkbox" id="no_changes" name="no_changes">
+            <input type="checkbox" id="no_changes" name="no_changes" class="submission-check"<c:if test="${isAlreadySubmitted}">checked disabled</c:if>>
             <label for="no_changes">I am aware that no additional changes can be made once the submission is completed.</label><br>
-            <input type="checkbox" id="confirm_all_pages" name="confirm_all_pages">
+            <input type="checkbox" id="confirm_all_pages" name="confirm_all_pages" class="submission-check"<c:if test="${isAlreadySubmitted}">checked disabled</c:if>>
             <label for="confirm_all_pages">I have confirmed all Previews and all pages in sequential order. All yearbook pages are ready to submit.</label><br>
-            <input type="checkbox" id="all_pages_ready" name="all_pages_ready">
+            <input type="checkbox" id="all_pages_ready" name="all_pages_ready" class="submission-check"<c:if test="${isAlreadySubmitted}">checked disabled</c:if>>
             <label for="all_pages_ready">All yearbook pages are ready to submit.</label>
         </div>
-        <button class="btn btn-secondary" type="submit">Page Submit</button>
+        <c:if test="${!isAlreadySubmitted}">
+		    <button class="btn btn-secondary" type="button" id="btn-page-submit">Page Submit</button>
+		</c:if>
     </div>
-    
-    <%-- </c:forEach> --%>
     
     <!-- 프레임 선택용 모달 -->
 	<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">

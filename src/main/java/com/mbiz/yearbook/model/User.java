@@ -77,6 +77,9 @@ public class User {
     @Column(name = "download")
     private Long download;
     
+    @Column(name = "submitted")
+    private boolean submitted = false;
+    
     //@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     //private List<Yearbook> yearbookPages = new ArrayList<>();
 }

@@ -1,10 +1,10 @@
 package com.mbiz.yearbook.controller;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,14 +19,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
-import com.mbiz.yearbook.model.Progress;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.UserTheme;
 import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.repository.ContentsRepository;
+import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
-import com.mbiz.yearbook.service.ProgressService;
-import com.mbiz.yearbook.service.ProgressService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -39,11 +36,20 @@ public class SubmitController {
 	@Autowired
     private ContentsRepository contentsRepository;
 	
+	@Autowired
+    private UserRepository userRepository;
+	
 	@GetMapping("/submit")
 	public String submit(HttpSession session, @RequestParam Long id, Model model) {
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 		model.addAttribute("loginUser", loginUser);
+		
+		if (loginUser.isSubmitted()) {
+            model.addAttribute("isAlreadySubmitted", true);
+        } else {
+            model.addAttribute("isAlreadySubmitted", false);
+        }
 		
 		model.addAttribute("deadline", loginUser.getDeadline());
 
@@ -124,5 +130,44 @@ public class SubmitController {
     public List<Yearbook> backgroundList(@RequestBody Map<String, Object> param) {
     	Long contentsId = Long.parseLong(param.get("contentsId").toString());
         return yearbookRepository.findByContentsIdOrderByPageNoAsc(contentsId);
+    }
+	
+	/**
+     * 최종 제출을 처리하고 사용자의 submitted 상태를 업데이트합니다.
+     */
+    @PostMapping("/submit/finalize")
+    @ResponseBody
+    public Map<String, Object> finalizeSubmission(HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        User loginUser = (User) session.getAttribute("loginUser");
+
+        if (loginUser == null) {
+            response.put("success", false);
+            response.put("message", "Session expired. Please log in again.");
+            return response;
+        }
+
+        try {
+            // 현재 로그인한 사용자의 정보를 DB에서 다시 조회 (최신 정보 확인)
+            User userToUpdate = userRepository.findById(loginUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // submitted 상태를 true(1)로 변경
+            userToUpdate.setSubmitted(true);
+            
+            // 변경된 사용자 정보를 DB에 저장
+            userRepository.save(userToUpdate);
+
+            // 세션 정보도 갱신
+            session.setAttribute("loginUser", userToUpdate);
+
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "An error occurred during submission.");
+            e.printStackTrace(); // 서버 로그에 에러 기록
+        }
+
+        return response;
     }
 }

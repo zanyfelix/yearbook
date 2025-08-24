@@ -76,5 +76,77 @@ function showPreviousImage() {
 
 // DOM이 로드된 후 실행되어야 하는 코드가 있다면 이 안에 유지합니다.
 $(function() {
-	// 현재 코드에서는 특별히 이 안에 둘 코드가 없습니다.
+	
+	$('input[name="pageConfirmCheck"]').on('click', function() {
+		const $checkbox = $(this);
+		// 체크박스가 속한 행(tr)을 찾음
+		const $row = $checkbox.closest('tr');
+		// 행(tr)에 저장된 완료 여부(true/false)를 가져옴
+		const isCompleted = $row.data('completed');
+
+		// 완료되지 않은 항목(빨간색)을 체크하려고 할 때
+		if ($checkbox.is(':checked') && !isCompleted) {
+			alert("This yearbook is incomplete and cannot be confirmed.");
+			// 체크를 즉시 해제
+			$checkbox.prop('checked', false);
+		}
+	});
+	
+	$('#btn-page-submit').on('click', function() {
+
+		// 1. 'Page Confirm' 테이블의 모든 체크박스 확인
+		const $pageConfirmChecks = $('input[name="pageConfirmCheck"]');
+		const totalPageConfirmChecks = $pageConfirmChecks.length;
+		const checkedPageConfirmCount = $pageConfirmChecks.filter(':checked').length;
+
+		if (checkedPageConfirmCount < totalPageConfirmChecks) {
+			alert("Please confirm all previews in the list. (Page Confirm)");
+			return; // 모든 프리뷰가 확인되지 않았으면 함수 종료
+		}
+
+		// 2. 'Page Submission' 섹션의 모든 체크박스 확인
+		const $submissionChecks = $('.submission-check');
+		const totalSubmissionChecks = $submissionChecks.length;
+
+		// ▼▼▼ 이 부분이 수정되었습니다 ▼▼▼
+		const checkedSubmissionCount = $submissionChecks.filter(':checked').length;
+		// ▲▲▲ 수정 완료 ▲▲▲
+
+		if (checkedSubmissionCount < totalSubmissionChecks) {
+			alert("Please acknowledge all terms before submitting. (Page Submission)");
+			return; // 모든 약관에 동의하지 않았으면 함수 종료
+		}
+
+		// 3. 모든 검사가 통과한 경우, 최종 제출 확인 및 실행
+		if (confirm("Are you sure you want to submit? No further modifications will be possible.")) {
+			$.ajax({
+				url: ctx + '/submit/finalize',
+				type: 'POST',
+				contentType: 'application/json',
+				success: function(response) {
+					if (response.success) {
+						alert("Your submission has been completed successfully.");
+						window.location.href = `${ctx}/home?id=${userId}`;
+					} else {
+						alert("Submission failed. Please try again. " + (response.message || ""));
+					}
+				},
+				error: function() {
+					alert("An error occurred while submitting. Please contact support.");
+				}
+			});
+		}
+	});
+
+	// 'Page Confirm' 체크박스 클릭 이벤트 핸들러 (이 코드는 그대로 유지)
+	$('input[name="pageConfirmCheck"]').on('click', function() {
+		const $checkbox = $(this);
+		const $row = $checkbox.closest('tr');
+		const isCompleted = $row.data('completed');
+
+		if ($checkbox.is(':checked') && !isCompleted) {
+			alert("This category is incomplete and cannot be confirmed.");
+			$checkbox.prop('checked', false);
+		}
+	});
 });
