@@ -318,7 +318,32 @@ $(document).ready(function() {
 	// 파일 업로드 처리
 	$('#image-upload-input').on('change', function(e) {
 		const file = e.target.files[0];
-		if (!file) return;
+		if (!file) {
+			// 파일을 선택하지 않았으면 아무것도 하지 않음
+			$(this).val(''); // input 값 초기화
+			return;
+		}
+
+		// 3. 허용되는 파일 확장자 정의 (HEIC 포함)
+		const allowedExtensions = ['jpg', 'jpeg', 'png', 'heic'];
+		const fileExtension = file.name.split('.').pop().toLowerCase();
+
+		if (!allowedExtensions.includes(fileExtension)) {
+			alert("Only JPG, PNG, and HEIC files can be uploaded.");
+			$(this).val(''); // input 값 초기화
+			return;
+		}
+
+		// 2. 파일 크기 검사 (400KB = 400 * 1024 bytes)
+		const fileSizeInKB = file.size / 1024;
+		if (fileSizeInKB < 400) {
+			const confirmationMessage = "The size of the uploaded image does not adhere to the standard requirements. (Less than 400kb may result in reduced image quality). Please click “confirm” to proceed.";
+			if (!confirm(confirmationMessage)) {
+				// 사용자가 '취소'를 누르면 업로드 중단
+				$(this).val(''); // input 값 초기화
+				return;
+			}
+		}
 
 		const $input = $(this);
 		const frameGroup = $input.data('targetFrameGroup');
