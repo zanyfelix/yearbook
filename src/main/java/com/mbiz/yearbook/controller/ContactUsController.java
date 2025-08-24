@@ -2,8 +2,8 @@ package com.mbiz.yearbook.controller;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -16,7 +16,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -29,10 +28,9 @@ import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContactUsService;
+import com.mbiz.yearbook.service.EmailService;
 
 import jakarta.servlet.http.HttpSession;
-
-import java.nio.file.Path;
 
 @Controller
 public class ContactUsController {
@@ -48,6 +46,9 @@ public class ContactUsController {
 	
 	@Autowired
     private ContentsRepository contentsRepository;
+	
+	@Autowired
+    private EmailService emailService;
 
     private final String UPLOAD_DIR = "uploads/";
 
@@ -115,8 +116,18 @@ public class ContactUsController {
 
         User userInfo = userRepository.getById(contact.getUserId());
         contact.setSchoolName(userInfo.getSchoolName());
-        
         contactUsService.save(contact);
+        
+        //메일 발송완료
+        try {
+            emailService.sendContactUsEmail(contact, file);
+        } catch (Exception e) {
+            // 이메일 발송에 실패하더라도 사용자에게는 성공 페이지를 보여주기 위해
+            // 에러를 서버 로그에만 기록하고 계속 진행합니다.
+            System.err.println("이메일 발송 실패: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         redirectAttributes.addFlashAttribute("success", true);
         return "redirect:/contactUs";
     }
