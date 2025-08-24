@@ -142,6 +142,8 @@ body {
 	margin-bottom: 20px;
 	height: 20px;
 	position: relative;
+    /* ✨ 수정: 자식 요소(.percentage-text)가 벗어나도 보이도록 설정 */
+    overflow: visible; 
 }
 
 .progress-bar {
@@ -151,11 +153,18 @@ body {
 	line-height: 20px; /* Centers the text vertically */
 }
 
+
+/* ▼▼▼ 이 부분을 아래 코드로 교체하세요 ▼▼▼ */
+
 .percentage-text {
 	position: absolute;
-	right: -40px; /* Positions text on the right */
+    /* ✨ 수정: 바(bar)의 오른쪽이 아닌, 컨테이너의 오른쪽에 위치하도록 설정 */
+	left: 101%; /* 컨테이너 너비의 102% 위치에서 시작 (간격 생성) */
 	top: 50%;
-	transform: translateY(-50%); /* Centers text vertically */
+	transform: translateY(-50%);
 	color: black;
 	font-weight: bold;
+    /* ✨ 추가: 여러 개의 progress-bar가 있을 때 자릿수가 달라도 왼쪽 정렬을 유지 */
+    width: 50px; /* 충분한 너비 확보 */
+    text-align: left; /* 텍스트 왼쪽 정렬 */
 }
