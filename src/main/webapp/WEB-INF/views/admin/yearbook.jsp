@@ -75,8 +75,8 @@
 	            <td>${item.schoolName}</td>
 	            <td>
 	            	<c:choose>
-	            		<c:when test="${not empty item.fileName}">
-	            			${item.fileName}
+	            		<c:when test="${item.submitted eq true}">
+	            			Submitted
 	            		</c:when>
 	                    <c:otherwise>
 	                    	Not Submitted
