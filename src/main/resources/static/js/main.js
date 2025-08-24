@@ -339,38 +339,44 @@ $(document).ready(function() {
 				const containerRatio = maskWidth / maskHeight;
 
 				let newWidth, newHeight;
+
+				// ▼▼▼ [핵심 수정] 사진 크기를 프레임에 맞추는 계산 로직 ▼▼▼
+				// 사진이 프레임보다 가로로 더 넓은 경우 -> 너비를 프레임에 맞춥니다.
 				if (imgRatio > containerRatio) {
-					newHeight = maskHeight * 1.2;
-					newWidth = newHeight * imgRatio;
-				} else {
-					newWidth = maskWidth * 1.2;
+					newWidth = maskWidth;
 					newHeight = newWidth / imgRatio;
 				}
-				
+				// 사진이 프레임보다 세로로 더 길거나 비율이 같은 경우 -> 높이를 프레임에 맞춥니다.
+				else {
+					newHeight = maskHeight;
+					newWidth = newHeight * imgRatio;
+				}
+				// ▲▲▲ 수정 완료 ▲▲▲
+
 				const newLeft = (maskWidth - newWidth) / 2;
 				const newTop = (maskHeight - newHeight) / 2;
 
 				photo.css({
 					width: `${newWidth}px`,
 					height: `${newHeight}px`,
-					left: `${(maskWidth - newWidth) / 2}px`,
-					top: `${(maskHeight - newHeight) / 2}px`
+					left: `${newLeft}px`,
+					top: `${newTop}px`
 				});
-				
-				// ✨ 아래 코드 블록 추가 ✨
+
+				// 이 아래의 'relativeState' 저장 로직은 기존과 동일합니다.
 				const frameW = frameGroup.width();
 				const frameH = frameGroup.height();
 
 				const initialState = {
-				    position: {
-				        left: (newLeft / frameW) * 100,
-				        top: (newTop / frameH) * 100
-				    },
-				    size: {
-				        width: (newWidth / frameW) * 100,
-				        height: (newHeight / frameH) * 100
-				    },
-				    transform: 'none'
+					position: {
+						left: (newLeft / frameW) * 100,
+						top: (newTop / frameH) * 100
+					},
+					size: {
+						width: (newWidth / frameW) * 100,
+						height: (newHeight / frameH) * 100
+					},
+					transform: 'none'
 				};
 				photo.data('relativeState', initialState);
 
