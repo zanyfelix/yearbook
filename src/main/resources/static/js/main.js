@@ -255,6 +255,7 @@ $(document).ready(function() {
 				data: JSON.stringify(payload),
 				success: function(response) {
 					if (response && response.newImagePath) {
+						alert("This page has been saved.");
 						hasSaved = true; // ✨ 저장이 성공했으므로 플래그를 true로 설정
 
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
@@ -298,12 +299,12 @@ $(document).ready(function() {
 							}
 						}
 					} else {
-						alert("저장에 성공했지만, 썸네일 업데이트에 실패했습니다.");
+						alert("Save succeeded, but thumbnail update failed.");
 					}
 				},
 				error: function(err) {
 					console.error("Save failed:", err);
-					alert("저장에 실패했습니다.");
+					alert("Save failed.");
 				},
 				complete: function() {
 					elementsToHide.removeClass('hide-for-capture');
