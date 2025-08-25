@@ -20,7 +20,8 @@ import javax.imageio.ImageIO;
 public class ThemeProcessor {
 
     // --- 설정: 사용 전 이 부분을 환경에 맞게 수정하세요 ---
-    private static final String DB_URL = "jdbc:mariadb://121.78.123.77:3306/yearbook";
+    //private static final String DB_URL = "jdbc:mariadb://121.78.123.77:3306/yearbook";
+    private static final String DB_URL = "jdbc:mariadb://127.0.0.1:3306/yearbook";
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "root!23";
     private static final String THEME_ROOT_PATH = "D:\\theme";
