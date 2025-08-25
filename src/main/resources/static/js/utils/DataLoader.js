@@ -8,7 +8,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: $("#id").val(), category: "Background", gubun: pageCategory
+				userId: $("#id").val(), category: "background", gubun: pageCategory
 			},
 			success: function(representativeData) {
 				console.log(representativeData);
@@ -78,7 +78,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: $("#id").val(), category: "Photo Frame", gubun: pageCategory
+				userId: $("#id").val(), category: "photoFrame", gubun: pageCategory
 			},
 			success: function(representativeData) {
 				const panel = $('#photoFrameList').empty();
@@ -153,7 +153,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: $("#id").val(), category: "Text Frame", gubun: pageCategory
+				userId: $("#id").val(), category: "textBoxFrame", gubun: pageCategory
 			},
 			success: function(representativeData) {
 				const panel = $('#textboxFrameList').empty();
@@ -202,7 +202,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`,
 			method: 'GET',
 			data: {
-				userId: $("#id").val(), category: "Element", gubun: pageCategory
+				userId: $("#id").val(), category: "element", gubun: pageCategory
 			},
 			success: function(data) {
 				const panel = $('#element-panel');

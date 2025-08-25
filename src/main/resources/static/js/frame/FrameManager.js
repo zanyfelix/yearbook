@@ -3,7 +3,6 @@
 // ============================================================================
 class FrameManager {
 	static applyFrame(frameTheme, savedState = null) {
-		
 		const frameContainer = $('#frame-container');
 		
 		let baseZIndex = 15;
