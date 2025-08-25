@@ -14,8 +14,6 @@ class DataLoader {
 				const panel = $('#background-panel').empty();
 
 				representativeData.forEach(result => {
-					console.log(result);
-					console.log(result.theme);
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
 					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
 
