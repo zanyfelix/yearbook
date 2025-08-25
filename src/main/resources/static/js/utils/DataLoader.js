@@ -2,17 +2,17 @@
 // 📁 js/utils/DataLoader.js
 // ============================================================================
 class DataLoader {
-	static loadBackgrounds() {
+	static loadBackgrounds(pageCategory) {
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
 		$.ajax({
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: 11, category: "background"
+				userId: $("#id").val(), category: "Background", gubun: pageCategory
 			},
 			success: function(representativeData) {
+				console.log(representativeData);
 				const panel = $('#background-panel').empty();
-
 				representativeData.forEach(result => {
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
 					const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, () => {
@@ -70,7 +70,7 @@ class DataLoader {
 		}, 100);
 	}
 
-	static loadPhotoFrames() {
+	static loadPhotoFrames(pageCategory) {
 		$('#photoFrameList').empty();
 
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
@@ -78,7 +78,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: 11, category: "photoframe"
+				userId: $("#id").val(), category: "Photo Frame", gubun: pageCategory
 			},
 			success: function(representativeData) {
 				const panel = $('#photoFrameList').empty();
@@ -145,7 +145,7 @@ class DataLoader {
 		}, 100);
 	}
 
-	static loadTextboxFrames() {
+	static loadTextboxFrames(pageCategory) {
 		$('#textboxFrameList').empty();
 
 		// 1. 대표 배경 목록을 가져오는 AJAX (기존과 동일)
@@ -153,7 +153,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`, // 이 URL은 각 카테고리의 대표 아이템만 반환한다고 가정
 			method: 'GET',
 			data: {
-				userId: 11, category: "textboxframe"
+				userId: $("#id").val(), category: "Text Frame", gubun: pageCategory
 			},
 			success: function(representativeData) {
 				const panel = $('#textboxFrameList').empty();
@@ -186,7 +186,7 @@ class DataLoader {
 		});
 	}
 
-	static loadElements() {
+	static loadElements(pageCategory) {
 		// element-panel이 없으면 생성하되, 기존 프레임과 동일한 구조로
 		if ($('#element-panel').length === 0) {
 			const elementPanel = $('<div id="element-panel" class="row row-cols-3 g-3"></div>');
@@ -202,7 +202,7 @@ class DataLoader {
 			url: `${ctx}/edit/theme`,
 			method: 'GET',
 			data: {
-				userId: 11, category: "element"
+				userId: $("#id").val(), category: "Element", gubun: pageCategory
 			},
 			success: function(data) {
 				const panel = $('#element-panel');

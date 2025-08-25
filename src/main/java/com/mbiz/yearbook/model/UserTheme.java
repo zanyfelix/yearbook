@@ -43,7 +43,7 @@ public class UserTheme extends BaseTimeEntity {
     private LocalDateTime updatedAt;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "theme_id", nullable = false)
+    @JoinColumn(name = "theme_id", referencedColumnName = "theme_no")
     private Theme theme;
     
 }

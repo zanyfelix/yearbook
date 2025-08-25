@@ -4,9 +4,9 @@ import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.web.WebProperties.LocaleResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -18,6 +18,9 @@ public class WebConfig implements WebMvcConfigurer {
 	
 	@Autowired
     private SessionInterceptor sessionInterceptor;
+	
+	@Value("${upload.path.theme}")
+    private String themePath;
 	
 	@Bean
     public SessionLocaleResolver localeResolver() {
@@ -59,7 +62,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry
-        		.addResourceHandler("/css/**", "/js/**", "/images/**", "/uploads/**", "/thumbnails/**")
-                .addResourceLocations("classpath:/static/css/", "classpath:/static/js/", "classpath:/static/images/","file:uploads/","file:///" + uploadPath);
+        		.addResourceHandler("/css/**", "/js/**", "/images/**", "/uploads/**", "/thumbnails/**","/theme/**")
+                .addResourceLocations("classpath:/static/css/", "classpath:/static/js/", "classpath:/static/images/","file:uploads/","file:///" + uploadPath, themePath);
     }
 }

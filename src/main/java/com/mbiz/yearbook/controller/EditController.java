@@ -1,14 +1,10 @@
 package com.mbiz.yearbook.controller;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -75,7 +71,6 @@ public class EditController {
 
 		User loginUser = (User) session.getAttribute("loginUser");
 		model.addAttribute("loginUser", loginUser);
-		
 		model.addAttribute("deadline", loginUser.getDeadline());
 
 	    LocalDate today = LocalDate.now();
@@ -164,8 +159,8 @@ public class EditController {
     
 	@GetMapping("/edit/theme")
     @ResponseBody
-    public List<UserTheme> backgroundList(@RequestParam Long userId, @RequestParam String category) {
-        return themeService.findByUserIdAndCategory(userId, category);
+    public List<UserTheme> backgroundList(@RequestParam Long userId, @RequestParam String category, @RequestParam String gubun) {
+        return themeService.findByUserIdAndCategory(userId, category, gubun);
     }
     
     /**

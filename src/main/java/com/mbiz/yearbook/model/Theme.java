@@ -62,4 +62,13 @@ public class Theme extends BaseTimeEntity {
     @UpdateTimestamp
     @Column(name = "modified_at", nullable = false)
     private LocalDateTime updatedAt;
+    
+    @Column(name = "font_path")
+    private String fontPath;
+    
+    @Column(name = "gubun")
+    private String gubun;
+    
+    @Column(name = "theme_no")
+    private Long themeNo;
 }

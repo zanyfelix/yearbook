@@ -38,7 +38,6 @@
 	<c:forEach var="item" items="${contentsList}" varStatus="st">
 	    <div class="category-section">
 	        <h5 class="mb-3">${item.contentsInfo.title} (${item.savedPagesCount}/${item.contentsInfo.pages})</h5>
-	        
 	        <div class="position-relative">
 	            <div class="slide-container" id="slider-${st.index}">
 	                <c:forEach var="page" items="${item.yearbookPages}">
@@ -46,7 +45,7 @@
 					        <%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
 					        <c:set var="yearbookId" value="${not empty page.id ? page.id : ''}" />
 					        <c:set var="contentsId" value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
-					        <c:set var="pageNo" value="${not empty page.pageNo ? page.pageNo : i}" />
+					        <c:set var="pageNo" value="${not empty page.pageNo ? page.pageNo : i}" />					        
 					
 					        <div class="menu-container">
 							    <button class="menu-dots-btn" aria-label="More options" data-yearbook-id="${yearbookId}">⋮</button>
@@ -62,7 +61,7 @@
 					                     data-yearbook-id="${yearbookId}" data-contents-id="${contentsId}" data-page-no="${page.pageNo}"/>
 					            </c:otherwise>
 					        </c:choose>
-					        <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+					        <button class="edit-btn mb-2" data-bs-toggle="modal" data-bs-target="#editModal" data-category="${item.contentsInfo.category}" data-page-category="${item.contentsInfo.category}">Edit</button>
 					
 						</div>
 	                </c:forEach>

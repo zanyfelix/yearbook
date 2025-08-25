@@ -111,7 +111,10 @@ $(document).ready(function() {
 
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
 		const yearbookId = activePageThumb.data('yearbook-id');
-
+		
+		const pageCategory = $(this).data('category');
+		DataLoader.loadBackgrounds(pageCategory);
+		
 		showLoader();
 
 		// ✨ 핵심: 모달이 열리기 전에 완전 초기화
@@ -683,7 +686,6 @@ $(document).ready(function() {
 		if (window.selectionManager) {
 			window.selectionManager.clearSelection();
 		}
-		$("#btn-background").trigger('click');
 	});
 	
 	$('#editModal').on('shown.bs.modal', function() {
@@ -1026,4 +1028,10 @@ $(document).ready(function() {
 	    });
 	}
 	// ================= ▲▲▲ [최종 안정화 버전] 페이지 순서 이동 기능 ▲▲▲ =================
+	
+	$(document).on('click', '.edit-btn', function() {
+	    const pageCategory = $(this).data('category');
+	    $('#editModal').data('page-category', pageCategory);
+	    console.log('Setting page category to:', pageCategory);
+	});
 });

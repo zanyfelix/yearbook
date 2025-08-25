@@ -58,8 +58,8 @@ public class AdminThemeController {
 	    
 	    model.addAttribute("category", category);
 	    
-	    List<Long> selectedIds = themeService.findThemeIdsByUserAndCategory(id, category);
-	    model.addAttribute("selectedIds", selectedIds);
+	    //List<Long> selectedIds = themeService.findThemeIdsByUserAndCategory(id, category,"");
+	    //model.addAttribute("selectedIds", selectedIds);
 	    
 	    return "admin/theme";
 	}
