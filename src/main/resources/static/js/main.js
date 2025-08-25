@@ -360,23 +360,24 @@ $(document).ready(function() {
 			photo.on('load', function() {
 				const maskWidth = mask.width();
 				const maskHeight = mask.height();
-				const imgRatio = this.naturalWidth / this.naturalHeight;
-				const containerRatio = maskWidth / maskHeight;
+				const imgNaturalWidth = this.naturalWidth;  // 이미지 원본 너비
+				const imgNaturalHeight = this.naturalHeight; // 이미지 원본 높이
 
 				let newWidth, newHeight;
 
-				// ▼▼▼ [핵심 수정] 사진 크기를 프레임에 맞추는 계산 로직 ▼▼▼
-				// 사진이 프레임보다 가로로 더 넓은 경우 -> 너비를 프레임에 맞춥니다.
-				if (imgRatio > containerRatio) {
-					newWidth = maskWidth;
-					newHeight = newWidth / imgRatio;
-				}
-				// 사진이 프레임보다 세로로 더 길거나 비율이 같은 경우 -> 높이를 프레임에 맞춥니다.
-				else {
-					newHeight = maskHeight;
-					newWidth = newHeight * imgRatio;
-				}
-				// ▲▲▲ 수정 완료 ▲▲▲
+				// ▼▼▼▼▼ [핵심 수정] 프레임을 꽉 채우는 로직 ▼▼▼▼▼
+
+				// 1. 프레임을 완전히 채우기 위한 배율 계산
+				//    Math.max를 사용하여 프레임에 빈 공간이 없도록 함
+				const scaleX = maskWidth / imgNaturalWidth;
+				const scaleY = maskHeight / imgNaturalHeight;
+				const scale = Math.max(scaleX, scaleY);
+
+				// 2. 최종 크기 계산 (0.9 곱하지 않고 100% 크기 유지)
+				newWidth = imgNaturalWidth * scale;
+				newHeight = imgNaturalHeight * scale;
+
+				// ▲▲▲▲▲ 수정 완료 ▲▲▲▲▲
 
 				const newLeft = (maskWidth - newWidth) / 2;
 				const newTop = (maskHeight - newHeight) / 2;
