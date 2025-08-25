@@ -30,7 +30,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             // 1. 메일 수신자 설정 (관리자 이메일)
-            helper.setTo("brainy_smurf@naver.com");
+            helper.setTo("support@capturecord.com");
 
             // 2. 메일 발신자 설정 (서버 계정)
             helper.setFrom("support@capturecord.com");
