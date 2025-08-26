@@ -76,35 +76,18 @@
 		        </td>
 	            <td>${item.schoolName}</td>
 	            <td>
-	            	<select class="form-select">
-	            		<option value="1">1</option>
-	            		<option value="2">2</option>
-	            		<option value="3">3</option>
-	            		<option value="4">4</option>
-	            		<option value="5">5</option>
-	            		<option value="6">6</option>
-	            		<option value="7">7</option>
-	            		<option value="8">9</option>
-	            		<option value="9">10</option>
-	            		<option value="10">11</option>
-	            		<option value="1">13</option>
-	            		<option value="1">14</option>
-	            		<option value="1">15</option>
-	            		<option value="1">16</option>
-	            		<option value="1">17</option>
-	            		<option value="1">18</option>
-	            		<option value="1">20</option>
-	            		<option value="1">21</option>
-	            		<option value="1">25</option>
-	            		<option value="1">26</option>
-	            		<option value="1">27</option>
-	            		<option value="1">28</option>
+	            	<select class="form-select theme-select">
+	            		<c:forEach var="theme" items="${themes}">
+                            <%-- 현재 사용자의 테마와 일치하면 selected 속성 부여 (userTheme 정보가 있을 경우) --%>
+	            		    <%-- <option value="${theme.id}" ${item.userTheme.theme.id == theme.id ? 'selected' : ''}>${theme.themeNo}</option> --%>
+	            		    <option value="${theme.id}" data-theme-no="${theme.themeNo}">${theme.themeNo}</option>
+                        </c:forEach>
 	            	</select>
 	            </td>
 	            <td>
-	            	<select class="form-select">
-	            		<option>Funicorn</option>
-	            	</select>
+	            	<select class="form-select font-select">
+			            <%-- 이 부분은 JS가 AJAX로 채웁니다. --%>
+			        </select>
 	            </td>
 	          </tr>
 	          </c:if>

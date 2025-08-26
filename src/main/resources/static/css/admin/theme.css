@@ -97,7 +97,6 @@ html, body {
   border-radius: 4px;
   background-color: #fff;
   font-size: 0.95rem;
-  flex-grow: 1; /* select 요소가 남는 공간을 모두 차지하도록 설정 */
 }
 .search-form button {
   padding: 8px 16px;
@@ -116,7 +115,7 @@ html, body {
 /* ────────────────────────────────────────────────────────── */
 /* ── 문의 리스트 테이블 ── */
 .container-fluid table {
-  width: 100%;
+  width: 50%;
   border-collapse: collapse;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);

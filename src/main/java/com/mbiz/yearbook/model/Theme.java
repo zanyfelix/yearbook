@@ -24,50 +24,50 @@ public class Theme extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 	
-	@Column(nullable = false)
+	@Column(nullable = true)
     private String filename;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String category;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String editPath;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String editMaskPath;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String thumbnailPath;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String originalPath;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String originalMaskPath;
     
     @Column(name = "parent_id")
     private Long parentId;
     
     @Column(name = "edit_width")
-    private int editWidth;
+    private Integer editWidth;
     
     @Column(name = "edit_height")
-    private int editHeight;
+    private Integer editHeight;
     
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt;
     
     @UpdateTimestamp
-    @Column(name = "modified_at", nullable = false)
+    @Column(name = "modified_at", nullable = true)
     private LocalDateTime updatedAt;
     
-    @Column(name = "font_path")
+    @Column(name = "font_path" , nullable = true)
     private String fontPath;
     
-    @Column(name = "gubun")
+    @Column(name = "gubun" , nullable = true)
     private String gubun;
     
-    @Column(name = "theme_no")
+    @Column(name = "theme_no" , nullable = true)
     private Long themeNo;
 }

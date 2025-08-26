@@ -80,6 +80,4 @@ public class User {
     @Column(name = "submitted")
     private boolean submitted = false;
     
-    //@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    //private List<Yearbook> yearbookPages = new ArrayList<>();
 }
