@@ -77,7 +77,28 @@
 	            <td>${item.schoolName}</td>
 	            <td>
 	            	<select class="form-select">
-	            		<option>13</option>
+	            		<option value="1">1</option>
+	            		<option value="2">2</option>
+	            		<option value="3">3</option>
+	            		<option value="4">4</option>
+	            		<option value="5">5</option>
+	            		<option value="6">6</option>
+	            		<option value="7">7</option>
+	            		<option value="8">9</option>
+	            		<option value="9">10</option>
+	            		<option value="10">11</option>
+	            		<option value="1">13</option>
+	            		<option value="1">14</option>
+	            		<option value="1">15</option>
+	            		<option value="1">16</option>
+	            		<option value="1">17</option>
+	            		<option value="1">18</option>
+	            		<option value="1">20</option>
+	            		<option value="1">21</option>
+	            		<option value="1">25</option>
+	            		<option value="1">26</option>
+	            		<option value="1">27</option>
+	            		<option value="1">28</option>
 	            	</select>
 	            </td>
 	            <td>
