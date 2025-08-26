@@ -136,7 +136,7 @@ class FrameManager {
                 'mask-size': '100% 100%',
                 'mask-repeat': 'no-repeat',
                 'mask-position': 'center'
-            });
+            });			
         };
         img.src = frameTheme.editMaskPath;
     }
