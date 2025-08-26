@@ -1,6 +1,7 @@
 package com.mbiz.yearbook.service;
 
 import java.awt.AlphaComposite;
+import java.awt.RenderingHints;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -51,6 +52,13 @@ public class ThumbnailRenderingService {
 
         BufferedImage canvas = new BufferedImage(THUMB_WIDTH, THUMB_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = canvas.createGraphics();
+        
+	     // ▼▼▼▼▼ 추가할 코드 ▼▼▼▼▼
+	     // 렌더링 품질을 높이기 위한 힌트 설정
+	     g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+	     g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+	     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+	     // ▲▲▲▲▲ 추가할 코드 ▲▲▲▲▲
 
         // 배경 렌더링
         String bgPath = root.path("background").asText();
@@ -77,6 +85,12 @@ public class ThumbnailRenderingService {
             if (photoNode != null && photoNode.has("src") && theme.getEditMaskPath() != null) {
                 BufferedImage frameCanvas = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D frameG2d = frameCanvas.createGraphics();
+                
+             // ▼▼▼▼▼ 여기에도 추가 ▼▼▼▼▼
+                frameG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                frameG2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                frameG2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
                 // 1. 마스크 이미지를 임시 캔버스에 그린다.
                 BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
@@ -97,7 +111,45 @@ public class ThumbnailRenderingService {
                 String base64Image = photoNode.path("src").asText().split(",")[1];
                 byte[] imageBytes = Base64.getDecoder().decode(base64Image);
                 BufferedImage photoImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-                frameG2d.drawImage(photoImage, photoX, photoY, photoWidth, photoHeight, null);
+                //frameG2d.drawImage(photoImage, photoX, photoY, photoWidth, photoHeight, null);
+                
+             // ▼▼▼▼▼ [수정] 이전에 추가했던 회전 로직을 모두 지우고 아래 코드로 교체 ▼▼▼▼▼
+                String transform = photoNode.path("transform").asText("none");
+
+                // Graphics2D의 현재 변환 상태를 저장
+                java.awt.geom.AffineTransform oldTx = frameG2d.getTransform();
+
+                // 1. 사진을 배치할 위치(photoX, photoY)로 먼저 이동시킵니다.
+                frameG2d.translate(photoX, photoY);
+
+                // 2. CSS transform 값을 해석하여 적용합니다.
+                if (!"none".equals(transform) && transform.startsWith("matrix(")) {
+                    try {
+                        // "matrix(a, b, c, d, e, f)" 에서 숫자 부분만 추출
+                        String[] values = transform.substring(7, transform.length() - 1).split(",");
+                        if (values.length == 6) {
+                            double a = Double.parseDouble(values[0].trim()); // m00
+                            double b = Double.parseDouble(values[1].trim()); // m10
+                            double c = Double.parseDouble(values[2].trim()); // m01
+                            double d = Double.parseDouble(values[3].trim()); // m11
+                            double e = Double.parseDouble(values[4].trim()); // m02
+                            double f = Double.parseDouble(values[5].trim()); // m12
+                            
+                            java.awt.geom.AffineTransform photoTx = new java.awt.geom.AffineTransform(a, b, c, d, e, f);
+                            frameG2d.transform(photoTx);
+                        }
+                    } catch (Exception e) {
+                        // 매트릭스 파싱 실패 시 로그를 남기고 무시할 수 있습니다.
+                        e.printStackTrace();
+                    }
+                }
+
+                // 3. 변환이 적용된 (0, 0) 위치에 크기에 맞게 이미지를 그립니다.
+                frameG2d.drawImage(photoImage, 0, 0, photoWidth, photoHeight, null);
+
+                // 4. 다른 요소에 영향을 주지 않도록 Graphics2D의 변환 상태를 원래대로 복구합니다.
+                frameG2d.setTransform(oldTx);
+                // ▲▲▲▲▲ [수정] 코드 교체 완료 ▲▲▲▲▲
 
                 frameG2d.dispose();
 
