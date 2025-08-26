@@ -7,6 +7,8 @@ import java.awt.FontFormatException;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -28,7 +30,6 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.ImageWriter;
 import javax.imageio.metadata.IIOMetadata;
-import javax.imageio.metadata.IIOMetadataFormatImpl;
 import javax.imageio.metadata.IIOMetadataNode;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageOutputStream;
@@ -51,6 +52,7 @@ import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
+import com.mbiz.yearbook.util.PathUtils;
 
 import jakarta.annotation.PostConstruct;
 
@@ -212,7 +214,7 @@ public class JpgRenderingService {
         String bgEditPath = root.path("background").asText();
         if (!bgEditPath.isEmpty()) {
             String bgOriginalPath = bgEditPath.replace(SUFFIX_EDIT, SUFFIX_ORIGINAL);
-            File bgFile = new File(themePath + bgOriginalPath);
+            File bgFile = new File(PathUtils.normalizePath((themePath + bgOriginalPath)));
             if (bgFile.exists()) {
                 BufferedImage bgImage = ImageIO.read(bgFile);
                 g2d.drawImage(bgImage, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
@@ -242,7 +244,11 @@ public class JpgRenderingService {
                 String src = photoNode.path("src").asText();
                 if (src != null && src.contains(",")) {
                     byte[] imageBytes = Base64.getDecoder().decode(src.split(",", 2)[1]);
-                    BufferedImage photoImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+                    // START: 수정된 부분
+                    // 원본: BufferedImage photoImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+                    // 수정: EXIF 정보를 읽어 이미지를 자동으로 회전시키는 메소드 호출
+                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+                    // END: 수정된 부분
                     if (photoImage != null) {
                         int photoX = (int) (frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
                         int photoY = (int) (frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
@@ -250,7 +256,7 @@ public class JpgRenderingService {
                         int photoHeight = (int) (frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
                         
                         if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-                            File maskFile = new File(themePath + theme.getOriginalMaskPath());
+                            File maskFile = new File(PathUtils.normalizePath(themePath + theme.getOriginalMaskPath()));
                             if(maskFile.exists()){
                                 BufferedImage maskImage = ImageIO.read(maskFile);
                                 g2dComposite.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
@@ -265,7 +271,7 @@ public class JpgRenderingService {
             }
             
             if (theme.getOriginalPath() != null && !theme.getOriginalPath().isEmpty()) {
-                File frameFile = new File(themePath + theme.getOriginalPath());
+                File frameFile = new File(PathUtils.normalizePath(themePath + theme.getOriginalPath()));
                 if (frameFile.exists()) {
                     BufferedImage frameImage = ImageIO.read(frameFile);
                     g2dComposite.drawImage(frameImage, 0, 0, frameWidth, frameHeight, null);
@@ -543,4 +549,61 @@ public class JpgRenderingService {
         parent.appendChild(child);
         return child;
     }
+
+    // START: 이미지 자동 회전을 위한 헬퍼 메소드 (클래스 내부에 추가)
+    private BufferedImage readAndCorrectImageOrientation(byte[] imageBytes) {
+        try {
+            BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            if (originalImage == null) return null;
+
+            int orientation = 1; // 기본값: 정상 방향
+            try {
+                com.drew.metadata.Metadata metadata = com.drew.imaging.ImageMetadataReader.readMetadata(new ByteArrayInputStream(imageBytes));
+                com.drew.metadata.exif.ExifIFD0Directory directory = metadata.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
+                if (directory != null && directory.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION)) {
+                    orientation = directory.getInt(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION);
+                }
+            } catch (Exception e) {
+                System.err.println("EXIF 메타데이터를 읽을 수 없습니다: " + e.getMessage());
+                return originalImage; // 메타데이터 읽기 실패 시 원본 이미지 반환
+            }
+
+            if (orientation <= 1) {
+                return originalImage; // 회전 필요 없음
+            }
+
+            AffineTransform transform = new AffineTransform();
+            int width = originalImage.getWidth();
+            int height = originalImage.getHeight();
+
+            switch (orientation) {
+                case 2: transform.scale(-1.0, 1.0); transform.translate(-width, 0); break; // 좌우 반전
+                case 3: transform.translate(width, height); transform.rotate(Math.PI); break; // 180도 회전
+                case 4: transform.scale(1.0, -1.0); transform.translate(0, -height); break; // 상하 반전
+                case 5: transform.rotate(Math.PI / 2); transform.scale(1.0, -1.0); break;
+                case 6: transform.translate(height, 0); transform.rotate(Math.PI / 2); break; // 오른쪽으로 90도 회전
+                case 7: transform.rotate(Math.PI / 2); transform.scale(-1.0, 1.0); transform.translate(-height, 0); break;
+                case 8: transform.translate(0, width); transform.rotate(-Math.PI / 2); break; // 왼쪽으로 90도 회전
+                default: break;
+            }
+
+            AffineTransformOp op = new AffineTransformOp(transform, AffineTransformOp.TYPE_BILINEAR);
+            
+            BufferedImage rotatedImage;
+            if (orientation >= 5 && orientation <= 8) { // 90도 회전 시 너비와 높이가 바뀜
+                rotatedImage = new BufferedImage(height, width, originalImage.getType());
+            } else {
+                rotatedImage = new BufferedImage(width, height, originalImage.getType());
+            }
+
+            op.filter(originalImage, rotatedImage);
+            return rotatedImage;
+
+        } catch (java.io.IOException e) {
+            System.err.println("이미지 처리 중 오류 발생: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    // END: 이미지 자동 회전을 위한 헬퍼 메소드
 }
