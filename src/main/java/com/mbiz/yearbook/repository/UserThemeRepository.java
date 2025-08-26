@@ -20,14 +20,21 @@ public interface UserThemeRepository extends JpaRepository<UserTheme, Long> {
      * JOIN FETCH를 사용하여 User와 Theme 객체를 즉시 로딩하여 직렬화 오류를 방지합니다.
      */
 	// gubun이 있을 때
-    @Query("SELECT ut.theme FROM UserTheme ut WHERE ut.user.id = :userId AND ut.theme.category = :category AND ut.theme.gubun = :gubun")
+	@Query("SELECT t FROM UserTheme ut, Theme t " +
+	           "WHERE ut.themeNo = t.themeNo " + // 👈 명시적인 JOIN 조건
+	           "AND ut.user.id = :userId " +
+	           "AND t.category = :category " +
+	           "AND t.gubun = :gubun")
     List<Theme> findUserThemesByUserIdAndThemeCategoryAndThemeGubun(
         @Param("userId") Long userId, 
         @Param("category") String category, 
         @Param("gubun") String gubun);
 
     // gubun이 없을 때
-    @Query("SELECT ut.theme FROM UserTheme ut WHERE ut.user.id = :userId AND ut.theme.category = :category")
+	@Query("SELECT t FROM UserTheme ut, Theme t " +
+	           "WHERE ut.themeNo = t.themeNo " + // 👈 명시적인 JOIN 조건
+	           "AND ut.user.id = :userId " +
+	           "AND t.category = :category ")
     List<Theme> findUserThemesByUserIdAndThemeCategory(
         @Param("userId") Long userId, 
         @Param("category") String category);
