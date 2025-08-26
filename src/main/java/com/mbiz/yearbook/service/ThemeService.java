@@ -23,7 +23,9 @@ import lombok.RequiredArgsConstructor;
 public class ThemeService {
 	
 	private final UserRepository userRepository;
+	
     private final ThemeRepository themeRepository;
+    
     private final UserThemeRepository userThemeRepository;
 
     public List<Theme> findByCategory(String category) {
@@ -41,6 +43,24 @@ public class ThemeService {
     	ut.setUser(userReference);
 	    ut.setTheme(themeReference);
 	    ut.setCategory(category);
+	    ut.setCreatedAt(LocalDateTime.now());
+	    ut.setUpdatedAt(LocalDateTime.now());
+    	
+    	userThemeRepository.save(ut);
+    }
+    
+    @Transactional
+    public void saveUserTheme1(Long userId,  Long themeId) {
+    	
+    	UserTheme ut = new UserTheme();
+    	
+    	User userReference = userRepository.getReferenceById(userId);
+        Theme themeReference = themeRepository.getReferenceById(themeId);
+        themeReference.setThemeNo(themeId);
+        
+    	ut.setUser(userReference);
+	    ut.setTheme(themeReference);
+	    ut.setCategory("11");
 	    ut.setCreatedAt(LocalDateTime.now());
 	    ut.setUpdatedAt(LocalDateTime.now());
     	
@@ -76,6 +96,15 @@ public class ThemeService {
             .filter(Optional::isPresent)
             .map(Optional::get)
             .collect(Collectors.toList());
+        
+        representativeThemes.sort(java.util.Comparator
+                // 1순위: (Theme theme)으로 타입을 명시
+                .comparingLong((Theme theme) -> (long) theme.getEditWidth() * theme.getEditHeight())
+                // 2순위: 1순위 결과가 같으면 edit_width 내림차순
+                .thenComparing(Theme::getEditWidth, java.util.Comparator.naturalOrder())
+                // 3순위: 2순위 결과도 같으면 file_name 오름차순
+                .thenComparing(Theme::getFilename)
+            );
         
         // UserTheme 객체로 변환하여 반환
         return representativeThemes.stream()

@@ -177,7 +177,7 @@ public class EditController {
 
         // 2. parentId가 있으면, 해당 parentId를 가진 모든 테마 목록을 조회하여 반환합니다.
         if (parentId != null) {
-            return themeRepository.findByParentId(parentId);
+            return themeRepository.findByParentIdOrderByFilenameAsc(parentId);
         }
 
         // parentId가 없는 경우, 빈 리스트나 적절한 예외 처리를 합니다.
