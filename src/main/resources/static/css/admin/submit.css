@@ -263,3 +263,87 @@ html, body {
   }
   */
 }
+
+/* 모달 대화 상자 스타일 */
+.modal-dialog {
+    /* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
+    max-width: 600px; 
+}
+
+/* 모달 내용 전체 스타일 */
+.modal-content {
+    /* 스크랩북 배경 이미지 */
+    background-image: url('https://www.transparenttextures.com/patterns/crumpled-paper.png');
+    border: 2px solid #a58e7c; /* 갈색 계열 테두리 */
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* 이미지와 화살표를 감싸는 부모 컨테이너 */
+.preview-container {
+    position: relative;
+}
+
+/* 이미지는 컨테이너에 꽉 차게 */
+#previewImage {
+    width: 100%;
+    display: block;
+}
+
+/* 화살표 버튼 스타일 수정 */
+.arrow-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(100, 100, 100, 0.5); /* 반투명 회색 */
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    width: 40px;
+    height: 70px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    transition: background-color 0.2s;
+}
+
+.arrow-btn:hover {
+    background-color: rgba(50, 50, 50, 0.7);
+}
+
+.prev-btn {
+    left: 0px; /* 왼쪽 가장자리에 붙임 */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.next-btn {
+    right: 0px; /* 오른쪽 가장자리에 붙임 */
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* 닫기 버튼 컨테이너는 제거하고 버튼에 직접 스타일 적용 */
+.close-btn-container {
+     margin-top: 20px;
+     text-align: center;
+}
+
+/* CLOSE 버튼 커스텀 스타일 */
+.custom-close-btn {
+    background-color: #2c3e50; /* 진한 남색 */
+    color: white;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 18px;
+    border: 3px solid #34495e; /* 버튼 배경보다 약간 밝은 테두리 */
+    border-radius: 5px;
+    padding: 10px 40px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.custom-close-btn:hover {
+    background-color: #34495e;
+}

@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "home")
+@Table(name = "submit")
 @Getter @Setter @NoArgsConstructor
 public class Submit {
 
