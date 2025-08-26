@@ -34,7 +34,7 @@ public class AdminSubmitController {
 	@Autowired
     private HomeService homeService;
 	
-	private final String UPLOAD_DIR = "uploads/";
+	private final String UPLOAD_DIR = "upload/";
 	
 	@Autowired
 	private UserRepository userRepository;

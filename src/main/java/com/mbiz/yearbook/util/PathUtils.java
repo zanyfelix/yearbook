@@ -95,7 +95,7 @@ public class PathUtils {
     /**
      * 파일 URL을 생성합니다.
      * @param contextPath 컨텍스트 경로
-     * @param resourceType 리소스 타입 (theme, uploads, thumbnails 등)
+     * @param resourceType 리소스 타입 (theme, upload, thumbnail 등)
      * @param filePath 파일 경로
      * @return 완성된 URL
      */

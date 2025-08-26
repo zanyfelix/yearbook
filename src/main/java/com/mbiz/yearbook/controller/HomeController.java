@@ -48,7 +48,7 @@ public class HomeController {
 	@Autowired
 	private HomeRepository homeRepository;
 	
-	private final String UPLOAD_DIR = "uploads/";
+	private final String UPLOAD_DIR = "upload/";
 
 	@GetMapping("/home")
 	public String home(HttpSession session, @RequestParam Long id, Model model) {

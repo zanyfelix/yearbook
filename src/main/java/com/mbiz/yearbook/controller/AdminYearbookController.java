@@ -46,7 +46,7 @@ public class AdminYearbookController {
 	@Autowired
 	private JpgRenderingService jpgRenderingService;
 	
-	private final String UPLOAD_DIR = "uploads/";
+	private final String UPLOAD_DIR = "upload/";
 
 	@GetMapping("/admin/yearbook")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {

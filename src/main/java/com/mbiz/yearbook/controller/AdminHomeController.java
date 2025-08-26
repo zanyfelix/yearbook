@@ -51,7 +51,7 @@ public class AdminHomeController {
 	@Autowired
 	private HomeRepository homeRepository;
 	
-	private final String UPLOAD_DIR = "uploads/";
+	private final String UPLOAD_DIR = "upload/";
 
 	@GetMapping("/admin/home")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long userId, @RequestParam(required = false) Long id, Model model) {

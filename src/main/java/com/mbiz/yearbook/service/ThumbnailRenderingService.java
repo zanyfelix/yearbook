@@ -120,6 +120,6 @@ public class ThumbnailRenderingService {
         Path destinationFile = destinationDir.resolve(filename);
         ImageIO.write(canvas, "png", destinationFile.toFile());
 
-        return "/thumbnails/" + filename;
+        return "/thumbnail/" + filename;
     }
 }

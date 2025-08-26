@@ -73,11 +73,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + themePath)
                 .setCachePeriod(3600); // 1시간 캐싱
         
-        registry.addResourceHandler("/uploads/**")
+        registry.addResourceHandler("/upload/**")
                 .addResourceLocations("file:" + uploadPath)
                 .setCachePeriod(3600);
         
-        registry.addResourceHandler("/thumbnails/**")
+        registry.addResourceHandler("/thumbnail/**")
                 .addResourceLocations("file:" + thumbnailPath)
                 .setCachePeriod(3600);
         
