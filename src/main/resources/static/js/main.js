@@ -356,67 +356,78 @@ $(document).ready(function() {
 
 		if (!frameGroup || !photo || !placeholder || !mask) return;
 
-		const reader = new FileReader();
-		reader.onload = (event) => {
-			photo.attr('src', event.target.result).css('display', 'block');
+		/**
+		* 이미지 Blob을 받아 DataURL로 변환하고 화면에 표시하는 공통 함수
+		*/
+		const processAndDisplayImage = (imageBlob) => {
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				photo.attr('src', event.target.result).css('display', 'block');
 
-			photo.on('load', function() {
-				const maskWidth = mask.width();
-				const maskHeight = mask.height();
-				const imgNaturalWidth = this.naturalWidth;  // 이미지 원본 너비
-				const imgNaturalHeight = this.naturalHeight; // 이미지 원본 높이
+				photo.on('load', function() {
+					const maskWidth = mask.width();
+					const maskHeight = mask.height();
+					const imgNaturalWidth = this.naturalWidth;
+					const imgNaturalHeight = this.naturalHeight;
 
-				let newWidth, newHeight;
+					const scaleX = maskWidth / imgNaturalWidth;
+					const scaleY = maskHeight / imgNaturalHeight;
+					const scale = Math.max(scaleX, scaleY);
 
-				// ▼▼▼▼▼ [핵심 수정] 프레임을 꽉 채우는 로직 ▼▼▼▼▼
+					const newWidth = imgNaturalWidth * scale;
+					const newHeight = imgNaturalHeight * scale;
+					const newLeft = (maskWidth - newWidth) / 2;
+					const newTop = (maskHeight - newHeight) / 2;
 
-				// 1. 프레임을 완전히 채우기 위한 배율 계산
-				//    Math.max를 사용하여 프레임에 빈 공간이 없도록 함
-				const scaleX = maskWidth / imgNaturalWidth;
-				const scaleY = maskHeight / imgNaturalHeight;
-				const scale = Math.max(scaleX, scaleY);
+					photo.css({
+						width: `${newWidth}px`, height: `${newHeight}px`,
+						left: `${newLeft}px`, top: `${newTop}px`
+					});
 
-				// 2. 최종 크기 계산 (0.9 곱하지 않고 100% 크기 유지)
-				newWidth = imgNaturalWidth * scale;
-				newHeight = imgNaturalHeight * scale;
-
-				// ▲▲▲▲▲ 수정 완료 ▲▲▲▲▲
-
-				const newLeft = (maskWidth - newWidth) / 2;
-				const newTop = (maskHeight - newHeight) / 2;
-
-				photo.css({
-					width: `${newWidth}px`,
-					height: `${newHeight}px`,
-					left: `${newLeft}px`,
-					top: `${newTop}px`
+					const frameW = frameGroup.width();
+					const frameH = frameGroup.height();
+					const initialState = {
+						position: { left: (newLeft / frameW) * 100, top: (newTop / frameH) * 100 },
+						size: { width: (newWidth / frameW) * 100, height: (newHeight / frameH) * 100 },
+						transform: 'none'
+					};
+					photo.data('relativeState', initialState);
+					window.selectionManager.clearSelection();
 				});
 
-				// 이 아래의 'relativeState' 저장 로직은 기존과 동일합니다.
-				const frameW = frameGroup.width();
-				const frameH = frameGroup.height();
-
-				const initialState = {
-					position: {
-						left: (newLeft / frameW) * 100,
-						top: (newTop / frameH) * 100
-					},
-					size: {
-						width: (newWidth / frameW) * 100,
-						height: (newHeight / frameH) * 100
-					},
-					transform: 'none'
-				};
-				photo.data('relativeState', initialState);
-
-				window.selectionManager.clearSelection();
-			});
-
-			placeholder.hide();
-			$input.val('');
+				placeholder.hide();
+				$input.val('');
+			};
+			reader.readAsDataURL(imageBlob);
 		};
-		reader.readAsDataURL(file);
-	});
+
+		// 파일 확장자에 따라 분기 처리
+		if (fileExtension === 'heic') {
+			// heic2any 라이브러리가 로드되었는지 확인
+			if (typeof heic2any === 'undefined') {
+				alert('HEIC conversion library is not loaded. Please contact support.');
+				return;
+			}
+
+			heic2any({
+				blob: file,
+				toType: "image/jpeg",
+				quality: 0.8,
+			})
+				.then((conversionResult) => {
+					// 변환된 JPEG 파일을 사용하여 다음 단계 진행
+					processAndDisplayImage(conversionResult);
+				})
+				.catch((err) => {
+					console.error("HEIC 변환 실패:", err);
+					alert("HEIC file could not be converted. Please try another format.");
+					$input.val('');
+				});
+		} else {
+			// HEIC가 아닌 다른 파일(JPG, PNG)은 기존 방식대로 바로 처리
+			processAndDisplayImage(file);
+		}
+	});		
 
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {

@@ -25,6 +25,7 @@ class DataLoader {
 								themeId: result.theme.id // 클릭된 썸네일의 theme id
 							},
 							success: function(fullListData) {
+								console.log(fullListData);
 								// 3. 서버로부터 받은 전체 목록으로 모달을 채우고 보여줌
 								$('#backgroundModal').modal('show');
 								// 모달을 채우는 함수는 그대로 재사용

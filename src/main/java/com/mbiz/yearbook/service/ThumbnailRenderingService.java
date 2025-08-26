@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
@@ -20,12 +21,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.repository.ThemeRepository;
+import com.mbiz.yearbook.util.PathUtils;
 
 @Service
 public class ThumbnailRenderingService {
 
-    @Value("${file.upload-dir}")
-    private String uploadPath;
+	@Value("${file.path.theme}")
+    private String themePath; // 원본 테마 이미지를 읽기 위한 경로
+
+    @Value("${file.path.thumbnail}")
+    private String thumbnailPath; // 생성된 썸네일을 저장할 경로
 
     @Autowired
     private ThemeRepository themeRepository;
@@ -33,9 +38,6 @@ public class ThumbnailRenderingService {
     // 썸네일 이미지 크기 (비율에 맞게 조정)
     private static final int THUMB_WIDTH = 314; // (786 / 2.5)
     private static final int THUMB_HEIGHT = 404; // (1011 / 2.5)
-
-    // 실제 이미지 파일이 저장된 기본 서버 경로
-    private static final String BASE_IMAGE_PATH = "E:/spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64/workspace/yearbook/src/main/resources/static/";
 
     /**
      * designData JSON을 기반으로 마스킹이 적용된 썸네일 이미지를 생성합니다.
@@ -53,7 +55,7 @@ public class ThumbnailRenderingService {
         // 배경 렌더링
         String bgPath = root.path("background").asText();
         if (!bgPath.isEmpty()) {
-            BufferedImage bgImage = ImageIO.read(new File(BASE_IMAGE_PATH + bgPath));
+            BufferedImage bgImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + bgPath)));
             g2d.drawImage(bgImage, 0, 0, THUMB_WIDTH, THUMB_HEIGHT, null);
         }
 
@@ -77,7 +79,7 @@ public class ThumbnailRenderingService {
                 Graphics2D frameG2d = frameCanvas.createGraphics();
 
                 // 1. 마스크 이미지를 임시 캔버스에 그린다.
-                BufferedImage maskImage = ImageIO.read(new File(BASE_IMAGE_PATH + theme.getEditMaskPath()));
+                BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
                 frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
 
                 // 2. Composite를 'SrcIn'으로 설정 (마스크 영역에만 그리도록)
@@ -105,7 +107,7 @@ public class ThumbnailRenderingService {
             // ▲▲▲▲▲ 핵심 수정 부분 ▲▲▲▲▲
 
             // 프레임 테두리 이미지를 마지막에 그린다.
-            BufferedImage frameImage = ImageIO.read(new File(BASE_IMAGE_PATH + theme.getEditPath()));
+            BufferedImage frameImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditPath())));
             g2d.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight, null);
         }
 
@@ -113,7 +115,9 @@ public class ThumbnailRenderingService {
 
         // 최종 썸네일 파일 저장
         String filename = "thumbnail_" + yearbookId + "_" + System.currentTimeMillis() + ".png";
-        Path destinationFile = Paths.get(uploadPath, filename);
+        Path destinationDir = Paths.get(thumbnailPath);
+        Files.createDirectories(destinationDir); // 디렉터리가 없으면 생성
+        Path destinationFile = destinationDir.resolve(filename);
         ImageIO.write(canvas, "png", destinationFile.toFile());
 
         return "/thumbnails/" + filename;

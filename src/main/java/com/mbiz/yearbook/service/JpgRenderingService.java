@@ -38,6 +38,7 @@ import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputDirectory;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -61,7 +62,8 @@ public class JpgRenderingService {
     private static final int RENDER_HEIGHT = 3371; // 고해상도 렌더링 높이 (A4 300DPI 기준)
     private static final double EDIT_WIDTH = 786.0;   // 편집기 기준 너비
     private static final double EDIT_HEIGHT = 1011.0; // 편집기 기준 높이
-    private static final String BASE_IMAGE_PATH = "E:/spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64/workspace/yearbook/src/main/resources/static/";
+    @Value("${file.path.theme}")
+    private String themePath;
     private static final String SUFFIX_ORIGINAL = "_B.png";
     private static final String SUFFIX_EDIT = "_M.png";
     
@@ -210,7 +212,7 @@ public class JpgRenderingService {
         String bgEditPath = root.path("background").asText();
         if (!bgEditPath.isEmpty()) {
             String bgOriginalPath = bgEditPath.replace(SUFFIX_EDIT, SUFFIX_ORIGINAL);
-            File bgFile = new File(BASE_IMAGE_PATH + bgOriginalPath);
+            File bgFile = new File(themePath + bgOriginalPath);
             if (bgFile.exists()) {
                 BufferedImage bgImage = ImageIO.read(bgFile);
                 g2d.drawImage(bgImage, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
@@ -248,7 +250,7 @@ public class JpgRenderingService {
                         int photoHeight = (int) (frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
                         
                         if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-                            File maskFile = new File(BASE_IMAGE_PATH + theme.getOriginalMaskPath());
+                            File maskFile = new File(themePath + theme.getOriginalMaskPath());
                             if(maskFile.exists()){
                                 BufferedImage maskImage = ImageIO.read(maskFile);
                                 g2dComposite.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
@@ -263,7 +265,7 @@ public class JpgRenderingService {
             }
             
             if (theme.getOriginalPath() != null && !theme.getOriginalPath().isEmpty()) {
-                File frameFile = new File(BASE_IMAGE_PATH + theme.getOriginalPath());
+                File frameFile = new File(themePath + theme.getOriginalPath());
                 if (frameFile.exists()) {
                     BufferedImage frameImage = ImageIO.read(frameFile);
                     g2dComposite.drawImage(frameImage, 0, 0, frameWidth, frameHeight, null);

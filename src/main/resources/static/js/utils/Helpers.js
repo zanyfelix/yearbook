@@ -5,7 +5,7 @@ class Helpers {
     static createThumbnailItem(src, onClick) {
         const col = $('<div class="col-4 text-center">');
         const wrapper = $('<div class="thumbnail-wrapper position-relative">');
-        const img = $('<img class="img-thumbnail preview-img">').attr('src', src);
+        const img = $('<img class="img-thumbnail preview-img">').attr('src', ctx + src);
         const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
         const btn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', onClick);
         

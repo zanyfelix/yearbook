@@ -42,9 +42,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EditController {
 	
-	@Value("${file.upload-dir}") // 프로퍼티 값 주입
-    private String uploadPath;
-
     @Autowired
     private ContentsService contentsService;
     

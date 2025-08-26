@@ -108,11 +108,11 @@ public class ThemeService {
         
         // UserTheme 객체로 변환하여 반환
         return representativeThemes.stream()
-            .map(theme -> {
-                UserTheme ut = new UserTheme();
-                ut.setTheme(theme);
-                return ut;
-            })
-            .collect(Collectors.toList());
+        		.map(theme -> {
+                    UserTheme ut = new UserTheme();
+                    ut.setTheme(theme);
+                    return ut;
+                })
+        	    .collect(Collectors.toList());
     }
 }

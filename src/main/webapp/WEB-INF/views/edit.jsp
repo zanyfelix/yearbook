@@ -297,6 +297,8 @@
 <!-- Main Initialization (반드시 마지막에 로드) -->
 <script src="<c:url value='/js/main.js'/>"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<!-- heic2any 변환 -->
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
 <!-- 전역 변수 및 기존 함수들 -->
 <script>

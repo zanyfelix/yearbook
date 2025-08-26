@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,8 +50,9 @@ public class ContactUsController {
 	
 	@Autowired
     private EmailService emailService;
-
-    private final String UPLOAD_DIR = "uploads/";
+	
+	@Value("${file.path.thumbnail}")
+    private String uploadPath;
 
     @GetMapping("/contactUs")
     public String contactMain(HttpSession session, Model model) {
@@ -108,7 +110,7 @@ public class ContactUsController {
 
         if (!file.isEmpty()) {
             String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path filepath = Paths.get(UPLOAD_DIR, filename);
+            Path filepath = Paths.get(uploadPath, filename);
             Files.createDirectories(filepath.getParent());
             Files.write(filepath, file.getBytes());
             contact.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));

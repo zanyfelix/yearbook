@@ -19,8 +19,14 @@ public class WebConfig implements WebMvcConfigurer {
 	@Autowired
     private SessionInterceptor sessionInterceptor;
 	
-	@Value("${upload.path.theme}")
+	@Value("${file.path.theme}")
     private String themePath;
+	
+	@Value("${file.path.upload}")
+    private String uploadPath;
+	
+	@Value("${file.path.thumbnail}")
+    private String thumbnailPath;
 	
 	@Bean
     public SessionLocaleResolver localeResolver() {
@@ -56,13 +62,28 @@ public class WebConfig implements WebMvcConfigurer {
         .addPathPatterns("/**");  // 모든 경로에 로케일 변경을 적용
     }
 	
-	@Value("${file.upload-dir}")
-    private String uploadPath;
-	
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry
-        		.addResourceHandler("/css/**", "/js/**", "/images/**", "/uploads/**", "/thumbnails/**","/theme/**")
-                .addResourceLocations("classpath:/static/css/", "classpath:/static/js/", "classpath:/static/images/","file:uploads/","file:///" + uploadPath, themePath);
+        // 정적 리소스 (클래스패스)
+        registry.addResourceHandler("/css/**", "/js/**", "/images/**")
+                .addResourceLocations("classpath:/static/css/", "classpath:/static/js/", "classpath:/static/images/");
+        
+        // 파일 시스템 리소스들을 각각 명확하게 설정
+        registry.addResourceHandler("/theme/**")
+                .addResourceLocations("file:" + themePath)
+                .setCachePeriod(3600); // 1시간 캐싱
+        
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + uploadPath)
+                .setCachePeriod(3600);
+        
+        registry.addResourceHandler("/thumbnails/**")
+                .addResourceLocations("file:" + thumbnailPath)
+                .setCachePeriod(3600);
+        
+        // 로그 출력으로 경로 확인
+        System.out.println("Theme Path: " + themePath);
+        System.out.println("Upload Path: " + uploadPath);
+        System.out.println("Thumbnail Path: " + thumbnailPath);
     }
 }
