@@ -1,6 +1,6 @@
 function updateFontOptions(themeSelectElement) {
     // data-theme-no 속성에서 그룹 번호를 가져옴
-    const selectedThemeNo = themeSelectElement.find('option:selected').data('theme-no');
+    const selectedThemeNo = themeSelectElement.find('option:selected').val();
     const fontSelect = themeSelectElement.closest('tr').find('.font-select');
 
     fontSelect.empty().prop('disabled', true).append($('<option>', { text: 'Loading...' }));
@@ -53,8 +53,8 @@ $(document).ready(function() {
 		$('.selectBox:checked').each(function() {
 			const row = $(this).closest('tr');
 			requests.push({
-				userId: $(this).val(),
-				themeId: row.find('.theme-select').find('option:selected').data('theme-no'),
+				userId: row.find('.theme-select').find('option:selected').data('user-id'),
+				themeId: row.find('.theme-select').find('option:selected').val(),
 				fontId: row.find('.font-select').val()
 			});
 		});

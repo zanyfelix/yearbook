@@ -4,9 +4,13 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.mbiz.yearbook.model.FontDto;
 import com.mbiz.yearbook.model.Theme;
+import com.mbiz.yearbook.model.ThemeDto;
 
 @Repository
 public interface ThemeRepository extends JpaRepository<Theme, Long> {
@@ -23,4 +27,20 @@ public interface ThemeRepository extends JpaRepository<Theme, Long> {
      * findByParentId 대신 이 메소드를 사용하도록 Controller를 수정해야 합니다.
      */
     List<Theme> findByParentIdOrderByFilenameAsc(Long parentId);
+    
+    @Query("SELECT new com.mbiz.yearbook.model.FontDto(t.id, t.filename) " +
+            "FROM Theme t WHERE t.themeNo = :themeNo AND t.category = 'font' ORDER BY t.filename ASC")
+     List<FontDto> findFontsByThemeNo(@Param("themeNo") Long themeNo);
+    
+    Optional<Theme> findFirstByThemeNoOrderByIdAsc(Long themeNo);
+    
+    @Query("SELECT MIN(t.themeNo) FROM Theme t")
+    Optional<Long> findMinThemeNo();
+    
+    @Query("SELECT new com.mbiz.yearbook.model.ThemeDto(MIN(t.id), t.themeNo) " +
+            "FROM Theme t " +
+            // "WHERE t.category = 'background' " +  <-- 이 줄 삭제
+            "GROUP BY t.themeNo " +
+            "ORDER BY t.themeNo ASC")
+     List<ThemeDto> findDistinctThemeSelections(); // 메소드 이름 변경
 }

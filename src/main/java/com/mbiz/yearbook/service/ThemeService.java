@@ -1,7 +1,7 @@
 package com.mbiz.yearbook.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,12 +9,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.mbiz.yearbook.model.Theme;
-import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
 import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.UserThemeRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -33,38 +33,40 @@ public class ThemeService {
     }
     
     @Transactional
-    public void saveUserTheme(Long userId, String category, Long themeId) {
+    public void saveUserTheme(Long userId, Long themeNo, Long fontId) {
     	
-    	UserTheme ut = new UserTheme();
-    	
-    	User userReference = userRepository.getReferenceById(userId);
-        Theme themeReference = themeRepository.getReferenceById(themeId);
-    	
-    	ut.setUser(userReference);
-	    ut.setTheme(themeReference);
-	    ut.setCategory(category);
-	    ut.setCreatedAt(LocalDateTime.now());
-	    ut.setUpdatedAt(LocalDateTime.now());
-    	
-    	userThemeRepository.save(ut);
-    }
-    
-    @Transactional
-    public void saveUserTheme1(Long userId,  Long themeId) {
-    	
-    	UserTheme ut = new UserTheme();
-    	
-    	User userReference = userRepository.getReferenceById(userId);
-        Theme themeReference = themeRepository.getReferenceById(themeId);
-        themeReference.setThemeNo(themeId);
+    	Objects.requireNonNull(userId, "User ID는 null일 수 없습니다.");
+        Objects.requireNonNull(themeNo, "Theme Number는 null일 수 없습니다.");
+        Objects.requireNonNull(fontId, "Font ID는 null일 수 없습니다.");
+
+        UserTheme ut = userThemeRepository.findByUserId(userId)
+                           .orElse(new UserTheme());
         
-    	ut.setUser(userReference);
-	    ut.setTheme(themeReference);
-	    ut.setCategory("11");
-	    ut.setCreatedAt(LocalDateTime.now());
-	    ut.setUpdatedAt(LocalDateTime.now());
-    	
-    	userThemeRepository.save(ut);
+        // 1. 사용자가 선택한 themeNo 그룹의 대표 객체를 찾는 기존 로직은 그대로 둡니다.
+        // (이 로직이 다른 곳에서 필요할 수 있으므로)
+        Theme originalRepresentativeTheme = themeRepository.findFirstByThemeNoOrderByIdAsc(themeNo)
+            .orElseThrow(() -> new EntityNotFoundException("해당 themeNo를 가진 테마를 찾을 수 없습니다: " + themeNo));
+        
+        // ================== [핵심 수정 사항] ==================
+        
+        // 2. 실제로 저장할 임의의 theme_id 값을 정의합니다. (예: 999)
+        Long arbitraryThemeId = themeNo; 
+
+        // 3. 임의의 ID 값으로 새로운 대표 객체를 다시 찾아옵니다.
+        Theme finalThemeToSave = themeRepository.findById(arbitraryThemeId)
+            .orElseThrow(() -> new EntityNotFoundException("임의로 지정한 ID(" + arbitraryThemeId + ")를 가진 테마를 찾을 수 없습니다."));
+        
+        // ======================================================
+
+        
+        ut.setUser(userRepository.getReferenceById(userId));
+        
+        // 4. 최종적으로 저장할 '새로운 대표 객체'와 관계를 맺어줍니다.
+        ut.setTheme(finalThemeToSave); 
+        ut.setThemeNo(arbitraryThemeId);
+        ut.setFontId(fontId);
+        
+        userThemeRepository.save(ut);
     }
     
     public List<Long> findThemeIdsByUserAndCategory(Long userId, String category) {

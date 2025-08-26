@@ -68,29 +68,29 @@
 		    </tr>
 	      </thead>
 	      <tbody>
-	       <c:forEach var="item" items="${users}" varStatus="st">
-	       	  <c:if test="${item.role ne 'admin'}">	
+	       <c:forEach var="userDto" items="${userWithThemes}">
 	          <tr>
 	          	<td>
 		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
 		        </td>
-	            <td>${item.schoolName}</td>
+	            <td>${userDto.schoolName}</td>
 	            <td>
 	            	<select class="form-select theme-select">
-	            		<c:forEach var="theme" items="${themes}">
-                            <%-- 현재 사용자의 테마와 일치하면 selected 속성 부여 (userTheme 정보가 있을 경우) --%>
-	            		    <%-- <option value="${theme.id}" ${item.userTheme.theme.id == theme.id ? 'selected' : ''}>${theme.themeNo}</option> --%>
-	            		    <option value="${theme.id}" data-theme-no="${theme.themeNo}">${theme.themeNo}</option>
+                        <%-- 전체 테마 목록을 사용 --%>
+                        <c:forEach var="theme" items="${themes}">
+                            <option value="${theme.themeNo}" data-theme-no="${theme.themeNo}" data-user-id="${userDto.userId}"
+                                <c:if test="${theme.themeNo eq userDto.themeNo}">selected</c:if>>
+                                ${theme.themeNo}
+                            </option>
                         </c:forEach>
 	            	</select>
 	            </td>
 	            <td>
-	            	<select class="form-select font-select">
-			            <%-- 이 부분은 JS가 AJAX로 채웁니다. --%>
-			        </select>
+	            	<select class="form-select font-select" data-saved-font-id="${userDto.fontId}">
+                        <%-- 이 부분은 여전히 JS가 채웁니다. --%>
+                    </select>
 	            </td>
 	          </tr>
-	          </c:if>
 	        </c:forEach>
 	      </tbody>
 	    </table>

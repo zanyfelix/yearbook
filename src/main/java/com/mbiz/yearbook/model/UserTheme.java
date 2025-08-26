@@ -31,9 +31,6 @@ public class UserTheme extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
-    private String category;
-    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -43,7 +40,13 @@ public class UserTheme extends BaseTimeEntity {
     private LocalDateTime updatedAt;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "theme_id", referencedColumnName = "theme_no")
+    @JoinColumn(name = "theme_id")
     private Theme theme;
+    
+    @Column(name = "font_id", nullable = false)
+    private Long fontId;
+    
+    @Column(name = "theme_no", nullable = false)
+    private Long themeNo;
     
 }

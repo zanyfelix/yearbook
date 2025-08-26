@@ -2,21 +2,26 @@ package com.mbiz.yearbook.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.mbiz.yearbook.model.Theme;
+import com.mbiz.yearbook.model.FontDto;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
+import com.mbiz.yearbook.model.UserWithThemeDto;
 import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
+import com.mbiz.yearbook.repository.UserThemeRepository;
 import com.mbiz.yearbook.service.ThemeService;
 import com.mbiz.yearbook.service.UserService;
 
@@ -37,6 +42,9 @@ public class AdminThemeController {
 	@Autowired
 	private ThemeRepository themeRepository;
 	
+	@Autowired
+	private UserThemeRepository userThemeRepository;
+	
 	@GetMapping("/admin/theme")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, 
 			@RequestParam(defaultValue = "background") String category, Model model) {
@@ -47,15 +55,28 @@ public class AdminThemeController {
 	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
 		
-	    if (id == null) {
-	    	List<User> users = userRepository.findByRole("user");
-	        model.addAttribute("users", users);
-	    } else {
-	        userRepository.findById(id).ifPresent(user -> model.addAttribute("users", List.of(user)));
-	    }
+	    List<User> userList = (id == null)
+	            ? userRepository.findByRole("user")
+	            : userRepository.findById(id).map(List::of).orElse(List.of());
 	    
+	 // 1. 모든 UserTheme 정보를 한 번에 가져와 Map으로 변환 (효율적인 조회를 위해)
+        Map<Long, UserTheme> userThemeMap = userThemeRepository.findAll().stream()
+                .collect(Collectors.toMap(ut -> ut.getUser().getId(), ut -> ut, (existing, replacement) -> existing));
+
+        // 2. User 목록을 DTO 목록으로 변환합니다.
+        List<UserWithThemeDto> userWithThemes = userList.stream()
+                .map(user -> {
+                    UserTheme userTheme = userThemeMap.get(user.getId());
+                    return new UserWithThemeDto(user, userTheme);
+                })
+                .collect(Collectors.toList());
+
+        // 3. 최종적으로 가공된 DTO 리스트를 모델에 담습니다.
+        model.addAttribute("userWithThemes", userWithThemes);
+        
 	    //현재 사용자에 대한 아이디 값
-	    model.addAttribute("id", id);
+        model.addAttribute("themes", themeRepository.findDistinctThemeSelections());
+        model.addAttribute("id", id);
 	    model.addAttribute("currentMenu", "theme");
 	    
 	    model.addAttribute("category", category);
@@ -83,10 +104,7 @@ public class AdminThemeController {
 	    try {
 	        // 각 사용자에 대해 테마와 폰트 정보를 저장합니다.
 	        for (ThemeUpdateRequest request : requests) {
-	            themeService.saveUserTheme1(request.getUserId(), request.getThemeId());
-	            
-	            // TODO: 폰트 저장 로직 추가 (필요시)
-	            // 예: userService.updateUserFont(request.getUserId(), request.getFont());
+	            themeService.saveUserTheme(request.getUserId(), request.getThemeId(), request.getFontId());
 	        }
 	        return ResponseEntity.ok(Map.of("status", "success", "message", "Changes applied successfully."));
 	    } catch (Exception e) {
@@ -100,21 +118,21 @@ public class AdminThemeController {
 	public static class ThemeUpdateRequest {
 	    private Long userId;
 	    private Long themeId;
-	    private String font;
+	    private Long fontId;
 
 	    // Getters and Setters
 	    public Long getUserId() { return userId; }
 	    public void setUserId(Long userId) { this.userId = userId; }
 	    public Long getThemeId() { return themeId; }
 	    public void setThemeId(Long themeId) { this.themeId = themeId; }
-	    public String getFont() { return font; }
-	    public void setFont(String font) { this.font = font; }
+	    public Long getFontId() { return fontId; }
+	    public void setFontId(Long fontId) { this.fontId = fontId; }
 	}
 	
-	// 단일 저장 로직 (기존 코드 유지)
-	@PostMapping("/theme/save")
-	public ResponseEntity<Map<String, String>> save(@RequestBody UserTheme userTheme) {
-		themeService.saveUserTheme(userTheme.getUser().getId(), userTheme.getCategory(), userTheme.getTheme().getId());
-		return ResponseEntity.ok(Map.of("status", "success"));
-	}
+	@GetMapping("/api/themes/{themeNo}/fonts")
+    @ResponseBody
+    public ResponseEntity<List<FontDto>> getFontsForTheme(@PathVariable Long themeNo) {
+        List<FontDto> fonts = themeRepository.findFontsByThemeNo(themeNo);
+        return ResponseEntity.ok(fonts);
+    }
 }
