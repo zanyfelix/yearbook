@@ -1,5 +1,6 @@
 package com.mbiz.yearbook.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -64,6 +65,8 @@ public class ThemeService {
         // 4. 최종적으로 저장할 '새로운 대표 객체'와 관계를 맺어줍니다.
         ut.setTheme(finalThemeToSave); 
         ut.setThemeNo(arbitraryThemeId);
+        ut.setCreatedAt(LocalDateTime.now());
+        ut.setUpdatedAt(LocalDateTime.now());
         ut.setFontId(fontId);
         
         userThemeRepository.save(ut);
