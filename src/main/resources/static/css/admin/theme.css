@@ -273,3 +273,53 @@ html, body {
     height: auto !important;
     min-height: 100px !important;
 }
+
+/* 테마가 변경된 행 강조 */
+tr.theme-changed {
+    background-color: #fff3cd !important;
+}
+
+tr.theme-changed .font-select {
+    border: 2px solid #ff9800 !important;
+}
+
+/* 폰트 미선택 경고 스타일 */
+.font-select:invalid,
+.font-select.warning {
+    border-color: #dc3545 !important;
+}
+
+/* 에러 상태 행 */
+tr.error-row {
+    background-color: #ffebee !important;
+    animation: shake 0.5s;
+}
+
+/* 에러 필드 */
+.font-select.error-field {
+    border: 2px solid #f44336 !important;
+    background-color: #ffebee !important;
+}
+
+/* 선택 필요 표시 */
+.font-select.needs-selection {
+    border: 2px solid #ff9800 !important;
+    background-color: #fff8e1 !important;
+}
+
+/* 흔들림 애니메이션 */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* 폰트 미선택 경고 아이콘 */
+.font-select.needs-selection:before {
+    content: "⚠️";
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
