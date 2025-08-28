@@ -115,7 +115,6 @@
 	    </div>
     </form>
 
-      <!-- registerModal -->
 		<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
 		  <div class="modal-dialog">
 		    <div class="modal-content">
@@ -130,7 +129,7 @@
 		        <div class="modal-body">
 		          <!-- 수정 시 채울 hidden PK -->
 		          <input type="hidden" id="id" name="id"/>
-		          <input type="hidden" id="userId" name="userId" value="${id}" />
+		          <input type="hidden" id="userId" name="userId" value="${userId}" />
 					
 				  <div class="mb-3">
 		            <label for="categorySelect" class="form-label">CATEGORY</label>

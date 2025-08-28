@@ -23,11 +23,10 @@ $(function() {
     // 다른 체크박스들 선택 해제
     $('.selectBox').prop('checked', false);
     $('#selectAll').prop('checked', false);
-    
+   
     // jQuery 객체에서 DOM 요소의 reset() 메서드를 호출합니다.
     $form[0].reset();
     // .val()로 form 필드 값 설정
-    $('#userId').val(userId);
     
     // .attr()로 form의 action 속성 변경
     $form.attr('action', ctx + '/admin/contents/register');
