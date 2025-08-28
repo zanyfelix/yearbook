@@ -44,7 +44,7 @@ public class UserTheme extends BaseTimeEntity {
     private Theme theme;
     
     @Column(name = "font_id", nullable = false)
-    private Long fontId;
+    private String fontIds; // 타입을 String으로 변경
     
     @Column(name = "theme_no", nullable = false)
     private Long themeNo;

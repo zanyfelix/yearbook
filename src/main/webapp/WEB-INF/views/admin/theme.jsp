@@ -71,24 +71,28 @@
 	       <c:forEach var="userDto" items="${userWithThemes}">
 	          <tr>
 	          	<td>
-		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
+		            <input type="checkbox" class="selectBox" name="ids" value="${userDto.userId}" />
 		        </td>
 	            <td>${userDto.schoolName}</td>
 	            <td>
 	            	<select class="form-select theme-select">
                         <%-- 전체 테마 목록을 사용 --%>
                         <c:forEach var="theme" items="${themes}">
-                            <option value="${theme.themeNo}" data-theme-no="${theme.themeNo}" data-user-id="${userDto.userId}"
-                                <c:if test="${theme.themeNo eq userDto.themeNo}">selected</c:if>>
-                                ${theme.themeNo}
-                            </option>
+                            <option value="${theme.themeNo}" 
+					                data-theme-no="${theme.themeNo}" 
+					                data-user-id="${userDto.userId}" <%-- 이 부분이 정확히 있는지 확인 --%>
+					                <c:if test="${theme.themeNo eq userDto.themeNo}">selected</c:if>>
+					            ${theme.themeNo}
+					        </option>
                         </c:forEach>
 	            	</select>
 	            </td>
 	            <td>
-	            	<select class="form-select font-select" data-saved-font-id="${userDto.fontId}">
-                        <%-- 이 부분은 여전히 JS가 채웁니다. --%>
-                    </select>
+		            <select class="form-select font-select" 
+	            			multiple="multiple"
+	            			data-saved-font-ids="<c:forEach items="${userDto.fontIds}" var="fontId" varStatus="status">${fontId}<c:if test="${!status.last}">,</c:if></c:forEach>">
+	        				<!-- 폰트 옵션은 JavaScript로 동적 로드 -->
+	    			</select>
 	            </td>
 	          </tr>
 	        </c:forEach>

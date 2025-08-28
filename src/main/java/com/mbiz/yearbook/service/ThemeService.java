@@ -34,40 +34,33 @@ public class ThemeService {
     }
     
     @Transactional
-    public void saveUserTheme(Long userId, Long themeNo, Long fontId) {
-    	
-    	Objects.requireNonNull(userId, "User ID는 null일 수 없습니다.");
+    public void saveUserTheme(Long userId, Long themeNo, List<Long> fontIds) {
+        Objects.requireNonNull(userId, "User ID는 null일 수 없습니다.");
         Objects.requireNonNull(themeNo, "Theme Number는 null일 수 없습니다.");
-        Objects.requireNonNull(fontId, "Font ID는 null일 수 없습니다.");
 
         UserTheme ut = userThemeRepository.findByUserId(userId)
                            .orElse(new UserTheme());
         
-        // 1. 사용자가 선택한 themeNo 그룹의 대표 객체를 찾는 기존 로직은 그대로 둡니다.
-        // (이 로직이 다른 곳에서 필요할 수 있으므로)
-        Theme originalRepresentativeTheme = themeRepository.findFirstByThemeNoOrderByIdAsc(themeNo)
-            .orElseThrow(() -> new EntityNotFoundException("해당 themeNo를 가진 테마를 찾을 수 없습니다: " + themeNo));
-        
-        // ================== [핵심 수정 사항] ==================
-        
-        // 2. 실제로 저장할 임의의 theme_id 값을 정의합니다. (예: 999)
-        Long arbitraryThemeId = themeNo; 
+        Theme themeToSave = themeRepository.findById(themeNo)
+            .orElseThrow(() -> new EntityNotFoundException("ID(" + themeNo + ")를 가진 테마를 찾을 수 없습니다."));
 
-        // 3. 임의의 ID 값으로 새로운 대표 객체를 다시 찾아옵니다.
-        Theme finalThemeToSave = themeRepository.findById(arbitraryThemeId)
-            .orElseThrow(() -> new EntityNotFoundException("임의로 지정한 ID(" + arbitraryThemeId + ")를 가진 테마를 찾을 수 없습니다."));
-        
-        // ======================================================
-
-        
         ut.setUser(userRepository.getReferenceById(userId));
+        ut.setTheme(themeToSave);
+        ut.setThemeNo(themeNo);
         
-        // 4. 최종적으로 저장할 '새로운 대표 객체'와 관계를 맺어줍니다.
-        ut.setTheme(finalThemeToSave); 
-        ut.setThemeNo(arbitraryThemeId);
-        ut.setCreatedAt(LocalDateTime.now());
+        // [수정] 폰트 ID 리스트를 콤마(,)로 구분된 문자열로 변환
+        String fontIdsString = "";
+        if (fontIds != null && !fontIds.isEmpty()) {
+            fontIdsString = fontIds.stream()
+                                   .map(String::valueOf)
+                                   .collect(Collectors.joining(","));
+        }
+        ut.setFontIds(fontIdsString); // 변환된 문자열을 저장
+        
+        if (ut.getId() == null) {
+            ut.setCreatedAt(LocalDateTime.now());
+        }
         ut.setUpdatedAt(LocalDateTime.now());
-        ut.setFontId(fontId);
         
         userThemeRepository.save(ut);
     }

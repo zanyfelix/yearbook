@@ -104,7 +104,7 @@ public class AdminThemeController {
 	    try {
 	        // 각 사용자에 대해 테마와 폰트 정보를 저장합니다.
 	        for (ThemeUpdateRequest request : requests) {
-	            themeService.saveUserTheme(request.getUserId(), request.getThemeId(), request.getFontId());
+	        	themeService.saveUserTheme(request.getUserId(), request.getThemeId(), request.getFontIds());
 	        }
 	        return ResponseEntity.ok(Map.of("status", "success", "message", "Changes applied successfully."));
 	    } catch (Exception e) {
@@ -118,15 +118,15 @@ public class AdminThemeController {
 	public static class ThemeUpdateRequest {
 	    private Long userId;
 	    private Long themeId;
-	    private Long fontId;
+	    private List<Long> fontIds;
 
 	    // Getters and Setters
 	    public Long getUserId() { return userId; }
 	    public void setUserId(Long userId) { this.userId = userId; }
 	    public Long getThemeId() { return themeId; }
 	    public void setThemeId(Long themeId) { this.themeId = themeId; }
-	    public Long getFontId() { return fontId; }
-	    public void setFontId(Long fontId) { this.fontId = fontId; }
+	    public List<Long> getFontIds() { return fontIds; }
+	    public void setFontIds(List<Long> fontIds) { this.fontIds = fontIds; }
 	}
 	
 	@GetMapping("/api/themes/{themeNo}/fonts")
