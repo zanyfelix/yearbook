@@ -21,6 +21,7 @@ import com.mbiz.yearbook.model.Submit;
 import com.mbiz.yearbook.model.SubmitForm;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.SubmitRepository;
 import com.mbiz.yearbook.repository.UserRepository;
@@ -79,19 +80,19 @@ public class AdminSubmitController {
 		    List<ContentsData> contentsListForView = new ArrayList<>();
 		    
 		    for (Contents content : allContents) {
-		    	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
-		    	List<Yearbook> fullPageList = new ArrayList<>();
+		    	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
+		    	List<YearbookSummary> fullPageList = new ArrayList<>();
 		    	
 				for (int i = 1; i <= content.getPages(); i++) {
 					final int currentPageNo = i;
 
-					Yearbook pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
+					YearbookSummary pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
 							.orElse(null); // 없으면 null
 
 					if (pageToAdd != null) {
 						fullPageList.add(pageToAdd);
 					} else {
-						Yearbook emptyPage = new Yearbook();
+						YearbookSummary emptyPage = new YearbookSummary();
 						emptyPage.setContentsId(content.getId());
 						emptyPage.setPageNo(currentPageNo);
 						fullPageList.add(emptyPage);
@@ -127,8 +128,8 @@ public class AdminSubmitController {
 	
 	@PostMapping("/submit/previewData")
     @ResponseBody
-    public List<Yearbook> backgroundList(@RequestBody Map<String, Object> param) {
+    public List<YearbookSummary> backgroundList(@RequestBody Map<String, Object> param) {
     	Long contentsId = Long.parseLong(param.get("contentsId").toString());
-        return yearbookRepository.findByContentsIdOrderByPageNoAsc(contentsId);
+        return yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(contentsId);
     }
 }

@@ -1,6 +1,5 @@
 package com.mbiz.yearbook.controller;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -13,12 +12,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.mbiz.yearbook.model.Contents;
-import com.mbiz.yearbook.model.Progress;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
-import com.mbiz.yearbook.service.ProgressService;
 import com.mbiz.yearbook.service.ProgressService;
 
 import jakarta.servlet.http.HttpSession;
@@ -63,19 +60,19 @@ public class ProgressController {
         
         for(Contents content : allContents) {
         	overallTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	overallCompleted += existingPages.size();
         }
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         

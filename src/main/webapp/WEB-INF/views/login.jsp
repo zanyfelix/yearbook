@@ -23,6 +23,7 @@
             margin-bottom: 20px;
         }
     </style>
+    <meta name="_globalsign-domain-verification" content="JdOpMTftLa8fbaGlQBewDedjGYyZCrlRAx0bZw266j"/>
 </head>
 <body>
 

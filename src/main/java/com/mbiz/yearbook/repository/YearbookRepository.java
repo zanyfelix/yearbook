@@ -9,13 +9,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 
 import jakarta.transaction.Transactional;
 
 public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
 	
+	@Query("SELECT NEW com.mbiz.yearbook.model.YearbookSummary(y.id, y.userId, y.contentsId, y.pageNo, y.thumbnailPath, y.lastSaved, y.subcategory) " +
+	           "FROM Yearbook y " +
+	           "WHERE y.contentsId = :contentsId " +
+	           "ORDER BY y.pageNo ASC")
+	List<YearbookSummary> findSummariesByContentsIdOrderByPageNoAsc(Long contentsId);
+	
 	List<Yearbook> findByContentsIdOrderByPageNoAsc(Long contentsId);
-
+	
     // ✨ 아래 메서드를 추가합니다.
     // contentsId와 pageNo로 yearbook 데이터를 조회하여 중복 생성을 방지합니다.
     Optional<Yearbook> findByContentsIdAndPageNo(Long contentsId, int pageNo);

@@ -24,7 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
@@ -80,13 +80,13 @@ public class ContactUsController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         

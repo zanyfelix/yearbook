@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +26,7 @@ import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
 import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
@@ -88,13 +88,13 @@ public class EditController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         
@@ -111,17 +111,17 @@ public class EditController {
 
 		for (Contents content : allContents) {
 			// 1. 해당 contents에 대해 DB에 이미 저장된 yearbook 페이지들을 가져옵니다.
-			List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+			List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
 
 			// 2. contents.pages 개수만큼 채울 최종 페이지 리스트를 생성합니다.
-			List<Yearbook> fullPageList = new ArrayList<>();
+			List<YearbookSummary> fullPageList = new ArrayList<>();
 
 			// 3. 1페이지부터 contents.pages 만큼 반복합니다.
 			for (int i = 1; i <= content.getPages(); i++) {
 				final int currentPageNo = i;
 
 				// 4. 이미 저장된 페이지 목록(existingPages)에서 현재 페이지 번호와 일치하는 것을 찾습니다.
-				Yearbook pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
+				YearbookSummary pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
 						.orElse(null); // 없으면 null
 
 				if (pageToAdd != null) {
@@ -130,7 +130,7 @@ public class EditController {
 				} else {
 					// 5b. 일치하는 페이지가 없으면, JSP에서 placeholder를 표시할 수 있도록
 					// contentsId와 pageNo만 가진 '빈' Yearbook 객체를 만들어 추가합니다.
-					Yearbook emptyPage = new Yearbook();
+					YearbookSummary emptyPage = new YearbookSummary();
 					emptyPage.setContentsId(content.getId());
 					emptyPage.setPageNo(currentPageNo);
 					// id, thumbnailPath 등은 null인 상태로 둡니다.

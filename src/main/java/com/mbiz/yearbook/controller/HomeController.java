@@ -4,7 +4,6 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -24,11 +23,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.Home;
 import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.HomeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
-import com.mbiz.yearbook.service.ProgressService;
 import com.mbiz.yearbook.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
@@ -76,13 +74,13 @@ public class HomeController {
         
         for(Contents content : allGroupContents) {
         	groupTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	groupCompleted += existingPages.size();
         }
         
         for(Contents content : allEventContents) {
         	eventTotal += content.getPages();
-        	List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
         	eventCompleted += existingPages.size();
         }
         
