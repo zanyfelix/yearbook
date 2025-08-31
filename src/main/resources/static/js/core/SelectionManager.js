@@ -18,102 +18,103 @@ class SelectionManager {
         
         this.selectedMode = 'frame';
         this.currentFrame = frameGroup;
-        
-        // ▼▼▼ [핵심 수정] CSS가 핸들을 표시할 수 있도록 .selected-frame 클래스를 추가합니다. ▼▼▼
-        frameGroup.addClass('selected-frame');
-        
-        // 이전에 추가했던 회전 핸들 생성 함수를 호출합니다.
-        FrameManager.addRotationHandle(frameGroup);
-        
-        UIManager.showFrameTooltip(frameGroup);
-    }
+		
+		window.selectedFrame = frameGroup;
 
-    selectPhoto(photo, frameGroup) {
-        if (this.currentPhoto === photo) return;
-        this.clearSelection();
-        
-        this.selectedMode = 'photo';
-        this.currentFrame = frameGroup;
-        this.currentPhoto = photo;
-        
-        photo.addClass('selected-photo');
-        
-        PhotoManager.addSelectionUI(photo, frameGroup);
-        UIManager.showPhotoTooltip(photo, frameGroup);
-        PhotoManager.showOverlay(photo, frameGroup);
-    }
-    
-    selectTextBox(textBox) {
-        if (this.currentTextBox === textBox) return;
-        this.clearSelection();
-        
-        this.selectedMode = 'text';
-        this.currentTextBox = textBox;
+		frameGroup.addClass('selected-frame');
+		FrameManager.addRotationHandle(frameGroup);
+		UIManager.showFrameTooltip(frameGroup);
+	}
 
-        // 텍스트 박스는 .selected 클래스를 사용합니다 (CSS 규칙에 따라).
-        textBox.addClass('selected');
-        
-        this.addTextRotationHandle(textBox);
-        UIManager.showTextTooltip(textBox);
-        
-        textBox.on('resize.selection', () => {
-            if (textBox.hasClass('selected')) {
-                this.addTextRotationHandle(textBox);
-            }
-        });
-    }
-    
-    selectElement(elementGroup) {
-        if (this.currentElement === elementGroup) return;
-        this.clearSelection();
+	selectPhoto(photo, frameGroup) {
+	    if (this.currentPhoto === photo) return;
+	    this.clearSelection();
+	    
+	    this.selectedMode = 'photo';
+	    this.currentFrame = frameGroup;
+	    this.currentPhoto = photo;
+	    
+	    // 전역 변수 동기화
+	    window.selectedPhotoWrapper = photo;
+	    window.selectedFrame = frameGroup;
+	    
+	    photo.addClass('selected-photo');
+	    PhotoManager.addSelectionUI(photo, frameGroup);
+	    UIManager.showPhotoTooltip(photo, frameGroup);
+	    PhotoManager.showOverlay(photo, frameGroup);
+	}
 
-        this.selectedMode = 'element';
-        this.currentElement = elementGroup;
-        this.currentFrame = elementGroup;
+	selectTextBox(textBox) {
+	    if (this.currentTextBox === textBox) return;
+	    this.clearSelection();
+	    
+	    this.selectedMode = 'text';
+	    this.currentTextBox = textBox;
+	    
+	    // 전역 변수 동기화
+	    window.selectedBox = textBox;
+	    
+	    textBox.addClass('selected');
+	    this.addTextRotationHandle(textBox);
+	    UIManager.showTextTooltip(textBox);
+	    
+	    textBox.on('resize.selection', () => {
+	        if (textBox.hasClass('selected')) {
+	            this.addTextRotationHandle(textBox);
+	        }
+	    });
+	}
 
-        // ▼▼▼ [핵심 수정] Element도 프레임의 일종이므로 .selected-frame 클래스를 추가합니다. ▼▼▼
-        elementGroup.addClass('selected-frame selected-element');
-        
-        FrameManager.addRotationHandle(elementGroup);
-        UIManager.showElementTooltip(elementGroup);
-    }
-    
-    // (이하 코드는 이전과 동일하게 유지됩니다)
-    
-    addTextRotationHandle(textBox) {
-        textBox.find('.text-rotate-handle, .text-rotate-line').remove();
-        const handle = $('<div class="text-rotate-handle"></div>');
-        const line = $('<div class="text-rotate-line"></div>');
-        textBox.append(handle).append(line);
-		EventManager.makeRotatable(textBox, handle);
-    }
-    
-    clearSelection() {
-        // ▼▼▼ [핵심 수정] 선택 해제 시 .selected-frame 클래스도 함께 제거합니다. ▼▼▼
-        if (this.currentFrame) {
-            this.currentFrame.removeClass('selected-frame selected-element');
-            this.currentFrame.find('.rotate-handle, .rotate-line').remove();
-        }
-        
-        if (this.currentPhoto) {
-            this.currentPhoto.removeClass('selected-photo');
-            PhotoManager.removeSelectionUI();
-            PhotoManager.hideOverlay();
-        }
-        
-        if (this.currentTextBox) {
-            this.currentTextBox.removeClass('selected editing');
-            this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
-        }
+	selectElement(elementGroup) {
+	    if (this.currentElement === elementGroup) return;
+	    this.clearSelection();
 
-        UIManager.hideAllToolbars();
-        
-        this.selectedMode = null;
-        this.currentFrame = null;
-        this.currentPhoto = null;
-        this.currentElement = null;
-        this.currentTextBox = null;
-    }
+	    this.selectedMode = 'element';
+	    this.currentElement = elementGroup;
+	    this.currentFrame = elementGroup;
+	    
+	    // 전역 변수 동기화
+	    window.selectedFrame = elementGroup;
+	    
+	    elementGroup.addClass('selected-frame selected-element');
+	    FrameManager.addRotationHandle(elementGroup);
+	    UIManager.showElementTooltip(elementGroup);
+	}
+
+	clearSelection() {
+	    // 프레임/요소 선택 해제
+	    if (this.currentFrame) {
+	        this.currentFrame.removeClass('selected-frame selected-element');
+	        this.currentFrame.find('.rotate-handle, .rotate-line').remove();
+	    }
+	    
+	    // 사진 선택 해제
+	    if (this.currentPhoto) {
+	        this.currentPhoto.removeClass('selected-photo');
+	        PhotoManager.removeSelectionUI();
+	        PhotoManager.hideOverlay();
+	    }
+	    
+	    // 텍스트박스 선택 해제
+	    if (this.currentTextBox) {
+	        this.currentTextBox.removeClass('selected editing');
+	        this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
+	    }
+
+	    UIManager.hideAllToolbars();
+	    
+	    // 상태 초기화
+	    this.selectedMode = null;
+	    this.currentFrame = null;
+	    this.currentPhoto = null;
+	    this.currentElement = null;
+	    this.currentTextBox = null;
+	    
+	    // 전역 변수도 초기화
+	    window.selectedFrame = null;
+	    window.selectedPhotoWrapper = null;
+	    window.selectedBox = null;
+	}
     
     applySafeLineConstraints(newLeft, newTop, element) {
         const bg = $('#page-preview-img');
@@ -142,4 +143,12 @@ class SelectionManager {
             top: constrainedTop
         };
     }
+	
+	addTextRotationHandle(textBox) {
+	    textBox.find('.text-rotate-handle, .text-rotate-line').remove();
+	    const handle = $('<div class="text-rotate-handle"></div>');
+	    const line = $('<div class="text-rotate-line"></div>');
+	    textBox.append(handle).append(line);
+	    EventManager.makeRotatable(textBox, handle);
+	}
 }

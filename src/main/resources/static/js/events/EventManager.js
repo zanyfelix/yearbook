@@ -291,24 +291,43 @@ class EventManager {
     // 전역 이벤트 설정
     static setupGlobalEvents() {
         // 클릭 영역 외부 클릭 시 선택 해제
-        document.getElementById('page-preview').addEventListener('click', (e) => {
-            if (!this.isSelectableElement(e.target)) {
-                window.selectionManager.clearSelection();
-            }
-        }, true);
+		document.getElementById('page-preview').addEventListener('click', (e) => {
+		if (!this.isSelectableElement(e.target)) {
+		window.selectionManager.clearSelection();
+		}
+		}, true);
         
         // Delete/Backspace 키 처리
-        $(document).on('keydown', (e) => {
-            if (this.shouldHandleDelete(e)) {
-                e.preventDefault();
-                this.handleDeleteKey();
-            }
-        });
-        
-        // 텍스트 추가 버튼들
-        $('#add-title-btn').on('click', () => TextManager.addTextBox('Title'));
-        $('#add-subtitle-btn').on('click', () => TextManager.addTextBox('Sub-Title'));
-        $('#add-text-btn').on('click', () => TextManager.addTextBox('text'));
+		// Delete/Backspace 키 처리 - 개선된 버전
+		$(document).off('keydown.delete').on('keydown.delete', (e) => {
+		    // Delete 또는 Backspace 키인지 확인
+		    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+		    
+		    // 텍스트 편집 중이면 무시
+		    const activeElement = document.activeElement;
+		    if (activeElement) {
+		        // contenteditable 요소에서 편집 중
+		        if (activeElement.contentEditable === 'true' && $(activeElement).hasClass('editing')) {
+		            return; // 편집 중이면 기본 동작 허용
+		        }
+		        
+		        // input이나 textarea에서 입력 중
+		        if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+		            return; // 기본 동작 허용
+		        }
+		    }
+		    
+		    // 선택된 요소가 있으면 삭제 처리
+		    if (window.selectionManager && window.selectionManager.selectedMode) {
+		        e.preventDefault(); // 기본 동작 방지
+		        this.handleDeleteKey();
+		    }
+		});
+
+		// 텍스트 추가 버튼들
+		$('#add-title-btn').on('click', () => TextManager.addTextBox('Title'));
+		$('#add-subtitle-btn').on('click', () => TextManager.addTextBox('Sub-Title'));
+		$('#add-text-btn').on('click', () => TextManager.addTextBox('text'));
     }
     
     // === Helper Methods ===
@@ -551,44 +570,67 @@ class EventManager {
     }
     
     static handleDeleteKey() {
-        const deleteHandlers = [
-            { selector: window.selectedPhotoWrapper, message: "사진을 삭제하시겠습니까?", handler: this.deletePhoto },
-            { selector: window.selectedFrame, message: "프레임을 삭제하시겠습니까?", handler: this.deleteFrame },
-            { selector: window.selectedBox, message: "텍스트를 삭제하시겠습니까?", handler: this.deleteText },
-            { 
-                selector: window.selectionManager.selectedMode === 'element' && window.selectionManager.currentElement,
-                message: "요소를 삭제하시겠습니까?",
-                handler: this.deleteElement
-            }
-        ];
-        
-        for (const { selector, message, handler } of deleteHandlers) {
-            if (selector && confirm(message)) {
-                handler.call(this, selector);
-                break;
-            }
-        }
+		const selectionManager = window.selectionManager;
+		if (!selectionManager) return;
+
+		// 현재 선택 모드에 따라 처리
+		switch (selectionManager.selectedMode) {
+		    case 'photo':
+		        if (selectionManager.currentPhoto && confirm("사진을 삭제하시겠습니까?")) {
+		            this.deletePhoto(selectionManager.currentPhoto, selectionManager.currentFrame);
+		        }
+		        break;
+		        
+		    case 'frame':
+		        if (selectionManager.currentFrame && confirm("프레임을 삭제하시겠습니까?")) {
+		            this.deleteFrame(selectionManager.currentFrame);
+		        }
+		        break;
+		        
+		    case 'text':
+		        if (selectionManager.currentTextBox && confirm("텍스트를 삭제하시겠습니까?")) {
+		            this.deleteText(selectionManager.currentTextBox);
+		        }
+		        break;
+		        
+		    case 'element':
+		        if (selectionManager.currentElement && confirm("요소를 삭제하시겠습니까?")) {
+		            this.deleteElement(selectionManager.currentElement);
+		        }
+		        break;
+		}
     }
     
-    static deletePhoto(photo) {
-        const frameGroup = photo.closest('.frame-group');
-        const placeholder = frameGroup.find('.place-image-here-link');
-        photo.hide().attr('src', '');
-        placeholder.show();
-        window.selectionManager.clearSelection();
+    static deletePhoto(photo, frameGroup) {
+		if (!photo || !frameGroup) return;
+		const placeholder = frameGroup.find('.place-image-here-link');
+
+		// 사진 숨기고 src 제거
+		photo.hide().attr('src', '').removeData('filePath');
+
+		// placeholder 표시
+		if (placeholder.length) {
+		    placeholder.show();
+		}
+
+		// 선택 해제
+		window.selectionManager.clearSelection();
     }
     
     static deleteFrame(frame) {
+		if (!frame) return;
         frame.remove();
         window.selectionManager.clearSelection();
     }
     
     static deleteText(textBox) {
+		if (!textBox) return;
         textBox.remove();
         window.selectionManager.clearSelection();
     }
     
     static deleteElement(element) {
+		if (!element) return;
         element.remove();
         window.selectionManager.clearSelection();
     }
