@@ -171,7 +171,7 @@ $(document).ready(function() {
 	// ✨ =======================================================================
 
 	// ✨ --- 핵심 수정: Edit 버튼 클릭 시 데이터 로드를 먼저 수행합니다. --- ✨
-	$('.content').on('click', '.edit-btn', function(e) {
+	$('.content').on('click', '.edit-btn', async function(e) {
 		e.preventDefault();
 
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
@@ -182,45 +182,39 @@ $(document).ready(function() {
 		
 		showLoader();
 
-		// ✨ 핵심: 모달이 열리기 전에 완전 초기화
-		forceCompleteReset();
+		try {
+			// 1. 폰트 로딩이 끝날 때까지 여기서 기다립니다.
+			await DataLoader.loadAndSetupFonts();
+			console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
 
-		if (yearbookId) {
-			$.ajax({
-				url: `${ctx}/edit/pageData`,
-				method: 'GET',
-				data: { id: yearbookId, _ : new Date().getTime() },
-				cache: false,
-				success: function(pageData) {
-					// ✨ 데이터 로드 후에도 한번 더 정리하고 렌더링
-					setTimeout(() => {
-						$('#frame-container').empty(); // 한번 더 비우기
-						renderPage(pageData, function() {
-							hideLoader(); // 렌더링 완료 후 로딩 해제
-						});
-						if (pageData && pageData.lastSaved) {
-							displayLastSaveTime(pageData.lastSaved);
-						}
-					}, 100);
-				},
-				error: function() {
-					alert("페이지 데이터를 불러오는 데 실패했습니다.");
-					setTimeout(() => {
-						$('#frame-container').empty();
-						renderPage(null);
-					}, 100);
-				},
-				complete: function() {
-					$('#editModal').modal('show');
+			// 2. 폰트가 모두 준비된 후에 페이지 데이터를 불러옵니다.
+			const pageData = await new Promise((resolve, reject) => {
+				if (yearbookId) {
+					$.ajax({
+						url: `${ctx}/edit/pageData`,
+						method: 'GET',
+						data: { id: yearbookId, _: new Date().getTime() },
+						cache: false,
+						success: resolve, // 성공 시 pageData를 resolve
+						error: reject,  // 실패 시 에러를 reject
+					});
+				} else {
+					resolve(null); // yearbookId가 없으면 null로 resolve
 				}
 			});
-		} else {
-			setTimeout(() => {
-				$('#frame-container').empty();
-				renderPage(null);
-				$('#editModal').modal('show');
-				setTimeout(hideLoader, 100);
-			}, 100);
+			
+			// 3. 페이지를 렌더링하고 모달을 엽니다.
+			forceCompleteReset();
+			renderPage(pageData, hideLoader);
+			if (pageData && pageData.lastSaved) {
+				displayLastSaveTime(pageData.lastSaved);
+			}
+			$('#editModal').modal('show');
+
+		} catch (error) {
+			console.error('페이지 준비 중 오류 발생:', error);
+			alert("페이지를 준비하는 중 오류가 발생했습니다.");
+			hideLoader();
 		}
 	});
 
@@ -322,7 +316,8 @@ $(document).ready(function() {
 		    
 		    // ✨ 핵심 수정: 현재 실제 CSS 값을 저장
 		    const currentFontSize = $box.css('font-size');  // savedFontSize 대신 현재 CSS 값
-		    const currentFontFamily = $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
+			const currentFontFamily = $box.data('savedFontFamily') || 
+			                         $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
 		    
 		    designData.textBoxes.push({
 		        html: $box.html(),
@@ -728,7 +723,13 @@ $(document).ready(function() {
 				            $box.data('relativeState', relativeState);
 				            $box.data('savedFontSize', boxData.styles.fontSize);
 				            $box.data('savedFontFamily', boxData.styles.fontFamily);
-				            $box.data('originalFontSize', boxData.styles.fontSize); // 추가
+							$box.data('originalFontSize', boxData.styles.fontSize); 
+							$box.data('originalFontFamily', boxData.styles.fontFamily);
+							
+							// 폰트 명시적 적용 (폰트가 로드되지 않았을 경우 대비)
+							if (boxData.styles.fontFamily) {
+							    $box.css('font-family', boxData.styles.fontFamily);
+							}
 
 				            // 위치/크기 적용 후 Transform 별도 적용
 				            window.updateElementPosition($box);
@@ -753,6 +754,7 @@ $(document).ready(function() {
 				            console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
 				            checkRenderingComplete();
 				        }
+						
 				    }, frameDelay + index * 100);
 				});
 			}
@@ -833,7 +835,6 @@ $(document).ready(function() {
 		if (window.selectionManager) {
 			window.selectionManager.clearSelection();
 		}
-		DataLoader.loadAndSetupFonts();
 	});
 	
 	$('#editModal').on('shown.bs.modal', function() {

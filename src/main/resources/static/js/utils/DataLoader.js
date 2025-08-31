@@ -463,6 +463,12 @@ class DataLoader {
 	static updateFontDropdownFromTextBox($textBox) {
 	    if (!$textBox || $textBox.length === 0) return;
 	    
+	    // 폰트 로딩 대기 (타이밍 이슈 방지)
+	    if (!DataLoader.fontsLoaded) {
+	        setTimeout(() => this.updateFontDropdownFromTextBox($textBox), 100);
+	        return;
+	    }
+	    
 	    // 1. 저장된 폰트 패밀리 확인 (최우선)
 	    let fontFamily = $textBox.data('savedFontFamily');
 	    
@@ -476,29 +482,30 @@ class DataLoader {
 	    
 	    // 3. 드롭다운에서 해당 폰트 찾기
 	    const fontSelect = $('#tooltip-font');
-	    let matchingOption = fontSelect.find(`option[value="${fontFamily}"]`);
 	    
-	    // 4. 정확한 매칭이 안 되면 부분 매칭 시도
-	    if (matchingOption.length === 0 && fontFamily) {
-	        matchingOption = fontSelect.find('option').filter(function() {
-	            const optionValue = $(this).val().toLowerCase();
-	            const targetFont = fontFamily.toLowerCase();
-	            return optionValue.includes(targetFont) || targetFont.includes(optionValue);
-	        });
-	    }
-	    
-	    if (matchingOption.length > 0) {
-	        const finalFont = matchingOption.first().val();
-	        console.log('텍스트박스의 폰트로 드롭다운 업데이트:', finalFont);
-	        fontSelect.val(finalFont);
+	    if (fontFamily) {
+	        // 정확한 매칭 시도
+	        let matchingOption = fontSelect.find(`option[value="${fontFamily}"]`);
 	        
-	        // 저장된 폰트가 없었다면 지금 저장
-	        if (!$textBox.data('savedFontFamily')) {
-	            $textBox.data('savedFontFamily', finalFont);
+	        // 정확한 매칭이 안 되면 부분 매칭 (공백 제거 후 비교 강화)
+	        if (matchingOption.length === 0) {
+	            matchingOption = fontSelect.find('option').filter(function() {
+	                const optionValue = $(this).val().replace(/\s+/g, '').toLowerCase();  // 공백 제거
+	                const cleanFont = fontFamily.replace(/\s+/g, '').toLowerCase();  // 공백 제거
+	                return optionValue === cleanFont;
+	            });
 	        }
-	    } else {
-	        // 매칭되는 옵션이 없으면 첫 번째 폰트로 설정하지 않음 (기존 선택 유지)
-	        console.log('매칭되는 폰트를 찾을 수 없음:', fontFamily);
+	        
+	        if (matchingOption.length > 0) {
+	            const finalFont = matchingOption.first().val();
+	            console.log('드롭다운 업데이트:', finalFont);
+	            fontSelect.val(finalFont);
+	            fontSelect.trigger('change');  // UI 업데이트 강제 트리거
+	        } else {
+	            console.log('매칭되는 폰트 없음, 첫 번째 옵션 선택');
+	            fontSelect.prop('selectedIndex', 0);
+	            fontSelect.trigger('change');  // UI 업데이트 강제 트리거
+	        }
 	    }
 	}
 	
@@ -615,15 +622,17 @@ class DataLoader {
 	    });
 	    
 	    // 3. 짧은 지연 후 확인 및 재적용
-	    setTimeout(() => {
-	        const appliedFont = $textBox.css('font-family');
-	        console.log('적용 후 폰트 확인:', appliedFont);
-	        
-	        if (!appliedFont.includes(fontFamily)) {
-	            console.log('폰트 재적용 시도');
-	            $textBox[0].style.setProperty('font-family', fontFamily, 'important');
-	        }
-	    }, 100);
+		setTimeout(() => {
+		    const appliedFont = $textBox.css('font-family');
+		    console.log('적용 후 폰트 확인:', appliedFont);
+		    
+		    if (!appliedFont.includes(fontFamily)) {
+		        console.log('폰트 재적용 시도');
+		        $textBox[0].style.setProperty('font-family', fontFamily, 'important');
+		    }
+		    // 추가: 툴바 재업데이트
+		    DataLoader.updateFontDropdownFromTextBox($textBox);
+		}, 100);
 	}
 
 	/**
@@ -651,73 +660,77 @@ class DataLoader {
 	 * ✅ 개선된 폰트 로딩 메소드
 	 */
 	static loadAndSetupFonts() {
-	    // 폰트가 이미 로드되었다면 다시 실행하지 않습니다.
-	    if (this.fontsLoaded) return;
 
-	    console.log('폰트 로딩 시작...');
+		return new Promise((resolve, reject) => {
 
-	    $.ajax({
-	        url: `${ctx}/edit/fonts`,
-	        method: 'GET',
-	        success: function(fonts) {
-	            console.log('서버에서 폰트 데이터 수신:', fonts.length + '개');
-	            
-	            const fontSelect = $('#tooltip-font');
+			// 폰트가 이미 로드되었다면 즉시 완료 처리합니다.
+			if (this.fontsLoaded) {
+				resolve();
+				return;
+			}
 
-	            // @font-face 스타일 시트를 동적으로 추가합니다.
-	            if ($('#dynamic-font-styles').length === 0) {
-	                $('<style>').attr('id', 'dynamic-font-styles').appendTo('head');
-	            }
-	            const styleSheet = $('#dynamic-font-styles');
-	            let fontFaceRules = '';
+			$.ajax({
+				url: `${ctx}/edit/fonts`,
+				method: 'GET',
+				success: function(fonts) {
+					
+					// ▼▼▼▼▼ [수정] try...catch 로 에러 처리 추가 ▼▼▼▼▼
+					try {
+						// 1. 서버에서 받은 데이터가 배열인지 확인합니다.
+						if (!Array.isArray(fonts)) {
+							console.error("서버로부터 유효한 폰트 목록(배열)을 받지 못했습니다.", fonts);
+							// Promise를 '실패' 상태로 만들어 무한 대기를 방지합니다.
+							reject(new Error("Invalid font data from server."));
+							return;
+						}
 
-	            fontSelect.empty();
+						const fontSelect = $('#tooltip-font');
+						if ($('#dynamic-font-styles').length === 0) {
+							$('<style>').attr('id', 'dynamic-font-styles').appendTo('head');
+						}
+						const styleSheet = $('#dynamic-font-styles');
+						let fontFaceRules = '';
+						fontSelect.empty();
 
-	            fonts.forEach((font, index) => {
-	                // 파일 확장자 제거 및 폰트 이름 정리
-	                const fontFamily = DataLoader.cleanFontName(font.filename);
-	                const fontUrl = `${ctx}${font.fontPath}`;
-	                
-	                fontFaceRules += `
-	                    @font-face {
-	                        font-family: "${fontFamily}";
-	                        src: url('${fontUrl}');
-	                        font-display: swap;
-	                    }
-	                `;
-	                
-	                // 드롭다운에 표시될 이름도 정리된 이름 사용
-	                const displayName = DataLoader.getDisplayName(fontFamily);
-	                fontSelect.append($('<option>', { 
-	                    value: fontFamily, 
-	                    text: displayName 
-	                }));
-	                
-	                console.log(`폰트 ${index + 1}/${fonts.length}: ${displayName} (${fontFamily})`);
-	            });
+						fonts.forEach((font, index) => {
+							// 파일 확장자 제거 및 폰트 이름 정리
+							const fontFamily = DataLoader.cleanFontName(font.filename);
+							const fontUrl = `${ctx}${font.fontPath}`;
 
-	            styleSheet.text(fontFaceRules);
-	            
-	            // ✅ 폰트 로딩 완료 후 첫 번째 폰트 자동 선택
-	            setTimeout(() => {
-	                const firstFont = fontSelect.find('option:first').val();
-	                if (firstFont) {
-	                    fontSelect.val(firstFont);
-	                    console.log('기본 폰트로 설정:', firstFont);
-	                }
-	                
-	                DataLoader.fontsLoaded = true;
-	                console.log('폰트 로딩 및 설정 완료');
-	                
-	                // 이벤트 리스너 설정
-	                DataLoader.setupFontEventListeners();
-	                
-	            }, 300); // 폰트 로딩을 위한 충분한 지연
-	            
-	        },
-	        error: function(err) {
-	            console.error("폰트 목록을 불러오는 데 실패했습니다.", err);
-	        }
-	    });
+							fontFaceRules += `
+							                    @font-face {
+							                        font-family: "${fontFamily}";
+							                        src: url('${fontUrl}');
+							                        font-display: swap;
+							                    }
+							                `;
+
+							// 드롭다운에 표시될 이름도 정리된 이름 사용
+							const displayName = DataLoader.getDisplayName(fontFamily);
+							fontSelect.append($('<option>', {
+								value: fontFamily,
+								text: displayName
+							}));
+						});
+
+						styleSheet.text(fontFaceRules);
+						DataLoader.fontsLoaded = true;
+
+						// 2. 모든 작업이 성공적으로 끝나면 Promise를 '완료'시킵니다.
+						resolve();
+
+					} catch (e) {
+						// 3. 폰트 처리 중 다른 에러가 발생해도 Promise를 '실패'시킵니다.
+						console.error("폰트 데이터를 처리하는 중 에러가 발생했습니다.", e);
+						reject(e);
+					}
+
+				},
+				error: function(err) {
+					console.error("폰트 목록을 불러오는 데 실패했습니다.", err);
+					reject(err);
+				}
+			});
+		});
 	}
 }

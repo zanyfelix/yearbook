@@ -1,6 +1,9 @@
 package com.mbiz.yearbook.service;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
@@ -196,8 +199,78 @@ public class ThumbnailRenderingService {
 
         // 텍스트박스 렌더링 (선택사항)
         for (JsonNode textNode : root.path("textBoxes")) {
-            // 텍스트박스는 이미지로 변환이 복잡하므로 
-            // 필요시 별도 구현 또는 생략 가능
+            try {
+                // 1. 텍스트 스타일 정보 파싱
+                JsonNode styles = textNode.path("styles");
+                String html = textNode.path("html").asText("");
+                // 간단하게 HTML 태그를 제거 (더 복잡한 파싱이 필요할 수 있음)
+                String text = html.replaceAll("<br.*?>", "\n").replaceAll("<.*?>", "");
+                
+                // 2. 위치 및 크기 계산 (썸네일 기준)
+                double leftPercent = textNode.path("position").path("left").asDouble();
+                double topPercent = textNode.path("position").path("top").asDouble();
+                double widthPercent = textNode.path("size").path("width").asDouble();
+                
+                int boxX = (int) Math.round(THUMB_WIDTH * (leftPercent / 100.0));
+                int boxY = (int) Math.round(THUMB_HEIGHT * (topPercent / 100.0));
+                int boxWidth = (int) Math.round(THUMB_WIDTH * (widthPercent / 100.0));
+
+                // 3. 폰트 설정
+                String fontFamily = styles.path("fontFamily").asText("Arial");
+                String fontSizeStr = styles.path("fontSize").asText("12px").replaceAll("px", "");
+                int fontWeight = styles.path("fontWeight").asText("normal").equals("bold") ? Font.BOLD : Font.PLAIN;
+                
+                // 폰트 크기를 썸네일 비율에 맞게 스케일링 (786px는 웹 편집기의 기준 너비)
+                double fontSize = Double.parseDouble(fontSizeStr);
+                double scaleRatio = (double)THUMB_WIDTH / 786.0;
+                float scaledFontSize = (float) (fontSize * scaleRatio);
+
+                // 서버에 설치된 폰트를 사용하도록 Font 객체 생성
+                Font font = new Font(fontFamily, fontWeight, (int)scaledFontSize);
+                g2d.setFont(font);
+
+                // 4. 색상 설정
+                String colorStr = styles.path("color").asText("rgb(0, 0, 0)");
+                // "rgb(r, g, b)" 형식 파싱
+                String[] rgb = colorStr.replaceAll("[^0-9,]", "").split(",");
+                if (rgb.length == 3) {
+                    Color textColor = new Color(Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2]));
+                    g2d.setColor(textColor);
+                }
+
+                // 5. Transform(회전 등) 처리
+                String transform = textNode.path("transform").asText("none");
+                AffineTransform savedTransform = g2d.getTransform();
+                if (!"none".equals(transform) && transform.contains("matrix")) {
+                    // (사진 Transform 처리 로직과 유사하게 AffineTransform 설정)
+                    // 간단한 예시: g2d.rotate(angle, centerX, centerY);
+                }
+                
+                // 6. 텍스트 그리기 (정렬 처리)
+                FontMetrics fm = g2d.getFontMetrics();
+                String textAlign = styles.path("textAlign").asText("left");
+                
+                String[] lines = text.split("\n");
+                int currentY = boxY + fm.getAscent();
+
+                for (String line : lines) {
+                    int textWidth = fm.stringWidth(line);
+                    int startX = boxX;
+                    if ("center".equals(textAlign)) {
+                        startX = boxX + (boxWidth - textWidth) / 2;
+                    } else if ("right".equals(textAlign)) {
+                        startX = boxX + boxWidth - textWidth;
+                    }
+                    g2d.drawString(line, startX, currentY);
+                    currentY += fm.getHeight();
+                }
+                
+                g2d.setTransform(savedTransform); // Transform 복원
+
+            } catch (Exception e) {
+                System.err.println("텍스트박스 렌더링 실패: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
         g2d.dispose();
