@@ -29,14 +29,19 @@ class DataLoader {
             const panel = $(targetPanel).empty();
             representativeData.forEach(result => {
                 const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, async () => {
-                    try {
-                        const fullListData = await this.fetchData('/edit/themesByParent', {
-                            themeId: result.theme.id
-                        });
-                        modalHandler(fullListData);
-                    } catch (error) {
-                        alert("전체 목록을 불러오는 데 실패했습니다.");
-                    }
+					if (modalHandler) {
+						try {
+							const fullListData = await this.fetchData('/edit/themesByParent', {
+								themeId: result.theme.id
+							});
+							modalHandler(fullListData);
+						} catch (error) {
+							alert("전체 목록을 불러오는 데 실패했습니다.");
+						}
+					}
+					else {
+						FrameManager.applyFrame(result.theme);
+					}
                 });
                 panel.append(item);
             });
