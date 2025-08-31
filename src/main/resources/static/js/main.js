@@ -715,6 +715,7 @@ $(document).ready(function() {
 		if (confirm("Do you want to save?")) {
 			// "확인"을 누르면, 저장이 완료된 후 모달을 닫도록 이벤트를 한 번만 리스닝
 			$(document).one('saveComplete', function() {
+				hasSaved = true;
 				$('#editModal').modal('hide');
 			});
 			// 저장 버튼 클릭을 프로그래밍적으로 트리거
@@ -731,8 +732,17 @@ $(document).ready(function() {
 		forceCompleteReset();
 		
 		if (hasSaved) {
-			location.reload();
+			console.log('저장이 완료되어 페이지를 새로고침합니다.');
+
+			// 새로고침 전 플래그 즉시 초기화 (중복 방지)
+			hasSaved = false;
+
+			// 짧은 지연 후 새로고침 (DOM 정리 시간 확보)
+			setTimeout(function() {
+				location.reload();
+			}, 100);
 		}
+			
 		const $message = $('#save-confirmation-message');
 		$message.removeClass('show');
 		
