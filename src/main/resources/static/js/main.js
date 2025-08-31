@@ -91,10 +91,57 @@ $(document).ready(function() {
 			PhotoManager.updateSelectionUI($element);
 		}
 	};
+	
+	window.updateTextBoxPosition = function($element) {
+	    const relativeState = $element.data('relativeState');
+	    if (!relativeState) return;
+	    
+	    const bg = $('#page-preview-img');
+	    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+	    if (!actualBgRect) return;
+	    
+	    // Transform을 임시로 제거하고 위치 계산
+	    const currentTransform = $element.css('transform');
+	    $element.css('transform', 'none');
+	    
+	    // 새로운 위치 계산
+	    const newPixelPos = {
+	        left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
+	        top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
+	    };
+	    
+	    const newPixelSize = {
+	        width: (relativeState.size.width / 100) * actualBgRect.width,
+	        height: (relativeState.size.height / 100) * actualBgRect.height
+	    };
+	    
+	    // 위치/크기 적용
+	    $element.css({
+	        left: newPixelPos.left,
+	        top: newPixelPos.top,
+	        width: newPixelSize.width,
+	        height: newPixelSize.height
+	    });
+	    
+	    // Transform 복원
+	    if (currentTransform && currentTransform !== 'none') {
+	        setTimeout(() => {
+	            $element.css('transform', currentTransform);
+	        }, 10);
+	    }
+	};
 
 	window.updateAllPositions = function() {
 		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
 			window.updateElementPosition($(this));
+			
+			if ($this.hasClass('text-box')) {
+				// ✅ 텍스트박스는 새로운 함수 사용
+				window.updateTextBoxPosition($this);
+			} else {
+				// 프레임은 기존 함수 사용
+				window.updateElementPosition($this);
+			}
 
 			// ✨ 추가: 프레임 안의 사진 위치도 함께 업데이트
 			const $photo = $(this).find('.uploaded-photo');
@@ -110,7 +157,7 @@ $(document).ready(function() {
 		e.preventDefault();
 
 		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
-		const yearbookId = activePageThumb.data('yearbook-id');
+		const yearbookId = activePageThumb.attr('data-yearbook-id'); 
 		
 		const pageCategory = $(this).data('category');
 		DataLoader.loadBackgrounds(pageCategory);
@@ -124,7 +171,8 @@ $(document).ready(function() {
 			$.ajax({
 				url: `${ctx}/edit/pageData`,
 				method: 'GET',
-				data: { id: yearbookId },
+				data: { id: yearbookId, _ : new Date().getTime() },
+				cache: false,
 				success: function(pageData) {
 					// ✨ 데이터 로드 후에도 한번 더 정리하고 렌더링
 					setTimeout(() => {
@@ -212,25 +260,69 @@ $(document).ready(function() {
 		});
 
 		// 모든 텍스트 상자 정보 수집 (픽셀 -> 퍼센트로 변환)
+		// ============================================================================
+		// 텍스트 저장 로직 - Save 버튼 클릭 이벤트 부분 수정
+		// ============================================================================
+
+		// 모든 텍스트 상자 정보 수집 (수정된 버전)
 		captureArea.find('.text-box').each(function() {
-			const $box = $(this);
-			const boxPos = $box.position();
-			const boxW = $box.outerWidth();
-			const boxH = $box.outerHeight();
-
-			const latestRelativeState = {
-				position: { left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 },
-				size: { width: (boxW / actualBgRect.width) * 100, height: (boxH / actualBgRect.height) * 100 },
-				// ✨ transform 정보 추가
-				transform: $box.css('transform') || 'none'
-			};
-			$box.data('relativeState', latestRelativeState);
-
-			designData.textBoxes.push({
-				html: $box.html(),
-				...latestRelativeState,
-				styles: { color: $box.css('color'), fontSize: $box.css('font-size'), fontWeight: $box.css('font-weight'), textAlign: $box.css('text-align'),fontFamily: $box.css('font-family') }
-			});
+		    const $box = $(this);
+		    
+		    // ✅ 핵심 수정: Transform을 제거한 상태에서 원본 위치 계산
+		    const originalTransform = $box.css('transform');
+		    const hasTransform = originalTransform && originalTransform !== 'none';
+		    
+		    let boxPos, boxW, boxH;
+		    
+		    if (hasTransform) {
+		        // Transform이 있는 경우: 임시로 제거하고 원본 위치 계산
+		        $box.css('transform', 'none');
+		        boxPos = $box.position();
+		        boxW = $box.outerWidth();
+		        boxH = $box.outerHeight();
+		        // Transform 복원
+		        $box.css('transform', originalTransform);
+		    } else {
+		        // Transform이 없는 경우: 일반 계산
+		        boxPos = $box.position();
+		        boxW = $box.outerWidth();
+		        boxH = $box.outerHeight();
+		    }
+		    
+		    // ✅ 상대 위치 계산 (Transform 제거 상태의 위치 기준)
+		    const latestRelativeState = {
+		        position: { 
+		            left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, 
+		            top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 
+		        },
+		        size: { 
+		            width: (boxW / actualBgRect.width) * 100, 
+		            height: (boxH / actualBgRect.height) * 100 
+		        },
+		        // ✅ Transform 정보 정확히 저장
+		        transform: originalTransform || 'none',
+		        // ✅ Transform 중심점도 저장 (기본값: 50% 50%)
+		        transformOrigin: $box.css('transform-origin') || '50% 50%'
+		    };
+		    
+		    // 데이터 업데이트
+		    $box.data('relativeState', latestRelativeState);
+		    
+		    // ✅ 저장된 폰트 정보도 함께 수집
+		    const savedFontSize = $box.data('savedFontSize') || $box.css('font-size');
+		    const savedFontFamily = $box.data('savedFontFamily') || $box.css('font-family');
+		    
+		    designData.textBoxes.push({
+		        html: $box.html(),
+		        ...latestRelativeState,
+		        styles: { 
+		            color: $box.css('color'), 
+		            fontSize: savedFontSize, 
+		            fontWeight: $box.css('font-weight'), 
+		            textAlign: $box.css('text-align'),
+		            fontFamily: savedFontFamily
+		        }
+		    });
 		});
 		// ✨ --- 데이터 수집 로직 끝 --- ✨
 
@@ -263,10 +355,17 @@ $(document).ready(function() {
 
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 						if (response.newYearbookId) {
-							activePageThumb.attr('data-yearbook-id', response.newYearbookId);
-							
-							const dotButton = activePageThumb.closest('.page-card').find('.menu-dots-btn');
-							dotButton.attr('data-yearbook-id', response.newYearbookId);
+							const newId = response.newYearbookId;
+
+							// ✨ [수정 2] DOM 속성과 jQuery 내부 데이터를 모두 업데이트합니다.
+							activePageThumb.attr('data-yearbook-id', newId); // 1. DOM 속성 업데이트
+							activePageThumb.data('yearbook-id', newId);    // 2. jQuery 내부 데이터(캐시) 업데이트
+
+							const $card = activePageThumb.closest('.page-card');
+							$card.attr('id', 'card-' + newId);
+
+							const dotButton = $card.find('.menu-dots-btn');
+							dotButton.attr('data-yearbook-id', newId);
 						}
 
 						// --- ✨ 핵심 수정: 메시지 표시 로직 ---
@@ -580,45 +679,58 @@ $(document).ready(function() {
 			}
 
 			// 5-4: 텍스트박스 렌더링 (프레임 후에)
+			// ============================================================================
+			// 텍스트 복원 로직 - renderPage 함수 부분 수정
+			// ============================================================================
+
+			// 텍스트박스 렌더링 (완전 수정된 버전)
 			if (totalTextBoxes > 0) {
-				const frameDelay = totalFrames * 100;
-				console.log(`${totalTextBoxes}개 텍스트박스 렌더링 시작`);
+			    const frameDelay = totalFrames * 100;
+			    console.log(`${totalTextBoxes}개 텍스트박스 렌더링 시작`);
 
-				design.textBoxes.forEach((boxData, index) => {
-					setTimeout(() => {
-						try {
-							console.log(`텍스트박스 ${index} 렌더링:`, boxData);
-							const $box = $('<div class="text-box" contenteditable="true"></div>')
-								.html(boxData.html)
-								.css({
-									position: 'absolute',
-									zIndex: 100,
-									...boxData.styles,
-									transform: boxData.transform || 'none'
-								});
+			    design.textBoxes.forEach((boxData, index) => {
+			        setTimeout(() => {
+			            try {
+			                console.log(`텍스트박스 ${index} 렌더링:`, boxData);
+			                
+			                // ✅ 1단계: DOM 요소 생성 (Transform 없이)
+			                const $box = $('<div class="text-box" contenteditable="true"></div>')
+			                    .html(boxData.html)
+			                    .css({
+			                        position: 'absolute',
+			                        zIndex: 100,
+			                        ...boxData.styles,
+			                        // Transform은 나중에 별도로 적용
+			                        transform: 'none'
+			                    });
 
-							$('#frame-container').append($box);
-							EventManager.setupTextEvents($box);
-							
-							const relativeState = {
-								position: boxData.position,
-								size: boxData.size,
-								transform: boxData.transform || 'none'
-							};
-							$box.data('relativeState', relativeState);
+			                $('#frame-container').append($box);
+			                EventManager.setupTextEvents($box);
+			                
+			                // ✅ 2단계: 저장된 데이터 설정
+			                const relativeState = {
+			                    position: boxData.position,
+			                    size: boxData.size,
+			                    transform: boxData.transform || 'none',
+			                    transformOrigin: boxData.transformOrigin || '50% 50%',
+			                    preserveOriginalStyles: true
+			                };
+			                $box.data('relativeState', relativeState);
+			                $box.data('savedFontSize', boxData.styles.fontSize);
+			                $box.data('savedFontFamily', boxData.styles.fontFamily);
+			                
+			                // ✅ 3단계: 위치 복원 (새로운 함수 사용)
+			                setTimeout(() => {
+			                    restoreTextBoxWithTransform($box);
+			                    checkRenderingComplete();
+			                }, 50);
 
-							// 위치 업데이트는 더 나중에
-							setTimeout(() => {
-								window.updateElementPosition($box);
-								checkRenderingComplete(); // ✨ 완료 체크
-							}, 100);
-
-						} catch (e) {
-							console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
-							checkRenderingComplete(); // ✨ 실패해도 카운트
-						}
-					}, frameDelay + index * 100);
-				});
+			            } catch (e) {
+			                console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
+			                checkRenderingComplete();
+			            }
+			        }, frameDelay + index * 100);
+			    });
 			}
 
 			// ✨ 요소가 하나도 없는 경우 즉시 완료 처리
@@ -736,11 +848,6 @@ $(document).ready(function() {
 
 			// 새로고침 전 플래그 즉시 초기화 (중복 방지)
 			hasSaved = false;
-
-			// 짧은 지연 후 새로고침 (DOM 정리 시간 확보)
-			setTimeout(function() {
-				location.reload();
-			}, 100);
 		}
 			
 		const $message = $('#save-confirmation-message');
@@ -1057,3 +1164,63 @@ $(document).ready(function() {
 	    console.log('Setting page category to:', pageCategory);
 	});
 });
+
+// ============================================================================
+// 새로운 복원 함수들
+// ============================================================================
+
+/**
+ * ✅ Transform을 고려한 텍스트박스 복원 함수
+ */
+function restoreTextBoxWithTransform($box) {
+    const relativeState = $box.data('relativeState');
+    if (!relativeState) return;
+    
+    const bg = $('#page-preview-img');
+    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+    if (!actualBgRect) return;
+    
+    // ✅ 1단계: 저장된 스타일 복원 (스케일링 없이)
+    const savedFontSize = $box.data('savedFontSize');
+    const savedFontFamily = $box.data('savedFontFamily');
+    
+    if (savedFontSize) {
+        $box.css('font-size', savedFontSize);
+        console.log('저장된 폰트 크기 복원:', savedFontSize);
+    }
+    
+    if (savedFontFamily) {
+        $box.css('font-family', savedFontFamily);
+    }
+    
+    // ✅ 2단계: 위치 계산 및 적용
+    const pixelPos = {
+        left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
+        top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
+    };
+    
+    const pixelSize = {
+        width: (relativeState.size.width / 100) * actualBgRect.width,
+        height: (relativeState.size.height / 100) * actualBgRect.height
+    };
+    
+    // ✅ 3단계: 기본 위치/크기 설정 (Transform 없이)
+    $box.css({
+        left: pixelPos.left,
+        top: pixelPos.top,
+        width: pixelSize.width,
+        height: pixelSize.height,
+        transform: 'none' // 일단 Transform 제거
+    });
+    
+    // ✅ 4단계: Transform 별도 적용 (약간의 지연)
+    setTimeout(() => {
+        if (relativeState.transform && relativeState.transform !== 'none') {
+            console.log('Transform 적용:', relativeState.transform);
+            $box.css({
+                'transform': relativeState.transform,
+                'transform-origin': relativeState.transformOrigin || '50% 50%'
+            });
+        }
+    }, 10);
+}

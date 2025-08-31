@@ -383,38 +383,165 @@ class DataLoader {
 	static setupFontEventListeners() {
 	    console.log('폰트 이벤트 리스너 설정 중...');
 	    
-	    // 중복 바인딩을 막기 위해 .fontManager 네임스페이스를 사용합니다.
+	    // 폰트 패밀리 변경 이벤트
 	    $('#tooltip-font').off('change.fontManager').on('change.fontManager', function() {
 	        const selectedFontFamily = $(this).val();
 	        console.log('폰트 변경 감지:', selectedFontFamily);
 	        
-	        // ✅ 수정: 다양한 방법으로 현재 선택된 텍스트박스 찾기
 	        let selectedBox = DataLoader.getCurrentSelectedTextBox();
 	        
 	        if (selectedBox && selectedBox.length > 0) {
 	            console.log('선택된 텍스트박스에 폰트 적용:', selectedFontFamily);
-	            
-	            // ✅ 수정: 강제로 폰트 적용 (CSS 우선순위 문제 해결)
 	            DataLoader.applyFontToTextBox(selectedBox, selectedFontFamily);
+	            
+	            // 저장된 폰트 패밀리도 업데이트
+	            selectedBox.data('savedFontFamily', selectedFontFamily);
+	            
+	            // ✅ 텍스트박스 상태 업데이트
+	            setTimeout(() => {
+	                TextManager.updateTextBoxState(selectedBox);
+	            }, 50);
 	        } else {
 	            console.log('선택된 텍스트박스가 없음');
 	        }
 	    });
 
-	    // ✅ 추가: 텍스트박스 클릭 시 현재 폰트를 드롭다운에 반영
+	    // ✅ 수정된 텍스트박스 클릭 이벤트
 	    $('#frame-container').off('mousedown.fontManager').on('mousedown.fontManager', '.text-box', function() {
 	        const $textBox = $(this);
 	        console.log('텍스트박스 클릭 감지');
 	        
-	        // selectionManager가 먼저 동작하도록 약간의 지연을 줍니다.
+	        // selectionManager가 먼저 동작하도록 약간의 지연
 	        setTimeout(() => {
-	            const currentFontFamily = DataLoader.getCurrentFont($textBox);
-	            console.log('현재 폰트:', currentFontFamily);
-	            
-	            // 드롭다운에서 해당 폰트 선택
-	            $('#tooltip-font').val(currentFontFamily);
-	        }, 100); // 지연시간 증가
+	            DataLoader.updateAllTextControlsFromTextBox($textBox);
+	        }, 100);
 	    });
+	}
+	
+	/**
+	 * ✅ 새로운 메소드: 텍스트박스 선택 시 모든 컨트롤 업데이트
+	 */
+	static updateAllTextControlsFromTextBox($textBox) {
+	    if (!$textBox || $textBox.length === 0) return;
+	    
+	    console.log('텍스트박스 컨트롤 전체 업데이트 시작');
+	    
+	    // 1. 폰트 패밀리 업데이트
+	    this.updateFontDropdownFromTextBox($textBox);
+	    
+	    // 2. 폰트 크기 업데이트
+	    this.updateFontSizeFromTextBox($textBox);
+	    
+	    // 3. 텍스트 정렬 업데이트
+	    this.updateTextAlignFromTextBox($textBox);
+	    
+	    // 4. 텍스트 색상 업데이트
+	    this.updateTextColorFromTextBox($textBox);
+	    
+	    console.log('텍스트박스 컨트롤 전체 업데이트 완료');
+	}
+	
+	/**
+	 * ✅ 수정된 메소드: 텍스트박스의 폰트 정보를 기반으로 드롭다운 업데이트
+	 */
+	static updateFontDropdownFromTextBox($textBox) {
+	    if (!$textBox || $textBox.length === 0) return;
+	    
+	    // 1. 저장된 폰트 패밀리 확인 (최우선)
+	    let fontFamily = $textBox.data('savedFontFamily');
+	    
+	    // 2. 저장된 폰트가 없으면 CSS에서 가져오기
+	    if (!fontFamily) {
+	        const cssFont = $textBox.css('font-family');
+	        if (cssFont && cssFont !== 'inherit') {
+	            fontFamily = cssFont.split(',')[0].replace(/['"]/g, '').trim();
+	        }
+	    }
+	    
+	    // 3. 드롭다운에서 해당 폰트 찾기
+	    const fontSelect = $('#tooltip-font');
+	    let matchingOption = fontSelect.find(`option[value="${fontFamily}"]`);
+	    
+	    // 4. 정확한 매칭이 안 되면 부분 매칭 시도
+	    if (matchingOption.length === 0 && fontFamily) {
+	        matchingOption = fontSelect.find('option').filter(function() {
+	            const optionValue = $(this).val().toLowerCase();
+	            const targetFont = fontFamily.toLowerCase();
+	            return optionValue.includes(targetFont) || targetFont.includes(optionValue);
+	        });
+	    }
+	    
+	    if (matchingOption.length > 0) {
+	        const finalFont = matchingOption.first().val();
+	        console.log('텍스트박스의 폰트로 드롭다운 업데이트:', finalFont);
+	        fontSelect.val(finalFont);
+	        
+	        // 저장된 폰트가 없었다면 지금 저장
+	        if (!$textBox.data('savedFontFamily')) {
+	            $textBox.data('savedFontFamily', finalFont);
+	        }
+	    } else {
+	        // 매칭되는 옵션이 없으면 첫 번째 폰트로 설정하지 않음 (기존 선택 유지)
+	        console.log('매칭되는 폰트를 찾을 수 없음:', fontFamily);
+	    }
+	}
+	
+	/**
+	 * ✅ 새로운 메소드: 텍스트 정렬 드롭다운 업데이트
+	 */
+	static updateTextAlignFromTextBox($textBox) {
+	    if (!$textBox || $textBox.length === 0) return;
+	    
+	    const textAlign = $textBox.css('text-align') || 'left';
+	    const alignSelect = $('#tooltip-align');
+	    
+	    if (alignSelect.length > 0) {
+	        const matchingAlign = alignSelect.find(`option[value="${textAlign}"]`);
+	        if (matchingAlign.length > 0) {
+	            console.log('텍스트 정렬 업데이트:', textAlign);
+	            alignSelect.val(textAlign);
+	        }
+	    }
+	}
+
+	/**
+	 * ✅ 새로운 메소드: 텍스트 색상 업데이트
+	 */
+	static updateTextColorFromTextBox($textBox) {
+	    if (!$textBox || $textBox.length === 0) return;
+	    
+	    const textColor = $textBox.css('color');
+	    const colorInput = $('#tooltip-color');
+	    
+	    if (colorInput.length > 0 && textColor) {
+	        // RGB를 HEX로 변환
+	        const hexColor = this.rgbToHex(textColor);
+	        if (hexColor) {
+	            console.log('텍스트 색상 업데이트:', hexColor);
+	            colorInput.val(hexColor);
+	        }
+	    }
+	}
+	
+	/**
+	 * ✅ RGB를 HEX로 변환하는 헬퍼 함수
+	 */
+	static rgbToHex(rgb) {
+	    if (!rgb) return null;
+	    
+	    // 이미 hex 형식이면 그대로 반환
+	    if (rgb.startsWith('#')) return rgb;
+	    
+	    // rgb(r, g, b) 형식 파싱
+	    const rgbMatch = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+	    if (rgbMatch) {
+	        const r = parseInt(rgbMatch[1]);
+	        const g = parseInt(rgbMatch[2]);
+	        const b = parseInt(rgbMatch[3]);
+	        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+	    }
+	    
+	    return null;
 	}
 
 	/**
@@ -422,8 +549,8 @@ class DataLoader {
 	 */
 	static getCurrentSelectedTextBox() {
 	    // 방법 1: window.selectedBox 확인
-	    if (window.selectedBox && window.selectedBox.length > 0) {
-	        console.log('window.selectedBox에서 찾음');
+	    if (window.selectedBox && window.selectedBox.length > 0 && window.selectedBox.hasClass('text-box')) {
+	        console.log('window.selectedBox에서 텍스트박스 찾음');
 	        return window.selectedBox;
 	    }
 	    
@@ -431,7 +558,7 @@ class DataLoader {
 	    if (window.selectionManager && typeof window.selectionManager.getSelectedTextBox === 'function') {
 	        const selected = window.selectionManager.getSelectedTextBox();
 	        if (selected && selected.length > 0) {
-	            console.log('selectionManager에서 찾음');
+	            console.log('selectionManager에서 텍스트박스 찾음');
 	            return selected;
 	        }
 	    }
@@ -439,7 +566,7 @@ class DataLoader {
 	    // 방법 3: CSS 클래스로 찾기
 	    const selectedByClass = $('.text-box.selected');
 	    if (selectedByClass.length > 0) {
-	        console.log('CSS 클래스로 찾음');
+	        console.log('CSS 클래스로 텍스트박스 찾음');
 	        return selectedByClass.first();
 	    }
 	    
@@ -448,7 +575,7 @@ class DataLoader {
 	        return $(this).is(':focus') || $(this).hasClass('editing');
 	    });
 	    if (lastClicked.length > 0) {
-	        console.log('포커스/편집 상태로 찾음');
+	        console.log('포커스/편집 상태로 텍스트박스 찾음');
 	        return lastClicked.first();
 	    }
 	    
@@ -467,7 +594,6 @@ class DataLoader {
 	    
 	    // 2. 스타일 속성으로 직접 설정 (우선순위 강화)
 	    $textBox.attr('style', function(i, style) {
-	        // 기존 스타일에서 font-family 제거 후 새로 추가
 	        let newStyle = (style || '').replace(/font-family[^;]*;?/gi, '');
 	        return newStyle + `font-family: "${fontFamily}" !important;`;
 	    });
@@ -477,12 +603,11 @@ class DataLoader {
 	        const appliedFont = $textBox.css('font-family');
 	        console.log('적용 후 폰트 확인:', appliedFont);
 	        
-	        // 폰트가 제대로 적용되지 않았으면 한 번 더 시도
 	        if (!appliedFont.includes(fontFamily)) {
 	            console.log('폰트 재적용 시도');
 	            $textBox[0].style.setProperty('font-family', fontFamily, 'important');
 	        }
-	    }, 200);
+	    }, 100);
 	}
 
 	/**

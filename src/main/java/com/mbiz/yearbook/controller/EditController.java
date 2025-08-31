@@ -261,7 +261,7 @@ public class EditController {
         page.setDesignData(designDataJson);
         page.setLastSaved(new Date());
 
-        Yearbook savedPage = yearbookRepository.save(page);
+        Yearbook savedPage = yearbookRepository.saveAndFlush(page);
         
         int updatedSavedCount = yearbookRepository.findByContentsIdOrderByPageNoAsc(savedPage.getContentsId()).size();
 
@@ -275,7 +275,7 @@ public class EditController {
         }
         
         savedPage.setThumbnailPath(newImagePath);
-        yearbookRepository.save(savedPage);
+        yearbookRepository.saveAndFlush(savedPage);
 
         Map<String, Object> response = new HashMap<>();
         response.put("newImagePath", newImagePath);
