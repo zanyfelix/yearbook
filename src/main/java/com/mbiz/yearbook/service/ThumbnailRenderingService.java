@@ -130,51 +130,28 @@ public class ThumbnailRenderingService {
             // 사진 렌더링
             JsonNode photoNode = frameNode.path("photo");
             boolean hasPhoto = false;
-            
             if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty()) {
                 byte[] imageBytes = getImageBytes(photoNode.path("src").asText());
                 if (imageBytes != null) {
                     BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
                     if (photoImage != null) {
                         hasPhoto = true;
-                        
-                        // 저장된 상대 위치와 크기를 픽셀로 변환
-                        double photoLeftPercent = photoNode.path("position").path("left").asDouble(0);
-                        double photoTopPercent = photoNode.path("position").path("top").asDouble(0);
-                        double photoWidthPercent = photoNode.path("size").path("width").asDouble(100);
-                        double photoHeightPercent = photoNode.path("size").path("height").asDouble(100);
-                        
-                        // 프레임 내에서의 실제 픽셀 위치와 크기
-                        int photoX = (int) Math.round(frameWidth * (photoLeftPercent / 100.0));
-                        int photoY = (int) Math.round(frameHeight * (photoTopPercent / 100.0));
-                        int photoWidth = (int) Math.round(frameWidth * (photoWidthPercent / 100.0));
-                        int photoHeight = (int) Math.round(frameHeight * (photoHeightPercent / 100.0));
+                        int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble(0) / 100.0));
+                        int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble(0) / 100.0));
+                        int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble(100) / 100.0));
+                        int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble(100) / 100.0));
                         
                         if (photoWidth > 0 && photoHeight > 0) {
-                            // Transform 파싱
-                            AffineTransform photoTransform = getTransformFromMatrix(
-                                photoNode.path("transform").asText("none")
-                            );
-                            
-                            // 사진의 중심점 계산
-                            double photoCenterX = photoX + photoWidth / 2.0;
-                            double photoCenterY = photoY + photoHeight / 2.0;
-                            
-                            // 현재 변환 상태 저장
-                            AffineTransform savedTransform = frameG2d.getTransform();
-                            
-                            // 사진 그리기: 중심점으로 이동 → Transform 적용 → 그리기
-                            frameG2d.translate(photoCenterX, photoCenterY);
-                            frameG2d.transform(photoTransform);
-                            
-                            // 중심점 기준으로 사진 그리기
-                            frameG2d.drawImage(photoImage, 
-                                -photoWidth/2, -photoHeight/2, 
-                                photoWidth, photoHeight, 
-                                null);
-                            
-                            // 변환 상태 복원
-                            frameG2d.setTransform(savedTransform);
+                            // ✅ 사진 렌더링도 프레임과 동일한 방식으로 수정 (중심점 계산 제거)
+                            AffineTransform savedPhotoTx = frameG2d.getTransform();
+                            try {
+                                frameG2d.translate(photoX, photoY);
+                                AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
+                                frameG2d.transform(photoTransform);
+                                frameG2d.drawImage(photoImage, 0, 0, photoWidth, photoHeight, null);
+                            } finally {
+                                frameG2d.setTransform(savedPhotoTx);
+                            }
                         }
                     }
                 }
@@ -210,31 +187,21 @@ public class ThumbnailRenderingService {
             frameG2d.dispose();
         }
 
-        // 완성된 프레임을 메인 캔버스에 그리기 (프레임의 Transform 적용)
-        if (!"none".equals(frameNode.path("transform").asText("none"))) {
-            // 프레임에 Transform이 있는 경우
-            AffineTransform savedCanvasTx = g2d.getTransform();
+        // --- [핵심 수정 2] 최종 프레임을 메인 캔버스에 그리는 로직 ---
+        AffineTransform savedCanvasTx = g2d.getTransform();
+        try {
+            // 1. CSS의 'position' 값 만큼 이동
+            g2d.translate(frameX, frameY);
             
-            try {
-                // 2. CSS의 'position' (left, top) 값 만큼 캔버스의 원점을 이동시킵니다.
-                g2d.translate(frameX, frameY);
-                
-                // 3. CSS의 'transform' (matrix) 값을 가져와 적용합니다.
-                //    이 matrix에는 회전, 크기조절, 그리고 드래그로 인한 추가 이동값이 모두 포함되어 있습니다.
-                AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
-                g2d.transform(frameTransform);
-                
-                // 4. 이제 (0, 0) 위치에 프레임 이미지를 그립니다. 
-                //    모든 위치 계산은 g2d의 transform에 이미 반영되었기 때문입니다.
-                g2d.drawImage(frameCanvas, 0, 0, frameWidth, frameHeight, null);
-
-            } finally {
-                // 5. 다음 요소를 그리기 위해 g2d의 변환 상태를 원래대로 반드시 복원합니다.
-                g2d.setTransform(savedCanvasTx);
-            }
-        } else {
-            // Transform이 없는 경우 단순 그리기
-            g2d.drawImage(frameCanvas, frameX, frameY, frameWidth, frameHeight, null);
+            // 2. CSS의 'transform' matrix 값을 가져와 적용 (이 안에 모든 변형 정보가 담겨 있음)
+            AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
+            g2d.transform(frameTransform);
+            
+            // 3. (0, 0) 위치에 프레임 이미지를 그리기
+            g2d.drawImage(frameCanvas, 0, 0, frameWidth, frameHeight, null);
+        } finally {
+            // 4. 다음 요소를 위해 캔버스 상태 복원
+            g2d.setTransform(savedCanvasTx);
         }
     }
     
