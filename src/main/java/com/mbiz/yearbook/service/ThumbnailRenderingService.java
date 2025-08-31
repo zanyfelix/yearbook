@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 
 import javax.imageio.ImageIO;
@@ -22,6 +23,7 @@ import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -437,5 +439,24 @@ public class ThumbnailRenderingService {
             e.printStackTrace();
             return null;
         }
+    }
+    
+    public String saveThumbnail(MultipartFile thumbnailFile, Long yearbookId) throws IOException {
+        if (thumbnailFile == null || thumbnailFile.isEmpty()) {
+            return null;
+        }
+        
+        // 고유한 파일명 생성 (ID가 없으면 시간 기반으로만)
+        String idPart = (yearbookId != null) ? String.valueOf(yearbookId) : "new";
+        String filename = "thumbnail_" + idPart + "_" + System.currentTimeMillis() + ".png";
+        
+        Path destinationDir = Paths.get(thumbnailPath);
+        Files.createDirectories(destinationDir); // 폴더가 없으면 생성
+        Path destinationFile = destinationDir.resolve(filename);
+
+        // 전달받은 파일을 지정된 경로에 저장
+        Files.copy(thumbnailFile.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
+
+        return "/thumbnail/" + filename;
     }
 }

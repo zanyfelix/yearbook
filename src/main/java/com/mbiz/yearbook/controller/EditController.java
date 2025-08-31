@@ -30,9 +30,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
 import com.mbiz.yearbook.model.FontDto;
+import com.mbiz.yearbook.model.PayloadDto;
 import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
@@ -340,5 +342,31 @@ public class EditController {
         public void setId(Long id) { this.id = id; }
         public int getPageNo() { return pageNo; }
         public void setPageNo(int pageNo) { this.pageNo = pageNo; }
+    }
+    
+    @PostMapping("/edit/savePageWithThumbnail")
+    @ResponseBody
+    public Map<String, Object> savePageWithThumbnail(
+            @RequestParam("payload") String payloadJson,
+            @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile) {
+        
+        try {
+            // ObjectMapper를 사용하여 JSON 문자열을 DTO 객체로 변환
+            ObjectMapper mapper = new ObjectMapper();
+            PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
+
+            // 서비스 레이어에 작업 위임
+            Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile);
+            
+            return result;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 에러 발생 시 실패 응답 반환
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Error processing request: " + e.getMessage());
+            return errorResponse;
+        }
     }
 }
