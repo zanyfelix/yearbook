@@ -150,23 +150,24 @@ $(document).ready(function() {
 	};
 
 	window.updateAllPositions = function() {
-		$('#frame-container .frame-group, #frame-container .text-box').each(function() {
-			window.updateElementPosition($(this));
-			
-			if ($this.hasClass('text-box')) {
-				// ✅ 텍스트박스는 새로운 함수 사용
-				window.updateTextBoxPosition($this);
-			} else {
-				// 프레임은 기존 함수 사용
-				window.updateElementPosition($this);
-			}
+	    $('#frame-container .frame-group, #frame-container .text-box').each(function() {
+	        // ▼▼▼ [핵심 수정] $(this)를 $this 변수에 할당하여 재사용합니다. ▼▼▼
+	        const $this = $(this);
 
-			// ✨ 추가: 프레임 안의 사진 위치도 함께 업데이트
-			const $photo = $(this).find('.uploaded-photo');
-			if ($photo.length && $photo.data('relativeState')) {
-				window.updateElementPosition($photo);
-			}
-		});
+	        // [수정] 조건문으로 텍스트박스와 프레임을 구분하여 적절한 함수를 한 번만 호출합니다.
+	        if ($this.hasClass('text-box')) {
+	            window.updateTextBoxPosition($this);
+	        } else {
+	            // 프레임 또는 요소인 경우
+	            window.updateElementPosition($this);
+
+	            // 해당 프레임 내부에 사진이 있으면 사진 위치도 업데이트합니다.
+	            const $photo = $this.find('.uploaded-photo');
+	            if ($photo.length && $photo.data('relativeState')) {
+	                window.updateElementPosition($photo);
+	            }
+	        }
+	    });
 	}
 	// ✨ =======================================================================
 
