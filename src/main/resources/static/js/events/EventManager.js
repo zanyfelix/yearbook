@@ -711,15 +711,24 @@ class EventManager {
 		if (!photo || !frameGroup) return;
 		const placeholder = frameGroup.find('.place-image-here-link');
 
-		// 사진 숨기고 src 제거
-		photo.hide().attr('src', '').removeData('filePath');
+		// 이벤트 핸들러 제거
+		photo.off('load error');
 
-		// placeholder 표시
+		// ✅ 1. CSS transform 스타일을 초기화합니다.
+		photo.css('transform', 'none');
+
+		// ✅ 2. 저장된 상태 데이터(relativeState)를 완전히 제거합니다.
+		photo.removeData('relativeState');
+
+		// 기존 로직: 숨김 처리 및 소스, 데이터 제거
+		photo.hide().removeAttr('src').removeData('filePath');
+
+		// 플레이스홀더 표시
 		if (placeholder.length) {
 			placeholder.show();
 		}
 
-		// 선택 해제
+		// 선택 상태 초기화
 		window.selectionManager.clearSelection();
 	}
 
