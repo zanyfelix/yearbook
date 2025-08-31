@@ -19,8 +19,12 @@ class SelectionManager {
         this.selectedMode = 'frame';
         this.currentFrame = frameGroup;
         
+        // ▼▼▼ [핵심 수정] CSS가 핸들을 표시할 수 있도록 .selected-frame 클래스를 추가합니다. ▼▼▼
         frameGroup.addClass('selected-frame');
+        
+        // 이전에 추가했던 회전 핸들 생성 함수를 호출합니다.
         FrameManager.addRotationHandle(frameGroup);
+        
         UIManager.showFrameTooltip(frameGroup);
     }
 
@@ -46,6 +50,7 @@ class SelectionManager {
         this.selectedMode = 'text';
         this.currentTextBox = textBox;
 
+        // 텍스트 박스는 .selected 클래스를 사용합니다 (CSS 규칙에 따라).
         textBox.addClass('selected');
         
         this.addTextRotationHandle(textBox);
@@ -66,24 +71,28 @@ class SelectionManager {
         this.currentElement = elementGroup;
         this.currentFrame = elementGroup;
 
+        // ▼▼▼ [핵심 수정] Element도 프레임의 일종이므로 .selected-frame 클래스를 추가합니다. ▼▼▼
         elementGroup.addClass('selected-frame selected-element');
+        
         FrameManager.addRotationHandle(elementGroup);
         UIManager.showElementTooltip(elementGroup);
     }
     
+    // (이하 코드는 이전과 동일하게 유지됩니다)
+    
     addTextRotationHandle(textBox) {
         textBox.find('.text-rotate-handle, .text-rotate-line').remove();
-        
         const handle = $('<div class="text-rotate-handle"></div>');
         const line = $('<div class="text-rotate-line"></div>');
-        
         textBox.append(handle).append(line);
+		EventManager.makeRotatable(textBox, handle);
     }
     
     clearSelection() {
+        // ▼▼▼ [핵심 수정] 선택 해제 시 .selected-frame 클래스도 함께 제거합니다. ▼▼▼
         if (this.currentFrame) {
             this.currentFrame.removeClass('selected-frame selected-element');
-            this.currentFrame.find('.frame-rotate-handle, .frame-rotate-line').remove();
+            this.currentFrame.find('.rotate-handle, .rotate-line').remove();
         }
         
         if (this.currentPhoto) {
@@ -106,20 +115,11 @@ class SelectionManager {
         this.currentTextBox = null;
     }
     
-    // ▼▼▼ [핵심 추가] 누락되었던 applySafeLineConstraints 함수 ▼▼▼
-    /**
-     * 요소의 새로운 위치가 안전선(Safe Line)을 벗어나지 않도록 보정합니다.
-     * @param {number} newLeft - 계산된 새로운 left 픽셀 위치
-     * @param {number} newTop - 계산된 새로운 top 픽셀 위치
-     * @param {jQuery} element - 위치를 보정할 대상 요소
-     * @returns {{left: number, top: number}} - 보정된 픽셀 위치
-     */
     applySafeLineConstraints(newLeft, newTop, element) {
         const bg = $('#page-preview-img');
         const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
         
         if (!actualBgRect) {
-            console.warn("배경 이미지를 찾을 수 없어 안전선 제약을 적용할 수 없습니다.");
             return { left: newLeft, top: newTop };
         }
         
@@ -134,7 +134,6 @@ class SelectionManager {
         const minTop = actualBgRect.top + safeMarginY;
         const maxTop = actualBgRect.top + actualBgRect.height - safeMarginY - elementHeight;
         
-        // 계산된 위치가 최소/최대 범위를 벗어나지 않도록 보정
         const constrainedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
         const constrainedTop = Math.max(minTop, Math.min(newTop, maxTop));
         
@@ -143,5 +142,4 @@ class SelectionManager {
             top: constrainedTop
         };
     }
-    // ▲▲▲ [핵심 추가] 종료 ▲▲▲
 }

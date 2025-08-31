@@ -6,10 +6,11 @@ class FrameManager {
         baseZIndex: 15,
         textboxZIndex: 10,
         defaultTransform: 'matrix(1, 0, 0, 1, 0, 0)',
-        templateWidth: 786 // 편집용 웹 배경의 원본 너비
+        templateWidth: 786
     };
-    
+
     static applyFrame(frameTheme, savedState = null) {
+        // ... (이하 다른 부분은 모두 동일) ...
         const frameContainer = $('#frame-container');
         const frameType = this.getFrameType(frameTheme);
         const frameGroup = this.createFrameGroup(frameType);
@@ -24,7 +25,7 @@ class FrameManager {
         
         frameContainer.append(frameGroup);
         frameGroup.data('frameTheme', frameTheme);
-        // ▼▼▼ [수정] editPath가 null이 아닐 때만 src 설정
+        
         if (frameTheme.editPath) {
             frameOverlay.attr('src', frameTheme.editPath);
         }
@@ -35,61 +36,32 @@ class FrameManager {
             this.setupNewFrame(frameGroup, frameTheme, frameType);
         }
         
-        this.bindFrameEvents(frameGroup, frameType);
+        if (!frameType.isSimple) {
+            const placeholder = frameGroup.find('.place-image-here-link');
+            const photo = frameGroup.find('.uploaded-photo');
+            const mask = frameGroup.find('.mask-container');
+            EventManager.setupFrameEvents(frameGroup, placeholder, photo, mask);
+        } else if (frameType.isTextboxFrame) {
+            EventManager.setupTextboxFrameEvents(frameGroup);
+        } else if (frameType.isElement) {
+            EventManager.setupElementEvents(frameGroup);
+        }
     }
-	
-	/**
-	 * 프레임/요소에 회전 핸들을 추가하고 회전 가능하게 만듭니다.
-	 * @param {jQuery} elementGroup - 회전 핸들을 추가할 대상 요소 (.frame-group)
-	 */
-	static addRotationHandle(elementGroup) {
-		// 기존 핸들 제거
-		elementGroup.find('.frame-rotate-handle, .frame-rotate-line').remove();
 
-		const handle = $('<div class="frame-rotate-handle"></div>');
-		const line = $('<div class="frame-rotate-line"></div>');
+    // ▼▼▼ [핵심 수정] addRotationHandle 함수 내부 클래스 이름을 기존 이름으로 변경 ▼▼▼
+    static addRotationHandle(elementGroup) {
+        elementGroup.find('.rotate-handle, .rotate-line').remove();
+        
+        // 클래스 이름을 'frame-rotate-handle' -> 'rotate-handle'로 변경
+        const handle = $('<div class="rotate-handle"></div>'); 
+        // 클래스 이름을 'frame-rotate-line' -> 'rotate-line'으로 변경
+        const line = $('<div class="rotate-line"></div>');
+        
+        elementGroup.append(handle).append(line);
+        EventManager.makeRotatable(elementGroup, handle);
+    }
+    // ▲▲▲ [수정 완료] ▲▲▲
 
-		elementGroup.append(handle).append(line);
-		this.makeRotatable(elementGroup, handle);
-	}
-
-	/**
-	 * 요소를 회전 가능하게 만드는 이벤트 핸들러를 바인딩합니다.
-	 * @param {jQuery} element - 회전 대상 요소
-	 * @param {jQuery} handle - 회전 트리거 핸들
-	 */
-	static makeRotatable(element, handle) {
-		handle.on('mousedown', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			const elementCenter = {
-				x: element.offset().left + element.width() / 2,
-				y: element.offset().top + element.height() / 2
-			};
-
-			const initialAngle = Helpers.getFrameRotation(element);
-			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
-
-			$(document).on('mousemove.frameRotate', (ev) => {
-				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
-				const deltaAngle = (currentAngleRad - startAngleRad) * (180 / Math.PI);
-				const newAngle = initialAngle + deltaAngle;
-
-				element.css('transform', `rotate(${newAngle}deg)`);
-			});
-
-			$(document).on('mouseup.frameRotate', () => {
-				$(document).off('.frameRotate');
-
-				// 최종 상태 저장
-				const currentState = element.data('relativeState') || {};
-				currentState.transform = element.css('transform');
-				element.data('relativeState', currentState);
-			});
-		});
-	}
-    
     static getFrameType(frameTheme) {
         const isTextboxFrame = frameTheme.category === 'textboxframe' || 
                               frameTheme.type === 'textbox' ||
@@ -128,7 +100,7 @@ class FrameManager {
             width: '100%',
             height: '100%',
             zIndex: frameType.isTextboxFrame ? 5 : 20,
-            pointerEvents: frameType.isTextboxFrame ? 'auto' : 'none'
+            pointerEvents: 'auto'
         });
         
         frameGroup.append(frameOverlay);
@@ -230,9 +202,6 @@ class FrameManager {
     }
     
     static restoreFrameState(frameGroup, savedState, frameType) {
-        // main.js의 renderPage에서 photo.src를 fullSrc로, filePath를 filePath로 가공한 객체를 전달받음
-        // (예: savedState.photo = { src: "/ctx/...", filePath: "/photo/..." })
-        
         frameGroup.data('relativeState', savedState);
         window.updateElementPosition(frameGroup);
         
@@ -241,34 +210,20 @@ class FrameManager {
         }
     }
     
-    /**
-     * 저장된 사진 정보를 복원하는 함수
-     * @param {jQuery} frameGroup - 대상 프레임 그룹
-     * @param {object} photoState - 사진 상태 정보 (src, filePath, position, size, transform 포함)
-     */
     static restorePhoto(frameGroup, photoState) {
         const uploadedPhoto = frameGroup.find('.uploaded-photo');
         const placeholderLink = frameGroup.find('.place-image-here-link');
         
-        // 이미지 로드가 완료되면 위치/크기를 최종 업데이트
         uploadedPhoto.off('load').on('load', function() {
-            console.log('프레임 내 사진 로드 완료:', photoState.src);
             placeholderLink.hide();
-            // photoState에는 사진 자체의 상대 위치/크기 정보가 들어있음
             window.updateElementPosition($(this), photoState);
         });
         
-        // 1. src 속성 설정 (화면에 보여주기 위함)
-        // photoState.src는 Base64 또는 전체 웹 경로(/ctx/...)이므로 바로 사용 가능
         uploadedPhoto.attr('src', photoState.src).css('display', 'block');
         
-        // ▼▼▼ [핵심 수정] data-file-path 속성 설정 (DB에 저장할 상대 경로) ▼▼▼
-        // photoState.filePath가 존재할 경우 (Base64가 아닌 파일 기반 이미지)
-        // 이 데이터를 저장해둬야, 이미지를 교체하지 않고 다시 저장할 때 파일 경로가 유지됩니다.
         if (photoState.filePath) {
             uploadedPhoto.data('filePath', photoState.filePath);
         }
-        // ▲▲▲ [수정 완료] ▲▲▲
     }
     
     static setupNewFrame(frameGroup, frameTheme, frameType) {
@@ -307,7 +262,7 @@ class FrameManager {
         const originalHeight = frameTheme.editHeight;
         
         if (!originalWidth || !originalHeight) {
-            return { width: 150, height: 150 }; // 기본값
+            return { width: 150, height: 150 };
         }
         
         const widthRatio = originalWidth / this.frameConfig.templateWidth;
@@ -337,20 +292,9 @@ class FrameManager {
                 height: (dimensions.height / actualBgRect.height) * 100
             },
             transform: this.frameConfig.defaultTransform,
-            photo: null // 새 프레임에는 사진 정보 없음
+            photo: null
         };
         
         frameGroup.data('relativeState', relativeState);
-    }
-    
-    static bindFrameEvents(frameGroup, frameType) {
-        // EventManager가 각 프레임 타입에 맞는 이벤트를 설정하도록 위임
-        if (!frameType.isSimple) {
-            EventManager.setupPhotoFrameEvents(frameGroup);
-        } else if (frameType.isTextboxFrame) {
-            EventManager.setupTextboxFrameEvents(frameGroup);
-        } else if (frameType.isElement) {
-            EventManager.setupElementEvents(frameGroup);
-        }
     }
 }

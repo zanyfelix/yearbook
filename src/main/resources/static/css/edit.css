@@ -1,16 +1,17 @@
 @charset "UTF-8";
 
 /* ============================================================================
-   📁 css/edit.css - 모듈화된 JavaScript에 최적화된 CSS
+   📁 css/edit.css - 최종 정리 버전
    ============================================================================ */
 
 /* ===========================================
-   1. 기본 레이아웃
+   1. 기본 레이아웃 및 공통 요소
    =========================================== */
 body {
     margin: 0;
     padding: 0;
     background-color: #f4f4f4;
+    font-family: sans-serif;
 }
 
 .sidebar {
@@ -67,26 +68,8 @@ body {
     padding: 10px 16px;
 }
 
-.section-box {
-    background-color: white;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-left: 5px solid #ccc;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.section-box h5 {
-    font-weight: bold;
-    margin-bottom: 12px;
-}
-
-.section-box ul {
-    margin: 0;
-    padding-left: 20px;
-}
-
 /* ===========================================
-   2. 모달 및 패널 스타일 (PanelManager 대응)
+   2. 에디터 모달 레이아웃
    =========================================== */
 .modal-dialog {
     transition: transform 0.3s ease-out;
@@ -97,47 +80,51 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-.panel-container {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
+.editor-panel-spacer {
+    min-height: 57px; 
+    border-bottom: 1px solid #e9ecef;
+    margin: 0;
 }
 
-.panel-container.active {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+.left-button-area {
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    border-right: 1px solid #dee2e6;
 }
 
-.btn-outline-secondary:hover,
-.btn-outline-secondary:focus {
-    background-color: #e2e6ea;
-    color: #212529;
-    border-color: #dae0e5;
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
+.center-thumbnail-area {
+    width: 40%;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    border-right: 1px solid #dee2e6;
 }
 
-.btn-outline-secondary.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-    box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+.button-container {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#thumbnail-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem !important;
 }
 
 /* ===========================================
-   3. 썸네일 시스템 (DataLoader 모듈 대응)
+   3. 썸네일 시스템
    =========================================== */
 .thumbnail-wrapper {
     position: relative;
     overflow: hidden;
     border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.thumbnail-wrapper:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border : 1px solid #ddd;
 }
 
 .thumbnail-wrapper .overlay {
@@ -148,1363 +135,16 @@ body {
     bottom: 0;
     opacity: 0;
     transition: opacity 0.3s ease;
+    background: rgba(0,0,0,0.4);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.thumbnail-wrapper:hover img + .overlay {
+.thumbnail-wrapper:hover .overlay {
     opacity: 1;
 }
 
-.thumbnail-wrapper .overlay .btn {
-    transform: scale(0.9);
-    transition: transform 0.2s ease;
-}
-
-.thumbnail-wrapper:hover .overlay .btn {
-    transform: scale(1);
-}
-
-#photoFrameList, #textboxFrameList {
-    /* Bootstrap row와 호환되도록 설정 */
-    display: flex;
-    flex-wrap: wrap;
-    margin-right: -15px;
-    margin-left: -15px;
-}
-
-/* ===========================================
-   4. 미리보기 영역 (반응형 배경 이미지 대응)
-   =========================================== */
-#page-preview {
-    /* ✨ 핵심 수정: 컨테이너가 유연하게 크기 조절되도록 변경 */
-    max-width: 100%;           /* 부모 컨테이너를 넘지 않도록 */
-    width: 100%;               /* 가용 공간을 최대한 활용 */
-    height: auto;              /* 높이는 비율에 따라 자동 계산 */
-    min-height: 400px;         /* 최소 높이 보장 */
-    margin: auto;              /* 컨테이너 내에서 자동 중앙 정렬 */
-
-    /* 기존 스타일 유지 */
-    position: relative;
-    background-color: #ffffff;
-    
-    /* 내부 요소들이 컨테이너에 맞게 조절되도록 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.page-preview-container {
-    /* ✨ 수정: 이미지 컨테이너가 부모를 꽉 채우도록 */
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    overflow: hidden;
-}
-
-#page-preview-img {
-    /* ✨ 핵심 수정: 배경 이미지가 비율을 유지하면서 컨테이너에 맞게 조절 */
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;               /* 가로는 자동 조절 */
-    height: auto;              /* 세로는 자동 조절 */
-    object-fit: contain;       /* 비율 유지하면서 컨테이너 안에 맞춤 */
-
-    /* 기존 스타일 유지 */
-    display: block;
-    
-    /* 부드러운 전환 효과 */
-    transition: all 0.3s ease;
-}
-
-#page-preview-img:hover {
-    transform: scale(1.01);
-}
-
-/* 반응형 디자인 강화 */
-@media (max-width: 1200px) {
-    #page-preview {
-        min-height: 350px;
-    }
-}
-
-@media (max-width: 992px) {
-    #page-preview {
-        min-height: 300px;
-    }
-}
-
-@media (max-width: 768px) {
-    #page-preview {
-        min-height: 250px;
-        border-radius: 8px;
-    }
-    
-    #page-preview-img {
-        border-radius: 6px;
-    }
-}
-
-@media (max-width: 576px) {
-    #page-preview {
-        min-height: 200px;
-        border-radius: 6px;
-        border-width: 1px;
-    }
-    
-    #page-preview-img {
-        border-radius: 4px;
-    }
-}
-
-/* 모달 내에서의 반응형 조정 */
-#editModal .modal-body {
-    padding: 0;
-}
-
-#editModal #page-preview {
-    /* 모달 내에서는 더 유연하게 크기 조절 */
-    max-height: calc(100vh - 60px);  /* 화면 높이에서 여백 제외 */
-    height: auto;
-}
-
-/* 고해상도 디스플레이 대응 */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    #page-preview-img {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-    }
-}
-
-/* 세로 방향 화면 (모바일) */
-@media (orientation: portrait) and (max-width: 768px) {
-    #page-preview {
-        width: 100%;
-        min-height: 60vw; /* 화면 너비의 60% 높이 */
-    }
-}
-
-/* 가로 방향 화면 (태블릿) */
-@media (orientation: landscape) and (max-width: 1024px) {
-    #page-preview {
-        min-height: 40vh; /* 화면 높이의 40% */
-    }
-}
-
-/* ===========================================
-   5. 프레임 시스템 (FrameManager 대응)
-   =========================================== */
-.frame-group {
-    border: 1px dashed transparent;
-    box-sizing: border-box;
-    border-radius: 4px;
-    transition: none;
-    cursor: move;
-    will-change: transform, left, top;
-    transform: translateZ(0);
-    position: relative;  /* 추가: z-index가 작동하도록 */
-}
-
-.frame-group:not(.dragging):hover {
-    transition: box-shadow 0.3s ease;
-    box-shadow: 0 0 0 1px rgba(0,123,255,0.3);
-}
-
-.frame-group:hover {
-    box-shadow: 0 0 0 1px rgba(0,123,255,0.3);
-}
-
-.frame-group.selected-frame {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
-    z-index: 20;
-    cursor: move;
-}
-
-/* 프레임 내부 요소들의 pointer-events 설정 */
-.frame-group .mask-container {
-    pointer-events: auto;
-    position: relative;  /* 추가 */
-    z-index: 1;  /* 변경: 16 → 1 */
-}
-
-.frame-group .photo-container {
-    pointer-events: auto;
-    position: relative;  /* 추가 */
-    z-index: 2;  /* 변경: 17 → 2 */
-}
-
-.frame-group .uploaded-photo {
-    pointer-events: auto;
-    position: relative;
-    z-index: 3;  /* 변경: 17 → 3 */
-}
-
-.frame-group .frame-overlay {
-    pointer-events: none;  /* 변경: auto → none (이미지는 클릭 통과) */
-    position: absolute;  /* 확인 */
-    z-index: 4;  /* 변경: 20 → 4 */
-}
-
-.frame-group .place-image-here-link {
-    pointer-events: auto;
-    position: relative;
-    z-index: 5;  /* 변경: 21 → 5 */
-    cursor: pointer !important;
-    padding: 5px 10px;
-    display: inline-block;
-}
-
-.frame-group .place-image-here-link:hover {
-    color: #ffcc00;  /* hover 시 색상 변경 */
-    text-decoration: underline;
-    background-color: rgba(0, 0, 0, 0.2);  /* hover 시 배경색 추가 */
-}
-
-/* 프레임이 선택되지 않은 상태에서 hover 시 */
-.frame-group:not(.selected-frame):hover {
-    cursor: pointer;  /* 선택 가능함을 나타내는 포인터 커서 */
-}
-
-/* 프레임이 선택된 상태에서는 move 커서 */
-.frame-group.selected-frame {
-    cursor: move;
-}
-
-/* place-image-here-link는 항상 pointer 커서 유지 */
-.frame-group .place-image-here-link,
-.frame-group .place-image-here-link * {
-    cursor: pointer !important;
-}
-
-/* 프레임이 선택된 상태에서는 move 커서 */
-.frame-group.selected-frame .frame-click-area {
-    cursor: move;
-}
-/* 회전 핸들 향상 */
-.rotate-handle {
-    position: absolute;
-    top: -40px;
-    right: 48%;
-    transform: translateX(50%);
-    width: 25px;
-    height: 25px;
-    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-    border: 2px solid #007bff;
-    border-radius: 50%;
-    cursor: grab;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 25;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transition: all 0.2s ease;
-}
-
-.rotate-handle::before {
-    content: '⟳';
-    font-size: 20px;
-    color: #007bff;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.rotate-line {
-    position: absolute;
-    top: -20px;
-    left: 45%;
-    transform: translateX(-50%);
-    width: 1px;
-    height: 20px;
-    background: linear-gradient(to bottom, #007bff, transparent);
-    border-radius: 1px;
-}
-
-/* 선택되지 않은 프레임의 핸들 숨김 */
-.frame-group:not(.selected-frame) .rotate-handle,
-.frame-group:not(.selected-frame) .rotate-line {
-    display: none;
-}
-
-/* ===========================================
-   6. 사진 시스템 (PhotoManager 대응)
-   =========================================== */
-.uploaded-photo {
-    transition: all 0.3s ease;
-    border-radius: 4px;
-    pointer-events: none;  /* 기본적으로 클릭 불가 */
-}
-
-/* 프레임이 선택된 상태에서만 사진 클릭 가능 */
-.frame-group.selected-frame .uploaded-photo {
-    pointer-events: auto;
-}
-
-/* 프레임이 선택된 상태에서 사진 hover 시 */
-.frame-group.selected-frame .uploaded-photo:hover {
-    cursor: pointer;
-    opacity: 0.9;
-    box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
-}
-
-.uploaded-photo.selected-photo {
-    border: 3px solid #FFA500;
-    box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
-    z-index: 18;
-    pointer-events: auto;  /* 선택된 사진은 항상 클릭 가능 */
-    opacity: 1;
-}
-
-/* 사진용 선택 핸들 */
-.selection-handle {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    background: #FFA500;
-    border: 2px solid white;
-    border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    z-index: 30;
-    transition: all 0.2s ease;
-}
-
-.selection-handle:hover {
-    transform: scale(1.2);
-    box-shadow: 0 3px 8px rgba(255,165,0,0.5);
-}
-
-.selection-handle.handle-nw {
-    top: -7px;
-    left: -7px;
-    cursor: nw-resize;
-}
-
-.selection-handle.handle-se {
-    bottom: -7px;
-    right: -7px;
-    cursor: se-resize;
-}
-
-/* 사진 오버레이 시스템 */
-#photo-full-overlay {
-    transition: opacity 0.3s ease;
-    border-radius: 4px;
-}
-
-.photo-silhouette {
-    transition: all 0.3s ease;
-    border-radius: 4px;
-}
-
-.photo-silhouette:hover {
-    opacity: 0.6 !important;
-}
-
-.mask-indicator {
-    animation: mask-pulse 2s infinite ease-in-out;
-    border-radius: 4px;
-}
-
-@keyframes mask-pulse {
-    0%, 100% { 
-        background-color: rgba(255, 165, 0, 0.15);
-        border-color: rgba(255, 165, 0, 0.6);
-    }
-    50% { 
-        background-color: rgba(255, 165, 0, 0.25);
-        border-color: rgba(255, 165, 0, 0.9);
-    }
-}
-
-.overlay-label {
-    user-select: none;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    animation: label-fade-in 0.5s ease-in;
-    font-family: 'Segoe UI', sans-serif;
-}
-
-@keyframes label-fade-in {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===========================================
-   7. SafeLine 시스템 (빗금 패턴)
-   =========================================== */
-
-/* 메인 안전선 오버레이 */
-#safe-line-overlay {
-    transition: opacity 0.3s ease;
-    border-radius: 8px;
-}
-
-/* 빗금 안전선 영역 (공통) - 테두리 제거 */
-.safe-area-hatched {
-    background-image: repeating-linear-gradient(
-        45deg,
-        rgba(255, 107, 107, 0.6) 0px,
-        rgba(255, 107, 107, 0.6) 3px,
-        rgba(255, 107, 107, 0.3) 3px,
-        rgba(255, 107, 107, 0.3) 6px
-    );
-    border: none; /* 모든 테두리 제거 */
-    animation: safeline-pulse 3s infinite ease-in-out;
-    position: relative;
-    overflow: hidden;
-}
-
-/* 빗금 패턴 애니메이션 */
-@keyframes safeline-pulse {
-    0%, 100% { 
-        opacity: 0.7;
-    }
-    50% { 
-        opacity: 0.9;
-    }
-}
-
-/* 각 영역별 특별 스타일 - 연결부위 라인 제거 */
-.safe-area-top {
-    border: none; /* 모든 테두리 제거 */
-}
-
-.safe-area-bottom {
-    border: none; /* 모든 테두리 제거 */
-}
-
-.safe-area-left {
-    border: none; /* 모든 테두리 제거 */
-}
-
-.safe-area-right {
-    border: none; /* 모든 테두리 제거 */
-}
-
-/* 호버 효과 */
-.safe-area-hatched:hover {
-    animation-play-state: paused;
-    opacity: 1 !important;
-}
-
-/* 대각선 빗금 패턴 (더 세밀한 버전) */
-.safe-area-hatched.fine-hatch {
-    background-image: repeating-linear-gradient(
-        45deg,
-        rgba(255, 107, 107, 0.7) 0px,
-        rgba(255, 107, 107, 0.7) 2px,
-        rgba(255, 107, 107, 0.2) 2px,
-        rgba(255, 107, 107, 0.2) 4px
-    );
-}
-
-/* 수직/수평 빗금 조합 패턴 */
-.safe-area-hatched.cross-hatch {
-    background-image: 
-        repeating-linear-gradient(
-            45deg,
-            rgba(255, 107, 107, 0.4) 0px,
-            rgba(255, 107, 107, 0.4) 2px,
-            transparent 2px,
-            transparent 4px
-        ),
-        repeating-linear-gradient(
-            -45deg,
-            rgba(255, 107, 107, 0.4) 0px,
-            rgba(255, 107, 107, 0.4) 2px,
-            transparent 2px,
-            transparent 4px
-        );
-}
-
-/* 점선 패턴 (옵션) */
-.safe-area-hatched.dotted-pattern {
-    background-image: radial-gradient(
-        circle at 2px 2px,
-        rgba(255, 107, 107, 0.8) 1px,
-        transparent 1px
-    );
-    background-size: 6px 6px;
-}
-
-/* 반응형 디자인 - 테두리 제거 유지 */
-@media (max-width: 768px) {
-    .safe-area-hatched {
-        border: none; /* 테두리 제거 유지 */
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255, 107, 107, 0.6) 0px,
-            rgba(255, 107, 107, 0.6) 2px,
-            rgba(255, 107, 107, 0.3) 2px,
-            rgba(255, 107, 107, 0.3) 4px
-        );
-    }
-}
-
-@media (max-width: 480px) {
-    .safe-area-hatched {
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255, 107, 107, 0.6) 0px,
-            rgba(255, 107, 107, 0.6) 1px,
-            rgba(255, 107, 107, 0.3) 1px,
-            rgba(255, 107, 107, 0.3) 3px
-        );
-    }
-}
-
-/* 고해상도 디스플레이 최적화 */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .safe-area-hatched {
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255, 107, 107, 0.6) 0px,
-            rgba(255, 107, 107, 0.6) 1.5px,
-            rgba(255, 107, 107, 0.3) 1.5px,
-            rgba(255, 107, 107, 0.3) 3px
-        );
-    }
-}
-
-/* 다크 모드 지원 (테두리 제거) */
-@media (prefers-color-scheme: dark) {
-    .safe-area-hatched {
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255, 255, 255, 0.4) 0px,
-            rgba(255, 255, 255, 0.4) 3px,
-            rgba(255, 255, 255, 0.2) 3px,
-            rgba(255, 255, 255, 0.2) 6px
-        );
-        border: none; /* 다크모드에서도 테두리 제거 */
-    }
-}
-
-/* 접근성 개선 - 높은 대비 모드 (테두리 제거) */
-@media (prefers-contrast: high) {
-    .safe-area-hatched {
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255, 0, 0, 0.8) 0px,
-            rgba(255, 0, 0, 0.8) 3px,
-            rgba(255, 0, 0, 0.4) 3px,
-            rgba(255, 0, 0, 0.4) 6px
-        ) !important;
-        border: none !important; /* 고대비 모드에서도 테두리 제거 */
-    }
-}
-
-/* 움직임 감소 설정 */
-@media (prefers-reduced-motion: reduce) {
-    .safe-area-hatched {
-        animation: none;
-    }
-}
-
-/* 프린트 모드에서 숨김 */
-@media print {
-    #safe-line-overlay {
-        display: none !important;
-    }
-}
-
-/* 성능 최적화 */
-.safe-area-hatched {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-}
-
-/* 추가 패턴 옵션들 */
-
-/* 물결 패턴 */
-.safe-area-hatched.wave-pattern {
-    background-image: repeating-linear-gradient(
-        90deg,
-        rgba(255, 107, 107, 0.6) 0px,
-        rgba(255, 107, 107, 0.3) 2px,
-        rgba(255, 107, 107, 0.6) 4px
-    );
-}
-
-/* 격자 패턴 */
-.safe-area-hatched.grid-pattern {
-    background-image: 
-        linear-gradient(rgba(255, 107, 107, 0.3) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 107, 107, 0.3) 1px, transparent 1px);
-    background-size: 8px 8px;
-}
-
-/* 다이아몬드 패턴 */
-.safe-area-hatched.diamond-pattern {
-    background-image: repeating-conic-gradient(
-        from 45deg,
-        rgba(255, 107, 107, 0.6) 0deg 90deg,
-        rgba(255, 107, 107, 0.3) 90deg 180deg
-    );
-    background-size: 8px 8px;
-}
-
-/* ===========================================
-   8. 툴팁 시스템 (UIManager 대응)
-   =========================================== */
-/* 컨트롤 컨테이너 */
-.control-buttons-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-/* 컨트롤 타이틀 */
-.control-title {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    text-align: center;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-/* 버튼 그룹 */
-.control-buttons {
-    display: flex;
-    gap: 8px;
-    padding: 12px;
-}
-
-/* 개별 버튼 스타일 */
-.control-btn {
-    width: 45px;
-    height: 45px;
-    border: none;
-    border-radius: 8px;
-    background: white;
-    color: #495057;
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    position: relative;
-    overflow: hidden;
-}
-
-.control-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.control-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-}
-
-/* 회전 버튼 스타일 */
-.rotate-btn {
-    background: linear-gradient(135deg, #fff 0%, #f1f3f5 100%);
-    border: 1px solid #e9ecef;
-}
-
-.rotate-btn:hover {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-    border-color: #007bff;
-}
-
-/* 삭제 버튼 스타일 */
-.delete-btn {
-    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
-    border: 1px solid #ffdddd;
-    color: #dc3545;
-}
-
-.delete-btn:hover {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    color: white;
-    border-color: #dc3545;
-}
-
-/* 아이콘 스타일 */
-.rotate-icon-left,
-.rotate-icon-right,
-.delete-icon {
-    font-style: normal;
-    font-size: 22px;
-    line-height: 1;
-}
-
-/* 애니메이션 효과 */
-.control-btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.5);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-.control-btn:active::before {
-    width: 100px;
-    height: 100px;
-}
-
-/* 툴팁이 프리뷰 영역 내에서만 표시되도록 */
-#page-preview {
-    position: relative;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .control-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 18px;
-    }
-    
-    .control-title {
-        font-size: 13px;
-        padding: 8px 12px;
-    }
-    
-    .control-buttons {
-        gap: 6px;
-        padding: 10px;
-    }
-}
-/* ===========================================
-   기존 .text-box 관련 스타일을 아래 코드로 전체 교체
-   =========================================== */
-
-/* 텍스트 상자 기본 스타일 */
-.text-box {
-    /* 테두리 스타일을 점선(dotted)으로 변경하고 투명하게 설정 */
-    border: 1px dashed transparent; 
-    padding: 8px;
-    background-color: transparent;
-    transition: background-color 0.2s ease;
-    min-width: 50px;
-    cursor: default;
-    
-    /* ✨ 추가: 자동 크기 조정을 위한 스타일 */
-    white-space: nowrap;  /* 기본적으로 한 줄로 표시 */
-    width: auto;  /* 너비 자동 조정 */
-    max-width: none;  /* 최대 너비 제한 없음 */
-    overflow: visible;  /* 내용이 넘쳐도 보이도록 */
-}
-
-/* 선택 상태 */
-.text-box.selected {
-    cursor: move;
-    border-color: #FF0000; /* 테두리 색상을 빨간색으로 변경 */
-}
-
-/* 편집 상태 */
-.text-box.editing {
-    cursor: text;
-    border: 1px dashed #FF0000; /* 편집 시에는 실선으로 명확하게 표시 */
-    white-space: nowrap;  /* 편집 중에도 한 줄 유지 */
-    min-width: 100px;  /* 편집 시 최소 너비 */
-}
-
-/* 편집 상태 & 포커스 상태 */
-.text-box.editing:focus {
-    background-color: rgba(255, 255, 255, 0.5);
-    outline: none;
-}
-
-/* ✨ 추가: 텍스트박스 내용이 비어있을 때 최소 크기 보장 */
-.text-box:empty:before {
-    content: '\200B';  /* Zero-width space */
-    display: inline;
-}
-
-/* ===========================================
-   9. 슬라이드 시스템
-   =========================================== */
-.slide-container {
-    display: flex;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    gap: 16px;
-    padding: 12px;
-    margin: 0 40px;
-    scrollbar-width: thin;
-    scrollbar-color: #ccc transparent;
-}
-
-.slide-container::-webkit-scrollbar {
-    height: 6px;
-}
-
-.slide-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.slide-container::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-}
-
-.slide-container::-webkit-scrollbar-thumb:hover {
-    background: #999;
-}
-
-.page-card {
-    flex: 0 0 auto;
-    width: 120px;
-    text-align: center;
-    transition: transform 0.2s ease;
-}
-
-.page-card:hover {
-    transform: translateY(-2px);
-}
-
-.page-thumb {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
-    border: 2px solid #e9ecef;
-    background-color: #f8f9fa;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.page-thumb:hover {
-    border-color: #007bff;
-    box-shadow: 0 2px 8px rgba(0,123,255,0.2);
-}
-
-.slide-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4));
-    color: white;
-    border: none;
-    font-size: 18px;
-    padding: 12px 16px;
-    cursor: pointer;
-    z-index: 10;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-.slide-btn:hover {
-    background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6));
-    transform: translateY(-50%) scale(1.1);
-}
-
-.slide-btn.left { 
-    left: 5px; 
-}
-
-.slide-btn.right { 
-    right: 5px; 
-}
-
-/* ===========================================
-   10. 카테고리 섹션
-   =========================================== */
-.category-section {
-    padding: 20px;
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
-    border-left: 5px solid #ccc;
-    background-color: white;
-}
-
-.category-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-}
-
-.category-section h5 {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 20px;
-}
-
-.edit-btn {
-    font-weight: bold;
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-/* ===========================================
-   11. 프레임 관련 추가 스타일
-   =========================================== */
-#frame-overlay {
-    position: absolute;
-    cursor: move;  
-    z-index: 10;
-    transition: transform 0.2s ease-in-out;
-}
-
-.frame-overlay-instance.selected-frame {
-    border: 2px solid blue;
-    box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
-}
-
-.modal-body .frame-item img {
-    width: 100%;
-    height: auto;
-    cursor: pointer;
-}
-
-/* ===========================================
-   12. 반응형 디자인
-   =========================================== */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: static;
-    }
-    
-    .content {
-        margin-left: 0;
-        padding: 15px;
-    }
-    
-    .modal-dialog {
-        max-width: 100vw;
-        margin: 0;
-    }
-    
-    .safe-line-text {
-        font-size: 8px;
-        padding: 1px 3px;
-    }
-    
-    .rotate-handle {
-        width: 28px;
-        height: 28px;
-    }
-    
-    .selection-handle {
-        width: 12px;
-        height: 12px;
-    }
-
-    .slide-container {
-        margin: 0 20px;
-    }
-}
-
-/* ===========================================
-   13. 접근성 및 사용성 개선
-   =========================================== */
-.frame-group,
-.uploaded-photo {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-}
-
-/* 포커스 표시 개선 */
-button:focus,
-.btn:focus {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
-/* 로딩 애니메이션 */
-.loading {
-    position: relative;
-    overflow: hidden;
-}
-
-.loading::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-    animation: loading-shimmer 1.5s infinite;
-}
-
-@keyframes loading-shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-}
-
-/* ===========================================
-   14. 프린트 최적화
-   =========================================== */
-@media print {
-    .sidebar,
-    .top-bar,
-    .button-group-container,
-    #safe-line-overlay,
-    .rotate-handle,
-    .selection-handle {
-        display: none !important;
-    }
-    
-    .content {
-        margin-left: 0;
-    }
-    
-    #page-preview {
-        box-shadow: none;
-        border: 1px solid #000;
-    }
-}
-
-/* ===========================================
-   15. 성능 최적화
-   =========================================== */
-.thumbnail-wrapper img,
-.page-thumb {
-    will-change: transform;
-}
-
-.frame-group {
-    will-change: transform, opacity;
-}
-
-.uploaded-photo {
-    will-change: transform, opacity;
-}
-
-/* GPU 가속 활용 */
-.rotate-handle,
-.selection-handle {
-    transform: translateZ(0);
-}
-
-/* ===========================================
-   16. 추가
-   =========================================== */
-.thumbnail-wrapper.selected-thumbnail .overlay {
-	opacity: 0;
-}
-
-/* ===========================================
-   17. 사진 편집 UI 추가 스타일
-   =========================================== */
-
-/* 사진 선택 시 나타나는 전체 박스 */
-.photo-selection-box {
-    position: absolute;
-    border: 1px dashed #ff0000; /* 주황색 점선 */
-    box-sizing: border-box;
-    pointer-events: none; /* 중요: 이 박스는 클릭 이벤트를 받지 않음 */
-    z-index: 28;
-}
-
-/* 크기 조절 핸들 (공통) */
-/* .resize-handle {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    background-color: #FFA500;
-    border: 2px solid white;
-    border-radius: 50%;
-    pointer-events: auto; 핸들은 클릭 가능해야 함
-    z-index: 30;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-} */
-
-.resize-handle {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background-color: rgb(255 255 255);
-    border: 1px solid rgb(255, 0, 0);
-    pointer-events: auto;
-    z-index: 30;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* 각 모서리 핸들 위치 및 커서 모양 */
-.handle-nw { top: -4px; left: -4px; cursor: nwse-resize; }
-.handle-ne { top: -4px; right: -4px; cursor: nesw-resize; }
-.handle-sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
-.handle-se { bottom: -4px; right: -4px; cursor: nwse-resize; }
-
-/* 사진 회전 핸들 (프레임 핸들과 유사하게) */
-.photo-rotate-handle {
-    position: absolute;
-    top: -40px; /* 위치 조정 */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 25px;
-    height: 25px;
-    background: #FFA500;
-    border: 2px solid white;
-    border-radius: 50%;
-    cursor: grab;
-    pointer-events: auto;
-    z-index: 29;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
-.photo-rotate-handle:before {
-    content: '⟳';
-    font-size: 20px;
-    color: white;
-    font-weight: bold;
-	margin-bottom: 5px;
-}
-
-.photo-rotate-handle:active {
-    cursor: grabbing;
-}
-
-/* 사진 회전 핸들 라인 */
-.photo-rotate-line {
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1px;
-    height: 20px;
-    background: #FFA500;
-    z-index: 28;
-}
-
-/* ===========================================
-   8. 통합 툴바 시스템 (최종 고정 스타일)
-   =========================================== */
-
-/* 1. 툴바 메인 컨테이너: 고정 높이 설정 */
-#editor-toolbar {
-    min-height: 57px; /* 툴바 공간을 항상 고정 */
-    align-items: center;
-    border: none;
-    border-bottom: 1px solid #e9ecef;
-    background-color: transparent;
-    justify-content: space-between; /* ✨ 왼쪽과 오른쪽 요소를 양 끝으로 분리 */
-}
-
-#editor-toolbar .context-controls {
-    display: flex;
-    align-items: center;
-}
-
-/* 3. 오른쪽 메인 액션 버튼 그룹 */
-#main-actions button {
-    width: 80px;
-    height: 32px;
-    font-size: 13px;
-}
-
-/* 2. 툴바 내부 모든 컨트롤 그룹을 한 줄(row)로 정렬 */
-#editor-toolbar .control-buttons,
-#editor-toolbar #text-controls {
-    display: flex;
-    align-items: center;
-    gap: 6px; /* 아이콘/컨트롤 사이 간격 */
-    width: 100%;
-    margin-left: 8px;
-}
-
-/* 3. 아이콘 버튼 크기 축소 및 스타일 */
-#editor-toolbar .control-btn {
-    width: 30px;   /* 크기 축소 */
-    height: 30px;  /* 크기 축소 */
-    padding: 4px;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    background: transparent;
-    box-shadow: none;
-    transition: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-#editor-toolbar .control-btn:hover {
-    border-color: #007bff;
-    transform: none;
-}
-#editor-toolbar .control-btn:active {
-    background-color: #e9ecef;
-    transform: none;
-}
-
-/* 4. 아이콘 자체의 크기 축소 */
-#editor-toolbar .control-btn img,
-#editor-toolbar .control-btn .delete-icon {
-    width: 18px;   /* 크기 축소 */
-    height: 18px;  /* 크기 축소 */
-    font-size: 18px; /* 아이콘 폰트 크기 축소 */
-}
-
-/* 5. 텍스트 컨트롤을 한 줄로 만들고 크기 축소 */
-#text-controls {
-    justify-content: flex-start; /* 왼쪽부터 정렬 */
-}
-#text-controls select {
-    height: 30px; /* 크기 축소 */
-    font-size: 13px;
-    border-radius: 5px;
-    width: 80px; /* 너비 고정 */
-    flex-grow: 0;
-}
-#text-controls input[type="color"] {
-    width: 38px;   /* 크기 축소 */
-    height: 30px;  /* 크기 축소 */
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-}
-#text-controls input[type="color"]::-webkit-color-swatch {
-    border-radius: 3px;
-    border: none;
-}
-.hide-for-capture {
-    display: none !important;
-}
-/* ===========================================
-   9. 에디터 패널 상단 정렬
-   =========================================== */
-.editor-panel-spacer {
-    /* 우측 툴바의 높이와 동일하게 설정 */
-    min-height: 57px; 
-    
-    /* 우측 툴바의 하단 경계선과 동일한 선 추가 */
-    border-bottom: 1px solid #e9ecef;
-    
-    /* ✨ 수정: 마진 제거 */
-    margin-bottom: 0;
-    margin-left: 0;
-    margin-right: 0;
-    margin-top: 0;
-}
-
-/* ✨ 추가: 좌측 버튼 영역 스타일 */
-.left-button-area {
-    min-width: 150px;
-    display: flex;
-    flex-direction: column;
-    padding: 0 !important;
-    border-right: 1px solid #dee2e6;
-}
-
-/* ✨ 추가: 중앙 썸네일 영역 스타일 */
-.center-thumbnail-area {
-    width: 40%;
-    max-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding: 0 !important;
-    border-right: 1px solid #dee2e6;
-}
-
-/* ✨ 추가: 버튼 컨테이너 */
-.button-container {
-    padding: 1rem;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-/* ✨ 수정: 썸네일 영역 스크롤 */
-#thumbnail-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem !important;
-}
-
-/* ✨ 추가: 스크롤바 스타일 */
-#thumbnail-area::-webkit-scrollbar {
-    width: 6px;
-}
-
-#thumbnail-area::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-#thumbnail-area::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 3px;
-}
-
-#thumbnail-area::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-/* ===========================================
-   19. 호버 기능 제거 (수정본)
-   =========================================== */
-
-/* 1. 모든 썸네일의 마우스오버 시각 효과(그림자, 움직임)만 제거합니다. */
-.thumbnail-wrapper:hover {
-    transform: none;
-    box-shadow: none;
-}
-
-/* 2. 오버레이를 숨기는 규칙은 여기서 삭제했습니다.
-      따라서 이제 마우스를 올리면 오버레이가 정상적으로 나타납니다.
-*/
-
-/* 3. 편집 화면의 프레임 요소 마우스오버 효과(테두리 그림자) 제거 */
-.frame-group:hover,
-.frame-group:not(.dragging):hover {
-    box-shadow: none;
-}
-
-/* ===========================================
-   20. 팝업 모달 스크롤 수정
-   =========================================== */
-
-/* 배경/프레임 선택 모달의 내용(body)에 대한 스크롤 설정 */
-#backgroundModal .modal-body,
-#frameModal .modal-body {
-    max-height: 70vh; /* 모달 내용의 최대 높이를 화면 높이의 70%로 제한 */
-    overflow-y: auto;   /* 내용이 최대 높이를 넘을 경우, 세로 스크롤바를 표시 */
-}
-
-/* ===========================================
-   22. 좌측 패널 버튼 폰트 크기 조정
-   =========================================== */
-#btn-background,
-#btn-photo-frame,
-#btn-textbox-frame,
-#btn-text,
-#btn-element {
-    font-size: 0.85rem;
-}
-
-/* ===========================================
-   23. Text 패널 버튼 텍스트 정렬
-   =========================================== */
-#text-panel .btn {
-    text-align: left;
-    padding-left: 1rem; /* 텍스트가 왼쪽에 너무 붙지 않도록 여백 추가 */
-}
-
-/* ===========================================
-   24. 패널 썸네일 스타일 (분리 및 크기 재조정)
-   =========================================== */
-
-/* --- 공통 스타일 --- */
-/* 썸네일을 담는 컬럼(col) 내부에서 wrapper를 중앙 정렬합니다. */
 #background-panel .col-6,
 #photoFrameList .col-4,
 #textboxFrameList .col-4,
@@ -1516,89 +156,131 @@ button:focus,
     margin-bottom: 1rem;
 }
 
-/* 썸네일 wrapper는 내부 이미지 크기에 자동으로 맞춰집니다. */
 #photoFrameList .thumbnail-wrapper,
 #textboxFrameList .thumbnail-wrapper,
 #element-panel .thumbnail-wrapper,
 #modalBackgroundList .thumbnail-wrapper,
 #modalFrameList .thumbnail-wrapper {
-    /* 배경 썸네일 이미지 크기에 맞춰 고정 */
     width: 200px;
     height: 257px;
-
-    /* 내부 이미지를 중앙 정렬하기 위한 Flexbox 설정 */
     display: flex;
     align-items: center;
     justify-content: center;
-
-    /* 기타 스타일 */
-    border-radius: 8px;
-    border : 1px solid #ddd;
-    overflow: hidden;
 }
-/* --- 이미지 개별 스타일 --- */
 
-/* 3. 포토프레임 썸네일 이미지는 wrapper 안에, 전체 모습이 보이도록 중앙 정렬됩니다. */
 #photoFrameList .thumbnail-wrapper img,
 #textboxFrameList .thumbnail-wrapper img,
 #element-panel .thumbnail-wrapper img,
 #modalFrameList .thumbnail-wrapper img {
-    /* wrapper 크기를 넘지 않도록 최대 크기만 지정 */
     max-width: 100%;
     max-height: 100%;
-    /* width와 height는 원본 비율에 맞게 auto로 설정됩니다. */
     object-fit: contain;
     border: none;
 }
 
 /* ===========================================
-   26. 회전 핸들 위치 및 색상 수정
+   4. 미리보기 및 SafeLine
    =========================================== */
+#page-preview {
+    position: relative;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-/* 1. 프레임 및 사진 회전 핸들 공통 스타일 */
+.page-preview-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+#page-preview-img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.safe-area-hatched {
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(255, 107, 107, 0.6) 0px,
+        rgba(255, 107, 107, 0.6) 3px,
+        rgba(255, 107, 107, 0.3) 3px,
+        rgba(255, 107, 107, 0.3) 6px
+    );
+    border: none;
+    animation: safeline-pulse 3s infinite ease-in-out;
+}
+
+@keyframes safeline-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.9; }
+}
+
+/* ===========================================
+   5. 프레임, 사진, 텍스트박스 공통
+   =========================================== */
+.frame-group {
+    border: 1px dashed transparent;
+    box-sizing: border-box;
+    cursor: move;
+}
+
+.frame-group.selected-frame,
+.frame-group.selected-element {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+    z-index: 20;
+}
+
+.uploaded-photo.selected-photo {
+    border: 3px solid #FFA500;
+    box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
+    z-index: 18;
+}
+
+.text-box {
+    border: 1px dashed transparent; 
+    padding: 8px;
+    cursor: default;
+    white-space: nowrap;
+    width: auto;
+}
+
+.text-box.selected {
+    cursor: move;
+    border-color: #FF0000;
+}
+
+.text-box.editing {
+    cursor: text;
+    border: 1px solid #FF0000;
+}
+.text-box.editing:focus {
+    background-color: rgba(255, 255, 255, 0.5);
+    outline: none;
+}
+
+/* ===========================================
+   6. 회전 핸들 (최종 통합 스타일)
+   =========================================== */
+/* 1. 모든 회전 핸들(프레임, 사진, 텍스트)의 공통 스타일 */
 .rotate-handle,
-.photo-rotate-handle {
-    /* 위치: 정중앙 상단으로 수정 */
-    left: 50%;
-    transform: translateX(-50%);
-    right: auto; /* 기존 right 속성 초기화 */
-
-    /* 색상: 흰색 배경, 검은색 테두리로 변경 */
-    background: #ffffff;
-    border: 1px solid #000000;
-}
-
-/* 핸들 내부 아이콘 색상 변경 */
-.rotate-handle::before,
-.photo-rotate-handle::before {
-    color: #000000;
-}
-
-/* 2. 프레임 및 사진 회전 핸들 연결선 공통 스타일 */
-.rotate-line,
-.photo-rotate-line {
-    /* 위치: 정중앙 상단으로 수정 */
-    left: 50%;
-    transform: translateX(-50%);
-
-    /* 색상: 검은색 실선으로 변경 */
-    background: #000000;
-}
-
-/* 텍스트박스 회전 핸들 스타일 추가 */
+.photo-rotate-handle,
 .text-rotate-handle {
-    /* 프레임/사진과 동일한 스타일 적용 */
     position: absolute;
     top: -40px;
     left: 50%;
     transform: translateX(-50%);
     width: 25px;
     height: 25px;
-    
-    /* 색상: 흰색 배경, 검은색 테두리 (프레임과 통일) */
-    background: #ffffff;
-    border: 1px solid #000000;
-    
     border-radius: 50%;
     cursor: grab;
     display: flex;
@@ -1606,22 +288,26 @@ button:focus,
     align-items: center;
     z-index: 25;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transition: all 0.2s ease;
+    background: #ffffff;
+    border: 1px solid #000000;
 }
 
+/* 핸들 내부 아이콘 공통 스타일 */
+.rotate-handle::before,
+.photo-rotate-handle::before,
 .text-rotate-handle::before {
     content: '⟳';
+    font-family: 'Segoe UI Symbol', 'Apple Symbols',
+               'Noto Sans Symbols2', 'Noto Sans Symbols', sans-serif;
     font-size: 20px;
-    color: #000000;  /* 검은색으로 통일 */
     font-weight: bold;
 	margin-bottom: 5px;
+    color: #000000;
 }
 
-.text-rotate-handle:active {
-    cursor: grabbing;
-}
-
-/* 텍스트박스 회전 라인 스타일 */
+/* 2. 모든 회전 핸들 연결선 공통 스타일 */
+.rotate-line,
+.photo-rotate-line,
 .text-rotate-line {
     position: absolute;
     top: -20px;
@@ -1629,210 +315,121 @@ button:focus,
     transform: translateX(-50%);
     width: 1px;
     height: 20px;
-    background: #000000;  /* 검은색 실선으로 통일 */
-    border-radius: 1px;
+    background: #000000;
     z-index: 24;
 }
 
-/* 선택되지 않은 텍스트박스의 핸들 숨김 */
+/* 3. 선택되지 않았을 때 핸들 숨김 규칙 */
+.frame-group:not(.selected-frame):not(.selected-element) .rotate-handle,
+.frame-group:not(.selected-frame):not(.selected-element) .rotate-line,
 .text-box:not(.selected) .text-rotate-handle,
 .text-box:not(.selected) .text-rotate-line {
     display: none;
 }
-/* ===========================================
-   27. img-thumbnail 패딩 제거
-   =========================================== */
-#editModal .img-thumbnail {
-    padding: 0;
-    box-sizing: content-box;
-}
-#backgroundModal .img-thumbnail {
-    padding: 0;
-    box-sizing: content-box;
-}
-/* ===========================================
-   28. Place Image Here 텍스트 크기
-   =========================================== */
-.place-image-here-link {
-    font-size: 12px;
-}
-/* ===========================================
-   29. 저장 완료 메시지 스타일
-   =========================================== */
-#save-confirmation-message {
-    min-height: 24px;
-    align-items: center;
-    border: none;
-    background-color: #fff;
-    justify-content: right;
-    font-size: 10px;
-    font-style: italic;
-    border-top: 1px solid #e9ecef;
-    padding-right: 15px;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    #save-confirmation-message {
-        bottom: 15px;
-        right: 15px;
-        font-size: 9px;
-        padding: 10px 14px;
-        max-width: 250px;
-    }
-}
-
-@media (max-width: 480px) {
-    #save-confirmation-message {
-        bottom: 10px;
-        right: 10px;
-        left: 10px; /* 모바일에서는 좌우 여백 동일 */
-        font-size: 8px;
-        padding: 8px 12px;
-        max-width: none;
-        text-align: center;
-        white-space: normal; /* 모바일에서는 줄바꿈 허용 */
-    }
-}
-
-.frame-group.textbox-frame .frame-overlay {
-    pointer-events: auto !important;
-}
 
 /* ===========================================
-   Element 패널 - 기존 CSS 구조와 완전 통일
+   7. 사진 크기 조절 핸들
    =========================================== */
-   /* 호버 효과만 제거 (요청사항에 따라) */
-#element-panel .thumbnail-wrapper:hover {
-    transform: none;
-    box-shadow: none;
-}
-
-/* 반응형 디자인 - 기존 프레임과 동일 */
-@media (max-width: 768px) {
-    #element-panel .thumbnail-wrapper {
-        width: 160px;
-        height: 206px;
-    }
-}
-
-@media (max-width: 480px) {
-    #element-panel {
-        padding: 12px 0;
-    }
-    
-    #element-panel .thumbnail-wrapper {
-        width: 140px;
-        height: 180px;
-    }
-    
-    #element-panel .thumbnail-wrapper img {
-        /* 모바일에서도 실제 사이즈 유지 */
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-    }
-}
-
-/* 고해상도 디스플레이 대응 */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    #element-panel .thumbnail-wrapper img {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-    }
-}
-
-/* 로딩 상태 */
-#element-panel .thumbnail-wrapper.loading {
-    background-color: #e9ecef;
-    position: relative;
-}
-
-#element-panel .thumbnail-wrapper.loading::before {
-    content: '';
+.photo-selection-box {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid #dee2e6;
-    border-top-color: #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    border: 1px dashed #ff0000;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 28;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+.resize-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #ffffff;
+    border: 1px solid #ff0000;
+    pointer-events: auto;
+    z-index: 30;
 }
 
-/* 접근성 개선 */
-#element-panel .thumbnail-wrapper {
-    cursor: pointer;
-    outline: none;
-}
-
-#element-panel .thumbnail-wrapper:focus {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
-/* 성능 최적화 */
-#element-panel .thumbnail-wrapper {
-    will-change: transform;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-}
+.handle-nw { top: -4px; left: -4px; cursor: nwse-resize; }
+.handle-ne { top: -4px; right: -4px; cursor: nesw-resize; }
+.handle-sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+.handle-se { bottom: -4px; right: -4px; cursor: nwse-resize; }
 
 /* ===========================================
-   30. 미리보기 로딩 화면 스타일
+   8. 툴바 시스템
    =========================================== */
-#preview-loader {
-    position: fixed; /* fixed로 변경하여 화면 전체를 덮도록 설정 */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
-    /* z-index를 Bootstrap 모달(1055)보다 높게 설정 */
-    z-index: 1060; 
-    display: flex;
-    justify-content: center;
+#editor-toolbar {
+    min-height: 57px;
     align-items: center;
+    border-bottom: 1px solid #e9ecef;
+    justify-content: space-between;
 }
 
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3; /* 연한 회색 트랙 */
-    border-top: 4px solid #007bff; /* 파란색 스피너 */
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+#editor-toolbar .context-controls,
+#editor-toolbar .control-buttons,
+#editor-toolbar #text-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+#main-actions button {
+    width: 80px;
+    height: 32px;
+    font-size: 13px;
 }
-/* ===========================================
-   31. 사용자 정의
-   =========================================== */
-.panelBtn {
-	margin-bottom: 0.75rem !important;	
+
+#editor-toolbar .control-btn {
+    width: 30px;
+    height: 30px;
+    padding: 4px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background: transparent;
 }
-   
+#editor-toolbar .control-btn:hover {
+    border-color: #007bff;
+}
+
+#editor-toolbar .control-btn img {
+    width: 18px;
+    height: 18px;
+}
+
+#text-controls select {
+    height: 30px;
+    font-size: 13px;
+    border-radius: 5px;
+    width: 80px;
+}
+#text-controls input[type="color"] {
+    width: 38px;
+    height: 30px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+}
+
 /* ===========================================
-   페이지 카드 관련 스타일 (수정본)
+   9. 페이지 슬라이드 및 카드
    =========================================== */
+.category-section {
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    border-left: 5px solid #ccc;
+    background-color: white;
+}
+
+.slide-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    gap: 16px;
+    padding: 12px;
+    margin: 0 40px;
+}
 
 .page-card {
     position: relative;
-    overflow: hidden; /* 내부 요소가 카드를 벗어나지 않도록 설정 */
-    /* 기존 page-card에 있던 hover 효과는 제거하고 자식 요소에서 처리 */
-    transform: none;
     flex: 0 0 auto;
     width: 120px;
     text-align: center;
@@ -1844,36 +441,23 @@ button:focus,
     object-fit: cover;
     background-color: #f8f9fa;
     border-radius: 8px;
-    
-    /* 1. 썸네일 외곽선 제거 */
     border: none; 
-    
-    /* 2. 호버 효과를 부드럽게 하기 위한 transition 설정 */
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
-/* 3. 마우스 오버 시 썸네일이 반투명하게 흐려지는 효과 */
 .page-card:hover .page-thumb {
-    filter: blur(3px) brightness(0.6); /* 흐림(blur)과 어둡게(brightness) 효과 동시 적용 */
-    transform: scale(1.05); /* 약간 확대되는 효과 추가 */
+    filter: blur(3px) brightness(0.6);
+    transform: scale(1.05);
 }
 
-/* 4. Edit 버튼 기본 스타일 및 위치 설정 */
 .page-card .edit-btn {
-    /* 기본 상태: 숨김 */
     opacity: 0;
     pointer-events: none;
-
-    /* 화면 중앙 배치 */
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-
-    /* z-index를 주어 다른 요소들 위에 표시 */
     z-index: 2;
-
-    /* 꾸밈새 */
     font-weight: bold;
     color: white;
     background-color: rgba(0, 0, 0, 0.5);
@@ -1881,16 +465,12 @@ button:focus,
     border-radius: 5px;
     text-decoration: none;
     border: 1px solid white;
-    transition: opacity 0.3s ease, background-color 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
-/* 5. 점 3개 메뉴(Page Reset) 아이콘 컨테이너 기본 스타일 */
 .page-card .menu-container {
-    /* 기본 상태: 숨김 */
     opacity: 0;
     pointer-events: none;
-
-    /* 오른쪽 상단 배치 */
     position: absolute;
     top: 8px;
     right: 8px;
@@ -1898,21 +478,12 @@ button:focus,
     transition: opacity 0.3s ease;
 }
 
-/* 6. 마우스 오버 시 Edit 버튼과 메뉴 아이콘 나타남 */
 .page-card:hover .edit-btn,
 .page-card:hover .menu-container {
     opacity: 1;
-    pointer-events: auto; /* 클릭 가능하도록 설정 */
+    pointer-events: auto;
 }
 
-/* Edit 버튼 호버 시 약간 밝아지는 효과 */
-.page-card .edit-btn:hover {
-    background-color: rgba(0, 0, 0, 0.7);
-}
-
-/* --- 기존 메뉴 관련 스타일은 그대로 유지 --- */
-
-/* 점 3개 메뉴 버튼 */
 .menu-dots-btn {
     background-color: rgba(0, 0, 0, 0.6);
     color: white;
@@ -1921,51 +492,33 @@ button:focus,
     width: 24px;
     height: 24px;
     font-size: 16px;
-    line-height: 24px;
     cursor: pointer;
     padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* 메뉴 드롭다운 */
-.menu-dropdown {
-    display: none;
+.slide-btn {
     position: absolute;
-    top: 30px;
-    right: 0;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 10;
-}
-
-/* 메뉴 드롭다운의 Page Reset 버튼 */
-.menu-dropdown .btn-page-reset {
-    background-color: transparent;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
     border: none;
-    padding: 8px 16px;
-    text-align: left;
-    width: 100%;
+    font-size: 18px;
+    padding: 12px 16px;
     cursor: pointer;
-    white-space: nowrap;
+    z-index: 10;
+    border-radius: 50%;
 }
-
-.menu-dropdown .btn-page-reset:hover {
-    background-color: #f5f5f5;
-}
+.slide-btn.left { left: 5px; }
+.slide-btn.right { right: 5px; }
 
 /* ===========================================
-   페이지 순서 이동 기능 (Drag and Drop)
+   10. 페이지 순서 이동 (Drag & Drop)
    =========================================== */
-
-/* 기능 활성화/비활성화 컨트롤 영역 */
 .page-move-controls {
     position: fixed;
     bottom: 0;
-    left: 200px; /* 사이드바 너비만큼 띄움 */
+    left: 200px;
     right: 0;
     display: flex;
     justify-content: space-between;
@@ -1974,39 +527,22 @@ button:focus,
     background-color: #343a40;
     color: white;
     z-index: 999;
-    border-top: 1px solid #495057;
 }
 
-.move-pages-label {
-    margin-bottom: 0;
-    font-weight: bold;
-    cursor: default;
-}
-
-/* 텍스트 스위치 컨테이너 */
 .switch-text {
     position: relative;
     display: inline-block;
     width: 60px;
     height: 30px;
 }
-.switch-text input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
+.switch-text input { display: none; }
 .slider-text {
     position: absolute;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background-color: #ccc;
     transition: .4s;
-    display: flex;
-    align-items: center;
-    overflow: hidden; /* 텍스트가 밖으로 나가지 않도록 설정 */
+    border-radius: 30px;
 }
 .slider-text:before {
     position: absolute;
@@ -2017,56 +553,13 @@ button:focus,
     bottom: 4px;
     background-color: white;
     transition: .4s;
-    z-index: 2; /* 텍스트보다 위에 오도록 설정 */
-}
-input:checked + .slider-text {
-    background-color: #28a745; /* 활성화 시 녹색 */
-}
-input:checked + .slider-text:before {
-    transform: translateX(30px); /* 슬라이더 원 오른쪽으로 이동 */
-}
-.slider-text.round {
-    border-radius: 34px;
-}
-.slider-text.round:before {
     border-radius: 50%;
 }
-
-.on-text, .off-text {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: white;
-    font-size: 11px;
-    font-weight: bold;
-    transition: opacity 0.2s ease, transform 0.4s ease;
-    z-index: 1;
-}
-
-.on-text {
-    left: 8px;
-    opacity: 0; /* 기본적으로 숨김 */
-}
-
-.off-text {
-    right: 8px;
-    opacity: 1; /* 기본적으로 보임 */
-}
-
-input:checked + .slider-text .on-text {
-    opacity: 1; /* 활성화 시 ON 텍스트 보임 */
-}
-
-input:checked + .slider-text .off-text {
-    opacity: 0; /* 활성화 시 OFF 텍스트 숨김 */
-}
-
-
-/* --- 드래그 앤 드롭 시각 효과 (기존 코드 유지) --- */
+input:checked + .slider-text { background-color: #28a745; }
+input:checked + .slider-text:before { transform: translateX(30px); }
 
 .page-card.dragging {
     opacity: 0.5;
-    transform: scale(0.95);
 }
 
 .drop-placeholder {
@@ -2076,4 +569,45 @@ input:checked + .slider-text .off-text {
     border: 2px dashed #007bff;
     border-radius: 8px;
     flex-shrink: 0;
+}
+
+/* ===========================================
+   11. 기타 UI 요소
+   =========================================== */
+#preview-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 1060; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#save-confirmation-message {
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: right;
+    font-size: 10px;
+    font-style: italic;
+    border-top: 1px solid #e9ecef;
+    padding-right: 15px;
 }

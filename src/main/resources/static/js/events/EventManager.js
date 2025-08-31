@@ -7,6 +7,46 @@ class EventManager {
         minMoveDistance: 5,
         tooltipUpdateInterval: 100
     };
+	
+	// ▼▼▼ [핵심 추가] FrameManager에서 이동해 온 공용 회전 기능 함수 ▼▼▼
+	/**
+	 * 요소를 회전 가능하게 만드는 이벤트 핸들러를 바인딩합니다.
+	 * @param {jQuery} element - 회전 대상 요소
+	 * @param {jQuery} handle - 회전 트리거 핸들
+	 */
+	static makeRotatable(element, handle) {
+		handle.on('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const elementCenter = {
+				x: element.offset().left + element.width() / 2,
+				y: element.offset().top + element.height() / 2
+			};
+
+			// Helpers에 있는 getFrameRotation을 사용 (텍스트/프레임 공용)
+			const initialAngle = Helpers.getFrameRotation(element);
+			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
+
+			$(document).on('mousemove.rotator', (ev) => {
+				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
+				const deltaAngle = (currentAngleRad - startAngleRad) * (180 / Math.PI);
+				const newAngle = initialAngle + deltaAngle;
+
+				element.css('transform', `rotate(${newAngle}deg)`);
+			});
+
+			$(document).on('mouseup.rotator', () => {
+				$(document).off('.rotator');
+
+				// 최종 상태 저장
+				const currentState = element.data('relativeState') || {};
+				currentState.transform = element.css('transform');
+				element.data('relativeState', currentState);
+			});
+		});
+	}
+	// ▲▲▲ [핵심 추가] 종료 ▲▲▲
     
     // ▼▼▼ [신규 추가] setupPhotoFrameEvents 함수 ▼▼▼
     /**
