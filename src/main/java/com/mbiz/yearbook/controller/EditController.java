@@ -4,40 +4,17 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
-import com.mbiz.yearbook.model.Contents;
-import com.mbiz.yearbook.model.ContentsData;
-import com.mbiz.yearbook.model.FontDto;
-import com.mbiz.yearbook.model.Theme;
-import com.mbiz.yearbook.model.User;
-import com.mbiz.yearbook.model.UserTheme;
-import com.mbiz.yearbook.model.Yearbook;
-import com.mbiz.yearbook.model.YearbookSummary;
-import com.mbiz.yearbook.repository.ContentsRepository;
-import com.mbiz.yearbook.repository.ThemeRepository;
-import com.mbiz.yearbook.repository.UserThemeRepository;
-import com.mbiz.yearbook.repository.YearbookRepository;
-import com.mbiz.yearbook.service.ContentsService;
-import com.mbiz.yearbook.service.ThemeService;
-import com.mbiz.yearbook.service.ThumbnailRenderingService;
-import com.mbiz.yearbook.service.YearbookService;
+import com.mbiz.yearbook.model.*;
+import com.mbiz.yearbook.repository.*;
+import com.mbiz.yearbook.service.*;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 @Controller
 @RequiredArgsConstructor
 public class EditController {
-	
+    
     @Autowired
     private ContentsService contentsService;
     
@@ -70,227 +47,221 @@ public class EditController {
     @Autowired
     private ThumbnailRenderingService thumbnailRenderingService;
 
-	@GetMapping("/edit")
-	public String editMain(HttpSession session, @RequestParam Long id, Model model) {
+    @GetMapping("/edit")
+    public String editMain(HttpSession session, @RequestParam Long id, Model model) {
+        User loginUser = (User) session.getAttribute("loginUser");
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("deadline", loginUser.getDeadline());
 
-		User loginUser = (User) session.getAttribute("loginUser");
-		model.addAttribute("loginUser", loginUser);
-		model.addAttribute("deadline", loginUser.getDeadline());
-
-	    LocalDate today = LocalDate.now();
-	    LocalDate deadline = loginUser.getDeadline()
-	                             .toInstant()
-	                             .atZone(ZoneId.systemDefault())
-	                             .toLocalDate();
-	    
-	    long remainDays = ChronoUnit.DAYS.between(today, deadline);
-	    
-	    int groupCompleted = 0;
-        int groupTotal = 0;
-        int eventCompleted = 0;
-        int eventTotal = 0;
+        // 날짜 계산
+        LocalDate today = LocalDate.now();
+        LocalDate deadline = loginUser.getDeadline()
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
         
-        List<Contents> allGroupContents = contentsRepository.findByUserIdAndCategory(loginUser.getId(), "group");
-        List<Contents> allEventContents = contentsRepository.findByUserIdAndCategory(loginUser.getId(), "event");
+        long remainDays = ChronoUnit.DAYS.between(today, deadline);
         
-        for(Contents content : allGroupContents) {
-        	groupTotal += content.getPages();
-        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
-        	groupCompleted += existingPages.size();
-        }
+        // 진행률 계산
+        Map<String, Integer> progressData = calculateProgress(loginUser.getId());
         
-        for(Contents content : allEventContents) {
-        	eventTotal += content.getPages();
-        	List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
-        	eventCompleted += existingPages.size();
-        }
+        model.addAttribute("remainDays", remainDays);
+        model.addAttribute("groupProgress", progressData.get("groupProgress"));
+        model.addAttribute("eventProgress", progressData.get("eventProgress"));
+
+        // 콘텐츠 목록 생성
+        List<ContentsData> contentsListForView = createContentsListForView(loginUser.getId());
         
-        int groupProgress = (groupTotal != 0) ? (groupCompleted * 100) / groupTotal : 0;
-        int eventProgress = (eventTotal != 0) ? (eventCompleted * 100) / eventTotal : 0;
+        model.addAttribute("contentsList", contentsListForView);
+        model.addAttribute("currentMenu", "edit");
 
-	    model.addAttribute("remainDays", remainDays);
-	    model.addAttribute("groupProgress", groupProgress);
-	    model.addAttribute("eventProgress", eventProgress);
-
-		List<Contents> allContents = contentsRepository.findByUserId(loginUser.getId());
-
-		List<ContentsData> contentsListForView = new ArrayList<>();
-
-		for (Contents content : allContents) {
-			// 1. 해당 contents에 대해 DB에 이미 저장된 yearbook 페이지들을 가져옵니다.
-			List<YearbookSummary> existingPages = yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
-
-			// 2. contents.pages 개수만큼 채울 최종 페이지 리스트를 생성합니다.
-			List<YearbookSummary> fullPageList = new ArrayList<>();
-
-			// 3. 1페이지부터 contents.pages 만큼 반복합니다.
-			for (int i = 1; i <= content.getPages(); i++) {
-				final int currentPageNo = i;
-
-				// 4. 이미 저장된 페이지 목록(existingPages)에서 현재 페이지 번호와 일치하는 것을 찾습니다.
-				YearbookSummary pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo).findFirst()
-						.orElse(null); // 없으면 null
-
-				if (pageToAdd != null) {
-					// 5a. 일치하는 페이지가 있으면, 그 데이터를 리스트에 추가합니다.
-					fullPageList.add(pageToAdd);
-				} else {
-					// 5b. 일치하는 페이지가 없으면, JSP에서 placeholder를 표시할 수 있도록
-					// contentsId와 pageNo만 가진 '빈' Yearbook 객체를 만들어 추가합니다.
-					YearbookSummary emptyPage = new YearbookSummary();
-					emptyPage.setContentsId(content.getId());
-					emptyPage.setPageNo(currentPageNo);
-					// id, thumbnailPath 등은 null인 상태로 둡니다.
-					fullPageList.add(emptyPage);
-				}
-			}
-
-			// DTO 객체 생성 및 데이터 설정
-			ContentsData data = new ContentsData();
-			data.setContentsInfo(content);
-			data.setYearbookPages(fullPageList); // 완성된 리스트를 DTO에 담습니다.
-			
-			data.setSavedPagesCount(existingPages.size());
-
-			contentsListForView.add(data);
-		}
-
-		model.addAttribute("contentsList", contentsListForView);
-		model.addAttribute("currentMenu", "edit");
-
-		return "edit";
-	}
+        return "edit";
+    }
     
-	@GetMapping("/edit/theme")
+    private Map<String, Integer> calculateProgress(Long userId) {
+        Map<String, Integer> result = new HashMap<>();
+        
+        int groupCompleted = 0, groupTotal = 0;
+        int eventCompleted = 0, eventTotal = 0;
+        
+        List<Contents> groupContents = contentsRepository.findByUserIdAndCategory(userId, "group");
+        List<Contents> eventContents = contentsRepository.findByUserIdAndCategory(userId, "event");
+        
+        for (Contents content : groupContents) {
+            groupTotal += content.getPages();
+            groupCompleted += yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId()).size();
+        }
+        
+        for (Contents content : eventContents) {
+            eventTotal += content.getPages();
+            eventCompleted += yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(content.getId()).size();
+        }
+        
+        result.put("groupProgress", groupTotal != 0 ? (groupCompleted * 100) / groupTotal : 0);
+        result.put("eventProgress", eventTotal != 0 ? (eventCompleted * 100) / eventTotal : 0);
+        
+        return result;
+    }
+    
+    private List<ContentsData> createContentsListForView(Long userId) {
+        List<Contents> allContents = contentsRepository.findByUserId(userId);
+        List<ContentsData> contentsListForView = new ArrayList<>();
+
+        for (Contents content : allContents) {
+            List<YearbookSummary> existingPages = yearbookRepository
+                    .findSummariesByContentsIdOrderByPageNoAsc(content.getId());
+            
+            List<YearbookSummary> fullPageList = new ArrayList<>();
+            
+            for (int i = 1; i <= content.getPages(); i++) {
+                final int currentPageNo = i;
+                YearbookSummary pageToAdd = existingPages.stream()
+                        .filter(p -> p.getPageNo() == currentPageNo)
+                        .findFirst()
+                        .orElseGet(() -> createEmptyPage(content.getId(), currentPageNo));
+                
+                fullPageList.add(pageToAdd);
+            }
+
+            ContentsData data = new ContentsData();
+            data.setContentsInfo(content);
+            data.setYearbookPages(fullPageList);
+            data.setSavedPagesCount(existingPages.size());
+            
+            contentsListForView.add(data);
+        }
+
+        return contentsListForView;
+    }
+    
+    private YearbookSummary createEmptyPage(Long contentsId, int pageNo) {
+        YearbookSummary emptyPage = new YearbookSummary();
+        emptyPage.setContentsId(contentsId);
+        emptyPage.setPageNo(pageNo);
+        return emptyPage;
+    }
+    
+    @GetMapping("/edit/theme")
     @ResponseBody
-    public List<UserTheme> backgroundList(@RequestParam Long userId, @RequestParam String category, @RequestParam String gubun) {
+    public List<UserTheme> backgroundList(@RequestParam Long userId, 
+                                         @RequestParam String category, 
+                                         @RequestParam String gubun) {
         return themeService.findByUserIdAndCategory(userId, category, gubun);
     }
     
-    /**
-     * 특정 테마 ID를 받아, 해당 테마와 동일한 부모 ID를 가진 모든 테마 목록을 반환합니다.
-     */
-    @GetMapping("/edit/themesByParent") // 새로운 GET 요청 주소
+    @GetMapping("/edit/themesByParent")
     @ResponseBody
     public List<Theme> getThemesByParentId(@RequestParam Long themeId) {
-        // 1. 전달받은 themeId로 현재 테마를 조회하여 parentId를 얻습니다.
         Theme currentTheme = themeRepository.findById(themeId)
                 .orElseThrow(() -> new RuntimeException("Theme not found with id: " + themeId));
         
         Long parentId = currentTheme.getParentId();
-
-        // 2. parentId가 있으면, 해당 parentId를 가진 모든 테마 목록을 조회하여 반환합니다.
-        if (parentId != null) {
-            return themeRepository.findByParentIdOrderByFilenameAsc(parentId);
-        }
-
-        // parentId가 없는 경우, 빈 리스트나 적절한 예외 처리를 합니다.
-        return Collections.emptyList();
+        return parentId != null ? 
+                themeRepository.findByParentIdOrderByFilenameAsc(parentId) : 
+                Collections.emptyList();
     }
     
     @GetMapping("/edit/fonts")
     @ResponseBody
     public List<FontDto> getFonts(HttpSession session) {
-    	User loginUser = (User) session.getAttribute("loginUser");
+        User loginUser = (User) session.getAttribute("loginUser");
 
         if (loginUser == null) {
-            return Collections.emptyList(); // 로그인하지 않은 경우 빈 목록 반환
-        }
-
-        // 1. user_id로 사용자의 테마 설정을 찾습니다.
-        List<UserTheme> userThemes = userThemeRepository.findByUserId(loginUser.getId());
-        if (userThemes.isEmpty() || userThemes.get(0).getFontIds() == null) {
-            return Collections.emptyList(); // 설정된 폰트가 없는 경우 빈 목록 반환
-        }
-
-        // 2. font_id 컬럼의 값을 가져옵니다 (ex: "13001,13002")
-        String fontIdsString = userThemes.get(0).getFontIds();
-
-        // 3. 쉼표로 구분된 ID 문자열을 Long 타입의 리스트로 변환합니다.
-        List<Long> fontIds;
-        try {
-            fontIds = Arrays.stream(fontIdsString.split(","))
-                            .map(String::trim)
-                            .map(Long::parseLong)
-                            .collect(Collectors.toList());
-        } catch (NumberFormatException e) {
-            // ID 형식이 잘못된 경우 에러 처리
             return Collections.emptyList();
         }
 
-        // 4. 변환된 ID 리스트를 사용해 theme 테이블에서 모든 폰트 정보를 조회합니다.
-        List<Theme> themes = themeRepository.findAllById(fontIds);
+        List<UserTheme> userThemes = userThemeRepository.findByUserId(loginUser.getId());
+        if (userThemes.isEmpty() || userThemes.get(0).getFontIds() == null) {
+            return Collections.emptyList();
+        }
+
+        String fontIdsString = userThemes.get(0).getFontIds();
         
-        // 5. Theme 엔티티 리스트를 FontDto 리스트로 변환하여 반환합니다.
-        return themes.stream()
-                     .map(theme -> new FontDto(theme.getId(), theme.getFilename(), theme.getFontPath()))
-                     .collect(Collectors.toList());
+        try {
+            List<Long> fontIds = Arrays.stream(fontIdsString.split(","))
+                    .map(String::trim)
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+            
+            List<Theme> themes = themeRepository.findAllById(fontIds);
+            
+            return themes.stream()
+                    .map(theme -> new FontDto(theme.getId(), theme.getFilename(), theme.getFontPath()))
+                    .collect(Collectors.toList());
+        } catch (NumberFormatException e) {
+            return Collections.emptyList();
+        }
     }
     
     @PostMapping("/edit/savePage")
-    @ResponseBody // @ResponseBody를 추가하여 JSON 응답을 보장합니다.
+    @ResponseBody
     public Map<String, Object> savePage(@RequestBody Map<String, Object> payload) {
-        Object yearbookIdObj = payload.get("yearbookId");
-        Long yearbookId = (yearbookIdObj != null && !yearbookIdObj.toString().isEmpty()) ? Long.parseLong(yearbookIdObj.toString()) : null;
-
+        Long yearbookId = parseId(payload.get("yearbookId"));
         String designDataJson = (String) payload.get("designData");
-        String imageData = (String) payload.get("imageData");
 
-        Yearbook page;
-
-        // ID 존재 여부에 따라 분기
-        if (yearbookId != null) {
-            // ID가 있으면 기존 데이터 수정 (Update)
-            page = yearbookRepository.findById(yearbookId).orElseThrow(() -> new RuntimeException("페이지를 찾을 수 없습니다."));
-        } else {
-            // ID가 없으면 신규 데이터 생성 (Create)
-            Long contentsId = Long.parseLong(payload.get("contentsId").toString());
-            Integer pageNo = Integer.parseInt(payload.get("pageNo").toString());
-            Long userId = Long.parseLong(payload.get("userId").toString());
-
-            page = yearbookRepository.findByContentsIdAndPageNo(contentsId, pageNo)
-                                      .orElse(new Yearbook());
-            
-            if (page.getId() == null) {
-                page.setUserId(userId);
-                page.setContentsId(contentsId);
-                page.setPageNo(pageNo);
-            }
-        }
+        Yearbook page = yearbookId != null ? 
+                updateExistingPage(yearbookId) : 
+                createNewPage(payload);
 
         page.setDesignData(designDataJson);
         page.setLastSaved(new Date());
 
         Yearbook savedPage = yearbookRepository.saveAndFlush(page);
         
-        int updatedSavedCount = yearbookRepository.findByContentsIdOrderByPageNoAsc(savedPage.getContentsId()).size();
-
-        // 변경: 서버에서 designData를 기반으로 직접 썸네일 렌더링
-        String newImagePath = null;
-        try {
-            newImagePath = thumbnailRenderingService.generateThumbnail(designDataJson, savedPage.getId());
-        } catch (IOException e) {
-            e.printStackTrace();
-            // 썸네일 생성 실패 시 에러 처리 (예: 기본 이미지 경로 반환 또는 null 처리)
-        }
-        
+        String newImagePath = generateThumbnail(designDataJson, savedPage.getId());
         savedPage.setThumbnailPath(newImagePath);
         yearbookRepository.saveAndFlush(savedPage);
 
+        return createSaveResponse(savedPage, newImagePath);
+    }
+    
+    private Long parseId(Object idObj) {
+        return (idObj != null && !idObj.toString().isEmpty()) ? 
+                Long.parseLong(idObj.toString()) : null;
+    }
+    
+    private Yearbook updateExistingPage(Long yearbookId) {
+        return yearbookRepository.findById(yearbookId)
+                .orElseThrow(() -> new RuntimeException("페이지를 찾을 수 없습니다."));
+    }
+    
+    private Yearbook createNewPage(Map<String, Object> payload) {
+        Long contentsId = Long.parseLong(payload.get("contentsId").toString());
+        Integer pageNo = Integer.parseInt(payload.get("pageNo").toString());
+        Long userId = Long.parseLong(payload.get("userId").toString());
+
+        Yearbook page = yearbookRepository.findByContentsIdAndPageNo(contentsId, pageNo)
+                .orElse(new Yearbook());
+        
+        if (page.getId() == null) {
+            page.setUserId(userId);
+            page.setContentsId(contentsId);
+            page.setPageNo(pageNo);
+        }
+        
+        return page;
+    }
+    
+    private String generateThumbnail(String designDataJson, Long pageId) {
+        try {
+            return thumbnailRenderingService.generateThumbnail(designDataJson, pageId);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    private Map<String, Object> createSaveResponse(Yearbook savedPage, String newImagePath) {
         Map<String, Object> response = new HashMap<>();
         response.put("newImagePath", newImagePath);
         response.put("newYearbookId", savedPage.getId());
         response.put("lastSaved", savedPage.getLastSaved());
-        
-        response.put("updatedSavedCount", updatedSavedCount);
+        response.put("updatedSavedCount", 
+                yearbookRepository.findByContentsIdOrderByPageNoAsc(savedPage.getContentsId()).size());
         response.put("contentsId", savedPage.getContentsId());
-        
         return response;
     }
     
-    /**
-     * 특정 yearbook ID에 해당하는 페이지의 저장된 디자인 데이터를 반환합니다.
-     */
     @GetMapping("/edit/pageData")
     @ResponseBody
     public Yearbook getPageData(@RequestParam("id") Long yearbookId) {
@@ -298,25 +269,31 @@ public class EditController {
                 .orElseThrow(() -> new RuntimeException("Yearbook page not found with id: " + yearbookId));
     }
     
-    /**
-     * 페이지 디자인을 리셋(삭제)하는 메소드
-     * @param id yearbookId
-     * @return 성공 여부를 담은 JSON 객체
-     */
     @PostMapping("/edit/resetPage")
-    @ResponseBody // JSON 형태로 응답하기 위함
+    @ResponseBody
     public Map<String, Object> resetPage(@RequestParam("id") Long id) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 여기에 yearbookId(id)를 사용하여 데이터베이스에서
-            // 해당 레코드를 삭제하는 서비스 로직을 호출합니다.
-            // 예: yearbookService.deletePage(id);
-        	yearbookRepository.deleteById(id);
+            yearbookRepository.deleteById(id);
             response.put("success", true);
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", e.getMessage());
-            // 로그 기록
+        }
+        return response;
+    }
+    
+    @PostMapping("/edit/updatePageOrder")
+    @ResponseBody
+    public Map<String, Object> updatePageOrder(@RequestBody List<PageOrderDTO> pageOrders) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            yearbookService.updatePageOrder(pageOrders);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            e.printStackTrace();
         }
         return response;
     }
@@ -324,33 +301,10 @@ public class EditController {
     public static class PageOrderDTO {
         private Long id;
         private int pageNo;
-        // Getters and Setters
+        
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
         public int getPageNo() { return pageNo; }
         public void setPageNo(int pageNo) { this.pageNo = pageNo; }
     }
-    
-    /**
-     * 페이지 순서를 업데이트하는 메소드
-     * @param pageOrders yearbookId와 새로운 pageNo가 담긴 리스트
-     * @return 성공 여부를 담은 JSON 객체
-     */
-	@PostMapping("/edit/updatePageOrder")
-	@ResponseBody
-	public Map<String, Object> updatePageOrder(@RequestBody List<PageOrderDTO> pageOrders) {
-		Map<String, Object> response = new HashMap<>();
-		try {
-			// 여기에 yearbookService를 통해 받은 pageOrders 리스트를
-			// 반복하면서 각 페이지의 pageNo를 업데이트하는 로직을 호출합니다.
-			// 예: yearbookService.updatePageOrder(pageOrders);
-			yearbookService.updatePageOrder(pageOrders);
-			response.put("success", true);
-		} catch (Exception e) {
-			response.put("success", false);
-			response.put("message", e.getMessage());
-			e.printStackTrace();
-		}
-		return response;
-	}
 }

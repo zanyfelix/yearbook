@@ -1,14 +1,12 @@
-// ============================================================================
-// 📁 js/core/SafeLineManager.js (역할 분리 및 오류 수정)
-// ============================================================================
+// SafeLineManager.js - 안전선 관리 클래스
 class SafeLineManager {
     constructor() {
         this.actualWidth = 221.9;
         this.actualHeight = 285.4;
         this.safeMargin = 3;
         this.container = null;
-        this.safeAreas = [];
-        this.resizeObserver = null;
+        this.resizeTimeout = null;
+        this.windowResizeTimeout = null;
         this.init();
     }
     
@@ -33,38 +31,63 @@ class SafeLineManager {
     
     watchChanges() {
         const img = $('#page-preview-img')[0];
+        if (!img) return;
         
+        // 이미지 로드 이벤트
         $(img).on('load', () => {
             setTimeout(() => this.update(), 150);
         });
         
+        // ResizeObserver 설정
         if (window.ResizeObserver) {
-            if (this.resizeObserver) this.resizeObserver.disconnect();
-            this.resizeObserver = new ResizeObserver(() => {
-                clearTimeout(this.resizeTimeout);
-                this.resizeTimeout = setTimeout(() => this.update(), 100);
-            });
-            this.resizeObserver.observe(img);
+            this.setupResizeObserver(img);
         }
         
+        // 윈도우 리사이즈 이벤트
         $(window).on('resize.safeline', () => {
             clearTimeout(this.windowResizeTimeout);
             this.windowResizeTimeout = setTimeout(() => {
-                if ($('#editModal').is(':visible')) this.update();
+                if ($('#editModal').is(':visible')) {
+                    this.update();
+                }
             }, 150);
         });
         
+        // MutationObserver 설정
         if (window.MutationObserver) {
-            if (this.srcObserver) this.srcObserver.disconnect();
-            this.srcObserver = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-                        setTimeout(() => this.update(), 200);
-                    }
-                });
-            });
-            this.srcObserver.observe(img, { attributes: true, attributeFilter: ['src'] });
+            this.setupMutationObserver(img);
         }
+    }
+    
+    setupResizeObserver(img) {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        
+        this.resizeObserver = new ResizeObserver(() => {
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(() => this.update(), 100);
+        });
+        this.resizeObserver.observe(img);
+    }
+    
+    setupMutationObserver(img) {
+        if (this.srcObserver) {
+            this.srcObserver.disconnect();
+        }
+        
+        this.srcObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+                    setTimeout(() => this.update(), 200);
+                }
+            });
+        });
+        
+        this.srcObserver.observe(img, { 
+            attributes: true, 
+            attributeFilter: ['src'] 
+        });
     }
     
     update() {
@@ -73,6 +96,7 @@ class SafeLineManager {
         const img = $('#page-preview-img');
         const src = img.attr('src');
 
+        // 이미지가 없거나 placeholder인 경우
         if (!src || src.includes('data:image/gif;base64')) {
             this.container.hide();
             this.clearSelectionCache();
@@ -80,6 +104,8 @@ class SafeLineManager {
         }
 
         const imgElement = img[0];
+        
+        // 이미지가 로드되지 않은 경우
         if (img.width() === 0 || img.height() === 0 || !imgElement.complete) {
             this.container.hide();
             return;
@@ -97,40 +123,43 @@ class SafeLineManager {
         const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
 
         this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
-		
-		const $message = $('#save-confirmation-message');
-		if ($message.length > 0 && $message.is(':visible')) {
-			const newTop = imgPosition.top + imgPosition.height;
-			const newLeft = imgPosition.left;
-			$message.css({ top: `${newTop}px`, left: `${newLeft}px` });
-		}
-		
+        this.updateMessagePosition(imgPosition);
         this.clearSelectionCache();
-        
-        // ✨ --- 핵심 수정 --- ✨
-        // 이 파일의 역할은 안전선 계산 및 그리기로 한정합니다.
-        // 다른 요소들의 위치를 재조정하는 코드를 제거하여, 불필요한 이동 현상을 방지합니다.
-        // 모든 요소의 위치 업데이트는 main.js의 resize 이벤트 핸들러가 전담합니다.
     }
     
     drawHatchedSafeAreas(imgPosition, marginX, marginY) {
         this.container.empty();
         const { left, top, width, height } = imgPosition;
+        
         const areas = [
-            { left: left, top: top, width: width, height: marginY },
-            { left: left, top: top + height - marginY, width: width, height: marginY },
-            { left: left, top: top + marginY, width: marginX, height: height - (marginY * 2) },
-            { left: left + width - marginX, top: top + marginY, width: marginX, height: height - (marginY * 2) }
+            { left, top, width, height: marginY }, // 상단
+            { left, top: top + height - marginY, width, height: marginY }, // 하단
+            { left, top: top + marginY, width: marginX, height: height - (marginY * 2) }, // 좌측
+            { left: left + width - marginX, top: top + marginY, width: marginX, height: height - (marginY * 2) } // 우측
         ];
+        
         areas.forEach(area => {
             if (area.width > 0 && area.height > 0) {
-                const safeDiv = $(`<div class="safe-area-hatched"></div>`).css({
-                    position: 'absolute', left: `${area.left}px`, top: `${area.top}px`,
-                    width: `${area.width}px`, height: `${area.height}px`
+                const safeDiv = $('<div class="safe-area-hatched"></div>').css({
+                    position: 'absolute',
+                    left: `${area.left}px`,
+                    top: `${area.top}px`,
+                    width: `${area.width}px`,
+                    height: `${area.height}px`
                 });
                 this.container.append(safeDiv);
             }
         });
+    }
+    
+    updateMessagePosition(imgPosition) {
+        const $message = $('#save-confirmation-message');
+        if ($message.length > 0 && $message.is(':visible')) {
+            $message.css({
+                top: `${imgPosition.top + imgPosition.height}px`,
+                left: `${imgPosition.left}px`
+            });
+        }
     }
     
     getActualImagePosition($imgElement) {
@@ -138,6 +167,7 @@ class SafeLineManager {
         const containerWidth = $imgElement.width();
         const containerHeight = $imgElement.height();
         const containerPosition = $imgElement.position();
+        
         if (!img.naturalWidth || !img.naturalHeight) return null;
         
         const naturalRatio = img.naturalWidth / img.naturalHeight;
@@ -146,11 +176,13 @@ class SafeLineManager {
         let actualWidth, actualHeight, offsetX, offsetY;
         
         if (naturalRatio > containerRatio) {
+            // 가로가 꽉 참
             actualWidth = containerWidth;
             actualHeight = containerWidth / naturalRatio;
             offsetX = 0;
             offsetY = (containerHeight - actualHeight) / 2;
         } else {
+            // 세로가 꽉 참
             actualWidth = containerHeight * naturalRatio;
             actualHeight = containerHeight;
             offsetX = (containerWidth - actualWidth) / 2;
@@ -172,11 +204,17 @@ class SafeLineManager {
     }
     
     destroy() {
-        if (this.resizeObserver) this.resizeObserver.disconnect();
-        if (this.srcObserver) this.srcObserver.disconnect();
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        if (this.srcObserver) {
+            this.srcObserver.disconnect();
+        }
         $(window).off('resize.safeline');
         clearTimeout(this.resizeTimeout);
         clearTimeout(this.windowResizeTimeout);
-        if (this.container) this.container.remove();
+        if (this.container) {
+            this.container.remove();
+        }
     }
 }
