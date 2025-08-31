@@ -70,148 +70,83 @@ public class ThumbnailRenderingService {
             }
         }
 
-        // 프레임 및 사진 렌더링
+     // ▼▼▼ [핵심 수정] 프레임 렌더링 로직 전체 재작성 ▼▼▼
+        // 2. 프레임 및 사진 렌더링
         for (JsonNode frameNode : root.path("frames")) {
             Theme theme = themeRepository.findById(frameNode.path("theme").path("id").asLong()).orElse(null);
             if (theme == null) continue;
 
-            // 프레임 위치와 크기 (썸네일 기준)
+            // 2-1. 프레임의 위치, 크기를 썸네일 기준으로 계산
             int frameX = (int) Math.round(THUMB_WIDTH * (frameNode.path("position").path("left").asDouble() / 100.0));
             int frameY = (int) Math.round(THUMB_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0));
             int frameWidth = (int) Math.round(THUMB_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0));
             int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
 
+            // 2-2. 프레임 하나를 그릴 임시 캔버스 생성 (투명 배경)
+            BufferedImage frameCanvas = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D frameG2d = frameCanvas.createGraphics();
+            frameG2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            frameG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
             JsonNode photoNode = frameNode.path("photo");
 
-            // 마스킹된 사진 처리
-            if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty() 
-                && theme.getEditMaskPath() != null) {
-                
-                // 프레임 크기의 임시 캔버스 생성
-                BufferedImage frameCanvas = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
-                Graphics2D frameG2d = frameCanvas.createGraphics();
-                
-                // 렌더링 품질 설정
-                frameG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                frameG2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-                frameG2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            // 2-3. 사진이 있는 경우, 사진 먼저 그리기
+            if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty()) {
+                String src = photoNode.path("src").asText();
+                byte[] imageBytes = getImageBytes(src);
 
-                try {
-                    // 1. 마스크 이미지를 프레임 캔버스에 그리기
-                    BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
-                    frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
+                if (imageBytes != null) {
+                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+                    if (photoImage != null) {
+                        // 사진의 위치, 크기, 변환을 프레임 캔버스 기준으로 계산
+                        int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
+                        int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
+                        int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
+                        int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
 
-                    // 2. 마스크 영역에만 그리도록 Composite 설정
-                    frameG2d.setComposite(AlphaComposite.SrcIn);
-
-                    // 3. 사진 정보 읽기
-                    JsonNode photoPos = photoNode.path("position");
-                    JsonNode photoSize = photoNode.path("size");
-                    
-                    // 사진의 상대 위치와 크기를 픽셀로 변환
-                    double photoX = frameWidth * (photoPos.path("left").asDouble() / 100.0);
-                    double photoY = frameHeight * (photoPos.path("top").asDouble() / 100.0);
-                    double photoWidth = frameWidth * (photoSize.path("width").asDouble() / 100.0);
-                    double photoHeight = frameHeight * (photoSize.path("height").asDouble() / 100.0);
-
-                    // 4. Base64 이미지 디코딩
-                    String src = photoNode.path("src").asText();
-                    
-                    // ▼▼▼ [핵심 수정] Base64 데이터와 파일 경로를 모두 처리 ▼▼▼
-                    byte[] imageBytes = null;
-                    if (src.startsWith("data:image")) {
-                        // 기존 방식: Base64 데이터 처리
-                        if (src.contains(",")) {
-                            imageBytes = Base64.getDecoder().decode(src.split(",", 2)[1]);
-                        }
-                    } else {
-                        // 새로운 방식: 파일 경로 처리
-                        File imageFile = new File(PathUtils.normalizePath(userPhotosPath + src));
-                        if (imageFile.exists()) {
-                            imageBytes = Files.readAllBytes(imageFile.toPath());
-                        } else {
-                            System.err.println("썸네일 생성 실패: 이미지 파일을 찾을 수 없습니다 - " + imageFile.getAbsolutePath());
-                        }
+                        AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
+                        
+                        // 사진의 중심으로 회전 기준점 설정 후 그리기
+                        AffineTransform savedPhotoTx = frameG2d.getTransform();
+                        frameG2d.translate(photoX + photoWidth / 2.0, photoY + photoHeight / 2.0);
+                        frameG2d.transform(photoTransform);
+                        frameG2d.drawImage(photoImage, -photoWidth / 2, -photoHeight / 2, photoWidth, photoHeight, null);
+                        frameG2d.setTransform(savedPhotoTx);
                     }
-                    
-                    if (imageBytes != null) {
-                    	BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-                        if (photoImage != null) {
-                            // 5. Transform 처리
-                            String transform = photoNode.path("transform").asText("none");
-                            
-                            // START: CSS transform(matrix) 처리 로직 수정
-                            if (!"none".equals(transform) && transform.contains("matrix")) {
-                                AffineTransform savedTransform = frameG2d.getTransform();
-                                try {
-                                    // CSS matrix(a,b,c,d,e,f) 파싱
-                                    String matrixStr = transform.substring(transform.indexOf("(") + 1, transform.indexOf(")"));
-                                    String[] values = matrixStr.split(",");
-                                    
-                                    if (values.length == 6) {
-                                        double a = Double.parseDouble(values[0].trim());
-                                        double b = Double.parseDouble(values[1].trim());
-                                        double c = Double.parseDouble(values[2].trim());
-                                        double d = Double.parseDouble(values[3].trim());
-                                        // 수정: e, f 값은 픽셀 값이므로 스케일링하지 않고 그대로 사용합니다.
-                                        double e = Double.parseDouble(values[4].trim());
-                                        double f = Double.parseDouble(values[5].trim());
-
-                                        // 이하는 CSS transform을 Java Graphics2D에서 정확히 재현하는 로직입니다.
-                                        // 1단계: 사진의 원래 위치(top, left)로 좌표계를 이동합니다.
-                                        frameG2d.translate(photoX, photoY);
-                                        
-                                        // 2단계: 변환의 기준점인 사진의 중심으로 좌표계를 이동합니다 (transform-origin: 50% 50% 에뮬레이션).
-                                        frameG2d.translate(photoWidth / 2.0, photoHeight / 2.0);
-                                        
-                                        // 3단계: CSS matrix 값을 이용해 변환(회전, 크기조절 등)을 적용합니다.
-                                        frameG2d.transform(new AffineTransform(a, b, c, d, e, f));
-                                        
-                                        // 4단계: 중심점 이동을 원래대로 되돌립니다.
-                                        frameG2d.translate(-photoWidth / 2.0, -photoHeight / 2.0);
-                                        
-                                        // 5단계: 모든 변환이 적용된 좌표계의 원점(0,0)에 사진을 그립니다.
-                                        // 이렇게 하면 사진이 정확한 위치, 크기, 회전값으로 렌더링됩니다.
-                                        frameG2d.drawImage(photoImage, 0, 0, (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                                    } else {
-                                         // matrix 형식이 잘못된 경우, 변환 없이 기본 위치에 그립니다.
-                                         frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                                    }
-                                } catch (Exception e) {
-                                    System.err.println("Transform 파싱 또는 적용 오류: " + e.getMessage());
-                                    // 오류 발생 시 변환 없이 기본 위치에 그립니다.
-                                    frameG2d.setTransform(savedTransform); // 오류 전 상태로 복원
-                                    frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                                } finally {
-                                    // 어떤 경우에도 Graphics2D 상태를 원래대로 복원하여 다음 객체 렌더링에 영향을 주지 않도록 합니다.
-                                    frameG2d.setTransform(savedTransform);
-                                }
-                            } else {
-                                // Transform이 없는 경우, 지정된 위치와 크기로 이미지를 그립니다.
-                                frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                            }
-                            // END: CSS transform(matrix) 처리 로직 수정
-                        }
-                    }
-                    
-                } catch (Exception e) {
-                    System.err.println("사진 처리 오류: " + e.getMessage());
-                    e.printStackTrace();
-                } finally {
-                    frameG2d.dispose();
                 }
-
-                // 6. 마스킹이 완료된 임시 캔버스를 메인 캔버스에 그리기
-                g2d.drawImage(frameCanvas, frameX, frameY, null);
+            }
+            
+            // 2-4. 마스크 적용 (사진 위에 덮어씌움)
+            if (theme.getEditMaskPath() != null && !theme.getEditMaskPath().isEmpty()) {
+                try {
+                    BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
+                    frameG2d.setComposite(AlphaComposite.SrcIn);
+                    frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
+                } catch (IOException e) {
+                    System.err.println("마스크 이미지 로드 실패: " + theme.getEditMaskPath());
+                }
             }
 
-            // 프레임 테두리 이미지를 마지막에 그리기
+            // 2-5. 프레임 테두리 렌더링 (가장 위에 덮어씌움)
             try {
+                frameG2d.setComposite(AlphaComposite.SrcOver); // 합성 모드 복원
                 BufferedImage frameImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditPath())));
-                g2d.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight, null);
-            } catch (Exception e) {
-                System.err.println("프레임 이미지 로드 실패: " + e.getMessage());
+                frameG2d.drawImage(frameImage, 0, 0, frameWidth, frameHeight, null);
+            } catch (IOException e) {
+                System.err.println("프레임 이미지 로드 실패: " + theme.getEditPath());
+            } finally {
+                frameG2d.dispose();
             }
+
+            // 2-6. 완성된 프레임 캔버스에 프레임 자체의 transform(회전)을 적용하여 메인 캔버스에 그리기
+            AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
+            AffineTransform savedCanvasTx = g2d.getTransform();
+            
+            g2d.translate(frameX + frameWidth / 2.0, frameY + frameHeight / 2.0);
+            g2d.transform(frameTransform);
+            g2d.drawImage(frameCanvas, -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight, null);
+            
+            g2d.setTransform(savedCanvasTx); // 메인 캔버스 그래픽 상태 복원
         }
 
         // 텍스트박스 렌더링 (선택사항)
@@ -220,70 +155,64 @@ public class ThumbnailRenderingService {
                 // 1. 텍스트 스타일 정보 파싱
                 JsonNode styles = textNode.path("styles");
                 String html = textNode.path("html").asText("");
-                // 간단하게 HTML 태그를 제거 (더 복잡한 파싱이 필요할 수 있음)
                 String text = html.replaceAll("<br.*?>", "\n").replaceAll("<.*?>", "");
                 
-                // 2. 위치 및 크기 계산 (썸네일 기준)
-                double leftPercent = textNode.path("position").path("left").asDouble();
-                double topPercent = textNode.path("position").path("top").asDouble();
-                double widthPercent = textNode.path("size").path("width").asDouble();
-                
-                int boxX = (int) Math.round(THUMB_WIDTH * (leftPercent / 100.0));
-                int boxY = (int) Math.round(THUMB_HEIGHT * (topPercent / 100.0));
-                int boxWidth = (int) Math.round(THUMB_WIDTH * (widthPercent / 100.0));
+                // 2. 위치 및 크기 계산
+                int boxX = (int) Math.round(THUMB_WIDTH * (textNode.path("position").path("left").asDouble() / 100.0));
+                int boxY = (int) Math.round(THUMB_HEIGHT * (textNode.path("position").path("top").asDouble() / 100.0));
+                int boxWidth = (int) Math.round(THUMB_WIDTH * (textNode.path("size").path("width").asDouble() / 100.0));
+                int boxHeight = (int) Math.round(THUMB_HEIGHT * (textNode.path("size").path("height").asDouble() / 100.0));
 
                 // 3. 폰트 설정
                 String fontFamily = styles.path("fontFamily").asText("Arial");
                 String fontSizeStr = styles.path("fontSize").asText("12px").replaceAll("px", "");
                 int fontWeight = styles.path("fontWeight").asText("normal").equals("bold") ? Font.BOLD : Font.PLAIN;
                 
-                // 폰트 크기를 썸네일 비율에 맞게 스케일링 (786px는 웹 편집기의 기준 너비)
                 double fontSize = Double.parseDouble(fontSizeStr);
                 double scaleRatio = (double)THUMB_WIDTH / 786.0;
                 float scaledFontSize = (float) (fontSize * scaleRatio);
 
-                // 서버에 설치된 폰트를 사용하도록 Font 객체 생성
-                Font font = new Font(fontFamily, fontWeight, (int)scaledFontSize);
+                Font font = new Font(fontFamily, fontWeight, (int)Math.max(1, scaledFontSize));
                 g2d.setFont(font);
 
                 // 4. 색상 설정
                 String colorStr = styles.path("color").asText("rgb(0, 0, 0)");
-                // "rgb(r, g, b)" 형식 파싱
                 String[] rgb = colorStr.replaceAll("[^0-9,]", "").split(",");
                 if (rgb.length == 3) {
-                    Color textColor = new Color(Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2]));
-                    g2d.setColor(textColor);
+                    g2d.setColor(new Color(Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2])));
                 }
 
-                // 5. Transform(회전 등) 처리
-                String transform = textNode.path("transform").asText("none");
-                AffineTransform savedTransform = g2d.getTransform();
-                if (!"none".equals(transform) && transform.contains("matrix")) {
-                    // (사진 Transform 처리 로직과 유사하게 AffineTransform 설정)
-                    // 간단한 예시: g2d.rotate(angle, centerX, centerY);
-                }
-                
-                // 6. 텍스트 그리기 (정렬 처리)
-                FontMetrics fm = g2d.getFontMetrics();
-                String textAlign = styles.path("textAlign").asText("left");
-                
-                String[] lines = text.split("\n");
-                int currentY = boxY + fm.getAscent();
+                AffineTransform textTransform = getTransformFromMatrix(textNode.path("transform").asText("none"));
+                AffineTransform savedTextTx = g2d.getTransform();
+                try {
+                    // ▼▼▼ [핵심 수정 2] 회전 중심점의 Y좌표를 boxHeight를 이용해 정확히 계산 ▼▼▼
+                    g2d.translate(boxX + boxWidth / 2.0, boxY + boxHeight / 2.0);
+                    g2d.transform(textTransform);
 
-                for (String line : lines) {
-                    int textWidth = fm.stringWidth(line);
-                    int startX = boxX;
-                    if ("center".equals(textAlign)) {
-                        startX = boxX + (boxWidth - textWidth) / 2;
-                    } else if ("right".equals(textAlign)) {
-                        startX = boxX + boxWidth - textWidth;
+                    FontMetrics fm = g2d.getFontMetrics();
+                    String textAlign = styles.path("textAlign").asText("left");
+                    
+                    String[] lines = text.split("\n");
+                    
+                    // ▼▼▼ [핵심 수정 3] 텍스트 블록 전체의 세로 위치를 중앙으로 정렬 ▼▼▼
+                    int totalTextHeight = fm.getHeight() * lines.length;
+                    int currentY = -totalTextHeight / 2 + fm.getAscent(); // 첫 줄의 Y위치
+
+                    for (String line : lines) {
+                        int textWidth = fm.stringWidth(line);
+                        // X좌표는 박스의 가로 중앙(-boxWidth/2)을 기준으로 정렬
+                        int startX = -boxWidth / 2;
+                        if ("center".equals(textAlign)) {
+                            startX = -textWidth / 2;
+                        } else if ("right".equals(textAlign)) {
+                            startX = boxWidth / 2 - textWidth;
+                        }
+                        g2d.drawString(line, startX, currentY);
+                        currentY += fm.getHeight(); // 다음 줄로 이동
                     }
-                    g2d.drawString(line, startX, currentY);
-                    currentY += fm.getHeight();
+                } finally {
+                    g2d.setTransform(savedTextTx);
                 }
-                
-                g2d.setTransform(savedTransform); // Transform 복원
-
             } catch (Exception e) {
                 System.err.println("텍스트박스 렌더링 실패: " + e.getMessage());
                 e.printStackTrace();
@@ -304,13 +233,61 @@ public class ThumbnailRenderingService {
         return "/thumbnail/" + filename;
     }
     
- // START: 이미지 자동 회전을 위한 헬퍼 메소드 (클래스 내부에 추가)
+    /**
+     * Base64 문자열 또는 파일 경로를 받아 이미지의 byte 배열을 반환합니다.
+     */
+    private byte[] getImageBytes(String src) {
+        if (src == null || src.isEmpty()) return null;
+        
+        if (src.startsWith("data:image")) {
+            if (src.contains(",")) {
+                return Base64.getDecoder().decode(src.split(",", 2)[1]);
+            }
+        } else {
+            File imageFile = new File(PathUtils.normalizePath(userPhotosPath + src));
+            if (imageFile.exists()) {
+                try {
+                    return Files.readAllBytes(imageFile.toPath());
+                } catch (IOException e) {
+                    System.err.println("이미지 파일 읽기 실패: " + src);
+                }
+            } else {
+                System.err.println("이미지 파일을 찾을 수 없음: " + src);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * CSS matrix 문자열을 Java AffineTransform 객체로 변환합니다.
+     */
+    private AffineTransform getTransformFromMatrix(String transformValue) {
+        if (!"none".equals(transformValue) && transformValue.startsWith("matrix")) {
+            try {
+                String matrixStr = transformValue.substring(transformValue.indexOf("(") + 1, transformValue.indexOf(")"));
+                String[] values = matrixStr.split(",");
+                if (values.length == 6) {
+                    double m00 = Double.parseDouble(values[0].trim()); // a
+                    double m10 = Double.parseDouble(values[1].trim()); // b
+                    double m01 = Double.parseDouble(values[2].trim()); // c
+                    double m11 = Double.parseDouble(values[3].trim()); // d
+                    // e, f (translate) 값은 회전/크기 변환에만 사용하므로 여기서는 0으로 설정
+                    return new AffineTransform(m00, m10, m01, m11, 0, 0);
+                }
+            } catch (NumberFormatException e) {
+                System.err.println("Matrix 파싱 오류: " + transformValue);
+            }
+        }
+        return new AffineTransform(); // 변환이 없으면 기본(단위) 행렬 반환
+    }
+
     private BufferedImage readAndCorrectImageOrientation(byte[] imageBytes) {
+        // ... (이 코드는 변경 없이 그대로 유지됩니다) ...
         try {
             BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
             if (originalImage == null) return null;
 
-            int orientation = 1; // 기본값: 정상 방향
+            int orientation = 1; 
             try {
                 com.drew.metadata.Metadata metadata = com.drew.imaging.ImageMetadataReader.readMetadata(new ByteArrayInputStream(imageBytes));
                 com.drew.metadata.exif.ExifIFD0Directory directory = metadata.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
@@ -318,12 +295,11 @@ public class ThumbnailRenderingService {
                     orientation = directory.getInt(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION);
                 }
             } catch (Exception e) {
-                System.err.println("EXIF 메타데이터를 읽을 수 없습니다: " + e.getMessage());
-                return originalImage; // 메타데이터 읽기 실패 시 원본 이미지 반환
+                return originalImage; 
             }
 
             if (orientation <= 1) {
-                return originalImage; // 회전 필요 없음
+                return originalImage; 
             }
 
             AffineTransform transform = new AffineTransform();
@@ -331,20 +307,20 @@ public class ThumbnailRenderingService {
             int height = originalImage.getHeight();
 
             switch (orientation) {
-                case 2: transform.scale(-1.0, 1.0); transform.translate(-width, 0); break; // 좌우 반전
-                case 3: transform.translate(width, height); transform.rotate(Math.PI); break; // 180도 회전
-                case 4: transform.scale(1.0, -1.0); transform.translate(0, -height); break; // 상하 반전
+                case 2: transform.scale(-1.0, 1.0); transform.translate(-width, 0); break;
+                case 3: transform.translate(width, height); transform.rotate(Math.PI); break;
+                case 4: transform.scale(1.0, -1.0); transform.translate(0, -height); break;
                 case 5: transform.rotate(Math.PI / 2); transform.scale(1.0, -1.0); break;
-                case 6: transform.translate(height, 0); transform.rotate(Math.PI / 2); break; // 오른쪽으로 90도 회전
+                case 6: transform.translate(height, 0); transform.rotate(Math.PI / 2); break;
                 case 7: transform.rotate(Math.PI / 2); transform.scale(-1.0, 1.0); transform.translate(-height, 0); break;
-                case 8: transform.translate(0, width); transform.rotate(-Math.PI / 2); break; // 왼쪽으로 90도 회전
+                case 8: transform.translate(0, width); transform.rotate(-Math.PI / 2); break;
                 default: break;
             }
 
             AffineTransformOp op = new AffineTransformOp(transform, AffineTransformOp.TYPE_BILINEAR);
             
             BufferedImage rotatedImage;
-            if (orientation >= 5 && orientation <= 8) { // 90도 회전 시 너비와 높이가 바뀜
+            if (orientation >= 5 && orientation <= 8) {
                 rotatedImage = new BufferedImage(height, width, originalImage.getType());
             } else {
                 rotatedImage = new BufferedImage(width, height, originalImage.getType());
@@ -354,7 +330,6 @@ public class ThumbnailRenderingService {
             return rotatedImage;
 
         } catch (java.io.IOException e) {
-            System.err.println("이미지 처리 중 오류 발생: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
