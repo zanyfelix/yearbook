@@ -237,26 +237,27 @@ class TextManager {
      * ✅ 폰트 크기 변경 처리 (개선된 버전)
      */
     static updateFontSize(fontSize) {
-        const selectedBox = DataLoader.getCurrentSelectedTextBox();
-        if (selectedBox && selectedBox.length > 0) {
-            console.log('폰트 크기 변경:', fontSize);
-            
-            // CSS 적용
-            selectedBox.css('font-size', fontSize);
-            
-            // 저장된 데이터 업데이트
-            selectedBox.data('savedFontSize', fontSize);
-            
-            // 강제 적용
-            selectedBox[0].style.setProperty('font-size', fontSize, 'important');
-            
-            // ✅ 상태 업데이트 (위치 재계산)
-            setTimeout(() => {
-                this.updateTextBoxState(selectedBox);
-            }, 50);
-            
-            console.log('폰트 크기 적용 완료:', fontSize);
-        }
+		const selectedBox = DataLoader.getCurrentSelectedTextBox();
+		if (selectedBox && selectedBox.length > 0) {
+			console.log('폰트 크기 변경:', fontSize);
+
+			// CSS 적용
+			selectedBox.css('font-size', fontSize);
+
+			// ✨ 저장된 데이터를 현재 값으로 업데이트
+			selectedBox.data('savedFontSize', fontSize);
+			selectedBox.data('originalFontSize', fontSize);  // originalFontSize도 업데이트
+
+			// 강제 적용
+			selectedBox[0].style.setProperty('font-size', fontSize, 'important');
+
+			// 상태 업데이트
+			setTimeout(() => {
+				this.updateTextBoxState(selectedBox);
+			}, 50);
+
+			console.log('폰트 크기 적용 완료:', fontSize);
+		}
     }
 
     /**

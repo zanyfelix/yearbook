@@ -150,8 +150,10 @@ class SelectionManager {
 	            const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 	            if (actualBgRect) {
 	                const currentState = textBox.data('relativeState') || {};
-	                currentState.transform = textBox.css('transform');
-	                textBox.data('relativeState', currentState);
+					const finalTransform = textBox.css('transform');
+					currentState.transform = finalTransform || 'none';
+					textBox.data('relativeState', currentState);
+					console.log('텍스트박스 회전 저장:', finalTransform);
 	            }
 	        });
 	    });

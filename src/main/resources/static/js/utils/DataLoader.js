@@ -385,25 +385,26 @@ class DataLoader {
 	    
 	    // 폰트 패밀리 변경 이벤트
 	    $('#tooltip-font').off('change.fontManager').on('change.fontManager', function() {
-	        const selectedFontFamily = $(this).val();
-	        console.log('폰트 변경 감지:', selectedFontFamily);
-	        
-	        let selectedBox = DataLoader.getCurrentSelectedTextBox();
-	        
-	        if (selectedBox && selectedBox.length > 0) {
-	            console.log('선택된 텍스트박스에 폰트 적용:', selectedFontFamily);
-	            DataLoader.applyFontToTextBox(selectedBox, selectedFontFamily);
-	            
-	            // 저장된 폰트 패밀리도 업데이트
-	            selectedBox.data('savedFontFamily', selectedFontFamily);
-	            
-	            // ✅ 텍스트박스 상태 업데이트
-	            setTimeout(() => {
-	                TextManager.updateTextBoxState(selectedBox);
-	            }, 50);
-	        } else {
-	            console.log('선택된 텍스트박스가 없음');
-	        }
+			const selectedFontFamily = $(this).val();
+			console.log('폰트 변경 감지:', selectedFontFamily);
+
+			let selectedBox = DataLoader.getCurrentSelectedTextBox();
+
+			if (selectedBox && selectedBox.length > 0) {
+				console.log('선택된 텍스트박스에 폰트 적용:', selectedFontFamily);
+				DataLoader.applyFontToTextBox(selectedBox, selectedFontFamily);
+
+				// ✨ 핵심: 모든 관련 데이터 업데이트
+				selectedBox.data('savedFontFamily', selectedFontFamily);
+				selectedBox.data('originalFontFamily', selectedFontFamily);  // 추가
+
+				// 텍스트박스 상태 업데이트
+				setTimeout(() => {
+					if (typeof TextManager !== 'undefined' && TextManager.updateTextBoxState) {
+						TextManager.updateTextBoxState(selectedBox);
+					}
+				}, 50);
+			}
 	    });
 
 	    // ✅ 수정된 텍스트박스 클릭 이벤트
@@ -439,6 +440,21 @@ class DataLoader {
 	    this.updateTextColorFromTextBox($textBox);
 	    
 	    console.log('텍스트박스 컨트롤 전체 업데이트 완료');
+	}
+	
+	/**
+	 * 텍스트박스의 폰트 크기를 툴바에 업데이트
+	 */
+	static updateFontSizeFromTextBox($textBox) {
+	    if (!$textBox || $textBox.length === 0) return;
+	    
+	    const savedFontSize = $textBox.data('savedFontSize') || $textBox.css('font-size');
+	    const sizeInput = $('#tooltip-size');
+	    
+	    if (sizeInput.length > 0 && savedFontSize) {
+	        console.log('폰트 크기 툴바 업데이트:', savedFontSize);
+	        sizeInput.val(savedFontSize);
+	    }
 	}
 	
 	/**

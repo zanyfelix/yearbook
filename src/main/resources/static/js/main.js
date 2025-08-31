@@ -54,13 +54,12 @@ $(document).ready(function() {
 			height: (relativeState.size.height / 100) * baseRect.height
 		};
 		
-		const transform = relativeState.transform || 'none';
-
 		// 텍스트박스인 경우에만 폰트 크기 및 autoSize를 처리합니다.
 		if ($element.hasClass('text-box')) {
-			const originalFontSize = $element.data('originalFontSize');
-			if (originalFontSize) {
-				const fontSize = parseInt(originalFontSize);
+			const baseFontSizeStr = $element.data('savedFontSize') || $element.data('originalFontSize');
+
+			if (baseFontSizeStr) {
+				const fontSize = parseInt(baseFontSizeStr);
 				const scaleRatio = baseRect.width / 786;
 				const adjustedFontSize = Math.round(fontSize * scaleRatio);
 				$element.css('font-size', adjustedFontSize + 'px');
@@ -78,14 +77,33 @@ $(document).ready(function() {
 			}
 		}
 		
+		// Transform 적용 - 모든 요소에 공통 적용 (약간의 지연 추가)
+		const transform = relativeState.transform || 'none';
+		if (transform !== 'none') {
+		    setTimeout(() => {
+		        $element.css({
+		            transform: transform,
+		            'transform-origin': relativeState.transformOrigin || '50% 50%'
+		        });
+		    }, 10);
+		} else {
+		    $element.css('transform', transform);
+		}
+		
 		// 최종 계산된 위치/크기/변환을 모든 요소에 일괄 적용합니다.
 		$element.css({
 			left: newPixelPos.left,
 			top: newPixelPos.top,
 			width: newPixelSize.width,
-			height: newPixelSize.height,
-			transform: transform
+			height: newPixelSize.height
 		});
+		
+		// Transform은 별도로 적용 (지연 처리)
+		if (transform && transform !== 'none') {
+		    setTimeout(() => {
+		        $element.css('transform', transform);
+		    }, 10);
+		}
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
 			PhotoManager.updateSelectionUI($element);
@@ -268,28 +286,25 @@ $(document).ready(function() {
 		captureArea.find('.text-box').each(function() {
 		    const $box = $(this);
 		    
-		    // ✅ 핵심 수정: Transform을 제거한 상태에서 원본 위치 계산
+		    // 현재 Transform 상태 정확히 가져오기
 		    const originalTransform = $box.css('transform');
 		    const hasTransform = originalTransform && originalTransform !== 'none';
 		    
 		    let boxPos, boxW, boxH;
 		    
 		    if (hasTransform) {
-		        // Transform이 있는 경우: 임시로 제거하고 원본 위치 계산
 		        $box.css('transform', 'none');
 		        boxPos = $box.position();
 		        boxW = $box.outerWidth();
 		        boxH = $box.outerHeight();
-		        // Transform 복원
 		        $box.css('transform', originalTransform);
 		    } else {
-		        // Transform이 없는 경우: 일반 계산
 		        boxPos = $box.position();
 		        boxW = $box.outerWidth();
 		        boxH = $box.outerHeight();
 		    }
 		    
-		    // ✅ 상대 위치 계산 (Transform 제거 상태의 위치 기준)
+		    // 상대 위치 계산
 		    const latestRelativeState = {
 		        position: { 
 		            left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, 
@@ -299,28 +314,25 @@ $(document).ready(function() {
 		            width: (boxW / actualBgRect.width) * 100, 
 		            height: (boxH / actualBgRect.height) * 100 
 		        },
-		        // ✅ Transform 정보 정확히 저장
 		        transform: originalTransform || 'none',
-		        // ✅ Transform 중심점도 저장 (기본값: 50% 50%)
 		        transformOrigin: $box.css('transform-origin') || '50% 50%'
 		    };
 		    
-		    // 데이터 업데이트
 		    $box.data('relativeState', latestRelativeState);
 		    
-		    // ✅ 저장된 폰트 정보도 함께 수집
-		    const savedFontSize = $box.data('savedFontSize') || $box.css('font-size');
-		    const savedFontFamily = $box.data('savedFontFamily') || $box.css('font-family');
+		    // ✨ 핵심 수정: 현재 실제 CSS 값을 저장
+		    const currentFontSize = $box.css('font-size');  // savedFontSize 대신 현재 CSS 값
+		    const currentFontFamily = $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
 		    
 		    designData.textBoxes.push({
 		        html: $box.html(),
 		        ...latestRelativeState,
 		        styles: { 
 		            color: $box.css('color'), 
-		            fontSize: savedFontSize, 
+		            fontSize: currentFontSize,  // 현재 실제 폰트 크기
 		            fontWeight: $box.css('font-weight'), 
 		            textAlign: $box.css('text-align'),
-		            fontFamily: savedFontFamily
+		            fontFamily: currentFontFamily  // 현재 실제 폰트
 		        }
 		    });
 		});
@@ -683,54 +695,66 @@ $(document).ready(function() {
 			// 텍스트 복원 로직 - renderPage 함수 부분 수정
 			// ============================================================================
 
-			// 텍스트박스 렌더링 (완전 수정된 버전)
+			// 텍스트박스 렌더링 (수정된 버전)
 			if (totalTextBoxes > 0) {
-			    const frameDelay = totalFrames * 100;
-			    console.log(`${totalTextBoxes}개 텍스트박스 렌더링 시작`);
+				const frameDelay = totalFrames * 100;
+				console.log(`${totalTextBoxes}개 텍스트박스 렌더링 시작`);
 
-			    design.textBoxes.forEach((boxData, index) => {
-			        setTimeout(() => {
-			            try {
-			                console.log(`텍스트박스 ${index} 렌더링:`, boxData);
-			                
-			                // ✅ 1단계: DOM 요소 생성 (Transform 없이)
-			                const $box = $('<div class="text-box" contenteditable="true"></div>')
-			                    .html(boxData.html)
-			                    .css({
-			                        position: 'absolute',
-			                        zIndex: 100,
-			                        ...boxData.styles,
-			                        // Transform은 나중에 별도로 적용
-			                        transform: 'none'
-			                    });
+				design.textBoxes.forEach((boxData, index) => {
+				    setTimeout(() => {
+				        try {
+				            console.log(`텍스트박스 ${index} 렌더링:`, boxData);
 
-			                $('#frame-container').append($box);
-			                EventManager.setupTextEvents($box);
-			                
-			                // ✅ 2단계: 저장된 데이터 설정
-			                const relativeState = {
-			                    position: boxData.position,
-			                    size: boxData.size,
-			                    transform: boxData.transform || 'none',
-			                    transformOrigin: boxData.transformOrigin || '50% 50%',
-			                    preserveOriginalStyles: true
-			                };
-			                $box.data('relativeState', relativeState);
-			                $box.data('savedFontSize', boxData.styles.fontSize);
-			                $box.data('savedFontFamily', boxData.styles.fontFamily);
-			                
-			                // ✅ 3단계: 위치 복원 (새로운 함수 사용)
-			                setTimeout(() => {
-			                    restoreTextBoxWithTransform($box);
-			                    checkRenderingComplete();
-			                }, 50);
+				            const $box = $('<div class="text-box" contenteditable="true"></div>')
+				                .html(boxData.html)
+				                .css({
+				                    position: 'absolute',
+				                    zIndex: 100,
+				                    padding: '10px',
+				                    ...boxData.styles
+				                });
 
-			            } catch (e) {
-			                console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
-			                checkRenderingComplete();
-			            }
-			        }, frameDelay + index * 100);
-			    });
+				            $('#frame-container').append($box);
+				            EventManager.setupTextEvents($box);
+
+				            // 모든 상태 정보 저장
+				            const relativeState = {
+				                position: boxData.position,
+				                size: boxData.size,
+				                transform: boxData.transform || 'none',
+				                transformOrigin: boxData.transformOrigin || '50% 50%'
+				            };
+				            
+				            $box.data('relativeState', relativeState);
+				            $box.data('savedFontSize', boxData.styles.fontSize);
+				            $box.data('savedFontFamily', boxData.styles.fontFamily);
+				            $box.data('originalFontSize', boxData.styles.fontSize); // 추가
+
+				            // 위치/크기 적용 후 Transform 별도 적용
+				            window.updateElementPosition($box);
+				            
+				            // Transform은 약간의 지연 후 적용
+				            if (boxData.transform && boxData.transform !== 'none') {
+				                setTimeout(() => {
+				                    $box.css('transform', boxData.transform);
+				                }, 50);
+				            }
+							
+							// Transform이 있는 경우 별도 적용
+							if (relativeState.transform && relativeState.transform !== 'none') {
+							    setTimeout(() => {
+							        $box.css('transform', relativeState.transform);
+							    }, 50);
+							}
+
+				            checkRenderingComplete();
+
+				        } catch (e) {
+				            console.error(`텍스트박스 ${index} 렌더링 실패:`, e);
+				            checkRenderingComplete();
+				        }
+				    }, frameDelay + index * 100);
+				});
 			}
 
 			// ✨ 요소가 하나도 없는 경우 즉시 완료 처리
