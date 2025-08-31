@@ -5,11 +5,13 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
+import com.mbiz.yearbook.model.FontDto;
 import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.UserTheme;
@@ -29,6 +32,7 @@ import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.ThemeRepository;
+import com.mbiz.yearbook.repository.UserThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.ThemeService;
@@ -59,6 +63,9 @@ public class EditController {
     
     @Autowired
     private ThemeRepository themeRepository;
+    
+    @Autowired
+    private UserThemeRepository userThemeRepository;
     
     @Autowired
     private ThumbnailRenderingService thumbnailRenderingService;
@@ -179,6 +186,45 @@ public class EditController {
 
         // parentId가 없는 경우, 빈 리스트나 적절한 예외 처리를 합니다.
         return Collections.emptyList();
+    }
+    
+    @GetMapping("/edit/fonts")
+    @ResponseBody
+    public List<FontDto> getFonts(HttpSession session) {
+    	User loginUser = (User) session.getAttribute("loginUser");
+
+        if (loginUser == null) {
+            return Collections.emptyList(); // 로그인하지 않은 경우 빈 목록 반환
+        }
+
+        // 1. user_id로 사용자의 테마 설정을 찾습니다.
+        List<UserTheme> userThemes = userThemeRepository.findByUserId(loginUser.getId());
+        if (userThemes.isEmpty() || userThemes.get(0).getFontIds() == null) {
+            return Collections.emptyList(); // 설정된 폰트가 없는 경우 빈 목록 반환
+        }
+
+        // 2. font_id 컬럼의 값을 가져옵니다 (ex: "13001,13002")
+        String fontIdsString = userThemes.get(0).getFontIds();
+
+        // 3. 쉼표로 구분된 ID 문자열을 Long 타입의 리스트로 변환합니다.
+        List<Long> fontIds;
+        try {
+            fontIds = Arrays.stream(fontIdsString.split(","))
+                            .map(String::trim)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList());
+        } catch (NumberFormatException e) {
+            // ID 형식이 잘못된 경우 에러 처리
+            return Collections.emptyList();
+        }
+
+        // 4. 변환된 ID 리스트를 사용해 theme 테이블에서 모든 폰트 정보를 조회합니다.
+        List<Theme> themes = themeRepository.findAllById(fontIds);
+        
+        // 5. Theme 엔티티 리스트를 FontDto 리스트로 변환하여 반환합니다.
+        return themes.stream()
+                     .map(theme -> new FontDto(theme.getId(), theme.getFilename(), theme.getFontPath()))
+                     .collect(Collectors.toList());
     }
     
     @PostMapping("/edit/savePage")

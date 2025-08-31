@@ -11,7 +11,6 @@ class DataLoader {
 				userId: $("#id").val(), category: "background", gubun: pageCategory
 			},
 			success: function(representativeData) {
-				console.log(representativeData);
 				const panel = $('#background-panel').empty();
 				representativeData.forEach(result => {
 					// 2. 대표 썸네일 클릭 시 새로운 AJAX 호출
@@ -231,6 +230,75 @@ class DataLoader {
 				const panel = $('#element-panel');
 				panel.html('<div class="text-center text-muted p-3">Element를 불러올 수 없습니다.</div>');
 			}
+		});
+	}
+	
+	/**
+		 * 서버에서 폰트 목록을 가져와 드롭다운을 설정하고 관련 이벤트를 연결합니다.
+		 */
+	static loadAndSetupFonts() {
+		// 폰트가 이미 로드되었다면 다시 실행하지 않습니다.
+		if (this.fontsLoaded) return;
+
+		$.ajax({
+			url: `${ctx}/edit/fonts`,
+			method: 'GET',
+			success: function(fonts) {
+				const fontSelect = $('#tooltip-font');
+
+				// @font-face 스타일 시트를 동적으로 추가합니다.
+				if ($('#dynamic-font-styles').length === 0) {
+					$('<style>').attr('id', 'dynamic-font-styles').appendTo('head');
+				}
+				const styleSheet = $('#dynamic-font-styles');
+				let fontFaceRules = '';
+
+				fontSelect.empty();
+
+				fonts.forEach(font => {
+					const fontFamily = font.filename;
+					const fontUrl = `${ctx}${font.fontPath}`;
+					fontFaceRules += `
+							@font-face {
+								font-family: "${fontFamily}";
+								src: url('${fontUrl}');
+							}
+						`;
+					fontSelect.append($('<option>', { value: font.id, text: fontFamily }));
+				});
+
+				styleSheet.text(fontFaceRules);
+				DataLoader.fontsLoaded = true; // 로드 완료 플래그 설정
+
+				// 폰트 데이터 로딩이 완료된 후 이벤트 리스너를 설정합니다.
+				DataLoader.setupFontEventListeners();
+			},
+			error: function(err) {
+				console.error("폰트 목록을 불러오는 데 실패했습니다.", err);
+			}
+		});
+	}
+
+	/**
+	 * 폰트 관련 UI(툴바)의 이벤트 리스너를 설정합니다.
+	 */
+	static setupFontEventListeners() {
+		// 중복 바인딩을 막기 위해 .fontManager 네임스페이스를 사용합니다.
+		$('#tooltip-font').off('change.fontManager').on('change.fontManager', function() {
+			const selectedFontFamily = $(this).val();
+			const selectedBox = window.selectionManager.getSelectedBox();
+			if (selectedBox && selectedBox.length > 0) {
+				selectedBox.css('font-family', selectedFontFamily || '');
+			}
+		});
+
+		$('#frame-container').off('mousedown.fontManager').on('mousedown.fontManager', '.text-box', function() {
+			const $textBox = $(this);
+			// selectionManager가 먼저 동작하도록 약간의 지연을 줍니다.
+			setTimeout(() => {
+				const currentFontFamily = ($textBox.css('font-family') || '').split(',')[0].replace(/['"]/g, '');
+				$('#tooltip-font').val(currentFontFamily);
+			}, 50);
 		});
 	}
 }

@@ -38,8 +38,16 @@ public class ThemeService {
         Objects.requireNonNull(userId, "User ID는 null일 수 없습니다.");
         Objects.requireNonNull(themeNo, "Theme Number는 null일 수 없습니다.");
 
-        UserTheme ut = userThemeRepository.findByUserId(userId)
-                           .orElse(new UserTheme());
+        List<UserTheme> userThemes = userThemeRepository.findByUserId(userId);
+        
+        UserTheme ut;
+        if (userThemes.isEmpty()) {
+            // 리스트가 비어있으면(결과가 없으면) 새 객체를 생성합니다.
+            ut = new UserTheme();
+        } else {
+            // 결과가 있으면 리스트의 첫 번째 항목을 사용합니다.
+            ut = userThemes.get(0);
+        }
         
         Theme themeToSave = themeRepository.findById(themeNo)
             .orElseThrow(() -> new EntityNotFoundException("ID(" + themeNo + ")를 가진 테마를 찾을 수 없습니다."));

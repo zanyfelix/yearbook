@@ -697,6 +697,7 @@ $(document).ready(function() {
 		if (window.selectionManager) {
 			window.selectionManager.clearSelection();
 		}
+		DataLoader.loadAndSetupFonts();
 	});
 	
 	$('#editModal').on('shown.bs.modal', function() {

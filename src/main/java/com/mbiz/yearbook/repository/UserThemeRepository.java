@@ -39,6 +39,6 @@ public interface UserThemeRepository extends JpaRepository<UserTheme, Long> {
         @Param("userId") Long userId, 
         @Param("category") String category);
         
-    Optional<UserTheme> findByUserId(Long userId);
+	List<UserTheme> findByUserId(Long userId);
     
 }

@@ -163,6 +163,7 @@
 	                                </div>
 	                            </div>
 	                            <div id="text-controls" class="d-none w-100">
+	                            	<select id="tooltip-font" class="form-select form-select-sm" title="Font Family" style="width: 150px;"></select>
 	                                <select id="tooltip-size" class="form-select form-select-sm">
 	                                	<option value="10px">10px</option>
 	                                	<option value="11px">11px</option>

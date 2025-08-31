@@ -28,7 +28,7 @@ public interface ThemeRepository extends JpaRepository<Theme, Long> {
      */
     List<Theme> findByParentIdOrderByFilenameAsc(Long parentId);
     
-    @Query("SELECT new com.mbiz.yearbook.model.FontDto(t.id, t.filename) " +
+    @Query("SELECT new com.mbiz.yearbook.model.FontDto(t.id, t.filename, t.fontPath) " +
             "FROM Theme t WHERE t.themeNo = :themeNo AND t.category = 'font' ORDER BY t.filename ASC")
      List<FontDto> findFontsByThemeNo(@Param("themeNo") Long themeNo);
     
@@ -39,7 +39,6 @@ public interface ThemeRepository extends JpaRepository<Theme, Long> {
     
     @Query("SELECT new com.mbiz.yearbook.model.ThemeDto(MIN(t.id), t.themeNo) " +
             "FROM Theme t " +
-            // "WHERE t.category = 'background' " +  <-- 이 줄 삭제
             "GROUP BY t.themeNo " +
             "ORDER BY t.themeNo ASC")
      List<ThemeDto> findDistinctThemeSelections(); // 메소드 이름 변경
