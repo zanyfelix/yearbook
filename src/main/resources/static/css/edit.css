@@ -318,7 +318,7 @@ body {
 }
 
 .frame-group.selected-frame {
-    border-color: #007bff;
+    border-color: #FF0000;
     box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
     z-index: 20;
     cursor: move;
