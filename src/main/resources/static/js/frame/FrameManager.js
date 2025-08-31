@@ -285,16 +285,15 @@ class FrameManager {
 		    const $this = $(this);
 		    placeholderLink.hide();
 		    
-		    // 프레임 크기 기준으로 사진 위치/크기 설정
 		    const frameWidth = frameGroup.width();
 		    const frameHeight = frameGroup.height();
 		    
-		    // Transform 없이 먼저 위치/크기 설정
 		    const photoLeft = (photoRelativeState.position.left / 100) * frameWidth;
 		    const photoTop = (photoRelativeState.position.top / 100) * frameHeight;
 		    const photoWidth = (photoRelativeState.size.width / 100) * frameWidth;
 		    const photoHeight = (photoRelativeState.size.height / 100) * frameHeight;
-		    
+
+		    // ✅ setTimeout을 제거하고 모든 CSS 속성을 한 번에 적용합니다.
 		    $this.css({
 		        position: 'absolute',
 		        left: photoLeft + 'px',
@@ -302,18 +301,9 @@ class FrameManager {
 		        width: photoWidth + 'px',
 		        height: photoHeight + 'px',
 		        display: 'block',
-		        transform: 'none' // 일단 transform 제거
+		        'transform': photoRelativeState.transform || 'none',
+		        'transform-origin': photoRelativeState.transformOrigin || '50% 50%'
 		    });
-		    
-		    // 🔴 핵심 수정 5: Transform은 별도로 적용 (약간의 지연)
-		    if (photoRelativeState.transform && photoRelativeState.transform !== 'none') {
-		        setTimeout(() => {
-		            $this.css({
-		                'transform': photoRelativeState.transform,
-		                'transform-origin': photoRelativeState.transformOrigin
-		            });
-		        }, 50);
-		    }
 		});
 
 		// 이미지 소스 설정
