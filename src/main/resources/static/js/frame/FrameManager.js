@@ -202,28 +202,127 @@ class FrameManager {
     }
     
     static restoreFrameState(frameGroup, savedState, frameType) {
-        frameGroup.data('relativeState', savedState);
-        window.updateElementPosition(frameGroup);
-        
-        if (!frameType.isSimple && savedState.photo?.src) {
-            this.restorePhoto(frameGroup, savedState.photo);
-        }
+		const frameRelativeState = {
+		position: savedState.position,
+		size: savedState.size,
+		transform: savedState.transform || 'none',
+		transformOrigin: savedState.transformOrigin || '50% 50%'
+		};
+		
+		frameGroup.data('relativeState', frameRelativeState);
+
+		// 🔴 Transform 없이 먼저 위치 설정
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+
+		if (actualBgRect) {
+		    const frameLeft = (frameRelativeState.position.left / 100) * actualBgRect.width + actualBgRect.left;
+		    const frameTop = (frameRelativeState.position.top / 100) * actualBgRect.height + actualBgRect.top;
+		    const frameWidth = (frameRelativeState.size.width / 100) * actualBgRect.width;
+		    const frameHeight = (frameRelativeState.size.height / 100) * actualBgRect.height;
+		    
+		    frameGroup.css({
+		        position: 'absolute',
+		        left: frameLeft + 'px',
+		        top: frameTop + 'px',
+		        width: frameWidth + 'px',
+		        height: frameHeight + 'px',
+		        transform: 'none'
+		    });
+		    
+		    // 🔴 프레임 Transform 별도 적용
+		    if (frameRelativeState.transform && frameRelativeState.transform !== 'none') {
+		        setTimeout(() => {
+		            frameGroup.css({
+		                'transform': frameRelativeState.transform,
+		                'transform-origin': frameRelativeState.transformOrigin
+		            });
+		        }, 30);
+		    }
+		}
+
+		// 사진이 있으면 복원
+		if (!frameType.isSimple && savedState.photo?.src) {
+		    // 프레임 설정 완료 후 사진 복원
+		    setTimeout(() => {
+		        this.restorePhoto(frameGroup, savedState.photo);
+		    }, 100);
+		}
     }
     
     static restorePhoto(frameGroup, photoState) {
         const uploadedPhoto = frameGroup.find('.uploaded-photo');
         const placeholderLink = frameGroup.find('.place-image-here-link');
         
-        uploadedPhoto.off('load').on('load', function() {
-            placeholderLink.hide();
-            window.updateElementPosition($(this), photoState);
-        });
-        
-        uploadedPhoto.attr('src', photoState.src).css('display', 'block');
-        
-        if (photoState.filePath) {
-            uploadedPhoto.data('filePath', photoState.filePath);
-        }
+		// 🔴 핵심 수정 1: relativeState를 먼저 설정
+		const photoRelativeState = {
+		    position: photoState.position || { left: 0, top: 0 },
+		    size: photoState.size || { width: 100, height: 100 },
+		    transform: photoState.transform || 'none',
+		    transformOrigin: photoState.transformOrigin || '50% 50%'
+		};
+
+		uploadedPhoto.data('relativeState', photoRelativeState);
+
+		// 🔴 핵심 수정 2: 이미지 소스 처리 개선
+		let imageSrc;
+		if (photoState.fullSrc) {
+		    imageSrc = photoState.fullSrc;
+		} else if (photoState.src) {
+		    // src가 Base64가 아니면 경로 추가
+		    imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
+		}
+
+		// 🔴 핵심 수정 3: filePath 데이터 먼저 설정
+		if (photoState.filePath) {
+		    uploadedPhoto.data('filePath', photoState.filePath);
+		} else if (photoState.src && !photoState.src.startsWith('data:')) {
+		    uploadedPhoto.data('filePath', photoState.src);
+		}
+
+		// 🔴 핵심 수정 4: 로드 이벤트 핸들러 개선
+		uploadedPhoto.off('load.restore').on('load.restore', function() {
+		    const $this = $(this);
+		    placeholderLink.hide();
+		    
+		    // 프레임 크기 기준으로 사진 위치/크기 설정
+		    const frameWidth = frameGroup.width();
+		    const frameHeight = frameGroup.height();
+		    
+		    // Transform 없이 먼저 위치/크기 설정
+		    const photoLeft = (photoRelativeState.position.left / 100) * frameWidth;
+		    const photoTop = (photoRelativeState.position.top / 100) * frameHeight;
+		    const photoWidth = (photoRelativeState.size.width / 100) * frameWidth;
+		    const photoHeight = (photoRelativeState.size.height / 100) * frameHeight;
+		    
+		    $this.css({
+		        position: 'absolute',
+		        left: photoLeft + 'px',
+		        top: photoTop + 'px',
+		        width: photoWidth + 'px',
+		        height: photoHeight + 'px',
+		        display: 'block',
+		        transform: 'none' // 일단 transform 제거
+		    });
+		    
+		    // 🔴 핵심 수정 5: Transform은 별도로 적용 (약간의 지연)
+		    if (photoRelativeState.transform && photoRelativeState.transform !== 'none') {
+		        setTimeout(() => {
+		            $this.css({
+		                'transform': photoRelativeState.transform,
+		                'transform-origin': photoRelativeState.transformOrigin
+		            });
+		        }, 50);
+		    }
+		});
+
+		// 이미지 소스 설정
+		uploadedPhoto.attr('src', imageSrc);
+
+		// 이미 로드된 경우 즉시 트리거
+		if (uploadedPhoto[0].complete) {
+		    uploadedPhoto.trigger('load.restore');
+		}
     }
     
     static setupNewFrame(frameGroup, frameTheme, frameType) {

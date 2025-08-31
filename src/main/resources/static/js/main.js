@@ -249,74 +249,101 @@ $(document).ready(function() {
 	        return;
 	    }
 
-	    // 1. 프레임과 사진 저장
-	    $('#frame-container .frame-group').each(function() {
-	        const $frame = $(this);
-	        if ($frame.width() <= 0 || $frame.height() <= 0) return;
+	    // 프레임과 사진 저장 - 정밀 계산 버전
+		$('#frame-container .frame-group').each(function() {
+		    const $frame = $(this);
+		    if ($frame.width() <= 0 || $frame.height() <= 0) return;
 
-	        // Transform 임시 제거
-	        const frameTransform = $frame.css('transform');
-	        $frame.css('transform', 'none');
-	        
-	        const framePos = $frame.position();
-	        const frameW = $frame.width();
-	        const frameH = $frame.height();
-	        
-	        // 사진 데이터 수집
-	        let photoData = null;
-	        const $photo = $frame.find('.uploaded-photo');
-	        
-	        if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
-	            const photoTransform = $photo.css('transform');
-	            $photo.css('transform', 'none');
-	            
-	            const photoPos = $photo.position();
-	            const photoW = $photo.width();
-	            const photoH = $photo.height();
-	            
-	            photoData = {
-	                src: $photo.data('filePath'),
-	                position: { 
-	                    left: (photoPos.left / frameW) * 100, 
-	                    top: (photoPos.top / frameH) * 100 
-	                },
-	                size: { 
-	                    width: (photoW / frameW) * 100, 
-	                    height: (photoH / frameH) * 100 
-	                },
-	                transform: photoTransform
-	            };
-	            
-	            $photo.css('transform', photoTransform);
-	        }
-	        
-	        $frame.css('transform', frameTransform);
-	        
-	        designData.frames.push({
-	            theme: $frame.data('frameTheme'),
-	            position: { 
-	                left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, 
-	                top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 
-	            },
-	            size: { 
-	                width: (frameW / actualBgRect.width) * 100, 
-	                height: (frameH / actualBgRect.height) * 100 
-	            },
-	            transform: frameTransform,
-	            photo: photoData
-	        });
-	    });
+		    // 🔴 핵심: 프레임의 Transform을 백업하고 제거
+		    const frameTransform = $frame.css('transform');
+		    const frameTransformOrigin = $frame.css('transform-origin');
+		    $frame.css({
+		        'transform': 'none',
+		        'transform-origin': '50% 50%'
+		    });
+		    
+		    // Transform 제거 후 프레임의 실제 크기와 위치
+		    const frameWidth = $frame.width();
+		    const frameHeight = $frame.height();
+		    const framePos = $frame.position();
+		    
+		    // 사진 데이터 수집
+		    let photoData = null;
+		    const $photo = $frame.find('.uploaded-photo');
+		    
+		    if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
+		        // 🔴 핵심: 사진의 Transform도 백업하고 제거
+		        const photoTransform = $photo.css('transform');
+		        const photoTransformOrigin = $photo.css('transform-origin');
+		        $photo.css({
+		            'transform': 'none',
+		            'transform-origin': '50% 50%'
+		        });
+		        
+		        // Transform 제거 후 사진의 실제 크기와 위치 (프레임 내에서의 상대 위치)
+		        const photoWidth = $photo.width();
+		        const photoHeight = $photo.height();
+		        const photoPos = $photo.position(); // 프레임 내에서의 position
+		        
+		        // 🔴 중요: 사진의 현재 상태를 정확히 저장
+		        photoData = {
+		            src: $photo.data('filePath'),
+		            // 프레임 내에서의 상대 위치 (백분율)
+		            position: { 
+		                left: (photoPos.left / frameWidth) * 100, 
+		                top: (photoPos.top / frameHeight) * 100 
+		            },
+		            // 프레임 대비 상대 크기 (백분율)
+		            size: { 
+		                width: (photoWidth / frameWidth) * 100, 
+		                height: (photoHeight / frameHeight) * 100 
+		            },
+		            // Transform 정보 (회전/스케일)
+		            transform: photoTransform || 'none',
+		            transformOrigin: photoTransformOrigin || '50% 50%'
+		        };
+		        
+		        // 사진 Transform 복원
+		        $photo.css({
+		            'transform': photoTransform,
+		            'transform-origin': photoTransformOrigin
+		        });
+		    }
+		    
+		    // 프레임 데이터 저장
+		    const frameData = {
+		        theme: $frame.data('frameTheme'),
+		        position: { 
+		            left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, 
+		            top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 
+		        },
+		        size: { 
+		            width: (frameWidth / actualBgRect.width) * 100, 
+		            height: (frameHeight / actualBgRect.height) * 100 
+		        },
+		        transform: frameTransform || 'none',
+		        transformOrigin: frameTransformOrigin || '50% 50%',
+		        photo: photoData
+		    };
+		    
+		    designData.frames.push(frameData);
+		    
+		    // 프레임 Transform 복원
+		    $frame.css({
+		        'transform': frameTransform,
+		        'transform-origin': frameTransformOrigin
+		    });
+		});
 
-	    // 2. 텍스트박스 저장
+	    // 텍스트박스 저장 (동일한 방식)
 	    $('#frame-container .text-box').each(function() {
 	        const $box = $(this);
 	        const textContent = $box.text().trim();
 	        
 	        if (!textContent || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) {
-	            return; // 빈 텍스트박스는 제외
+	            return;
 	        }
 
-	        // Transform 임시 제거
 	        const boxTransform = $box.css('transform');
 	        $box.css('transform', 'none');
 	        
@@ -717,20 +744,29 @@ $(document).ready(function() {
 				design.frames.forEach((frameData, index) => {
 					setTimeout(() => {
 						try {
-							// FrameManager.applyFrame을 호출하기 전에 photo 데이터의 src를 처리
+							// 사진 데이터가 있고 center가 없으면 position에서 계산
 							if (frameData.photo && frameData.photo.src) {
+								// center가 없으면 position으로부터 계산
+								if (!frameData.photo.center && frameData.photo.position) {
+									const pos = frameData.photo.position;
+									const size = frameData.photo.size;
+									frameData.photo.center = {
+										x: pos.left + (size.width / 2),
+										y: pos.top + (size.height / 2)
+									};
+								}
+
 								const photoSrc = frameData.photo.src;
-								// Base64가 아닌 파일 경로일 경우, 웹 경로로 변환
 								if (!photoSrc.startsWith('data:image')) {
-									frameData.photo.fullSrc = `${ctx}${photoSrc}`; // <img> 태그용 전체 경로
-									frameData.photo.filePath = photoSrc;         // data 속성에 저장할 상대 경로
+									frameData.photo.fullSrc = `${ctx}${photoSrc}`;
+									frameData.photo.filePath = photoSrc;
 								} else {
-									// Base64인 경우, 그대로 사용
 									frameData.photo.fullSrc = photoSrc;
-									frameData.photo.filePath = null; // Base64는 파일 경로가 아님
+									frameData.photo.filePath = null;
 								}
 							}
-							FrameManager.applyFrame(frameData.theme, frameData); // 수정된 frameData 전달
+
+							FrameManager.applyFrame(frameData.theme, frameData);
 							checkRenderingComplete();
 						} catch (e) {
 							console.error(`프레임 ${index} 렌더링 실패:`, e);
@@ -1318,4 +1354,32 @@ window.getRotationMatrix = function($element) {
 		return `matrix(${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, 0, 0)`;
 	}
 	return transform; // matrix 형식이 아니면 원본 반환
+};
+
+// Transform 매트릭스에서 정확한 회전 각도 추출
+window.getRotationAngle = function(transform) {
+    if (!transform || transform === 'none') return 0;
+    
+    const matrix = transform.match(/matrix\((.+)\)/);
+    if (matrix && matrix[1]) {
+        const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+        // atan2를 사용한 정확한 각도 계산
+        const angle = Math.atan2(values[1], values[0]);
+        return angle * (180 / Math.PI);
+    }
+    return 0;
+};
+
+// Transform 매트릭스에서 스케일 추출
+window.getScaleFromMatrix = function(transform) {
+    if (!transform || transform === 'none') return { x: 1, y: 1 };
+    
+    const matrix = transform.match(/matrix\((.+)\)/);
+    if (matrix && matrix[1]) {
+        const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+        const scaleX = Math.sqrt(values[0] * values[0] + values[1] * values[1]);
+        const scaleY = Math.sqrt(values[2] * values[2] + values[3] * values[3]);
+        return { x: scaleX, y: scaleY };
+    }
+    return { x: 1, y: 1 };
 };

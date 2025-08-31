@@ -107,11 +107,12 @@ public class ThumbnailRenderingService {
         Theme theme = themeRepository.findById(frameNode.path("theme").path("id").asLong()).orElse(null);
         if (theme == null) return;
 
+     // 프레임 위치와 크기 계산
         int frameX = (int) Math.round(THUMB_WIDTH * (frameNode.path("position").path("left").asDouble() / 100.0));
         int frameY = (int) Math.round(THUMB_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0));
         int frameWidth = (int) Math.round(THUMB_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0));
         int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
-        
+
         if (frameWidth <= 0 || frameHeight <= 0) return;
 
         // 프레임용 임시 캔버스 생성
@@ -137,22 +138,42 @@ public class ThumbnailRenderingService {
                     if (photoImage != null) {
                         hasPhoto = true;
                         
-                        // 사진 위치와 크기 계산 (프레임 기준 상대 좌표)
-                        int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
-                        int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
-                        int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
-                        int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
+                        // 저장된 상대 위치와 크기를 픽셀로 변환
+                        double photoLeftPercent = photoNode.path("position").path("left").asDouble(0);
+                        double photoTopPercent = photoNode.path("position").path("top").asDouble(0);
+                        double photoWidthPercent = photoNode.path("size").path("width").asDouble(100);
+                        double photoHeightPercent = photoNode.path("size").path("height").asDouble(100);
+                        
+                        // 프레임 내에서의 실제 픽셀 위치와 크기
+                        int photoX = (int) Math.round(frameWidth * (photoLeftPercent / 100.0));
+                        int photoY = (int) Math.round(frameHeight * (photoTopPercent / 100.0));
+                        int photoWidth = (int) Math.round(frameWidth * (photoWidthPercent / 100.0));
+                        int photoHeight = (int) Math.round(frameHeight * (photoHeightPercent / 100.0));
                         
                         if (photoWidth > 0 && photoHeight > 0) {
-                            // 사진 Transform 적용
+                            // Transform 파싱
+                            AffineTransform photoTransform = getTransformFromMatrix(
+                                photoNode.path("transform").asText("none")
+                            );
+                            
+                            // 사진의 중심점 계산
+                            double photoCenterX = photoX + photoWidth / 2.0;
+                            double photoCenterY = photoY + photoHeight / 2.0;
+                            
+                            // 현재 변환 상태 저장
                             AffineTransform savedTransform = frameG2d.getTransform();
-                            AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
                             
-                            // 사진 중심점 기준으로 회전
-                            frameG2d.translate(photoX + photoWidth / 2.0, photoY + photoHeight / 2.0);
+                            // 사진 그리기: 중심점으로 이동 → Transform 적용 → 그리기
+                            frameG2d.translate(photoCenterX, photoCenterY);
                             frameG2d.transform(photoTransform);
-                            frameG2d.drawImage(photoImage, -photoWidth / 2, -photoHeight / 2, photoWidth, photoHeight, null);
                             
+                            // 중심점 기준으로 사진 그리기
+                            frameG2d.drawImage(photoImage, 
+                                -photoWidth/2, -photoHeight/2, 
+                                photoWidth, photoHeight, 
+                                null);
+                            
+                            // 변환 상태 복원
                             frameG2d.setTransform(savedTransform);
                         }
                     }
@@ -188,15 +209,24 @@ public class ThumbnailRenderingService {
         } finally {
             frameG2d.dispose();
         }
-        
-        // 완성된 프레임을 메인 캔버스에 회전 적용하여 그리기
+
+        // 완성된 프레임을 메인 캔버스에 그리기 (프레임의 Transform 적용)
         AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
-        AffineTransform savedCanvasTx = g2d.getTransform();
-        
-        g2d.translate(frameX + frameWidth / 2.0, frameY + frameHeight / 2.0);
-        g2d.transform(frameTransform);
-        g2d.drawImage(frameCanvas, -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight, null);
-        g2d.setTransform(savedCanvasTx);
+
+        if (!"none".equals(frameNode.path("transform").asText("none"))) {
+            // 프레임에 Transform이 있는 경우
+            AffineTransform savedCanvasTx = g2d.getTransform();
+            
+            // 프레임 중심점으로 이동 → Transform 적용 → 그리기
+            g2d.translate(frameX + frameWidth / 2.0, frameY + frameHeight / 2.0);
+            g2d.transform(frameTransform);
+            g2d.drawImage(frameCanvas, -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight, null);
+            
+            g2d.setTransform(savedCanvasTx);
+        } else {
+            // Transform이 없는 경우 단순 그리기
+            g2d.drawImage(frameCanvas, frameX, frameY, frameWidth, frameHeight, null);
+        }
     }
     
     /**
