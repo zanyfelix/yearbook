@@ -54,90 +54,75 @@ public class ThumbnailRenderingService {
         BufferedImage canvas = new BufferedImage(THUMB_WIDTH, THUMB_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = canvas.createGraphics();
         
-        // 고품질 렌더링 설정
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 배경 렌더링
+        // 1. 배경 렌더링
         String bgPath = root.path("background").asText();
         if (!bgPath.isEmpty() && !bgPath.contains("data:image")) {
             try {
                 BufferedImage bgImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + bgPath)));
                 g2d.drawImage(bgImage, 0, 0, THUMB_WIDTH, THUMB_HEIGHT, null);
-            } catch (Exception e) {
-                System.err.println("배경 이미지 로드 실패: " + e.getMessage());
-            }
+            } catch (IOException e) { System.err.println("배경 이미지 로드 실패: " + bgPath); }
         }
 
-     // ▼▼▼ [핵심 수정] 프레임 렌더링 로직 전체 재작성 ▼▼▼
         // 2. 프레임 및 사진 렌더링
         for (JsonNode frameNode : root.path("frames")) {
             Theme theme = themeRepository.findById(frameNode.path("theme").path("id").asLong()).orElse(null);
             if (theme == null) continue;
 
-            // 2-1. 프레임의 위치, 크기를 썸네일 기준으로 계산
             int frameX = (int) Math.round(THUMB_WIDTH * (frameNode.path("position").path("left").asDouble() / 100.0));
             int frameY = (int) Math.round(THUMB_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0));
             int frameWidth = (int) Math.round(THUMB_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0));
             int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
-            
-            if (frameWidth <= 0 || frameHeight <= 0) {
-                System.err.println("크기가 0인 프레임은 썸네일 렌더링에서 제외됩니다: ID " + theme.getId());
-                continue; // 다음 프레임으로 넘어감
-            }
+            if (frameWidth <= 0 || frameHeight <= 0) continue;
 
-            // 2-2. 프레임 하나를 그릴 임시 캔버스 생성 (투명 배경)
             BufferedImage frameCanvas = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
             Graphics2D frameG2d = frameCanvas.createGraphics();
             frameG2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             frameG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-            JsonNode photoNode = frameNode.path("photo");
-
-         // ▼▼▼ [핵심 수정] 사진, 마스크, 프레임 테두리를 그리는 순서와 방법을 변경합니다. ▼▼▼
             try {
-                // 2-3. 사진이 있는 경우, 먼저 임시 '사진 캔버스'에 사진과 변환을 적용합니다.
-                BufferedImage photoCanvas = null;
+                JsonNode photoNode = frameNode.path("photo");
                 if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty()) {
                     byte[] imageBytes = getImageBytes(photoNode.path("src").asText());
                     if (imageBytes != null) {
                         BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
                         if (photoImage != null) {
+                            // 1. 사진의 위치/회전이 적용된 이미지를 미리 준비합니다.
+                            BufferedImage transformedPhoto = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
+                            Graphics2D photoG2d = transformedPhoto.createGraphics();
+                            photoG2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                            photoG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+                            int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
+                            int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
                             int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
                             int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
-                            if (photoWidth > 0 && photoHeight > 0) {
-                                photoCanvas = new BufferedImage(photoWidth, photoHeight, BufferedImage.TYPE_INT_ARGB);
-                                Graphics2D photoG2d = photoCanvas.createGraphics();
-                                photoG2d.drawImage(photoImage, 0, 0, photoWidth, photoHeight, null);
-                                photoG2d.dispose();
+                            
+                            if(photoWidth > 0 && photoHeight > 0) {
+                                AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
+                                photoG2d.translate(photoX + photoWidth / 2.0, photoY + photoHeight / 2.0);
+                                photoG2d.transform(photoTransform);
+                                photoG2d.drawImage(photoImage, -photoWidth / 2, -photoHeight / 2, photoWidth, photoHeight, null);
                             }
+                            photoG2d.dispose();
+                            
+                            // 2. 준비된 사진을 프레임 캔버스에 그립니다.
+                            frameG2d.drawImage(transformedPhoto, 0, 0, null);
                         }
                     }
                 }
 
-                // 2-4. '프레임 캔버스'에 마스크를 먼저 그립니다.
+                // 3. 'SrcIn' 모드로 마스크를 겹쳐 사진을 마스크 모양으로 잘라냅니다.
                 if (theme.getEditMaskPath() != null && !theme.getEditMaskPath().isEmpty()) {
                     BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
+                    frameG2d.setComposite(AlphaComposite.SrcIn);
                     frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
                 }
-
-                // 2-5. 'SrcIn' 모드로 사진을 마스크 위에 겹칩니다. (마스크 영역에만 사진이 남음)
-                if (photoCanvas != null) {
-                    frameG2d.setComposite(AlphaComposite.SrcIn);
-                    
-                    int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
-                    int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
-                    AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
-                    
-                    AffineTransform savedPhotoTx = frameG2d.getTransform();
-                    frameG2d.translate(photoX + photoCanvas.getWidth() / 2.0, photoY + photoCanvas.getHeight() / 2.0);
-                    frameG2d.transform(photoTransform);
-                    frameG2d.drawImage(photoCanvas, -photoCanvas.getWidth() / 2, -photoCanvas.getHeight() / 2, null);
-                    frameG2d.setTransform(savedPhotoTx);
-                }
-
-                // 2-6. 'SrcOver' 모드로 프레임 테두리를 가장 위에 그립니다.
+                
+                // 4. 'SrcOver' 모드로 프레임 테두리를 가장 위에 그립니다.
                 frameG2d.setComposite(AlphaComposite.SrcOver);
                 BufferedImage frameImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditPath())));
                 frameG2d.drawImage(frameImage, 0, 0, frameWidth, frameHeight, null);
@@ -147,16 +132,13 @@ public class ThumbnailRenderingService {
             } finally {
                 frameG2d.dispose();
             }
-
-            // 2-6. 완성된 프레임 캔버스에 프레임 자체의 transform(회전)을 적용하여 메인 캔버스에 그리기
+            
             AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
             AffineTransform savedCanvasTx = g2d.getTransform();
-            
             g2d.translate(frameX + frameWidth / 2.0, frameY + frameHeight / 2.0);
             g2d.transform(frameTransform);
             g2d.drawImage(frameCanvas, -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight, null);
-            
-            g2d.setTransform(savedCanvasTx); // 메인 캔버스 그래픽 상태 복원
+            g2d.setTransform(savedCanvasTx);
         }
 
         // 텍스트박스 렌더링 (선택사항)
