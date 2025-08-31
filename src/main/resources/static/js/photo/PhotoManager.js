@@ -87,22 +87,23 @@ class PhotoManager {
         };
         
         const onMouseMove = (ev) => {
-            if (dragData.rafId) cancelAnimationFrame(dragData.rafId);
-            
-            dragData.rafId = requestAnimationFrame(() => {
-                const deltaX = ev.clientX - dragData.startX;
-                const deltaY = ev.clientY - dragData.startY;
-                
-                const newPosition = this.calculateConstrainedPosition(
-                    dragData.initialLeft + deltaX,
-                    dragData.initialTop + deltaY,
-                    dragData.containerBounds
-                );
-                
-                photo.css(newPosition);
-                $('.photo-silhouette').css(newPosition);
-                this.updateSelectionUI(photo);
-            });
+			if (dragData.rafId) cancelAnimationFrame(dragData.rafId);
+
+			dragData.rafId = requestAnimationFrame(() => {
+				const deltaX = ev.clientX - dragData.startX;
+				const deltaY = ev.clientY - dragData.startY;
+
+				const newPosition = this.calculateConstrainedPosition(
+					dragData.initialLeft + deltaX,
+					dragData.initialTop + deltaY,
+					dragData.containerBounds
+				);
+
+				// ✅ 이미 계산된 newPosition 값을 모든 요소에 한 번에 적용
+				photo.css(newPosition);
+				$('.photo-silhouette').css(newPosition);
+				$('.photo-selection-box').css(newPosition); // ✅ 불필요한 읽기 과정 없이 바로 적용
+			});
         };
         
         const onMouseUp = () => {
