@@ -37,7 +37,11 @@
     <!-- 각 카테고리별 섹션 -->
 	<c:forEach var="item" items="${contentsList}" varStatus="st">
 	    <div class="category-section">
-	        <h5 class="mb-3">${item.contentsInfo.title} (${item.savedPagesCount}/${item.contentsInfo.pages})</h5>
+	        <h5 class="mb-3">${item.contentsInfo.title} 
+	        	<span id="page-count-${item.contentsInfo.id}" data-total-pages="${item.contentsInfo.pages}">
+        			(${item.savedPagesCount}/${item.contentsInfo.pages})
+    			</span>
+	        </h5>
 	        <div class="position-relative">
 	            <div class="slide-container" id="slider-${st.index}">
 	                <c:forEach var="page" items="${item.yearbookPages}">

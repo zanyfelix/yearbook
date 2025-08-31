@@ -1,5 +1,5 @@
 // ============================================================================
-// 📁 js/events/EventManager.js - 최적화 버전
+// 📁 js/events/EventManager.js - 최종 수정본
 // ============================================================================
 class EventManager {
     // 공통 드래그 설정
@@ -8,7 +8,23 @@ class EventManager {
         tooltipUpdateInterval: 100
     };
     
-    // 프레임 이벤트 설정
+    // ▼▼▼ [신규 추가] setupPhotoFrameEvents 함수 ▼▼▼
+    /**
+     * 사진 프레임에 대한 모든 이벤트를 설정합니다.
+     * 내부적으로 필요한 요소들을 찾아 setupFrameEvents를 호출합니다.
+     * @param {jQuery} frameGroup - 대상 사진 프레임 그룹
+     */
+    static setupPhotoFrameEvents(frameGroup) {
+        const placeholderLink = frameGroup.find('.place-image-here-link');
+        const uploadedPhoto = frameGroup.find('.uploaded-photo');
+        const maskContainer = frameGroup.find('.mask-container');
+
+        // 기존의 포괄적인 이벤트 설정 함수를 호출
+        this.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
+    }
+    // ▲▲▲ [신규 추가] 종료 ▲▲▲
+
+    // 프레임 이벤트 설정 (기존 함수)
     static setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
         this.clearEvents(frameGroup, placeholderLink, uploadedPhoto);
         

@@ -79,6 +79,9 @@ public class JpgRenderingService {
     @Autowired private UserRepository userRepository;
     @Autowired private ContentsRepository contentsRepository;
     
+    @Value("${file.path.user-photos}")
+    private String userPhotosPath;
+    
     private Font funicornFont; // 커스텀 폰트 저장
 
     /**
@@ -242,30 +245,45 @@ public class JpgRenderingService {
             JsonNode photoNode = frameNode.path("photo");
             if (photoNode != null && photoNode.has("src")) {
                 String src = photoNode.path("src").asText();
-                if (src != null && src.contains(",")) {
-                    byte[] imageBytes = Base64.getDecoder().decode(src.split(",", 2)[1]);
-                    // START: 수정된 부분
-                    // 원본: BufferedImage photoImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-                    // 수정: EXIF 정보를 읽어 이미지를 자동으로 회전시키는 메소드 호출
-                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-                    // END: 수정된 부분
-                    if (photoImage != null) {
-                        int photoX = (int) (frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
-                        int photoY = (int) (frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
-                        int photoWidth = (int) (frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
-                        int photoHeight = (int) (frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
-                        
-                        if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-                            File maskFile = new File(PathUtils.normalizePath(themePath + theme.getOriginalMaskPath()));
-                            if(maskFile.exists()){
-                                BufferedImage maskImage = ImageIO.read(maskFile);
-                                g2dComposite.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
-                                g2dComposite.setComposite(AlphaComposite.SrcIn);
-                            }
+                if (src != null && !src.isEmpty()) {
+                	
+                	// ▼▼▼ [핵심 수정] Base64 데이터와 파일 경로를 모두 처리 ▼▼▼
+                    byte[] imageBytes = null;
+                    if (src.startsWith("data:image")) {
+                        // 기존 방식: Base64 데이터 처리 (하위 호환성)
+                        if (src.contains(",")) {
+                            imageBytes = Base64.getDecoder().decode(src.split(",", 2)[1]);
                         }
-                        
-                        g2dComposite.drawImage(photoImage, photoX, photoY, photoWidth, photoHeight, null);
-                        g2dComposite.setComposite(AlphaComposite.SrcOver);
+                    } else {
+                        // 새로운 방식: 파일 경로 처리
+                        File imageFile = new File(PathUtils.normalizePath(userPhotosPath + src));
+                        if (imageFile.exists()) {
+                            imageBytes = Files.readAllBytes(imageFile.toPath());
+                        } else {
+                             System.err.println("고해상도 렌더링 실패: 이미지 파일을 찾을 수 없습니다 - " + imageFile.getAbsolutePath());
+                        }
+                    }
+                    
+                    if (imageBytes != null) {
+	                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+	                    if (photoImage != null) {
+	                        int photoX = (int) (frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
+	                        int photoY = (int) (frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
+	                        int photoWidth = (int) (frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
+	                        int photoHeight = (int) (frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
+	                        
+	                        if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
+	                            File maskFile = new File(PathUtils.normalizePath(themePath + theme.getOriginalMaskPath()));
+	                            if(maskFile.exists()){
+	                                BufferedImage maskImage = ImageIO.read(maskFile);
+	                                g2dComposite.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
+	                                g2dComposite.setComposite(AlphaComposite.SrcIn);
+	                            }
+	                        }
+	                        
+	                        g2dComposite.drawImage(photoImage, photoX, photoY, photoWidth, photoHeight, null);
+	                        g2dComposite.setComposite(AlphaComposite.SrcOver);
+	                    }
                     }
                 }
             }

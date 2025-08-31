@@ -37,6 +37,9 @@ public class ThumbnailRenderingService {
 
     @Value("${file.path.thumbnail}")
     private String thumbnailPath;
+    
+    @Value("${file.path.user-photos}")
+    private String userPhotosPath;
 
     @Autowired
     private ThemeRepository themeRepository;
@@ -112,69 +115,83 @@ public class ThumbnailRenderingService {
                     double photoHeight = frameHeight * (photoSize.path("height").asDouble() / 100.0);
 
                     // 4. Base64 이미지 디코딩
-                    String base64Src = photoNode.path("src").asText();
-                    if (base64Src.contains(",")) {
-                        base64Src = base64Src.split(",")[1];
-                    }
-                    byte[] imageBytes = Base64.getDecoder().decode(base64Src);
-                    // 수정: EXIF 정보를 읽어 이미지를 자동으로 회전시키는 메소드 호출
-                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-
-                    if (photoImage != null) {
-                        // 5. Transform 처리
-                        String transform = photoNode.path("transform").asText("none");
-                        
-                        // START: CSS transform(matrix) 처리 로직 수정
-                        if (!"none".equals(transform) && transform.contains("matrix")) {
-                            AffineTransform savedTransform = frameG2d.getTransform();
-                            try {
-                                // CSS matrix(a,b,c,d,e,f) 파싱
-                                String matrixStr = transform.substring(transform.indexOf("(") + 1, transform.indexOf(")"));
-                                String[] values = matrixStr.split(",");
-                                
-                                if (values.length == 6) {
-                                    double a = Double.parseDouble(values[0].trim());
-                                    double b = Double.parseDouble(values[1].trim());
-                                    double c = Double.parseDouble(values[2].trim());
-                                    double d = Double.parseDouble(values[3].trim());
-                                    // 수정: e, f 값은 픽셀 값이므로 스케일링하지 않고 그대로 사용합니다.
-                                    double e = Double.parseDouble(values[4].trim());
-                                    double f = Double.parseDouble(values[5].trim());
-
-                                    // 이하는 CSS transform을 Java Graphics2D에서 정확히 재현하는 로직입니다.
-                                    // 1단계: 사진의 원래 위치(top, left)로 좌표계를 이동합니다.
-                                    frameG2d.translate(photoX, photoY);
-                                    
-                                    // 2단계: 변환의 기준점인 사진의 중심으로 좌표계를 이동합니다 (transform-origin: 50% 50% 에뮬레이션).
-                                    frameG2d.translate(photoWidth / 2.0, photoHeight / 2.0);
-                                    
-                                    // 3단계: CSS matrix 값을 이용해 변환(회전, 크기조절 등)을 적용합니다.
-                                    frameG2d.transform(new AffineTransform(a, b, c, d, e, f));
-                                    
-                                    // 4단계: 중심점 이동을 원래대로 되돌립니다.
-                                    frameG2d.translate(-photoWidth / 2.0, -photoHeight / 2.0);
-                                    
-                                    // 5단계: 모든 변환이 적용된 좌표계의 원점(0,0)에 사진을 그립니다.
-                                    // 이렇게 하면 사진이 정확한 위치, 크기, 회전값으로 렌더링됩니다.
-                                    frameG2d.drawImage(photoImage, 0, 0, (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                                } else {
-                                     // matrix 형식이 잘못된 경우, 변환 없이 기본 위치에 그립니다.
-                                     frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                                }
-                            } catch (Exception e) {
-                                System.err.println("Transform 파싱 또는 적용 오류: " + e.getMessage());
-                                // 오류 발생 시 변환 없이 기본 위치에 그립니다.
-                                frameG2d.setTransform(savedTransform); // 오류 전 상태로 복원
-                                frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
-                            } finally {
-                                // 어떤 경우에도 Graphics2D 상태를 원래대로 복원하여 다음 객체 렌더링에 영향을 주지 않도록 합니다.
-                                frameG2d.setTransform(savedTransform);
-                            }
-                        } else {
-                            // Transform이 없는 경우, 지정된 위치와 크기로 이미지를 그립니다.
-                            frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
+                    String src = photoNode.path("src").asText();
+                    
+                    // ▼▼▼ [핵심 수정] Base64 데이터와 파일 경로를 모두 처리 ▼▼▼
+                    byte[] imageBytes = null;
+                    if (src.startsWith("data:image")) {
+                        // 기존 방식: Base64 데이터 처리
+                        if (src.contains(",")) {
+                            imageBytes = Base64.getDecoder().decode(src.split(",", 2)[1]);
                         }
-                        // END: CSS transform(matrix) 처리 로직 수정
+                    } else {
+                        // 새로운 방식: 파일 경로 처리
+                        File imageFile = new File(PathUtils.normalizePath(userPhotosPath + src));
+                        if (imageFile.exists()) {
+                            imageBytes = Files.readAllBytes(imageFile.toPath());
+                        } else {
+                            System.err.println("썸네일 생성 실패: 이미지 파일을 찾을 수 없습니다 - " + imageFile.getAbsolutePath());
+                        }
+                    }
+                    
+                    if (imageBytes != null) {
+                    	BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+                        if (photoImage != null) {
+                            // 5. Transform 처리
+                            String transform = photoNode.path("transform").asText("none");
+                            
+                            // START: CSS transform(matrix) 처리 로직 수정
+                            if (!"none".equals(transform) && transform.contains("matrix")) {
+                                AffineTransform savedTransform = frameG2d.getTransform();
+                                try {
+                                    // CSS matrix(a,b,c,d,e,f) 파싱
+                                    String matrixStr = transform.substring(transform.indexOf("(") + 1, transform.indexOf(")"));
+                                    String[] values = matrixStr.split(",");
+                                    
+                                    if (values.length == 6) {
+                                        double a = Double.parseDouble(values[0].trim());
+                                        double b = Double.parseDouble(values[1].trim());
+                                        double c = Double.parseDouble(values[2].trim());
+                                        double d = Double.parseDouble(values[3].trim());
+                                        // 수정: e, f 값은 픽셀 값이므로 스케일링하지 않고 그대로 사용합니다.
+                                        double e = Double.parseDouble(values[4].trim());
+                                        double f = Double.parseDouble(values[5].trim());
+
+                                        // 이하는 CSS transform을 Java Graphics2D에서 정확히 재현하는 로직입니다.
+                                        // 1단계: 사진의 원래 위치(top, left)로 좌표계를 이동합니다.
+                                        frameG2d.translate(photoX, photoY);
+                                        
+                                        // 2단계: 변환의 기준점인 사진의 중심으로 좌표계를 이동합니다 (transform-origin: 50% 50% 에뮬레이션).
+                                        frameG2d.translate(photoWidth / 2.0, photoHeight / 2.0);
+                                        
+                                        // 3단계: CSS matrix 값을 이용해 변환(회전, 크기조절 등)을 적용합니다.
+                                        frameG2d.transform(new AffineTransform(a, b, c, d, e, f));
+                                        
+                                        // 4단계: 중심점 이동을 원래대로 되돌립니다.
+                                        frameG2d.translate(-photoWidth / 2.0, -photoHeight / 2.0);
+                                        
+                                        // 5단계: 모든 변환이 적용된 좌표계의 원점(0,0)에 사진을 그립니다.
+                                        // 이렇게 하면 사진이 정확한 위치, 크기, 회전값으로 렌더링됩니다.
+                                        frameG2d.drawImage(photoImage, 0, 0, (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
+                                    } else {
+                                         // matrix 형식이 잘못된 경우, 변환 없이 기본 위치에 그립니다.
+                                         frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("Transform 파싱 또는 적용 오류: " + e.getMessage());
+                                    // 오류 발생 시 변환 없이 기본 위치에 그립니다.
+                                    frameG2d.setTransform(savedTransform); // 오류 전 상태로 복원
+                                    frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
+                                } finally {
+                                    // 어떤 경우에도 Graphics2D 상태를 원래대로 복원하여 다음 객체 렌더링에 영향을 주지 않도록 합니다.
+                                    frameG2d.setTransform(savedTransform);
+                                }
+                            } else {
+                                // Transform이 없는 경우, 지정된 위치와 크기로 이미지를 그립니다.
+                                frameG2d.drawImage(photoImage, (int)Math.round(photoX), (int)Math.round(photoY), (int)Math.round(photoWidth), (int)Math.round(photoHeight), null);
+                            }
+                            // END: CSS transform(matrix) 처리 로직 수정
+                        }
                     }
                     
                 } catch (Exception e) {

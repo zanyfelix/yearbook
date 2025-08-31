@@ -251,13 +251,17 @@ $(document).ready(function() {
 			let photoData = null;
 
 			if ($photo.length && $photo.is(':visible')) {
-				const photoPos = $photo.position();
-				photoData = {
-					src: $photo.attr('src'),
-					position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
-					size: { width: ($photo.width() / frameW) * 100, height: ($photo.height() / frameH) * 100 },
-					transform: $photo.css('transform')
-				};
+				// ▼▼▼ [핵심 수정] Base64 src 대신 data-file-path에 저장된 경로를 가져옴 ▼▼▼
+				const photoSrcPath = $photo.data('filePath');
+				if (photoSrcPath) {
+					const photoPos = $photo.position();
+					photoData = {
+						src: photoSrcPath, // Base64 대신 파일 경로 저장
+						position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
+						size: { width: ($photo.width() / frameW) * 100, height: ($photo.height() / frameH) * 100 },
+						transform: $photo.css('transform')
+					};
+				}
 			}
 
 			const latestRelativeState = {
@@ -461,77 +465,118 @@ $(document).ready(function() {
 		const mask = $input.data('targetMaskContainer');
 
 		if (!frameGroup || !photo || !placeholder || !mask) return;
-
+		
 		/**
-		* 이미지 Blob을 받아 DataURL로 변환하고 화면에 표시하는 공통 함수
-		*/
-		const processAndDisplayImage = (imageBlob) => {
-			const reader = new FileReader();
-			reader.onload = (event) => {
-				photo.attr('src', event.target.result).css('display', 'block');
-
-				photo.on('load', function() {
-					const maskWidth = mask.width();
-					const maskHeight = mask.height();
-					const imgNaturalWidth = this.naturalWidth;
-					const imgNaturalHeight = this.naturalHeight;
-
-					const scaleX = maskWidth / imgNaturalWidth;
-					const scaleY = maskHeight / imgNaturalHeight;
-					const scale = Math.max(scaleX, scaleY);
-
-					const newWidth = imgNaturalWidth * scale;
-					const newHeight = imgNaturalHeight * scale;
-					const newLeft = (maskWidth - newWidth) / 2;
-					const newTop = (maskHeight - newHeight) / 2;
-
-					photo.css({
-						width: `${newWidth}px`, height: `${newHeight}px`,
-						left: `${newLeft}px`, top: `${newTop}px`
-					});
-
-					const frameW = frameGroup.width();
-					const frameH = frameGroup.height();
-					const initialState = {
-						position: { left: (newLeft / frameW) * 100, top: (newTop / frameH) * 100 },
-						size: { width: (newWidth / frameW) * 100, height: (newHeight / frameH) * 100 },
-						transform: 'none'
-					};
-					photo.data('relativeState', initialState);
-					window.selectionManager.clearSelection();
-				});
-
-				placeholder.hide();
-				$input.val('');
-			};
-			reader.readAsDataURL(imageBlob);
+		 * HEIC 파일을 JPEG Blob으로 변환하는 함수
+		 */
+		const convertHeicToJpeg = (heicFile) => {
+		    return new Promise((resolve, reject) => {
+		        if (typeof heic2any === 'undefined') {
+		            return reject('HEIC conversion library is not loaded.');
+		        }
+		        heic2any({ blob: heicFile, toType: "image/jpeg", quality: 0.9 })
+		            .then(resolve)
+		            .catch(reject);
+		    });
 		};
 
-		// 파일 확장자에 따라 분기 처리
-		if (fileExtension === 'heic') {
-			// heic2any 라이브러리가 로드되었는지 확인
-			if (typeof heic2any === 'undefined') {
-				alert('HEIC conversion library is not loaded. Please contact support.');
-				return;
-			}
+		/**
+		 * 파일(Blob)을 서버에 업로드하고 경로를 반환받는 함수
+		 */
+		const uploadFileToServer = (fileToUpload) => {
+		    const formData = new FormData();
+		    formData.append('file', fileToUpload, file.name.replace(/\.heic$/i, ".jpg")); // HEIC인 경우 확장자 변경
 
-			heic2any({
-				blob: file,
-				toType: "image/jpeg",
-				quality: 0.8,
-			})
-				.then((conversionResult) => {
-					// 변환된 JPEG 파일을 사용하여 다음 단계 진행
-					processAndDisplayImage(conversionResult);
-				})
-				.catch((err) => {
-					console.error("HEIC 변환 실패:", err);
-					alert("HEIC file could not be converted. Please try another format.");
+		    showLoader(); // 업로드 중 로더 표시
+
+		    $.ajax({
+		        url: `${ctx}/edit/uploadImage`,
+		        method: 'POST',
+		        data: formData,
+		        processData: false,
+		        contentType: false,
+		        success: function(response) {
+		            if (response.filePath) {
+		                // 성공 시, 반환된 경로로 이미지 표시
+		                displayImageInFrame(response.filePath);
+		            } else {
+		                alert("File upload succeeded, but no path was returned.");
+		            }
+		        },
+		        error: function(jqXHR) {
+		            const errorMsg = jqXHR.responseJSON ? jqXHR.responseJSON.error : "An unknown error occurred.";
+		            console.error("File upload failed:", errorMsg);
+		            alert("File upload failed: " + errorMsg);
+		        },
+		        complete: function() {
+		            hideLoader(); // 완료 후 로더 숨기기
+		            $input.val(''); // input 초기화
+		        }
+		    });
+		};
+		
+		/**
+			 * 서버 경로를 받아 프레임에 이미지를 표시하는 함수
+			 */
+		const displayImageInFrame = (imagePath) => {
+			const fullImagePath = `${ctx}${imagePath}`;
+
+			photo.attr('src', fullImagePath).css('display', 'block');
+
+			// ▼▼▼ [핵심] DB에 저장될 파일 경로를 data 속성에 저장 ▼▼▼
+			photo.data('filePath', imagePath);
+
+			photo.on('load', function() {
+				const maskWidth = mask.width();
+				const maskHeight = mask.height();
+				const imgNaturalWidth = this.naturalWidth;
+				const imgNaturalHeight = this.naturalHeight;
+
+				const scaleX = maskWidth / imgNaturalWidth;
+				const scaleY = maskHeight / imgNaturalHeight;
+				const scale = Math.max(scaleX, scaleY);
+
+				const newWidth = imgNaturalWidth * scale;
+				const newHeight = imgNaturalHeight * scale;
+				const newLeft = (maskWidth - newWidth) / 2;
+				const newTop = (maskHeight - newHeight) / 2;
+
+				photo.css({
+					width: `${newWidth}px`, height: `${newHeight}px`,
+					left: `${newLeft}px`, top: `${newTop}px`
+				});
+
+				const frameW = frameGroup.width();
+				const frameH = frameGroup.height();
+				
+				const initialState = {
+					position: { left: (newLeft / frameW) * 100, top: (newTop / frameH) * 100 },
+					size: { width: (newWidth / frameW) * 100, height: (newHeight / frameH) * 100 },
+					transform: 'none'
+				};
+				photo.data('relativeState', initialState);
+				window.selectionManager.clearSelection();
+			}).on('error', function() {
+				alert('Failed to load the uploaded image.');
+				// 에러 발생 시 플레이스홀더 다시 표시
+				photo.hide();
+				placeholder.show();
+			});
+
+			placeholder.hide();
+		};
+
+		// --- 실행 로직 ---
+		if (fileExtension === 'heic') {
+			convertHeicToJpeg(file)
+				.then(uploadFileToServer)
+				.catch(err => {
+					console.error("HEIC conversion failed:", err);
+					alert("HEIC file could not be converted. " + err);
 					$input.val('');
 				});
 		} else {
-			// HEIC가 아닌 다른 파일(JPG, PNG)은 기존 방식대로 바로 처리
-			processAndDisplayImage(file);
+			uploadFileToServer(file);
 		}
 	});		
 
@@ -670,16 +715,27 @@ $(document).ready(function() {
 
 			// 5-3: 프레임 렌더링 (순차적으로)
 			if (totalFrames > 0) {
-				console.log(`${totalFrames}개 프레임 렌더링 시작`);
 				design.frames.forEach((frameData, index) => {
 					setTimeout(() => {
 						try {
-							console.log(`프레임 ${index} 렌더링:`, frameData.theme);
-							FrameManager.applyFrame(frameData.theme, frameData);
-							checkRenderingComplete(); // ✨ 완료 체크
+							// FrameManager.applyFrame을 호출하기 전에 photo 데이터의 src를 처리
+							if (frameData.photo && frameData.photo.src) {
+								const photoSrc = frameData.photo.src;
+								// Base64가 아닌 파일 경로일 경우, 웹 경로로 변환
+								if (!photoSrc.startsWith('data:image')) {
+									frameData.photo.fullSrc = `${ctx}${photoSrc}`; // <img> 태그용 전체 경로
+									frameData.photo.filePath = photoSrc;         // data 속성에 저장할 상대 경로
+								} else {
+									// Base64인 경우, 그대로 사용
+									frameData.photo.fullSrc = photoSrc;
+									frameData.photo.filePath = null; // Base64는 파일 경로가 아님
+								}
+							}
+							FrameManager.applyFrame(frameData.theme, frameData); // 수정된 frameData 전달
+							checkRenderingComplete();
 						} catch (e) {
 							console.error(`프레임 ${index} 렌더링 실패:`, e);
-							checkRenderingComplete(); // ✨ 실패해도 카운트
+							checkRenderingComplete();
 						}
 					}, index * 100);
 				});

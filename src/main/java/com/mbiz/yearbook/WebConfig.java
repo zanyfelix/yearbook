@@ -28,6 +28,9 @@ public class WebConfig implements WebMvcConfigurer {
 	@Value("${file.path.thumbnail}")
     private String thumbnailPath;
 	
+	@Value("${file.path.user-photos}")
+    private String userPhotosPath;
+	
 	@Bean
     public SessionLocaleResolver localeResolver() {
         SessionLocaleResolver localeResolver = new SessionLocaleResolver();
@@ -80,6 +83,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/thumbnail/**")
                 .addResourceLocations("file:" + thumbnailPath)
                 .setCachePeriod(3600);
+        
+        registry.addResourceHandler("/photo/**")
+        		.addResourceLocations("file:" + userPhotosPath);
         
         // 로그 출력으로 경로 확인
         System.out.println("Theme Path: " + themePath);
