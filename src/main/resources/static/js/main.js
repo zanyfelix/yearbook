@@ -248,6 +248,10 @@ $(document).ready(function() {
 			const framePos = $frame.position();
 			const frameW = $frame.width();
 			const frameH = $frame.height();
+			if (frameW <= 0 || frameH <= 0) {
+				console.warn("너비/높이가 0인 프레임은 저장에서 제외됩니다.", this);
+				return; // 다음 요소로 넘어감 (jQuery.each의 continue)
+			}
 			const $photo = $frame.find('.uploaded-photo');
 			let photoData = null;
 
@@ -284,6 +288,11 @@ $(document).ready(function() {
 		// 모든 텍스트 상자 정보 수집 (수정된 버전)
 		captureArea.find('.text-box').each(function() {
 		    const $box = $(this);
+			
+			if ($box.text().trim() === '' || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) {
+				console.warn("비어있거나 크기가 0인 텍스트 박스는 저장에서 제외됩니다.", this);
+				return; // 다음 요소로 넘어감
+			}
 		    
 		    // 현재 Transform 상태 정확히 가져오기
 		    const originalTransform = $box.css('transform');

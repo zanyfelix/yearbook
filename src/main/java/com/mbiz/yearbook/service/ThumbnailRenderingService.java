@@ -81,6 +81,11 @@ public class ThumbnailRenderingService {
             int frameY = (int) Math.round(THUMB_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0));
             int frameWidth = (int) Math.round(THUMB_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0));
             int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
+            
+            if (frameWidth <= 0 || frameHeight <= 0) {
+                System.err.println("크기가 0인 프레임은 썸네일 렌더링에서 제외됩니다: ID " + theme.getId());
+                continue; // 다음 프레임으로 넘어감
+            }
 
             // 2-2. 프레임 하나를 그릴 임시 캔버스 생성 (투명 배경)
             BufferedImage frameCanvas = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
@@ -162,6 +167,11 @@ public class ThumbnailRenderingService {
                 int boxY = (int) Math.round(THUMB_HEIGHT * (textNode.path("position").path("top").asDouble() / 100.0));
                 int boxWidth = (int) Math.round(THUMB_WIDTH * (textNode.path("size").path("width").asDouble() / 100.0));
                 int boxHeight = (int) Math.round(THUMB_HEIGHT * (textNode.path("size").path("height").asDouble() / 100.0));
+                
+                if (boxWidth <= 0 || boxHeight <= 0) {
+                    System.err.println("크기가 0인 텍스트 박스는 썸네일 렌더링에서 제외됩니다.");
+                    continue; // 다음 텍스트 박스로 넘어감
+                }
 
                 // 3. 폰트 설정
                 String fontFamily = styles.path("fontFamily").asText("Arial");
