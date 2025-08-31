@@ -115,19 +115,12 @@
                             </div>
                             
                             <!-- Frame 패널 (카테고리 + 아이템) -->
-                            <div id="frame-panel" class="d-none">
-                                <!-- Tab panes -->
-                                <div class="tab-content">
-                                    <div class="tab-pane d-none" id="photoFrameList">
-                                        <!-- Photo Frame 썸네일이 여기에 동적으로 로드됩니다 -->
-                                    </div>
-                                    <div class="tab-pane d-none" id="textboxFrameList">
-                                        <!-- Photo Frame 썸네일이 여기에 동적으로 로드됩니다 -->
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Text 패널 -->
+							<div id="photoFrameList" class="d-none row row-cols-3 g-3">
+							</div>
+							<div id="textboxFrameList" class="d-none row row-cols-3 g-3">
+							</div>
+
+								<!-- Text 패널 -->
                             <div id="text-panel" class="d-none">
                                 <div class="w-100 mb-2">
                                     <button id="add-title-btn" class="btn btn-outline-primary w-50">Click here to insert "Title"</button>

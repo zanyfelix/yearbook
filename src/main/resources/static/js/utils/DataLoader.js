@@ -27,7 +27,6 @@ class DataLoader {
             });
             
             const panel = $(targetPanel).empty();
-            
             representativeData.forEach(result => {
                 const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, async () => {
                     try {
