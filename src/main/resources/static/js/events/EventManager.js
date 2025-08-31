@@ -332,6 +332,18 @@ class EventManager {
 
 			// 크기 재조정
 			autoResizeTextBox($this);
+			
+			// ✨ 추가: 선택된 상태일 때 선택 UI도 업데이트
+			if ($this.hasClass('selected')) {
+				$this.trigger('resize');
+			}
+
+			// 기존 코드 계속...
+			setTimeout(() => {
+				const bg = $('#page-preview-img');
+				const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+				// ... 나머지 코드
+			}, 10);
 		});
 
 		// 마우스 다운: '선택' 상태일 때만 드래그 시작

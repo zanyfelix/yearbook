@@ -250,6 +250,42 @@ class TextManager {
 
 			// 강제 적용
 			selectedBox[0].style.setProperty('font-size', fontSize, 'important');
+			
+			const htmlContent = selectedBox.html();
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+
+			const $temp = $('<div>')
+				.html(htmlContent || ' ')
+				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
+					'font-size': fontSize,
+					'font-family': selectedBox.css('font-family'),
+					'font-weight': selectedBox.css('font-weight'),
+					'padding': selectedBox.css('padding')
+				});
+
+			$('body').append($temp);
+			const newWidth = $temp.outerWidth();
+			const newHeight = $temp.outerHeight();
+			$temp.remove();
+
+			// 텍스트박스 크기 업데이트
+			selectedBox.css({
+				'width': newWidth + 'px',
+				'height': newHeight + 'px'
+			});
+
+			// ✨ 추가: 선택 UI 업데이트 (회전 핸들과 테두리)
+			if (selectedBox.hasClass('selected')) {
+				const rotateHandle = $('.text-rotate-handle');
+				const rotateLine = $('.text-rotate-line');
+				if (rotateHandle.length > 0) {
+					// 회전 핸들 위치는 CSS에서 자동 조절되므로 별도 처리 불필요
+					selectedBox.trigger('resize');
+				}
+			}
 
 			// 상태 업데이트
 			setTimeout(() => {

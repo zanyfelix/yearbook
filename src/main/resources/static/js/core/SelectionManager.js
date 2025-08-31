@@ -78,17 +78,26 @@ class SelectionManager {
     }
 	
 	selectTextBox(textBox) {
-		this.clearSelection(); // 다른 모든 선택 해제
+		this.clearSelection();
 		selectedBox = textBox;
 		this.selectedMode = 'text';
-		
-		// '편집' 상태는 제거하고 '선택' 상태를 추가합니다.
+
 		textBox.removeClass('editing').addClass('selected');
-		textBox.blur(); // 텍스트 편집 커서가 활성화되지 않도록 포커스를 해제합니다.
+		textBox.blur();
 
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 		textBox.addClass('selected');
+
+		// ✨ 추가: 텍스트박스 크기 변경 감지
+		textBox.on('resize.selection', () => {
+			// 선택 상태가 유지되는 동안 크기 변경 시 UI 업데이트
+			if (textBox.hasClass('selected')) {
+				// 회전 핸들이 있다면 제거하고 다시 추가 (위치 재계산)
+				$('.text-rotate-handle, .text-rotate-line').remove();
+				this.addTextRotationHandle(textBox);
+			}
+		});
 	}
 	
 	// ✨ 텍스트박스용 회전 핸들 추가 메서드
