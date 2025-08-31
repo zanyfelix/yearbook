@@ -229,7 +229,7 @@ $(document).ready(function() {
 			designData.textBoxes.push({
 				html: $box.html(),
 				...latestRelativeState,
-				styles: { color: $box.css('color'), fontSize: $box.css('font-size'), fontWeight: $box.css('font-weight'), textAlign: $box.css('text-align') }
+				styles: { color: $box.css('color'), fontSize: $box.css('font-size'), fontWeight: $box.css('font-weight'), textAlign: $box.css('text-align'),fontFamily: $box.css('font-family') }
 			});
 		});
 		// ✨ --- 데이터 수집 로직 끝 --- ✨
