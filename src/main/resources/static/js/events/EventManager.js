@@ -518,12 +518,11 @@ class EventManager {
 			top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
 		};
 
-		if (!currentState.size) {
-			currentState.size = {
-				width: (element.outerWidth() / actualBgRect.width) * 100,
-				height: (element.outerHeight() / actualBgRect.height) * 100
-			};
-		}
+		// ✅ if 조건문을 제거하여 항상 size를 업데이트하도록 수정
+		currentState.size = {
+			width: (element.outerWidth() / actualBgRect.width) * 100,
+			height: (element.outerHeight() / actualBgRect.height) * 100
+		};
 
 		currentState.transform = element.css('transform') || 'none';
 		element.data('relativeState', currentState);
