@@ -84,6 +84,8 @@ class TextManager {
         // 11. 이벤트 설정 및 선택
         EventManager.setupTextEvents(textBox);
         window.selectionManager.selectTextBox(textBox);
+		
+		this.resetFontDropdownToDefault(selectedFont);
 
         // 12. 폰트 드롭다운에 현재 폰트 표시
         if (selectedFont) {
@@ -103,19 +105,10 @@ class TextManager {
     static getFontToApply() {
         const fontSelect = $('#tooltip-font');
         
-        // 1. 현재 선택된 폰트 확인
-        const currentSelected = fontSelect.val();
-        if (currentSelected && currentSelected.trim() !== '') {
-            console.log('현재 선택된 폰트 사용:', currentSelected);
-            return currentSelected;
-        }
-
         // 2. 첫 번째 옵션 사용
         const firstOption = fontSelect.find('option:first').val();
         if (firstOption && firstOption.trim() !== '') {
             console.log('첫 번째 폰트 사용:', firstOption);
-            // 드롭다운에도 자동 선택
-            fontSelect.val(firstOption);
             return firstOption;
         }
 
@@ -123,6 +116,22 @@ class TextManager {
         console.log('사용 가능한 폰트가 없음. 기본 폰트 사용');
         return null;
     }
+	
+	/**
+	 * 새로운 텍스트박스 생성 시 폰트 드롭다운을 기본값으로 리셋합니다.
+	 */
+	static resetFontDropdownToDefault(appliedFont) {
+	    const fontSelect = $('#tooltip-font');
+	    const firstFont = fontSelect.find('option:first').val();
+	    
+	    if (firstFont && appliedFont) {
+	        console.log('폰트 드롭다운을 기본값으로 리셋:', firstFont);
+	        fontSelect.val(firstFont);
+	        
+	        // 변경 이벤트는 발생시키지 않음 (새로 생성된 텍스트박스이므로)
+	        // fontSelect.trigger('change'); // 이 라인은 주석 처리
+	    }
+	}
 
     /**
      * 텍스트박스 위치를 설정합니다.
