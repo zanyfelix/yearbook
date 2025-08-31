@@ -221,201 +221,201 @@ $(document).ready(function() {
 
 	// Save 버튼 클릭 이벤트
 	$('#btn-save').on('click', function() {
-		showLoader();
+	    showLoader();
 
-		const captureArea = $('#page-preview');
-		window.selectionManager.clearSelection();
+	    const captureArea = $('#page-preview');
+	    window.selectionManager.clearSelection();
 
-		const designData = {
-			background: $('#page-preview-img').attr('src'),
-			frames: [],
-			textBoxes: []
-		};
+	    const designData = {
+	        background: $('#page-preview-img').attr('src'),
+	        frames: [],
+	        textBoxes: []
+	    };
 
-		const bg = $('#page-preview-img');
-		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-		if (!actualBgRect) {
-			alert("배경 이미지 정보를 찾을 수 없어 저장할 수 없습니다.");
-			hideLoader();
-			return;
-		}
+	    const bg = $('#page-preview-img');
+	    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+	    if (!actualBgRect) {
+	        alert("배경 이미지 정보를 찾을 수 없어 저장할 수 없습니다.");
+	        hideLoader();
+	        return;
+	    }
 
-		// --- 1. 프레임 정보 수집 (수정된 버전) ---
-		captureArea.find('.frame-group').each(function() {
-			const $frame = $(this);
+	    // --- 1. 프레임 정보 수집 (최종 수정 버전) ---
+	    captureArea.find('.frame-group').each(function() {
+	        const $frame = $(this);
+	        
+	        if ($frame.width() <= 0 || $frame.height() <= 0) {
+	            console.warn("크기가 0인 프레임은 저장에서 제외됩니다.", this);
+	            return; // jQuery.each의 continue
+	        }
 
-			if ($frame.width() <= 0 || $frame.height() <= 0) {
-				console.warn("크기가 0인 프레임은 저장에서 제외됩니다.", this);
-				return;
-			}
+	        // ▼▼▼ [핵심] 프레임의 transform을 임시로 제거하고 위치/크기를 정확히 측정합니다. ▼▼▼
+	        const originalFrameTransform = $frame.css('transform');
+	        const hasFrameTransform = originalFrameTransform && originalFrameTransform !== 'none';
+	        
+	        if (hasFrameTransform) $frame.css('transform', 'none');
+	        
+	        const framePos = $frame.position();
+	        const frameW = $frame.width();
+	        const frameH = $frame.height();
+	        
+	        if (hasFrameTransform) $frame.css('transform', originalFrameTransform);
+	        // ▲▲▲ [수정 완료] ▲▲▲
 
-			// ▼▼▼ [핵심 수정] 프레임의 transform을 임시로 제거하고 위치/크기를 정확히 측정합니다. ▼▼▼
-			const originalFrameTransform = $frame.css('transform');
-			const hasFrameTransform = originalFrameTransform && originalFrameTransform !== 'none';
+	        let photoData = null;
+	        const $photo = $frame.find('.uploaded-photo');
 
-			if (hasFrameTransform) $frame.css('transform', 'none');
+	        if ($photo.length && $photo.is(':visible')) {
+	            const photoSrcPath = $photo.data('filePath');
+	            if (photoSrcPath) {
+	                 // ▼▼▼ [핵심] 사진의 transform도 임시로 제거하고 위치/크기를 정확히 측정합니다. ▼▼▼
+	                const originalPhotoTransform = $photo.css('transform');
+	                const hasPhotoTransform = originalPhotoTransform && originalPhotoTransform !== 'none';
 
-			const framePos = $frame.position();
-			const frameW = $frame.width();
-			const frameH = $frame.height();
+	                if (hasPhotoTransform) $photo.css('transform', 'none');
 
-			if (hasFrameTransform) $frame.css('transform', originalFrameTransform);
-			// ▲▲▲ [수정 완료] ▲▲▲
+	                const photoPos = $photo.position();
+	                const photoW = $photo.width();
+	                const photoH = $photo.height();
 
-			let photoData = null;
-			const $photo = $frame.find('.uploaded-photo');
+	                if (hasPhotoTransform) $photo.css('transform', originalPhotoTransform);
+	                // ▲▲▲ [수정 완료] ▲▲▲
 
-			if ($photo.length && $photo.is(':visible')) {
-				const photoSrcPath = $photo.data('filePath');
-				if (photoSrcPath) {
-					// ▼▼▼ [핵심 수정] 사진의 transform도 임시로 제거하고 위치/크기를 정확히 측정합니다. ▼▼▼
-					const originalPhotoTransform = $photo.css('transform');
-					const hasPhotoTransform = originalPhotoTransform && originalPhotoTransform !== 'none';
+	                photoData = {
+	                    src: photoSrcPath,
+	                    position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
+	                    size: { width: (photoW / frameW) * 100, height: (photoH / frameH) * 100 },
+	                    transform: originalPhotoTransform || 'none'
+	                };
+	            }
+	        }
 
-					if (hasPhotoTransform) $photo.css('transform', 'none');
+	        const latestRelativeState = {
+	            position: { left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 },
+	            size: { width: (frameW / actualBgRect.width) * 100, height: (frameH / actualBgRect.height) * 100 },
+	            transform: originalFrameTransform || 'none',
+	            photo: photoData
+	        };
+	        $frame.data('relativeState', latestRelativeState);
 
-					const photoPos = $photo.position();
-					const photoW = $photo.width();
-					const photoH = $photo.height();
+	        designData.frames.push({ theme: $frame.data('frameTheme'), ...latestRelativeState });
+	    });
 
-					if (hasPhotoTransform) $photo.css('transform', originalPhotoTransform);
-					// ▲▲▲ [수정 완료] ▲▲▲
+	    // --- 2. 텍스트 박스 정보 수집 (기존 로직 유지) ---
+	    captureArea.find('.text-box').each(function() {
+	        const $box = $(this);
+	        
+	        if ($box.text().trim() === '' || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) {
+	            console.warn("비어있거나 크기가 0인 텍스트 박스는 저장에서 제외됩니다.", this);
+	            return;
+	        }
+	        
+	        const originalTransform = $box.css('transform');
+	        const hasTransform = originalTransform && originalTransform !== 'none';
+	        
+	        let boxPos, boxW, boxH;
+	        
+	        if (hasTransform) {
+	            $box.css('transform', 'none');
+	            boxPos = $box.position();
+	            boxW = $box.outerWidth();
+	            boxH = $box.outerHeight();
+	            $box.css('transform', originalTransform);
+	        } else {
+	            boxPos = $box.position();
+	            boxW = $box.outerWidth();
+	            boxH = $box.outerHeight();
+	        }
+	        
+	        const latestRelativeState = {
+	            position: { 
+	                left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, 
+	                top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 
+	            },
+	            size: { 
+	                width: (boxW / actualBgRect.width) * 100, 
+	                height: (boxH / actualBgRect.height) * 100 
+	            },
+	            transform: originalTransform || 'none',
+	            transformOrigin: $box.css('transform-origin') || '50% 50%'
+	        };
+	        
+	        $box.data('relativeState', latestRelativeState);
+	        
+	        const currentFontSize = $box.css('font-size');
+	        const currentFontFamily = $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
+	        
+	        designData.textBoxes.push({
+	            html: $box.html(),
+	            ...latestRelativeState,
+	            styles: { 
+	                color: $box.css('color'), 
+	                fontSize: currentFontSize,
+	                fontWeight: $box.css('font-weight'), 
+	                textAlign: $box.css('text-align'),
+	                fontFamily: currentFontFamily
+	            }
+	        });
+	    });
 
-					photoData = {
-						src: photoSrcPath,
-						position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
-						size: { width: (photoW / frameW) * 100, height: (photoH / frameH) * 100 },
-						transform: originalPhotoTransform || 'none'
-					};
-				}
-			}
+	    // --- 3. 서버로 데이터 전송 (기존 로직 유지) ---
+	    const yearbookId = activePageThumb ? activePageThumb.data('yearbook-id') : null;
+	    const contentsId = activePageThumb ? activePageThumb.data('contents-id') : null;
+	    const pageNo = activePageThumb ? activePageThumb.data('page-no') : null;
+	    const userId = $('#id').val();
 
-			const latestRelativeState = {
-				position: { left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 },
-				size: { width: (frameW / actualBgRect.width) * 100, height: (frameH / actualBgRect.height) * 100 },
-				transform: originalFrameTransform || 'none',
-				photo: photoData
-			};
-			$frame.data('relativeState', latestRelativeState);
+	    const payload = {
+	        userId: userId,
+	        yearbookId: yearbookId,
+	        contentsId: contentsId,
+	        pageNo: pageNo,
+	        designData: JSON.stringify(designData)
+	    };
 
-			designData.frames.push({ theme: $frame.data('frameTheme'), ...latestRelativeState });
-		});
+	    $.ajax({
+	        url: `${ctx}/edit/savePage`,
+	        method: 'POST',
+	        contentType: 'application/json',
+	        data: JSON.stringify(payload),
+	        success: function(response) {
+	            if (response && response.newImagePath) {
+	                alert("This page has been saved.");
+	                hasSaved = true;
 
-		// --- 2. 텍스트 박스 정보 수집 (기존 로직 유지) ---
-		captureArea.find('.text-box').each(function() {
-			const $box = $(this);
+	                activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
+	                if (response.newYearbookId) {
+	                    const newId = response.newYearbookId;
+	                    activePageThumb.attr('data-yearbook-id', newId);
+	                    activePageThumb.data('yearbook-id', newId);
+	                    const $card = activePageThumb.closest('.page-card');
+	                    $card.attr('id', 'card-' + newId);
+	                    $card.find('.menu-dots-btn').attr('data-yearbook-id', newId);
+	                }
 
-			if ($box.text().trim() === '' || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) {
-				console.warn("비어있거나 크기가 0인 텍스트 박스는 저장에서 제외됩니다.", this);
-				return;
-			}
-
-			const originalTransform = $box.css('transform');
-			const hasTransform = originalTransform && originalTransform !== 'none';
-
-			let boxPos, boxW, boxH;
-
-			if (hasTransform) {
-				$box.css('transform', 'none');
-				boxPos = $box.position();
-				boxW = $box.outerWidth();
-				boxH = $box.outerHeight();
-				$box.css('transform', originalTransform);
-			} else {
-				boxPos = $box.position();
-				boxW = $box.outerWidth();
-				boxH = $box.outerHeight();
-			}
-
-			const latestRelativeState = {
-				position: {
-					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
-					top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
-				},
-				size: {
-					width: (boxW / actualBgRect.width) * 100,
-					height: (boxH / actualBgRect.height) * 100
-				},
-				transform: originalTransform || 'none',
-				transformOrigin: $box.css('transform-origin') || '50% 50%'
-			};
-
-			$box.data('relativeState', latestRelativeState);
-
-			const currentFontSize = $box.css('font-size');
-			const currentFontFamily = $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
-
-			designData.textBoxes.push({
-				html: $box.html(),
-				...latestRelativeState,
-				styles: {
-					color: $box.css('color'),
-					fontSize: currentFontSize,
-					fontWeight: $box.css('font-weight'),
-					textAlign: $box.css('text-align'),
-					fontFamily: currentFontFamily
-				}
-			});
-		});
-
-		// --- 3. 서버로 데이터 전송 (기존 로직 유지) ---
-		const yearbookId = activePageThumb ? activePageThumb.data('yearbook-id') : null;
-		const contentsId = activePageThumb ? activePageThumb.data('contents-id') : null;
-		const pageNo = activePageThumb ? activePageThumb.data('page-no') : null;
-		const userId = $('#id').val();
-
-		const payload = {
-			userId: userId,
-			yearbookId: yearbookId,
-			contentsId: contentsId,
-			pageNo: pageNo,
-			designData: JSON.stringify(designData)
-		};
-
-		$.ajax({
-			url: `${ctx}/edit/savePage`,
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify(payload),
-			success: function(response) {
-				if (response && response.newImagePath) {
-					alert("This page has been saved.");
-					hasSaved = true;
-
-					activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
-					if (response.newYearbookId) {
-						const newId = response.newYearbookId;
-						activePageThumb.attr('data-yearbook-id', newId);
-						activePageThumb.data('yearbook-id', newId);
-						const $card = activePageThumb.closest('.page-card');
-						$card.attr('id', 'card-' + newId);
-						$card.find('.menu-dots-btn').attr('data-yearbook-id', newId);
-					}
-
-					if (response.lastSaved) {
-						displayLastSaveTime(response.lastSaved);
-					}
-
-					if (response.contentsId && response.updatedSavedCount !== undefined) {
-						const counterSpan = $(`#page-count-${response.contentsId}`);
-						if (counterSpan.length) {
-							const totalPages = counterSpan.data('total-pages');
-							counterSpan.text(`(${response.updatedSavedCount}/${totalPages})`);
-						}
-					}
-				} else {
-					alert("Save succeeded, but thumbnail update failed.");
-				}
-			},
-			error: function(err) {
-				console.error("Save failed:", err);
-				alert("Save failed.");
-			},
-			complete: function() {
-				hideLoader();
-				$(document).trigger('saveComplete');
-			}
-		});
+	                if (response.lastSaved) {
+	                    displayLastSaveTime(response.lastSaved);
+	                }
+	                
+	                if (response.contentsId && response.updatedSavedCount !== undefined) {
+	                    const counterSpan = $(`#page-count-${response.contentsId}`);
+	                    if (counterSpan.length) {
+	                        const totalPages = counterSpan.data('total-pages');
+	                        counterSpan.text(`(${response.updatedSavedCount}/${totalPages})`);
+	                    }
+	                }
+	            } else {
+	                alert("Save succeeded, but thumbnail update failed.");
+	            }
+	        },
+	        error: function(err) {
+	            console.error("Save failed:", err);
+	            alert("Save failed.");
+	        },
+	        complete: function() {
+	            hideLoader();
+	            $(document).trigger('saveComplete');
+	        }
+	    });
 	});
 
 	// 파일 업로드 처리

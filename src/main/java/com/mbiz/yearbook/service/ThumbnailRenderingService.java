@@ -95,50 +95,55 @@ public class ThumbnailRenderingService {
 
             JsonNode photoNode = frameNode.path("photo");
 
-            // 2-3. 사진이 있는 경우, 사진 먼저 그리기
-            if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty()) {
-                String src = photoNode.path("src").asText();
-                byte[] imageBytes = getImageBytes(src);
-
-                if (imageBytes != null) {
-                    BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-                    if (photoImage != null) {
-                        // 사진의 위치, 크기, 변환을 프레임 캔버스 기준으로 계산
-                        int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
-                        int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
-                        int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
-                        int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
-
-                        AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
-                        
-                        // 사진의 중심으로 회전 기준점 설정 후 그리기
-                        AffineTransform savedPhotoTx = frameG2d.getTransform();
-                        frameG2d.translate(photoX + photoWidth / 2.0, photoY + photoHeight / 2.0);
-                        frameG2d.transform(photoTransform);
-                        frameG2d.drawImage(photoImage, -photoWidth / 2, -photoHeight / 2, photoWidth, photoHeight, null);
-                        frameG2d.setTransform(savedPhotoTx);
+         // ▼▼▼ [핵심 수정] 사진, 마스크, 프레임 테두리를 그리는 순서와 방법을 변경합니다. ▼▼▼
+            try {
+                // 2-3. 사진이 있는 경우, 먼저 임시 '사진 캔버스'에 사진과 변환을 적용합니다.
+                BufferedImage photoCanvas = null;
+                if (photoNode != null && photoNode.has("src") && !photoNode.path("src").asText().isEmpty()) {
+                    byte[] imageBytes = getImageBytes(photoNode.path("src").asText());
+                    if (imageBytes != null) {
+                        BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+                        if (photoImage != null) {
+                            int photoWidth = (int) Math.round(frameWidth * (photoNode.path("size").path("width").asDouble() / 100.0));
+                            int photoHeight = (int) Math.round(frameHeight * (photoNode.path("size").path("height").asDouble() / 100.0));
+                            if (photoWidth > 0 && photoHeight > 0) {
+                                photoCanvas = new BufferedImage(photoWidth, photoHeight, BufferedImage.TYPE_INT_ARGB);
+                                Graphics2D photoG2d = photoCanvas.createGraphics();
+                                photoG2d.drawImage(photoImage, 0, 0, photoWidth, photoHeight, null);
+                                photoG2d.dispose();
+                            }
+                        }
                     }
                 }
-            }
-            
-            // 2-4. 마스크 적용 (사진 위에 덮어씌움)
-            if (theme.getEditMaskPath() != null && !theme.getEditMaskPath().isEmpty()) {
-                try {
-                    BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
-                    frameG2d.setComposite(AlphaComposite.SrcIn);
-                    frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
-                } catch (IOException e) {
-                    System.err.println("마스크 이미지 로드 실패: " + theme.getEditMaskPath());
-                }
-            }
 
-            // 2-5. 프레임 테두리 렌더링 (가장 위에 덮어씌움)
-            try {
-                frameG2d.setComposite(AlphaComposite.SrcOver); // 합성 모드 복원
+                // 2-4. '프레임 캔버스'에 마스크를 먼저 그립니다.
+                if (theme.getEditMaskPath() != null && !theme.getEditMaskPath().isEmpty()) {
+                    BufferedImage maskImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditMaskPath())));
+                    frameG2d.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
+                }
+
+                // 2-5. 'SrcIn' 모드로 사진을 마스크 위에 겹칩니다. (마스크 영역에만 사진이 남음)
+                if (photoCanvas != null) {
+                    frameG2d.setComposite(AlphaComposite.SrcIn);
+                    
+                    int photoX = (int) Math.round(frameWidth * (photoNode.path("position").path("left").asDouble() / 100.0));
+                    int photoY = (int) Math.round(frameHeight * (photoNode.path("position").path("top").asDouble() / 100.0));
+                    AffineTransform photoTransform = getTransformFromMatrix(photoNode.path("transform").asText("none"));
+                    
+                    AffineTransform savedPhotoTx = frameG2d.getTransform();
+                    frameG2d.translate(photoX + photoCanvas.getWidth() / 2.0, photoY + photoCanvas.getHeight() / 2.0);
+                    frameG2d.transform(photoTransform);
+                    frameG2d.drawImage(photoCanvas, -photoCanvas.getWidth() / 2, -photoCanvas.getHeight() / 2, null);
+                    frameG2d.setTransform(savedPhotoTx);
+                }
+
+                // 2-6. 'SrcOver' 모드로 프레임 테두리를 가장 위에 그립니다.
+                frameG2d.setComposite(AlphaComposite.SrcOver);
                 BufferedImage frameImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + theme.getEditPath())));
                 frameG2d.drawImage(frameImage, 0, 0, frameWidth, frameHeight, null);
-            } catch (IOException e) {
-                System.err.println("프레임 이미지 로드 실패: " + theme.getEditPath());
+
+            } catch (Exception e) {
+                System.err.println("프레임 렌더링 중 오류 발생: " + e.getMessage());
             } finally {
                 frameG2d.dispose();
             }
