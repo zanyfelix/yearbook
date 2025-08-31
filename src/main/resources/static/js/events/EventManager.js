@@ -1,6 +1,63 @@
 // ============================================================================
 // 📁 js/events/EventManager.js - 최종 수정본
 // ============================================================================
+
+const TransformHelper = {
+    // "matrix(a, b, c, d, tx, ty)" 문자열을 객체로 파싱
+    parseMatrix(transformString) {
+        if (!transformString || transformString === 'none') {
+            return { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+        }
+        const values = transformString.match(/matrix\((.+)\)/)[1].split(',').map(parseFloat);
+        return { a: values[0], b: values[1], c: values[2], d: values[3], tx: values[4], ty: values[5] };
+    },
+
+    // 매트릭스 객체를 CSS 문자열로 변환
+    composeMatrix(matrix) {
+        return `matrix(${matrix.a}, ${matrix.b}, ${matrix.c}, ${matrix.d}, ${matrix.tx}, ${matrix.ty})`;
+    },
+
+    // 기존 매트릭스에 이동(translation)을 적용
+    applyTranslation(transformString, dx, dy) {
+        const matrix = this.parseMatrix(transformString);
+        matrix.tx += dx;
+        matrix.ty += dy;
+        return this.composeMatrix(matrix);
+    },
+
+    // 기존 매트릭스에 회전(rotation)을 적용 (행렬 곱셈)
+    applyRotation(transformString, angleDegrees, centerX, centerY) {
+        const matrix = this.parseMatrix(transformString);
+        const angleRad = angleDegrees * (Math.PI / 180);
+        const cos = Math.cos(angleRad);
+        const sin = Math.sin(angleRad);
+
+        // 1. 중심점으로 이동
+        matrix.tx -= centerX;
+        matrix.ty -= centerY;
+
+        // 2. 회전 행렬과 곱셈
+        const newA = matrix.a * cos - matrix.b * sin;
+        const newB = matrix.a * sin + matrix.b * cos;
+        const newC = matrix.c * cos - matrix.d * sin;
+        const newD = matrix.c * sin + matrix.d * cos;
+        const newTx = matrix.tx * cos - matrix.ty * sin;
+        const newTy = matrix.tx * sin + matrix.ty * cos;
+        
+        matrix.a = newA;
+        matrix.b = newB;
+        matrix.c = newC;
+        matrix.d = newD;
+        matrix.tx = newTx;
+        matrix.ty = newTy;
+
+        // 3. 다시 원래 위치로 복귀
+        matrix.tx += centerX;
+        matrix.ty += centerY;
+
+        return this.composeMatrix(matrix);
+    }
+};
 class EventManager {
 	// 공통 드래그 설정
 	static dragConfig = {
@@ -15,39 +72,72 @@ class EventManager {
 	 * @param {jQuery} handle - 회전 트리거 핸들
 	 */
 	static makeRotatable(element, handle) {
-		handle.on('mousedown', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
+	    handle.off('mousedown.rotator').on('mousedown.rotator', (e) => {
+	        e.preventDefault();
+	        e.stopPropagation();
 
-			const elementCenter = {
-				x: element.offset().left + element.width() / 2,
-				y: element.offset().top + element.height() / 2
-			};
+	        // --- 1. 마우스 클릭 시점의 상태를 모두 기록 ---
+	        
+	        // ✅ getBoundingClientRect로 현재 보이는 그대로의 중심점을 정확히 계산
+	        const rect = element[0].getBoundingClientRect();
+	        const elementCenter = {
+	            x: rect.left + rect.width / 2,
+	            y: rect.top + rect.height / 2
+	        };
 
-			// Helpers에 있는 getFrameRotation을 사용 (텍스트/프레임 공용)
-			const initialAngle = Helpers.getFrameRotation(element);
-			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
+	        // ✅ 회전을 시작하는 시점의 '초기 transform' 상태를 저장
+	        const initialTransform = element.css('transform');
 
-			$(document).on('mousemove.rotator', (ev) => {
-				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
-				const deltaAngle = (currentAngleRad - startAngleRad) * (180 / Math.PI);
-				const newAngle = initialAngle + deltaAngle;
+	        // ✅ 마우스의 '초기 각도'를 저장
+	        const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
+	        
+	        // ✅ TransformHelper를 통해 초기 각도를 파싱 (선택 사항이지만 더 정확함)
+	        const initialMatrix = TransformHelper.parseMatrix(initialTransform);
+	        const initialElementAngleRad = Math.atan2(initialMatrix.b, initialMatrix.a);
 
-				element.css('transform', `rotate(${newAngle}deg)`);
-			});
 
-			$(document).on('mouseup.rotator', () => {
-				$(document).off('.rotator');
+	        $(document).on('mousemove.rotator', (ev) => {
+	            // --- 2. 마우스 이동 시 '초기 상태'를 기준으로 총 변화량 계산 ---
+	            
+	            const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
+	            
+	            // ✅ 마우스의 시작 각도 대비 현재 각도의 '총 변화량'을 계산
+	            const deltaAngleRad = currentAngleRad - startAngleRad;
+	            
+	            // ✅ 요소의 '초기 각도'에 마우스의 '총 변화량'을 더해 새로운 각도를 계산
+	            const newAngleRad = initialElementAngleRad + deltaAngleRad;
+	            
+	            // 새 각도를 CSS transform 문자열로 만듦
+	            const newAngleDeg = newAngleRad * (180 / Math.PI);
 
-				// 최종 상태 저장
-				const currentState = element.data('relativeState') || {};
-				currentState.transform = element.css('transform');
-				element.data('relativeState', currentState);
-			});
-		});
+	            // 기존 matrix에서 회전 부분만 새로운 각도로 교체
+	            // 이렇게 하면 기존의 이동(translate) 값은 그대로 유지됨
+	            const newMatrix = { ...initialMatrix }; // 초기 matrix 복사
+	            const cos = Math.cos(newAngleRad);
+	            const sin = Math.sin(newAngleRad);
+	            // 크기 조절(scale)을 고려하지 않는 순수 회전의 경우 (더 안정적)
+	            // 실제 크기(scale) 값은 initialMatrix에서 가져올 수 있으나, 단순화를 위해 1로 가정
+	            const scaleX = Math.sqrt(initialMatrix.a * initialMatrix.a + initialMatrix.c * initialMatrix.c);
+	            const scaleY = Math.sqrt(initialMatrix.b * initialMatrix.b + initialMatrix.d * initialMatrix.d);
+
+	            newMatrix.a = cos * scaleX;
+	            newMatrix.b = sin * scaleX;
+	            newMatrix.c = -sin * scaleY;
+	            newMatrix.d = cos * scaleY;
+	            
+	            element.css('transform', TransformHelper.composeMatrix(newMatrix));
+	        });
+
+	        $(document).on('mouseup.rotator', () => {
+	            $(document).off('.rotator');
+
+	            // --- 3. 최종 상태를 relativeState에 저장 ---
+	            const currentState = element.data('relativeState') || {};
+	            currentState.transform = element.css('transform');
+	            element.data('relativeState', currentState);
+	        });
+	    });
 	}
-	// ▲▲▲ [핵심 추가] 종료 ▲▲▲
-
 	// ▼▼▼ [신규 추가] setupPhotoFrameEvents 함수 ▼▼▼
 	/**
 	 * 사진 프레임에 대한 모든 이벤트를 설정합니다.
@@ -197,12 +287,11 @@ class EventManager {
 			e.stopPropagation();
 
 			dragData = {
-				startX: e.clientX,
-				startY: e.clientY,
-				initialLeft: parseFloat(element.css('left')) || 0,
-				initialTop: parseFloat(element.css('top')) || 0,
-				isDragging: false,
-				lastTooltipUpdate: 0
+			    startX: e.clientX,
+			    startY: e.clientY,
+			    // ✅ initialLeft/Top 대신 초기 transform 값을 저장
+			    initialTransform: element.css('transform'),
+			    isDragging: false,
 			};
 
 			$(document).on('mousemove.drag', (ev) => {
@@ -215,9 +304,12 @@ class EventManager {
 				}
 
 				if (dragData.isDragging) {
-					const newPos = this.calculateNewPosition(element, dragData, deltaX, deltaY);
-					element.css(newPos);
-					this.updateTooltipIfNeeded(element, type, dragData);
+				    // ✅ left/top을 직접 바꾸는 대신, transform에 이동 값을 누적
+				    const newTransform = TransformHelper.applyTranslation(dragData.initialTransform, deltaX, deltaY);
+				    element.css('transform', newTransform);
+				    
+				    // 툴팁 등 부가 기능 업데이트
+				    this.updateTooltipIfNeeded(element, type, dragData); 
 				}
 			});
 
@@ -226,8 +318,11 @@ class EventManager {
 				element.removeClass('dragging');
 
 				if (dragData.isDragging) {
-					const position = this.saveElementPosition(element);
-					if (onComplete) onComplete(position);
+				    // ✅ 최종 transform 값을 relativeState에 저장
+				    const currentState = element.data('relativeState') || {};
+				    currentState.transform = element.css('transform');
+				    element.data('relativeState', currentState);
+				    // onComplete 콜백 호출 (필요시)
 				}
 
 				dragData = null;

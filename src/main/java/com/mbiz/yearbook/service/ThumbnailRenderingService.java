@@ -211,18 +211,27 @@ public class ThumbnailRenderingService {
         }
 
         // 완성된 프레임을 메인 캔버스에 그리기 (프레임의 Transform 적용)
-        AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
-
         if (!"none".equals(frameNode.path("transform").asText("none"))) {
             // 프레임에 Transform이 있는 경우
             AffineTransform savedCanvasTx = g2d.getTransform();
             
-            // 프레임 중심점으로 이동 → Transform 적용 → 그리기
-            g2d.translate(frameX + frameWidth / 2.0, frameY + frameHeight / 2.0);
-            g2d.transform(frameTransform);
-            g2d.drawImage(frameCanvas, -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight, null);
-            
-            g2d.setTransform(savedCanvasTx);
+            try {
+                // 2. CSS의 'position' (left, top) 값 만큼 캔버스의 원점을 이동시킵니다.
+                g2d.translate(frameX, frameY);
+                
+                // 3. CSS의 'transform' (matrix) 값을 가져와 적용합니다.
+                //    이 matrix에는 회전, 크기조절, 그리고 드래그로 인한 추가 이동값이 모두 포함되어 있습니다.
+                AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
+                g2d.transform(frameTransform);
+                
+                // 4. 이제 (0, 0) 위치에 프레임 이미지를 그립니다. 
+                //    모든 위치 계산은 g2d의 transform에 이미 반영되었기 때문입니다.
+                g2d.drawImage(frameCanvas, 0, 0, frameWidth, frameHeight, null);
+
+            } finally {
+                // 5. 다음 요소를 그리기 위해 g2d의 변환 상태를 원래대로 반드시 복원합니다.
+                g2d.setTransform(savedCanvasTx);
+            }
         } else {
             // Transform이 없는 경우 단순 그리기
             g2d.drawImage(frameCanvas, frameX, frameY, frameWidth, frameHeight, null);
@@ -384,7 +393,7 @@ public class ThumbnailRenderingService {
      * CSS matrix 문자열을 Java AffineTransform 객체로 변환합니다.
      */
     private AffineTransform getTransformFromMatrix(String transformValue) {
-        if (!"none".equals(transformValue) && transformValue.startsWith("matrix")) {
+    	if (!"none".equals(transformValue) && transformValue.startsWith("matrix")) {
             try {
                 String matrixStr = transformValue.substring(transformValue.indexOf("(") + 1, transformValue.indexOf(")"));
                 String[] values = matrixStr.split(",");
@@ -393,8 +402,12 @@ public class ThumbnailRenderingService {
                     double m10 = Double.parseDouble(values[1].trim()); // b
                     double m01 = Double.parseDouble(values[2].trim()); // c
                     double m11 = Double.parseDouble(values[3].trim()); // d
-                    // translate 값은 회전/크기 변환에만 사용하므로 0으로 설정
-                    return new AffineTransform(m00, m10, m01, m11, 0, 0);
+                    
+                    // ✅ 수정: tx, ty 값을 정상적으로 파싱하여 적용합니다.
+                    double m02 = Double.parseDouble(values[4].trim()); // tx
+                    double m12 = Double.parseDouble(values[5].trim()); // ty
+
+                    return new AffineTransform(m00, m10, m01, m11, m02, m12);
                 }
             } catch (NumberFormatException e) {
                 System.err.println("Matrix 파싱 오류: " + transformValue);

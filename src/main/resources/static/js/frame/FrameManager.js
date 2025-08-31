@@ -203,10 +203,10 @@ class FrameManager {
     
     static restoreFrameState(frameGroup, savedState, frameType) {
 		const frameRelativeState = {
-		position: savedState.position,
-		size: savedState.size,
-		transform: savedState.transform || 'none',
-		transformOrigin: savedState.transformOrigin || '50% 50%'
+			position: savedState.position,
+			size: savedState.size,
+			transform: savedState.transform || 'none',
+			transformOrigin: savedState.transformOrigin || '50% 50%'
 		};
 		
 		frameGroup.data('relativeState', frameRelativeState);
@@ -227,18 +227,17 @@ class FrameManager {
 		        top: frameTop + 'px',
 		        width: frameWidth + 'px',
 		        height: frameHeight + 'px',
-		        transform: 'none'
+				'transform': frameRelativeState.transform,
+				'transform-origin': frameRelativeState.transformOrigin
 		    });
 		    
 		    // 🔴 프레임 Transform 별도 적용
-		    if (frameRelativeState.transform && frameRelativeState.transform !== 'none') {
-		        setTimeout(() => {
-		            frameGroup.css({
-		                'transform': frameRelativeState.transform,
-		                'transform-origin': frameRelativeState.transformOrigin
-		            });
-		        }, 30);
-		    }
+			// 사진이 있으면 복원
+			if (!frameType.isSimple && savedState.photo?.src) {
+				setTimeout(() => {
+					this.restorePhoto(frameGroup, savedState.photo);
+				}, 100);
+			}
 		}
 
 		// 사진이 있으면 복원

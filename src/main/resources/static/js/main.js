@@ -129,18 +129,23 @@ $(document).ready(function() {
 		};
 
 		// 위치/크기 적용
-		$element.css({
-			left: newPixelPos.left,
-			top: newPixelPos.top,
-			width: newPixelSize.width,
-			height: newPixelSize.height
-		});
+		const finalCss = {
+		    left: newPixelPos.left,
+		    top: newPixelPos.top,
+		    width: newPixelSize.width,
+		    height: newPixelSize.height,
+		    transform: transform || 'none'
+		};
+		
+		if (relativeState.transformOrigin) {
+		    finalCss['transform-origin'] = relativeState.transformOrigin;
+		}
 
-		// Transform 복원
-		if (currentTransform && currentTransform !== 'none') {
-			setTimeout(() => {
-				$element.css('transform', currentTransform);
-			}, 10);
+		$element.css(finalCss);
+
+		// 텍스트박스가 아닌 사진의 경우, 선택 UI도 업데이트합니다.
+		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
+		    PhotoManager.updateSelectionUI($element);
 		}
 	};
 
@@ -257,12 +262,6 @@ $(document).ready(function() {
 		    // 🔴 핵심: 프레임의 Transform을 백업하고 제거
 		    const frameTransform = $frame.css('transform');
 		    const frameTransformOrigin = $frame.css('transform-origin');
-		    $frame.css({
-		        'transform': 'none',
-		        'transform-origin': '50% 50%'
-		    });
-		    
-		    // Transform 제거 후 프레임의 실제 크기와 위치
 		    const frameWidth = $frame.width();
 		    const frameHeight = $frame.height();
 		    const framePos = $frame.position();
@@ -272,42 +271,18 @@ $(document).ready(function() {
 		    const $photo = $frame.find('.uploaded-photo');
 		    
 		    if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
-		        // 🔴 핵심: 사진의 Transform도 백업하고 제거
-		        const photoTransform = $photo.css('transform');
-		        const photoTransformOrigin = $photo.css('transform-origin');
-		        $photo.css({
-		            'transform': 'none',
-		            'transform-origin': '50% 50%'
-		        });
-		        
-		        // Transform 제거 후 사진의 실제 크기와 위치 (프레임 내에서의 상대 위치)
-		        const photoWidth = $photo.width();
-		        const photoHeight = $photo.height();
-		        const photoPos = $photo.position(); // 프레임 내에서의 position
-		        
-		        // 🔴 중요: 사진의 현재 상태를 정확히 저장
-		        photoData = {
-		            src: $photo.data('filePath'),
-		            // 프레임 내에서의 상대 위치 (백분율)
-		            position: { 
-		                left: (photoPos.left / frameWidth) * 100, 
-		                top: (photoPos.top / frameHeight) * 100 
-		            },
-		            // 프레임 대비 상대 크기 (백분율)
-		            size: { 
-		                width: (photoWidth / frameWidth) * 100, 
-		                height: (photoHeight / frameHeight) * 100 
-		            },
-		            // Transform 정보 (회전/스케일)
-		            transform: photoTransform || 'none',
-		            transformOrigin: photoTransformOrigin || '50% 50%'
-		        };
-		        
-		        // 사진 Transform 복원
-		        $photo.css({
-		            'transform': photoTransform,
-		            'transform-origin': photoTransformOrigin
-		        });
+				// ✅ DOM을 직접 측정하는 대신, 가장 정확한 상태 정보가 담긴 'relativeState'를 직접 읽습니다.
+				const photoRelativeState = $photo.data('relativeState');
+
+				if (photoRelativeState) {
+					photoData = {
+						src: $photo.data('filePath'),
+						position: photoRelativeState.position, // 저장된 position 값을 그대로 사용
+						size: photoRelativeState.size,         // 저장된 size 값을 그대로 사용
+						transform: photoRelativeState.transform || 'none', // 저장된 transform 값을 그대로 사용
+						transformOrigin: photoRelativeState.transformOrigin || '50% 50%'
+					};
+				}
 		    }
 		    
 		    // 프레임 데이터 저장
