@@ -168,161 +168,262 @@ $(document).ready(function() {
 
 	// ✨ --- 핵심 수정: Edit 버튼 클릭 시 데이터 로드를 먼저 수행합니다. --- ✨
 	$('.content').on('click', '.edit-btn', async function(e) {
-		e.preventDefault();
+	    e.preventDefault();
 
-		activePageThumb = $(this).closest('.page-card').find('.page-thumb');
-		const yearbookId = activePageThumb.attr('data-yearbook-id');
+	    // ✅ 가장 최신 데이터 속성을 읽도록 수정
+	    const $pageCard = $(this).closest('.page-card');
+	    activePageThumb = $pageCard.find('.page-thumb');
+	    
+	    // jQuery data()가 아닌 attr()로 최신 값 읽기
+	    const yearbookId = activePageThumb.attr('data-yearbook-id');
+	    
+	    console.log('Edit 버튼 클릭 - yearbookId:', yearbookId);
 
-		const pageCategory = $(this).data('category');
-		DataLoader.loadBackgrounds(pageCategory);
+	    const pageCategory = $(this).data('category');
+	    DataLoader.loadBackgrounds(pageCategory);
 
-		showLoader();
+	    showLoader();
 
-		try {
-			// 1. 폰트 로딩이 끝날 때까지 여기서 기다립니다.
-			await DataLoader.loadAndSetupFonts();
-			console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
+	    try {
+	        await DataLoader.loadAndSetupFonts();
+	        console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
 
-			// 2. 폰트가 모두 준비된 후에 페이지 데이터를 불러옵니다.
-			const pageData = await new Promise((resolve, reject) => {
-				if (yearbookId) {
-					$.ajax({
-						url: `${ctx}/edit/pageData`,
-						method: 'GET',
-						data: { id: yearbookId, _: new Date().getTime() },
-						cache: false,
-						success: resolve, // 성공 시 pageData를 resolve
-						error: reject,  // 실패 시 에러를 reject
-					});
-				} else {
-					resolve(null); // yearbookId가 없으면 null로 resolve
-				}
-			});
+	        const pageData = await new Promise((resolve, reject) => {
+	            if (yearbookId) {
+	                $.ajax({
+	                    url: `${ctx}/edit/pageData`,
+	                    method: 'GET',
+	                    data: { 
+	                        id: yearbookId, 
+	                        _: new Date().getTime() // 캐시 방지
+	                    },
+	                    cache: false,
+	                    success: function(data) {
+	                        console.log('페이지 데이터 로드 성공:', data);
+	                        resolve(data);
+	                    },
+	                    error: function(err) {
+	                        console.error('페이지 데이터 로드 실패:', err);
+	                        reject(err);
+	                    }
+	                });
+	            } else {
+	                console.log('yearbookId가 없어 빈 페이지로 처리');
+	                resolve(null);
+	            }
+	        });
 
-			// 3. 페이지를 렌더링하고 모달을 엽니다.
-			forceCompleteReset();
-			renderPage(pageData, hideLoader);
-			if (pageData && pageData.lastSaved) {
-				displayLastSaveTime(pageData.lastSaved);
-			}
-			$('#editModal').modal('show');
+	        forceCompleteReset();
+	        renderPage(pageData, hideLoader);
+	        
+	        if (pageData && pageData.lastSaved) {
+	            displayLastSaveTime(pageData.lastSaved);
+	        }
+	        
+	        $('#editModal').modal('show');
 
-		} catch (error) {
-			console.error('페이지 준비 중 오류 발생:', error);
-			alert("페이지를 준비하는 중 오류가 발생했습니다.");
-			hideLoader();
-		}
+	    } catch (error) {
+	        console.error('페이지 준비 중 오류 발생:', error);
+	        alert("페이지를 준비하는 중 오류가 발생했습니다.");
+	        hideLoader();
+	    }
 	});
 
 	// Save 버튼 클릭 이벤트
 	$('#btn-save').on('click', function() {
-		showLoader();
-		window.selectionManager.clearSelection();
+	    showLoader();
+	    window.selectionManager.clearSelection();
 
-		const designData = { frames: [], textBoxes: [] };
-		const bgImg = $('#page-preview-img');
-		designData.background = bgImg.attr('src');
+	    const designData = { 
+	        frames: [], 
+	        textBoxes: [], 
+	        background: $('#page-preview-img').attr('src') 
+	    };
 
-		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
-		if (!actualBgRect) {
-			alert("배경 정보를 찾을 수 없어 저장할 수 없습니다.");
-			hideLoader();
-			return;
-		}
+	    const bgImg = $('#page-preview-img');
+	    const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
+	    
+	    if (!actualBgRect) {
+	        alert("배경 정보를 찾을 수 없어 저장할 수 없습니다.");
+	        hideLoader();
+	        return;
+	    }
 
-		// --- 프레임 정보 수집 ---
-		$('#frame-container .frame-group').each(function() {
-			const $frame = $(this);
-			if ($frame.width() <= 0 || $frame.height() <= 0) return;
+	    // 1. 프레임과 사진 저장
+	    $('#frame-container .frame-group').each(function() {
+	        const $frame = $(this);
+	        if ($frame.width() <= 0 || $frame.height() <= 0) return;
 
-			const frameTransform = $frame.css('transform');
-			$frame.css('transform', 'none'); // 회전 제거
-			const framePos = $frame.position();
-			const frameW = $frame.width();
-			const frameH = $frame.height();
-			$frame.css('transform', frameTransform); // 회전 복원
+	        // Transform 임시 제거
+	        const frameTransform = $frame.css('transform');
+	        $frame.css('transform', 'none');
+	        
+	        const framePos = $frame.position();
+	        const frameW = $frame.width();
+	        const frameH = $frame.height();
+	        
+	        // 사진 데이터 수집
+	        let photoData = null;
+	        const $photo = $frame.find('.uploaded-photo');
+	        
+	        if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
+	            const photoTransform = $photo.css('transform');
+	            $photo.css('transform', 'none');
+	            
+	            const photoPos = $photo.position();
+	            const photoW = $photo.width();
+	            const photoH = $photo.height();
+	            
+	            photoData = {
+	                src: $photo.data('filePath'),
+	                position: { 
+	                    left: (photoPos.left / frameW) * 100, 
+	                    top: (photoPos.top / frameH) * 100 
+	                },
+	                size: { 
+	                    width: (photoW / frameW) * 100, 
+	                    height: (photoH / frameH) * 100 
+	                },
+	                transform: photoTransform
+	            };
+	            
+	            $photo.css('transform', photoTransform);
+	        }
+	        
+	        $frame.css('transform', frameTransform);
+	        
+	        designData.frames.push({
+	            theme: $frame.data('frameTheme'),
+	            position: { 
+	                left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, 
+	                top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 
+	            },
+	            size: { 
+	                width: (frameW / actualBgRect.width) * 100, 
+	                height: (frameH / actualBgRect.height) * 100 
+	            },
+	            transform: frameTransform,
+	            photo: photoData
+	        });
+	    });
 
-			let photoData = null;
-			const $photo = $frame.find('.uploaded-photo');
+	    // 2. 텍스트박스 저장
+	    $('#frame-container .text-box').each(function() {
+	        const $box = $(this);
+	        const textContent = $box.text().trim();
+	        
+	        if (!textContent || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) {
+	            return; // 빈 텍스트박스는 제외
+	        }
 
-			if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
-				const photoTransform = $photo.css('transform');
-				$photo.css('transform', 'none'); // 회전 제거
-				const photoPos = $photo.position();
-				const photoW = $photo.width();
-				const photoH = $photo.height();
-				$photo.css('transform', photoTransform); // 회전 복원
+	        // Transform 임시 제거
+	        const boxTransform = $box.css('transform');
+	        $box.css('transform', 'none');
+	        
+	        const boxPos = $box.position();
+	        const boxW = $box.outerWidth();
+	        const boxH = $box.outerHeight();
+	        
+	        $box.css('transform', boxTransform);
 
-				photoData = {
-					src: $photo.data('filePath'),
-					position: { left: (photoPos.left / frameW) * 100, top: (photoPos.top / frameH) * 100 },
-					size: { width: (photoW / frameW) * 100, height: (photoH / frameH) * 100 },
-					transform: window.getRotationMatrix($photo)
-				};
-			}
+	        designData.textBoxes.push({
+	            html: $box.html(),
+	            position: { 
+	                left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, 
+	                top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 
+	            },
+	            size: { 
+	                width: (boxW / actualBgRect.width) * 100, 
+	                height: (boxH / actualBgRect.height) * 100 
+	            },
+	            transform: boxTransform,
+	            styles: {
+	                color: $box.css('color'),
+	                fontSize: $box.css('font-size'),
+	                fontWeight: $box.css('font-weight'),
+	                textAlign: $box.css('text-align'),
+	                fontFamily: $box.data('savedFontFamily') || 
+	                           $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
+	            }
+	        });
+	    });
 
-			designData.frames.push({
-				theme: $frame.data('frameTheme'),
-				position: { left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100 },
-				size: { width: (frameW / actualBgRect.width) * 100, height: (frameH / actualBgRect.height) * 100 },
-				transform: window.getRotationMatrix($frame),
-				photo: photoData
-			});
-		});
-
-		// --- 텍스트 박스 정보 수집 ---
-		$('#frame-container .text-box').each(function() {
-			const $box = $(this);
-			if ($box.text().trim() === '' || $box.outerWidth() <= 0 || $box.outerHeight() <= 0) return;
-
-			const boxTransform = $box.css('transform');
-			$box.css('transform', 'none'); // 회전 제거
-			const boxPos = $box.position();
-			const boxW = $box.outerWidth();
-			const boxH = $box.outerHeight();
-			$box.css('transform', boxTransform); // 회전 복원
-
-			designData.textBoxes.push({
-				html: $box.html(),
-				position: { left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100, top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100 },
-				size: { width: (boxW / actualBgRect.width) * 100, height: (boxH / actualBgRect.height) * 100 },
-				transform: window.getRotationMatrix($box),
-				styles: {
-					color: $box.css('color'), fontSize: $box.css('font-size'),
-					fontWeight: $box.css('font-weight'), textAlign: $box.css('text-align'),
-					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
-				}
-			});
-		});
-
+	    // 3. 서버로 전송
 		const payload = {
 			userId: $('#id').val(),
-			yearbookId: activePageThumb?.data('yearbook-id'),
-			contentsId: activePageThumb?.data('contents-id'),
-			pageNo: activePageThumb?.data('page-no'),
+			yearbookId: activePageThumb?.attr('data-yearbook-id') || activePageThumb?.data('yearbook-id'),
+			contentsId: activePageThumb?.attr('data-contents-id') || activePageThumb?.data('contents-id'),
+			pageNo: activePageThumb?.attr('data-page-no') || activePageThumb?.data('page-no'),
 			designData: JSON.stringify(designData)
 		};
 
+	    console.log('저장 데이터:', {
+	        frames: designData.frames.length,
+	        textBoxes: designData.textBoxes.length,
+	        background: designData.background ? 'Yes' : 'No'
+	    });
+
 		$.ajax({
-			url: `${ctx}/edit/savePage`,
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify(payload),
-			success: function(response) {
-				if (response?.newImagePath) {
-					alert("This page has been saved.");
-					hasSaved = true;
-					activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
-					if (response.newYearbookId) activePageThumb.data('yearbook-id', response.newYearbookId);
-					if (response.lastSaved) displayLastSaveTime(response.lastSaved);
-					if (response.contentsId && response.updatedSavedCount !== undefined) {
-						const counter = $(`#page-count-${response.contentsId}`);
-						if (counter.length) counter.text(`(${response.updatedSavedCount}/${counter.data('total-pages')})`);
-					}
-				} else alert("Save succeeded, but thumbnail update failed.");
-			},
-			error: (err) => { console.error("Save failed:", err); alert("Save failed."); },
-			complete: () => { hideLoader(); $(document).trigger('saveComplete'); }
+		    url: `${ctx}/edit/savePage`,
+		    method: 'POST',
+		    contentType: 'application/json',
+		    data: JSON.stringify(payload),
+		    success: function(response) {
+		        if (response?.newImagePath) {
+		            alert("This page has been saved.");
+		            hasSaved = true;
+		            
+		            // 썸네일 이미지 업데이트
+		            activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
+		            
+		            // ✅ 중요: 새로운 yearbookId로 모든 관련 요소 업데이트
+		            if (response.newYearbookId) {
+		                const newYearbookId = response.newYearbookId;
+		                
+		                // 1. 썸네일의 data 속성 업데이트
+		                activePageThumb.attr('data-yearbook-id', newYearbookId);
+		                activePageThumb.data('yearbook-id', newYearbookId);
+		                
+		                // 2. 해당 page-card의 id 속성 업데이트
+		                const $pageCard = activePageThumb.closest('.page-card');
+		                $pageCard.attr('id', `card-${newYearbookId}`);
+		                
+		                // 3. Edit 버튼의 data 속성도 업데이트 (있다면)
+		                const $editBtn = $pageCard.find('.edit-btn');
+		                if ($editBtn.length) {
+		                    $editBtn.data('yearbook-id', newYearbookId);
+		                }
+		            }
+		            
+		            // contentsId 업데이트
+		            if (response.contentsId) {
+		                activePageThumb.attr('data-contents-id', response.contentsId);
+		                activePageThumb.data('contents-id', response.contentsId);
+		            }
+		            
+		            if (response.lastSaved) {
+		                displayLastSaveTime(response.lastSaved);
+		            }
+		            
+		            // 저장된 페이지 카운터 업데이트
+		            if (response.contentsId && response.updatedSavedCount !== undefined) {
+		                const counter = $(`#page-count-${response.contentsId}`);
+		                if (counter.length) {
+		                    counter.text(`(${response.updatedSavedCount}/${counter.data('total-pages')})`);
+		                }
+		            }
+		        } else {
+		            alert("Save succeeded, but thumbnail update failed.");
+		        }
+		    },
+		    error: function(err) {
+		        console.error("Save failed:", err);
+		        alert("Save failed.");
+		    },
+		    complete: function() {
+		        hideLoader();
+		        $(document).trigger('saveComplete');
+		    }
 		});
 	});
 
