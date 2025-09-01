@@ -28,4 +28,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByNameContainingIgnoreCase(String name);
     List<User> findBySchoolNameContainingIgnoreCase(String schoolName);
 	
+    // 주어진 name과 email을 가진 사용자가 존재하는지 확인하는 메서드
+    Optional<User> findByNameAndMail(String name, String email);
 }

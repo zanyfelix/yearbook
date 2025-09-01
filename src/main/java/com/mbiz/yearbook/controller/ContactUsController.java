@@ -103,34 +103,34 @@ public class ContactUsController {
         return "contactUs";
     }
 
-    @PostMapping("/contactUs")
-    public String submitForm(@ModelAttribute ContactUs contact,
-                              @RequestParam("file") MultipartFile file,
-                              RedirectAttributes redirectAttributes) throws IOException {
-
-        if (!file.isEmpty()) {
-            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path filepath = Paths.get(uploadPath, filename);
-            Files.createDirectories(filepath.getParent());
-            Files.write(filepath, file.getBytes());
-            contact.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));
-        }
-
-        User userInfo = userRepository.getById(contact.getUserId());
-        contact.setSchoolName(userInfo.getSchoolName());
-        contactUsService.save(contact);
-        
-        //메일 발송완료
-        try {
-            emailService.sendContactUsEmail(contact, file);
-        } catch (Exception e) {
-            // 이메일 발송에 실패하더라도 사용자에게는 성공 페이지를 보여주기 위해
-            // 에러를 서버 로그에만 기록하고 계속 진행합니다.
-            System.err.println("이메일 발송 실패: " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-        redirectAttributes.addFlashAttribute("success", true);
-        return "redirect:/contactUs";
-    }
+//    @PostMapping("/contactUs")
+//    public String submitForm(@ModelAttribute ContactUs contact,
+//                              @RequestParam("file") MultipartFile file,
+//                              RedirectAttributes redirectAttributes) throws IOException {
+//
+//        if (!file.isEmpty()) {
+//            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+//            Path filepath = Paths.get(uploadPath, filename);
+//            Files.createDirectories(filepath.getParent());
+//            Files.write(filepath, file.getBytes());
+//            contact.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));
+//        }
+//
+//        User userInfo = userRepository.getById(contact.getUserId());
+//        contact.setSchoolName(userInfo.getSchoolName());
+//        contactUsService.save(contact);
+//        
+//        //메일 발송완료
+//        try {
+//            emailService.sendContactUsEmail(contact, file);
+//        } catch (Exception e) {
+//            // 이메일 발송에 실패하더라도 사용자에게는 성공 페이지를 보여주기 위해
+//            // 에러를 서버 로그에만 기록하고 계속 진행합니다.
+//            System.err.println("이메일 발송 실패: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//        
+//        redirectAttributes.addFlashAttribute("success", true);
+//        return "redirect:/contactUs";
+//    }
 }

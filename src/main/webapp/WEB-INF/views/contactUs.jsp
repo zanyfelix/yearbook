@@ -38,7 +38,7 @@
     	<h2>CONTACT US</h2>
     	<p class="subtitle">Please use the form below to submit any inquiries regarding the use of program</p>
 
-    <form:form method="POST" modelAttribute="contact" enctype="multipart/form-data">
+    <form:form method="POST" modelAttribute="contact" enctype="multipart/form-data" id="contactForm">
     	<form:input type="hidden" path="userId" id="userId" value="${sessionScope.loginUser.id}"  />
       <div class="form-group">
         <label for="name">NAME</label>
@@ -46,8 +46,8 @@
       </div>
 
       <div class="form-group">
-        <label for="email">EMAIL</label>
-        <form:input path="email" id="email" type="email" cssClass="form-control" placeholder="youremail@example.com" />
+        <label for="mail">EMAIL</label>
+        <form:input path="mail" id="mail" type="email" cssClass="form-control" placeholder="youremail@example.com" />
       </div>
 
       <div class="form-group">
@@ -66,7 +66,7 @@
       </div>
       <p class="note">*Please upload any relevant files (e.g., photos, screenshots) for reference.</p>
 
-      <button type="submit" class="btn-submit">SUBMIT</button>
+      <button type="button" class="btn-submit" id="submitBtn">SUBMIT</button>
     </form:form>
     
       <!-- Bootstrap 모달 마크업 -->

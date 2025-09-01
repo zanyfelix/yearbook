@@ -88,7 +88,7 @@
 		    </td>
             <td>${st.index + 1}</td>
             <td>${item.name}</td>
-            <td>${item.email}</td>
+            <td>${item.mail}</td>
             <td>${item.schoolName}</td>
             <td>${item.subject}</td>
             <td>
@@ -97,7 +97,7 @@
              data-bs-toggle="modal"
              data-bs-target="#contactModal"
              data-user="${fn:escapeXml(item.name)}"
-             data-email="${fn:escapeXml(item.email)}"
+             data-mail="${fn:escapeXml(item.mail)}"
              data-schoolName="${fn:escapeXml(item.schoolName)}"
              data-subject="${fn:escapeXml(item.subject)}"
              data-message="${fn:escapeXml(item.message)}">

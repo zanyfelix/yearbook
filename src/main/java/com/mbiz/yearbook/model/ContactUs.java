@@ -22,7 +22,7 @@ public class ContactUs {
     @Column(name = "user_id")
     private Long userId;
     private String name;
-    private String email;
+    private String mail;
     private String subject;
 
     @Column(columnDefinition = "TEXT")

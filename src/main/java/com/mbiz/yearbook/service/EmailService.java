@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mbiz.yearbook.model.ContactUs;
+import com.mbiz.yearbook.repository.UserRepository;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -16,6 +17,9 @@ public class EmailService {
 
     @Autowired
     private JavaMailSender javaMailSender;
+    
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Contact Us 문의 내용을 이메일로 발송합니다.
@@ -23,6 +27,7 @@ public class EmailService {
      * @param file 첨부 파일
      */
     public void sendContactUsEmail(ContactUs contact, MultipartFile file) {
+    	
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
 
         try {
@@ -36,7 +41,7 @@ public class EmailService {
             helper.setFrom("support@capturecord.com");
             
             // 3. 답장 받을 이메일 주소 설정 (문의한 사용자의 이메일)
-            helper.setReplyTo(contact.getEmail());
+            helper.setReplyTo(contact.getMail());
 
             // 4. 메일 제목 설정
             helper.setSubject("[Contact Us Inquiry] " + contact.getSubject());
@@ -47,7 +52,7 @@ public class EmailService {
             mailContent.append("<hr>");
             mailContent.append("<p><strong>School:</strong> ").append(contact.getSchoolName()).append("</p>");
             mailContent.append("<p><strong>Name:</strong> ").append(contact.getName()).append("</p>");
-            mailContent.append("<p><strong>Email (Reply-To):</strong> ").append(contact.getEmail()).append("</p>");
+            mailContent.append("<p><strong>Email (Reply-To):</strong> ").append(contact.getMail()).append("</p>");
             mailContent.append("<h4>Message:</h4>");
             mailContent.append("<p style='border:1px solid #ddd; padding:10px;'>").append(contact.getMessage().replaceAll("\n", "<br>")).append("</p>");
             

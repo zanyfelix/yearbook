@@ -179,3 +179,13 @@ textarea {
 	border-radius: 4px;
 	font-size: 1rem;
 }
+#contactForm {
+  width: 50%;
+  margin-left: auto;  /* 중앙 정렬 */
+  margin-right: auto; /* 중앙 정렬 */
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+  #contactForm { width: 100%; }
+}

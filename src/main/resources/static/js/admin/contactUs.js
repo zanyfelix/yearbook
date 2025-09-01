@@ -14,7 +14,7 @@ $(document).ready(function() {
     // jQuery의 .data() 메서드를 사용하여 data-* 속성 값을 가져오고,
     // .text() 메서드로 modal 내 요소의 내용을 채웁니다.
     $('#modalUser').text($(btn).data('user'));
-    $('#modalEmail').text($(btn).data('email'));
+    $('#modalEmail').text($(btn).data('mail'));
     $('#modalSubject').text($(btn).data('subject'));
     $('#modalMessage').text($(btn).data('message'));
   });
