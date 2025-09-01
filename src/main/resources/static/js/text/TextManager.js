@@ -31,15 +31,17 @@ class TextManager {
             padding: '10px',
             visibility: 'hidden',
             transform: 'none',
-            transformOrigin: '50% 50%'
+            transformOrigin: '50% 50%',
+			textAlign: 'left'
         };
         
         if (selectedFont) {
             styles['font-family'] = selectedFont;
         }
-        
+		
+		// ✅ [핵심 수정] param에 따라 font-weight를 명확하게 설정합니다.
+		styles['font-weight'] = (param === 'Title') ? 'bold' : 'normal';
         const baseFontSize = this.getBaseFontSize(param);
-        styles['font-weight'] = param === 'Title' ? 'bold' : 'normal';
         
         const bg = $('#page-preview-img');
         const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
@@ -123,12 +125,18 @@ class TextManager {
     
     // UI 컨트롤 업데이트
     static updateUIControls(styles, selectedFont) {
-        setTimeout(() => {
-            if (selectedFont) {
-                $('#tooltip-font').val(selectedFont);
-            }
-            $('#tooltip-size').val(styles['font-size']);
-        }, 150);
+		setTimeout(() => {
+			if (selectedFont) {
+				$('#tooltip-font').val(selectedFont);
+			}
+			$('#tooltip-size').val(styles['font-size']);
+
+			// ✅ [핵심 수정] 정렬 컨트롤의 값을 'left'로 설정하는 코드를 추가합니다.
+			if (styles['textAlign']) {
+				$('#tooltip-align').val(styles['textAlign']);
+			}
+
+		}, 150);
     }
     
     // 상대 위치 계산

@@ -57,6 +57,26 @@ class SelectionManager {
 	    textBox.addClass('selected');
 	    this.addTextRotationHandle(textBox);
 	    UIManager.showTextTooltip(textBox);
+		
+		// ✅ [핵심 수정] 선택된 텍스트박스의 현재 상태를 툴바 UI에 반영합니다.
+		// --------------------------------------------------------------------
+		// 1. 현재 텍스트박스의 스타일 값들을 가져옵니다.
+		const currentFontSize = textBox.data('savedFontSize') || textBox.css('font-size');
+		const currentFontFamily = textBox.data('savedFontFamily') || textBox.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
+		const currentTextAlign = textBox.css('text-align');
+		const currentColor = textBox.css('color');
+		
+		const currentFontWeight = textBox.css('font-weight');
+
+		// 2. 가져온 값들을 툴바의 각 컨트롤에 설정합니다.
+		$('#tooltip-size').val(currentFontSize);
+		$('#tooltip-font').val(currentFontFamily);
+		$('#tooltip-align').val(currentTextAlign);
+		
+		// 색상 값은 rgb에서 hex로 변환해야 color input에 표시됩니다.
+		if (typeof rgbToHex === "function") {
+			$('#tooltip-color').val(rgbToHex(currentColor));
+		}
 	    
 	    textBox.on('resize.selection', () => {
 	        if (textBox.hasClass('selected')) {
@@ -151,4 +171,15 @@ class SelectionManager {
 	    textBox.append(handle).append(line);
 	    EventManager.makeRotatable(textBox, handle);
 	}
+}
+
+function rgbToHex(rgb) {
+    if (!rgb || !rgb.startsWith('rgb')) {
+        return rgb; // 이미 hex이거나 다른 형식이면 그대로 반환
+    }
+    // rgb 문자열에서 숫자만 추출
+    let [r, g, b] = rgb.match(/\d+/g).map(Number);
+    // 각 숫자를 16진수로 변환하고 두 자리로 맞춤
+    const toHex = c => ('0' + c.toString(16)).slice(-2);
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
