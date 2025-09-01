@@ -58,7 +58,7 @@
       </div>
 
       <div class="form-group">
-        <label for="message">MESSAGE</label>
+        <label for="message" style="height: 150px;">MESSAGE</label>
         <form:textarea path="message" id="message" cssClass="form-control" placeholder="Your message..." />
       </div>
 

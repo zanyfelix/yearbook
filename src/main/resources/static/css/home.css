@@ -22,14 +22,15 @@ body {
 }
 
 .sidebar a {
-	display: block;
-	padding: 12px 20px;
-	color: white;
-	text-decoration: none;
+    display: block;
+    padding: 12px 20px;
+    color: white;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
 }
 
 .sidebar a:hover {
-	background-color: #555;
+    background-color: #555;
 }
 
 .sidebar a.active {
@@ -55,7 +56,8 @@ body {
 
 .top-bar .badge {
 	font-size: 0.95rem;
-	padding: 10px 16px;
+    padding: 10px 16px;
+    color: #fff !important;
 }
 
 .section-box {
