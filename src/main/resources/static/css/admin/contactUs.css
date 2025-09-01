@@ -72,6 +72,47 @@ button.btn-primary {
   background-color: #c82333 !important;
 }
 
+/* ── 하단 액션 버튼 ── */
+.btn-wrapper > button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 10px;
+  margin: 0.75rem 0;
+}
+.btn-wrapper > button:nth-of-type(1) {
+  background-color: #28a745;
+  color: #fff;
+}
+.btn-wrapper > button:nth-of-type(1):hover {
+  background-color: #1e7e34;
+}
+.btn-wrapper > button:nth-of-type(2) {
+  background-color: #6c757d;
+  color: #fff;
+}
+.btn-wrapper > button:nth-of-type(2):hover {
+  background-color: #5a6268;
+}
+.btn-wrapper > button:nth-of-type(3) {
+  background-color: #dc3545; /* red */
+  color: #fff;
+}
+.btn-wrapper > button:nth-of-type(3):hover {
+  background-color: #c82333; /* darker red on hover */
+}
+
+.btn-wrapper > button:nth-of-type(4) {
+  background-color: #0d6efd; /* red */
+  color: #fff;
+}
+.btn-wrapper > button:nth-of-type(4):hover {
+  background-color: #0d6efd; /* darker red on hover */
+}
+
 /* ── 검색 바 ── */
 .container-fluid > form {
   display: flex;

@@ -95,6 +95,7 @@ public class ContactUsRestController {
         // 4. 문의 내용 저장 및 이메일 발송
         try {
             contactUsService.save(contact);
+            //관리자에서 오픈시 이메일 전송
             //emailService.sendContactUsEmail(contact, file);
             
             response.put("success", true);

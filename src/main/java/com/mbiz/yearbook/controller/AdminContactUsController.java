@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -17,12 +18,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.ContactUsService;
+import com.mbiz.yearbook.service.EmailService;
 import com.mbiz.yearbook.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
@@ -36,6 +39,9 @@ public class AdminContactUsController {
     
     @Autowired
 	private UserRepository userRepository;
+    
+    @Autowired
+    private EmailService emailService;
     
     @Autowired
     private UserService userService;
@@ -124,6 +130,35 @@ public class AdminContactUsController {
         } catch (Exception e) {
             // e.printStackTrace(); // 개발 중에는 오류 확인을 위해 로그를 남기는 것이 좋습니다.
             return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/contactUs/delete")
+    public String delete(@RequestParam(value = "ids", required = false) List<Long> ids,
+                         RedirectAttributes attrs) {
+        if (ids == null || ids.isEmpty()) {
+            attrs.addFlashAttribute("errorMessage", "Select the contactUs you want to delete.");
+        } else {
+            int count = contactUsService.deleteByIds(ids);
+            attrs.addFlashAttribute("successMessage", count + " contact(s) have been deleted.");
+        }
+        return "redirect:/admin/contactUs";
+    }
+    
+    @PostMapping("/contactUs/forwardInquiry")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> forwardInquiry(@RequestParam Long id) {
+        try {
+            // 1. ID로 DB에서 원본 문의 내용을 조회합니다.
+            ContactUs inquiry = contactUsService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Inquiry not found with id: " + id));
+
+            // 2. EmailService를 호출하여 메일을 발송합니다.
+            emailService.sendContactUsEmail(inquiry);
+            
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Inquiry forwarded successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("status", "error", "message", "Failed to forward the inquiry."));
         }
     }
 }

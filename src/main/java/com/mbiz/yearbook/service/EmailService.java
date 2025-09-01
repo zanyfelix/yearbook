@@ -1,13 +1,14 @@
 package com.mbiz.yearbook.service;
 
+import java.io.File;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.mbiz.yearbook.model.ContactUs;
 import com.mbiz.yearbook.model.User;
@@ -33,7 +34,7 @@ public class EmailService {
      * @param contact 문의 내용이 담긴 객체
      * @param file 첨부 파일
      */
-    public void sendContactUsEmail(ContactUs contact, MultipartFile file) {
+    public void sendContactUsEmail(ContactUs inquiryToForward) {
     	
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
 
@@ -50,26 +51,38 @@ public class EmailService {
             helper.setFrom(smtpAuthEmail);
             
             // 3. 답장 받을 이메일 주소 설정 (문의한 사용자의 이메일)
-            helper.setReplyTo(contact.getMail());
+            helper.setReplyTo(inquiryToForward.getMail());
 
             // 4. 메일 제목 설정
-            helper.setSubject("[Contact Us Inquiry] " + contact.getSubject());
+            helper.setSubject("[Contact Us Inquiry] " + inquiryToForward.getSubject());
 
             // 5. 메일 본문 내용 구성
             StringBuilder mailContent = new StringBuilder();
             mailContent.append("<h3>New Inquiry Received</h3>");
             mailContent.append("<hr>");
-            mailContent.append("<p><strong>School:</strong> ").append(contact.getSchoolName()).append("</p>");
-            mailContent.append("<p><strong>Name:</strong> ").append(contact.getName()).append("</p>");
-            mailContent.append("<p><strong>Email (Reply-To):</strong> ").append(contact.getMail()).append("</p>");
+            mailContent.append("<p><strong>School:</strong> ").append(inquiryToForward.getSchoolName()).append("</p>");
+            mailContent.append("<p><strong>Name:</strong> ").append(inquiryToForward.getName()).append("</p>");
+            mailContent.append("<p><strong>Email (Reply-To):</strong> ").append(inquiryToForward.getMail()).append("</p>");
             mailContent.append("<h4>Message:</h4>");
-            mailContent.append("<p style='border:1px solid #ddd; padding:10px;'>").append(contact.getMessage().replaceAll("\n", "<br>")).append("</p>");
+            mailContent.append("<p style='border:1px solid #ddd; padding:10px;'>").append(inquiryToForward.getMessage().replaceAll("\n", "<br>")).append("</p>");
             
             helper.setText(mailContent.toString(), true); // true는 HTML 형식의 메일임을 의미
 
-            // 6. 첨부 파일 추가 (파일이 있는 경우)
-            if (file != null && !file.isEmpty()) {
-                helper.addAttachment(file.getOriginalFilename(), file);
+            // ▼▼▼ 5. 첨부파일 추가 로직 ▼▼▼
+            String attachmentPath = inquiryToForward.getAttachmentPath();
+            if (attachmentPath != null && !attachmentPath.isEmpty()) {
+                File file = new File(attachmentPath);
+                if (file.exists()) {
+                    // 원본 파일명 추출 (경로에서 첫 '_' 이후의 문자열)
+                    String originalFileName = file.getName();
+                    int underscoreIndex = originalFileName.indexOf('_');
+                    if (underscoreIndex != -1) {
+                        originalFileName = originalFileName.substring(underscoreIndex + 1);
+                    }
+                    
+                    FileSystemResource fileResource = new FileSystemResource(file);
+                    helper.addAttachment(originalFileName, fileResource);
+                }
             }
 
             // 7. 메일 발송

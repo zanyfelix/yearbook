@@ -29,6 +29,7 @@ public class ContactUs {
     private String message;
 
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     private String attachmentPath; // 첨부파일 경로
     

@@ -4,6 +4,8 @@
 <%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ page import="java.time.format.DateTimeFormatter" %>
 <html lang="ko">
 <head>
 	<meta charset="UTF-8">
@@ -62,8 +64,7 @@
     	
     <form id="applyForm"
         action="${pageContext.request.contextPath}/admin/contactUs/apply"
-        method="post"
-        onsubmit="return confirm('Are you sure you want to apply the selected users?');">	
+        method="post">	
 
     <table>
       <thead>
@@ -77,7 +78,9 @@
 	      <th>SCHOOL_NAME</th>
 	      <th>SUBJECT</th>
 	      <th>MESSAGE</th>
+	      <th>RECEIVED_Time</th>
 	      <th>STATUS</th>
+	      <th>REPLIED_Time</th>
 	    </tr>
       </thead>
       <tbody>
@@ -96,6 +99,7 @@
              class="btn-open-detail"
              data-bs-toggle="modal"
              data-bs-target="#contactModal"
+             data-id="${item.id}"
              data-user="${fn:escapeXml(item.name)}"
              data-mail="${fn:escapeXml(item.mail)}"
              data-schoolName="${fn:escapeXml(item.schoolName)}"
@@ -107,14 +111,21 @@
 		       >
 		    Open</a>
 		    </td>
+		    <td>${item.createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}</td>
             <td>${item.status}</td>
+            <td>
+            	<c:if test="${not empty item.status}">
+            	${item.updatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}
+            	</c:if>
+           </td>
           </tr>
         </c:forEach>
       </tbody>
     </table>
 
     <div class="btn-wrapper">
-		<button id="btn-apply" type="submit">APPLY</button>
+		<button id="btn-apply" type="button">APPLY</button>
+		<button id="btn-delete" type="button">DELETE</button>
 	</div>
     </form>
     
@@ -161,6 +172,7 @@
 	                aria-label="Close"></button>
 	      </div>
 	      <div class="modal-body">
+	      	<input type="hidden" id="modalContactId">
 	        <p><strong>Name:</strong> <span id="modalUser"></span></p>
 	        <p><strong>Email:</strong> <span id="modalEmail"></span></p>
 	        <p><strong>Subject:</strong> <span id="modalSubject"></span></p>
@@ -177,6 +189,7 @@
 	      </div>
 	      <div class="modal-footer">
 	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+	        <button type="button" id="forwardInquiryBtn" class="btn btn-primary">Forward to Admin</button>
 	      </div>
 	    </div>
 	  </div>
