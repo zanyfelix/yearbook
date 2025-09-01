@@ -37,8 +37,7 @@ public class ContactUsRestController {
     @Autowired
     private EmailService emailService;
     
-    @Value("${file.path.thumbnail}")
-    private String uploadPath;
+    private final String UPLOAD_DIR = "upload/";
 
     @PostMapping("/contactUs/submit")
     public ResponseEntity<Map<String, Object>> submitForm(
@@ -82,7 +81,7 @@ public class ContactUsRestController {
         if (file != null && !file.isEmpty()) {
             try {
                 String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-                Path filepath = Paths.get(uploadPath, filename);
+                Path filepath = Paths.get(UPLOAD_DIR, filename);
                 Files.createDirectories(filepath.getParent());
                 Files.write(filepath, file.getBytes());
                 contact.setAttachmentPath("/" + filepath.toString().replace("\\", "/"));
@@ -96,7 +95,7 @@ public class ContactUsRestController {
         // 4. 문의 내용 저장 및 이메일 발송
         try {
             contactUsService.save(contact);
-            emailService.sendContactUsEmail(contact, file);
+            //emailService.sendContactUsEmail(contact, file);
             
             response.put("success", true);
             response.put("message", "Your inquiry has been successfully submitted.");

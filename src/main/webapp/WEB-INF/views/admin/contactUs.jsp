@@ -38,7 +38,7 @@
 	<div class="container-fluid">
     
 		<!-- 검색 바 -->
-	    <form method="get" action="${pageContext.request.contextPath}/admin/user">
+	    <form method="get" action="${pageContext.request.contextPath}/admin/contactUs">
 	      <select name="type">
 	        <option value="name" ${type=='name'? 'selected':''}>NAME</option>
 	        <option value="schoolName" ${type=='schoolName'? 'selected':''}>SCHOOL_NAME</option>
@@ -100,8 +100,13 @@
              data-mail="${fn:escapeXml(item.mail)}"
              data-schoolName="${fn:escapeXml(item.schoolName)}"
              data-subject="${fn:escapeXml(item.subject)}"
-             data-message="${fn:escapeXml(item.message)}">
-            Open</a></td>
+             data-message="${fn:escapeXml(item.message)}"
+             <c:if test="${not empty item.attachmentPath}">
+           		data-attachment-path="${fn:escapeXml(item.attachmentPath)}"
+		       </c:if>
+		       >
+		    Open</a>
+		    </td>
             <td>${item.status}</td>
           </tr>
         </c:forEach>
@@ -162,6 +167,13 @@
 	        <hr>
 	        <strong>Message:</strong>
 	        <pre id="modalMessage" style="white-space: pre-wrap; margin:0;"></pre>
+	        
+			<%-- ▼▼▼ 첨부파일 표시 영역 추가 ▼▼▼ --%>
+		    <div id="modalAttachmentWrapper" style="display: none; margin-top: 15px;">
+		        <hr>
+		        <strong>Attachment:</strong>
+		        <a href="#" id="modalAttachmentLink" download></a>
+		    </div>
 	      </div>
 	      <div class="modal-footer">
 	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
