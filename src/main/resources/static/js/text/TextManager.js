@@ -15,7 +15,7 @@ class TextManager {
         
         $('#frame-container').append(textBox);
         this.setTextBoxPosition(textBox, param);
-        this.saveTextBoxData(textBox, textStyles, selectedFont);
+        this.saveTextBoxData(textBox, textStyles, selectedFont, param);
         
         EventManager.setupTextEvents(textBox);
         window.selectionManager.selectTextBox(textBox);
@@ -101,19 +101,24 @@ class TextManager {
     }
     
     // 텍스트박스 데이터 저장
-    static saveTextBoxData(textBox, styles, selectedFont) {
-        const baseFontSize = styles['font-size'].replace('px', '');
-        textBox.data('originalFontSize', baseFontSize + 'px');
-        textBox.data('savedFontSize', styles['font-size']);
-        textBox.data('savedFontFamily', selectedFont);
-        
-        const bg = $('#page-preview-img');
-        const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-        
-        if (actualBgRect) {
-            const relativeState = this.calculateRelativeState(textBox, actualBgRect);
-            textBox.data('relativeState', relativeState);
-        }
+    static saveTextBoxData(textBox, styles, selectedFont, param) {
+		// param으로 넘어온 'Title', 'Sub-Title' 등을 이용해 순수 기본 크기를 가져옵니다.
+		const baseFontSize = this.getBaseFontSize(param);
+
+		// 'data-base-font-size'에 순수 숫자인 기본 크기를 저장합니다.
+		textBox.data('base-font-size', baseFontSize);
+
+		// 화면에 표시될 scaled 폰트 크기를 별도로 저장합니다.
+		textBox.data('savedFontSize', styles['font-size']);
+		textBox.data('savedFontFamily', selectedFont);
+
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+		if (actualBgRect) {
+			const relativeState = this.calculateRelativeState(textBox, actualBgRect);
+			textBox.data('relativeState', relativeState);
+		}
     }
     
     // UI 컨트롤 업데이트

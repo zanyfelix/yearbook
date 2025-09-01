@@ -47,11 +47,14 @@ $(document).ready(function() {
 		};
 
 		if ($element.hasClass('text-box')) {
-			const baseFontSizeStr = $element.data('savedFontSize') || '12px';
-			const fontSize = parseInt(baseFontSizeStr, 10);
+			// ✅ [핵심 수정] 'savedFontSize'(계산된 px값) 대신 'base-font-size'(순수 숫자)를 읽습니다.
+			const baseFontSize = $element.data('base-font-size') || 12;
 			const scaleRatio = baseRect.width / 786;
-			const adjustedFontSize = Math.max(8, Math.round(fontSize * scaleRatio));
+			const adjustedFontSize = Math.max(8, Math.round(baseFontSize * scaleRatio));
 			finalCss['font-size'] = adjustedFontSize + 'px';
+
+			// 계산된 최종 px값은 참고용으로 'savedFontSize'에 저장해 둘 수 있습니다.
+			$element.data('savedFontSize', finalCss['font-size']);
 		}
 
 		$element.css(finalCss);
@@ -263,7 +266,14 @@ $(document).ready(function() {
 					height: (boxH / actualBgRect.height) * 100
 				},
 				transform: boxTransform,
-				styles: { /* ... 기존 스타일 저장 로직 ... */ }
+				styles: {
+					color: $box.css('color'),
+					// ✅ [핵심 수정] 계산된 px값이 아닌, 저장해둔 '기본' 폰트 크기를 저장합니다.
+					fontSize: $box.data('base-font-size') || 12, // 숫자 형태로 저장
+					fontWeight: $box.css('font-weight'),
+					textAlign: $box.css('text-align'),
+					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
+				}
 			});
 		});
 
@@ -582,9 +592,17 @@ $(document).ready(function() {
 			// ✅ [핵심 수정] 텍스트박스 복원 로직 (단순화 및 안정화)
 			if (design.textBoxes) {
 				design.textBoxes.forEach(boxData => {
+					const initialStyles = {
+						position: 'absolute',
+						zIndex: 100,
+						color: boxData.styles.color,
+						fontWeight: boxData.styles.fontWeight,
+						textAlign: boxData.styles.textAlign,
+						fontFamily: boxData.styles.fontFamily
+					};
 					const $box = $('<div class="text-box" contenteditable="true"></div>')
 						.html(boxData.html)
-						.css({ position: 'absolute', zIndex: 100, ...boxData.styles });
+						.css(initialStyles);
 
 					$('#frame-container').append($box);
 					EventManager.setupTextEvents($box);
@@ -597,7 +615,8 @@ $(document).ready(function() {
 						transformOrigin: boxData.transformOrigin || '50% 50%'
 					};
 					$box.data('relativeState', relativeState);
-					$box.data('savedFontSize', boxData.styles.fontSize);
+					// ✅ [핵심 수정] JSON에 저장된 '기본' 폰트 크기를 data 속성에 저장합니다.
+					$box.data('base-font-size', boxData.styles.fontSize);
 					$box.data('savedFontFamily', boxData.styles.fontFamily);
 
 					// 통합된 업데이트 함수를 호출하여 위치/크기/회전을 한 번에 적용
