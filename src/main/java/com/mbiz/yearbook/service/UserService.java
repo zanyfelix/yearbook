@@ -75,17 +75,6 @@ public class UserService {
     	user.setModifiedAt(LocalDateTime.now());
     	user.setPassword(user.getPassword().toLowerCase());
     	userRepository.save(user);
-    	
-    	//사용자 생성시 home 화면 메인 생성
-    	Home newUser = new Home();
-    	newUser.setDisplayOrder(0);
-    	newUser.setIsActive(true);
-    	newUser.setCreatedAt(LocalDateTime.now());
-    	newUser.setUpdatedAt(LocalDateTime.now());
-    	newUser.setType("main");
-    	newUser.setUserId(user.getId());
-    	homeRepository.save(newUser);
-    	
     }
     
     @Transactional
