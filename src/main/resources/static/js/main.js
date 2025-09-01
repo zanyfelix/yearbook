@@ -288,13 +288,14 @@ $(document).ready(function() {
 			}
 
 			// ✅ [핵심 수정] 텍스트박스 복원 로직 개선
+			// main.js의 renderPage 함수 내 텍스트박스 복원 부분 수정
+
+			// 텍스트박스 복원 로직 - 수정된 버전
 			if (design.textBoxes) {
 				console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
 
 				design.textBoxes.forEach((boxData, index) => {
 					try {
-						console.log(`텍스트박스 ${index} 데이터:`, boxData);
-
 						const bg = $('#page-preview-img');
 						const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 
@@ -304,25 +305,36 @@ $(document).ready(function() {
 							return;
 						}
 
-						// 텍스트박스 생성
 						const $box = $('<div class="text-box" contenteditable="true"></div>')
 							.html(boxData.html);
 
 						$('#frame-container').append($box);
 
-						// 위치와 크기 계산 (안전한 기본값)
+						// 위치와 크기 계산
 						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
 						const pixelTop = Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
 						const pixelWidth = Math.max(50, (boxData.size?.width || 20) / 100 * actualBgRect.width);
 						const pixelHeight = Math.max(30, (boxData.size?.height || 10) / 100 * actualBgRect.height);
 
-						// ✅ [핵심 수정] 폰트 크기 처리 개선
-						const baseFontSize = boxData.styles?.fontSize || 12;
+						// 기본 폰트 크기 결정 (저장된 값 우선, 없으면 추정)
+						let baseFontSize = boxData.styles?.fontSize || 12;
+						let textType = boxData.textType || 'text';
+
+						// 타입 추정 로직 (저장된 데이터에 타입이 없는 경우)
+						if (!boxData.textType) {
+							if (baseFontSize === 24) {
+								textType = 'Title';
+							} else if (baseFontSize === 16) {
+								textType = 'Sub-Title';
+							} else {
+								textType = 'text';
+							}
+						}
+
+						// 화면 비율에 따른 폰트 크기 스케일링
 						const TEMPLATE_WEB_BG_WIDTH = 786;
 						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 						const adjustedFontSize = Math.max(8, Math.round(baseFontSize * scaleRatio));
-
-						console.log(`폰트 크기 복원: base=${baseFontSize}, scaled=${adjustedFontSize}`);
 
 						// 스타일 적용
 						$box.css({
@@ -343,10 +355,9 @@ $(document).ready(function() {
 							'opacity': '1'
 						});
 
-						// Transform 적용 (안전한 방식)
+						// Transform 적용
 						if (boxData.transform && boxData.transform !== 'none') {
 							try {
-								console.log('Transform 적용:', boxData.transform);
 								$box.css({
 									'transform': boxData.transform,
 									'transform-origin': boxData.transformOrigin || '50% 50%'
@@ -356,7 +367,7 @@ $(document).ready(function() {
 							}
 						}
 
-						// ✅ [핵심 수정] 데이터 속성 통일
+						// 데이터 속성 설정
 						$box.data('relativeState', {
 							position: boxData.position || { left: 10, top: 10 },
 							size: boxData.size || { width: 20, height: 10 },
@@ -364,14 +375,14 @@ $(document).ready(function() {
 							transformOrigin: boxData.transformOrigin || '50% 50%'
 						});
 
-						// 모든 폰트 관련 데이터를 base-font-size로 통일
+						// 중요: 기본 크기를 원본 크기(스케일링 전)로 저장
 						$box.data('base-font-size', baseFontSize);
+						$box.data('text-type', textType);
 						$box.data('savedFontFamily', boxData.styles?.fontFamily || 'Arial');
 
-						// 이벤트 설정
 						EventManager.setupTextEvents($box);
 
-						console.log('텍스트박스 복원 완료');
+						console.log(`텍스트박스 ${index} 복원 완료 - 타입: ${textType}, 기본 크기: ${baseFontSize}px, 표시 크기: ${adjustedFontSize}px`);
 						checkCompletion();
 
 					} catch (error) {
@@ -693,15 +704,28 @@ $(document).ready(function() {
 			const boxH = $box.outerHeight();
 
 			// base-font-size를 우선 사용하고, 없으면 CSS에서 역계산
-			let baseFontSize = $box.data('base-font-size');
+			const baseFontSize = $box.data('base-font-size') || 12;
+			const textType = $box.data('text-type') || 'text';
+
 			if (!baseFontSize) {
+				// fallback: CSS에서 역계산하되, 저장된 배경 너비 활용
 				const currentCssSize = parseInt($box.css('font-size'));
-				const scaleRatio = actualBgRect.width / 786;
-				baseFontSize = Math.round(currentCssSize / scaleRatio);
+				const savedBgWidth = $box.data('saved-bg-width');
+
+				if (savedBgWidth) {
+					// 저장 시점의 배경 너비 기준으로 역계산
+					const scaleRatio = savedBgWidth / 786;
+					baseFontSize = Math.round(currentCssSize / scaleRatio);
+				} else {
+					// 현재 배경 기준으로 역계산 (fallback)
+					const scaleRatio = actualBgRect.width / 786;
+					baseFontSize = Math.round(currentCssSize / scaleRatio);
+				}
 			}
 
 			designData.textBoxes.push({
 				html: $box.html(),
+				textType: textType, // ✅ 타입 정보 저장
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 					top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
@@ -714,7 +738,7 @@ $(document).ready(function() {
 				transformOrigin: $box.css('transform-origin') || '50% 50%',
 				styles: {
 					color: $box.css('color'),
-					fontSize: baseFontSize, // 숫자 형태로 저장
+					fontSize: baseFontSize,
 					fontWeight: $box.css('font-weight'),
 					textAlign: $box.css('text-align'),
 					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()

@@ -51,54 +51,36 @@ class SelectionManager {
 		this.selectedMode = 'text';
 		this.currentTextBox = textBox;
 
-		// 전역 변수 동기화
 		window.selectedBox = textBox;
 
 		textBox.addClass('selected');
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 
-		// ✅ [핵심 수정] 통합된 폰트 크기 관리
-		// 1. base-font-size가 우선, 없으면 현재 CSS에서 추출
-		let baseFontSize = textBox.data('base-font-size');
+		// ✅ 핵심 수정: 텍스트 타입 기반 고정 크기 표시
+		const textType = textBox.data('text-type');
+		const baseFontSize = textType && TextManager.TEXT_TYPE_SIZES[textType]
+			? TextManager.TEXT_TYPE_SIZES[textType]  // 타입별 고정 크기 사용
+			: (textBox.data('base-font-size') || 12); // fallback
 
-		if (!baseFontSize) {
-			// CSS 폰트 크기에서 기본 크기 역계산
-			const currentCssSize = parseInt(textBox.css('font-size'));
-			const bg = $('#page-preview-img');
-			const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-
-			if (actualBgRect) {
-				const TEMPLATE_WEB_BG_WIDTH = 786;
-				const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-				baseFontSize = Math.round(currentCssSize / scaleRatio);
-			} else {
-				baseFontSize = currentCssSize;
-			}
-
-			// 계산된 기본 크기를 저장
-			textBox.data('base-font-size', baseFontSize);
-		}
-
-		// 2. 다른 스타일 속성들 가져오기
+		// 다른 스타일 속성들 가져오기
 		const currentFontFamily = textBox.data('savedFontFamily') ||
 			textBox.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
 		const currentTextAlign = textBox.css('text-align');
 		const currentColor = textBox.css('color');
 
-		// 3. 툴바에 값들 설정 (약간 지연시켜 DOM 업데이트 보장)
+		// ✅ 툴팁에 고정 크기 설정
 		setTimeout(() => {
-			$('#tooltip-size').val(baseFontSize);
+			$('#tooltip-size').val(baseFontSize); // 항상 고정 크기 표시
 			$('#tooltip-font').val(currentFontFamily);
 			$('#tooltip-align').val(currentTextAlign || 'left');
 
-			// 색상은 hex로 변환
 			if (typeof rgbToHex === "function") {
 				$('#tooltip-color').val(rgbToHex(currentColor));
 			}
 		}, 50);
 
-		// 4. 리사이즈 이벤트 바인딩
+		// 리사이즈 이벤트 바인딩
 		textBox.on('resize.selection', () => {
 			if (textBox.hasClass('selected')) {
 				this.addTextRotationHandle(textBox);
