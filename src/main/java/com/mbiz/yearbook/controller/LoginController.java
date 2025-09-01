@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.mbiz.yearbook.exception.InvalidPasswordException;
+import com.mbiz.yearbook.exception.UserNotFoundException;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.service.UserService;
 
@@ -41,8 +43,14 @@ public class LoginController {
 			} else {
 				return "redirect:/home?id=" + user.getId(); // 일반 사용자
 			}
-		} catch (Exception e) {
-			model.addAttribute("error", e.getMessage());
+		} catch (UserNotFoundException e) { // 아이디가 없을 때 처리
+			model.addAttribute("error", "No user found");
+			return "login";
+		} catch (InvalidPasswordException e) { // 비밀번호가 틀렸을 때 처리
+			model.addAttribute("error", "Please check the password");
+			return "login";
+		} catch (Exception e) { // 그 외 모든 예외 처리
+			model.addAttribute("error", "An unexpected error occurred.");
 			return "login";
 		}
 	}

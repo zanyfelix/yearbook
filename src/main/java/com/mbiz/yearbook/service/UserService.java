@@ -8,7 +8,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import com.mbiz.yearbook.model.Home;
+import com.mbiz.yearbook.exception.InvalidPasswordException;
+import com.mbiz.yearbook.exception.UserNotFoundException;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.HomeRepository;
 import com.mbiz.yearbook.repository.UserRepository;
@@ -50,14 +51,14 @@ public class UserService {
     	User user = userRepository.findByUserId(userId)
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("no user"));
+                .orElseThrow(() -> new UserNotFoundException("No user found"));
     	
         if (!user.isActive()) {
             throw new IllegalStateException("access to the system has been restricted by an administrator");
         }
 
         if (!user.getPassword().equals(password)) {
-            throw new IllegalArgumentException("password is false");
+            throw new InvalidPasswordException("Please check the password"); // [수정됨]
         }
 
         return user;
