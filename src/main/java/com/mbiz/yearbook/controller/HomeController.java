@@ -91,10 +91,10 @@ public class HomeController {
 	    model.addAttribute("groupProgress", groupProgress);
 	    model.addAttribute("eventProgress", eventProgress);
 	    
-	    Home guidanceHome = homeRepository.findByUserIdAndType(loginUser.getId(),"main").get(0);
+	    Home guidanceHome = homeRepository.findByType("main").get(0);
 	    model.addAttribute("guidanceHome", guidanceHome);
 	    
-	    List<Home> homeList = homeRepository.findByUserIdAndType(id, "content");
+	    List<Home> homeList = homeRepository.findByUserId(id);
 	    model.addAttribute("homeList", homeList);
 	    
 	    model.addAttribute("currentMenu", "home");

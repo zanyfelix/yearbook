@@ -12,5 +12,5 @@ import com.mbiz.yearbook.model.Home;
 public interface HomeRepository extends JpaRepository<Home, Long> {
 	
 	List<Home> findByUserId(Long userId);
-	List<Home> findByUserIdAndType(Long userId, String type);
+	List<Home> findByType(String type);
 }

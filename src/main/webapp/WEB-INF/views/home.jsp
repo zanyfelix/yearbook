@@ -53,10 +53,12 @@
 
 	<c:forEach var="item" items="${homeList}" varStatus="st">
 		<c:if test="${item.isActive eq true}">
-			<div class="section-box">
-		        <h5>${item.title}</h5>
-		        <textarea class="auto-resize-textarea" disabled>${item.description}</textarea>
-		    </div>
+			<c:if test="${item.type eq 'content'}">
+				<div class="section-box">
+			        <h5>${item.title}</h5>
+			        <textarea class="auto-resize-textarea" disabled>${item.description}</textarea>
+			    </div>
+			</c:if>
 		</c:if>
 	</c:forEach>
     

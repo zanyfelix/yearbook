@@ -67,8 +67,9 @@ public class AdminHomeController {
 	    
 	    List<Home> homeList = homeRepository.findByUserId(userId);
 	    model.addAttribute("homeList", homeList);
-	    //메인은 사용자별 1개
-	    List<Home> mainList = homeRepository.findByUserIdAndType(userId, "main");
+	    
+	    //메인은 공통
+	    List<Home> mainList = homeRepository.findByType("main");
 	    
 	    if(mainList.size() > 0) {
 	    	model.addAttribute("main", mainList.get(0));
