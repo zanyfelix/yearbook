@@ -52,23 +52,28 @@ public class AdminYearbookController {
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
 		
 		User loginUser = (User) session.getAttribute("loginUser");
-	    model.addAttribute("loginUser", loginUser);
+        if (loginUser == null) {
+            return "redirect:/login"; // Redirect to login if no user is logged in
+        }
+        model.addAttribute("loginUser", loginUser);
 	    
 	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
 		
-	    if (userId == null) {
-	        List<User> users = userRepository.findByRole("user");
-	        model.addAttribute("users", users);
-	        //사용자 id 값 없을 경우 첫번째 보여준다.
-	        userId = users.get(0).getId();
-	    } else {
-	        userRepository.findById(userId).ifPresent(user -> model.addAttribute("users", List.of(user)));
-	    }
+	    List<User> users;
+        if (userId == null) {
+            // Show all non-admin users when userId is null (for "All" option)
+            users = userRepository.findByRole("user");
+        } else {
+            // Show only the selected user
+            users = userRepository.findById(userId)
+                .map(user -> List.of(user))
+                .orElse(List.of());
+        }
+        model.addAttribute("users", users);
 	    
 	    model.addAttribute("id", id);
 	    model.addAttribute("userId", userId);
-	    
 	    model.addAttribute("currentMenu", "yearbook");
 
 	    return "admin/yearbook";
