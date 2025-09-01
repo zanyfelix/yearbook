@@ -107,11 +107,8 @@ class TextManager {
 		// param으로 넘어온 'Title', 'Sub-Title' 등을 이용해 순수 기본 크기를 가져옵니다.
 		const baseFontSize = this.getBaseFontSize(param);
 
-		// 'data-base-font-size'에 순수 숫자인 기본 크기를 저장합니다.
+		// ✅ [핵심 수정] 모든 폰트 크기 관련 데이터를 통일
 		textBox.data('base-font-size', baseFontSize);
-
-		// 화면에 표시될 scaled 폰트 크기를 별도로 저장합니다.
-		textBox.data('savedFontSize', styles['font-size']);
 		textBox.data('savedFontFamily', selectedFont);
 
 		const bg = $('#page-preview-img');
@@ -190,16 +187,30 @@ class TextManager {
         const selectedBox = DataLoader.getCurrentSelectedTextBox();
         if (!selectedBox || selectedBox.length === 0) return;
         
-        selectedBox.css('font-size', fontSize);
-        selectedBox.data('savedFontSize', fontSize);
-        selectedBox.data('originalFontSize', fontSize);
-        selectedBox[0].style.setProperty('font-size', fontSize, 'important');
-        
-        this.resizeTextBox(selectedBox, fontSize);
-        
-        if (selectedBox.hasClass('selected')) {
-            selectedBox.trigger('resize');
-        }
+		// ✅ [핵심 수정] 숫자 값으로 통일하고 base-font-size에 저장
+		const numericSize = parseInt(fontSize);
+		selectedBox.data('base-font-size', numericSize);
+
+		// 현재 화면 크기에 맞춰 스케일링된 폰트 적용
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+		let scaledFontSize;
+		if (actualBgRect) {
+			const TEMPLATE_WEB_BG_WIDTH = 786;
+			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+			scaledFontSize = Math.round(numericSize * scaleRatio);
+		} else {
+			scaledFontSize = numericSize;
+		}
+
+		selectedBox.css('font-size', scaledFontSize + 'px');
+
+		this.resizeTextBox(selectedBox, scaledFontSize + 'px');
+
+		if (selectedBox.hasClass('selected')) {
+			selectedBox.trigger('resize');
+		}
         
         setTimeout(() => this.updateTextBoxState(selectedBox), 50);
     }

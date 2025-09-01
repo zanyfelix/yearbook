@@ -8,58 +8,60 @@ $(document).ready(function() {
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
 
-	// ▼▼▼▼▼ 로딩 화면 제어 함수 추가 ▼▼▼▼▼
+	// 로딩 화면 제어 함수
 	const $loader = $('#preview-loader');
 	function showLoader() { $loader.show(); }
 	function hideLoader() { $loader.hide(); }
-	// ▲▲▲▲▲ 로딩 화면 제어 함수 추가 ▲▲▲▲▲
 
 	// 전역 함수 래핑 (기존 코드 호환성)
 	window.clearSelection = () => window.selectionManager.clearSelection();
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
 
-	// ✅ [로직 유지] 기존 updateElementPosition 함수를 그대로 사용합니다.
+	// updateElementPosition 함수 (기존과 동일)
 	window.updateElementPosition = function($element, state) {
-		const relativeState = state || $element.data('relativeState');
-		if (!relativeState || !relativeState.position || !relativeState.size) return;
+		const relativeState = $element.data('relativeState');
+		if (!relativeState) return;
 
-		let baseRect, baseOffset = { left: 0, top: 0 };
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
 
-		if ($element.hasClass('uploaded-photo')) {
-			const $frame = $element.closest('.frame-group');
-			if (!$frame.length) return;
-			baseRect = { width: $frame.width(), height: $frame.height() };
-		} else {
-			const bg = $('#page-preview-img');
-			baseRect = window.safeLineManager.getActualImagePosition(bg);
-			if (!baseRect) return;
-			baseOffset = { left: baseRect.left, top: baseRect.top };
-		}
+		const currentTransform = $element.css('transform');
+		$element.css('transform', 'none');
 
-		const finalCss = {
-			left: (relativeState.position.left / 100) * baseRect.width + baseOffset.left,
-			top: (relativeState.position.top / 100) * baseRect.height + baseOffset.top,
-			width: (relativeState.size.width / 100) * baseRect.width,
-			height: (relativeState.size.height / 100) * baseRect.height,
-			transform: relativeState.transform || 'none',
-			'transform-origin': relativeState.transformOrigin || '50% 50%'
+		const newPixelPos = {
+			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
+			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
 		};
 
+		const newPixelSize = {
+			width: (relativeState.size.width / 100) * actualBgRect.width,
+			height: (relativeState.size.height / 100) * actualBgRect.height
+		};
+
+		const finalCss = {
+			left: newPixelPos.left,
+			top: newPixelPos.top,
+			width: newPixelSize.width,
+			height: newPixelSize.height,
+			transform: relativeState.transform || 'none'
+		};
+
+		// 텍스트 박스 스타일 복원 (font-size 스케일링)
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
-			const TEMPLATE_WEB_BG_WIDTH = 786; // 템플릿 기준 너비
-			const scaleRatio = baseRect.width / TEMPLATE_WEB_BG_WIDTH;
-
-			// 스케일 비율을 더 정확하게 계산
+			const TEMPLATE_WEB_BG_WIDTH = 786;
+			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 			const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
-
 			finalCss['font-size'] = adjustedFontSize + 'px';
-
-			// 폰트 크기 외 다른 스타일도 복원
 			if ($element.data('savedFontFamily')) {
 				finalCss['font-family'] = $element.data('savedFontFamily');
 			}
+		}
+
+		if (relativeState.transformOrigin) {
+			finalCss['transform-origin'] = relativeState.transformOrigin;
 		}
 
 		$element.css(finalCss);
@@ -69,7 +71,7 @@ $(document).ready(function() {
 		}
 	};
 
-	// ✅ [로직 유지] 기존 updateTextBoxPosition 함수를 그대로 사용합니다.
+	// updateTextBoxPosition 함수 (기존과 동일)
 	window.updateTextBoxPosition = function($element) {
 		const relativeState = $element.data('relativeState');
 		if (!relativeState) return;
@@ -110,7 +112,7 @@ $(document).ready(function() {
 		}
 	};
 
-	// ✅ [로직 유지] 기존 updateAllPositions 함수를 그대로 사용합니다.
+	// updateAllPositions 함수 (기존과 동일)
 	window.updateAllPositions = function() {
 		$('#frame-container .frame-group').each(function() {
 			window.updateElementPosition($(this));
@@ -121,17 +123,447 @@ $(document).ready(function() {
 			window.updateTextBoxPosition($(this));
 		});
 	}
-	// ✨ =======================================================================
 
-	// ✨ --- 핵심 수정: Edit 버튼 클릭 시 데이터 로드를 먼저 수행합니다. --- ✨
+	// ✅ [핵심 수정] 전역 함수들을 밖으로 이동 - 중복 제거
+
+	// 기본 배경 이미지 로드 함수
+	function loadDefaultBackground() {
+		const defaultBgPath = `${ctx}/images/background.png`;
+		const bgImg = $('#page-preview-img');
+		bgImg.off('load error');
+
+		bgImg.one('load', function() {
+			console.log('기본 배경 로드 완료');
+			setTimeout(() => {
+				if (window.safeLineManager) {
+					window.safeLineManager.update();
+				}
+			}, 150);
+		});
+
+		bgImg.attr('src', defaultBgPath);
+
+		if (bgImg[0].complete) {
+			bgImg.trigger('load');
+		}
+	}
+
+	// 저장 시간 표시 함수
+	function displayLastSaveTime(lastSaved) {
+		const savedDate = new Date(lastSaved);
+		const year = savedDate.getFullYear();
+		const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
+		const day = savedDate.getDate().toString().padStart(2, '0');
+
+		let hours = savedDate.getHours();
+		const minutes = savedDate.getMinutes().toString().padStart(2, '0');
+		const ampm = hours >= 12 ? 'PM' : 'AM';
+
+		hours = hours % 12;
+		hours = hours ? hours : 12;
+
+		const formattedDate = `${year}.${month}.${day}`;
+		const formattedTime = `${hours}:${minutes}${ampm}`;
+		const message = `The Page has been saved.${formattedDate} ${formattedTime}`;
+
+		$('#save-confirmation-message').html(message).show();
+	}
+
+	// 강력한 완전 초기화 함수
+	function forceCompleteReset() {
+		console.log('=== 강력한 완전 초기화 시작 ===');
+
+		// Step 1: 모든 DOM 요소 강제 제거
+		$('#frame-container').empty().html('');
+		$('#page-preview').find('.frame-group, .text-box, .photo-selection-box, .rotate-handle, .rotate-line, .selection-handle, .element-resize-handle, #photo-full-overlay, .photo-silhouette').remove();
+
+		// Step 2: 모든 이벤트 리스너 완전 해제
+		$(document).off('.photoDrag .photoRotate .photoResize .frameDrag .elementDrag .textDrag');
+		$('#frame-container').off();
+		$('.frame-group, .uploaded-photo, .text-box').off();
+
+		// Step 3: 전역 변수 완전 초기화
+		window.selectedFrame = null;
+		window.selectedPhotoWrapper = null;
+		window.selectedBox = null;
+		hasSaved = false;
+
+		// Step 4: 매니저 인스턴스들 완전 초기화
+		if (window.selectionManager) {
+			window.selectionManager.selectedMode = null;
+			window.selectionManager.currentFrame = null;
+			window.selectionManager.currentPhoto = null;
+			window.selectionManager.currentElement = null;
+			window.selectionManager.currentTextBox = null;
+			window.selectionManager.photoOverlay = null;
+			window.selectionManager.safeConstraintsCache = null;
+		}
+
+		if (window.safeLineManager) {
+			window.safeLineManager.safeConstraintsCache = null;
+			$('#safe-line-overlay').remove();
+			window.safeLineManager.createContainer();
+		}
+
+		// Step 5: PhotoManager 완전 정리
+		if (typeof PhotoManager !== 'undefined') {
+			PhotoManager.photoOverlay = null;
+			PhotoManager.removeSelectionUI();
+			PhotoManager.hideOverlay();
+		}
+
+		// Step 6: UI 상태 완전 초기화
+		$('#save-confirmation-message').hide().empty();
+		$('#frame-controls, #photo-controls, #text-controls, #element-controls').addClass('d-none');
+		$('#editor-toolbar .context-controls > div').addClass('d-none');
+
+		// Step 7: 패널 상태 강제 초기화
+		$('#btn-background, #btn-photo-frame, #btn-textbox-frame, #btn-text, #btn-element').removeClass('active');
+		$('#background-panel, #frame-panel, #text-panel, #element-panel').addClass('d-none');
+		$('#photoFrameList, #textboxFrameList').addClass('d-none');
+
+		$('#btn-background').addClass('active');
+		$('#background-panel').removeClass('d-none');
+
+		// Step 8: CSS 스타일 강제 정리
+		$('*').removeClass('selected-frame selected-photo selected editing dragging selected-element selected-thumbnail');
+
+		// Step 9: 배경 이미지 강제 초기화
+		const $bgImg = $('#page-preview-img');
+		$bgImg.off('.render .defaultBg');
+
+		// Step 10: 입력 요소 초기화
+		$('#image-upload-input').val('').removeData();
+
+		console.log('=== 강력한 완전 초기화 완료 ===');
+	}
+
+	// ✅ [핵심 수정] renderPage 함수 구조 개선 - 내부 함수 최소화
+	function renderPage(pageData, onComplete) {
+		forceCompleteReset();
+
+		if (!pageData || !pageData.designData) {
+			loadDefaultBackground();
+			if (typeof onComplete === 'function') setTimeout(onComplete, 200);
+			return;
+		}
+
+		let design;
+		try {
+			design = JSON.parse(pageData.designData);
+		} catch (e) {
+			console.error('JSON 파싱 에러:', e);
+			loadDefaultBackground();
+			if (typeof onComplete === 'function') setTimeout(onComplete, 200);
+			return;
+		}
+
+		const bgImg = $('#page-preview-img');
+
+		// ✅ renderElements는 design 객체에 접근해야 하므로 내부에 유지
+		function renderElements() {
+			const totalFrames = design.frames?.length || 0;
+			const totalTextBoxes = design.textBoxes?.length || 0;
+			let renderedCount = 0;
+			const totalElements = totalFrames + totalTextBoxes;
+
+			function checkCompletion() {
+				renderedCount++;
+				if (renderedCount >= totalElements) {
+					if (typeof onComplete === 'function') onComplete();
+				}
+			}
+
+			if (totalElements === 0) {
+				if (typeof onComplete === 'function') onComplete();
+				return;
+			}
+
+			// 프레임 렌더링
+			if (design.frames) {
+				design.frames.forEach(frameData => {
+					FrameManager.applyFrame(frameData.theme, frameData);
+					checkCompletion();
+				});
+			}
+
+			// ✅ [핵심 수정] 텍스트박스 복원 로직 개선
+			if (design.textBoxes) {
+				console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
+
+				design.textBoxes.forEach((boxData, index) => {
+					try {
+						console.log(`텍스트박스 ${index} 데이터:`, boxData);
+
+						const bg = $('#page-preview-img');
+						const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+						if (!actualBgRect) {
+							console.error('배경 이미지 정보를 가져올 수 없음');
+							checkCompletion();
+							return;
+						}
+
+						// 텍스트박스 생성
+						const $box = $('<div class="text-box" contenteditable="true"></div>')
+							.html(boxData.html);
+
+						$('#frame-container').append($box);
+
+						// 위치와 크기 계산 (안전한 기본값)
+						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
+						const pixelTop = Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
+						const pixelWidth = Math.max(50, (boxData.size?.width || 20) / 100 * actualBgRect.width);
+						const pixelHeight = Math.max(30, (boxData.size?.height || 10) / 100 * actualBgRect.height);
+
+						// ✅ [핵심 수정] 폰트 크기 처리 개선
+						const baseFontSize = boxData.styles?.fontSize || 12;
+						const TEMPLATE_WEB_BG_WIDTH = 786;
+						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+						const adjustedFontSize = Math.max(8, Math.round(baseFontSize * scaleRatio));
+
+						console.log(`폰트 크기 복원: base=${baseFontSize}, scaled=${adjustedFontSize}`);
+
+						// 스타일 적용
+						$box.css({
+							'position': 'absolute',
+							'z-index': 100,
+							'left': pixelLeft + 'px',
+							'top': pixelTop + 'px',
+							'width': pixelWidth + 'px',
+							'height': pixelHeight + 'px',
+							'color': boxData.styles?.color || '#000000',
+							'font-size': adjustedFontSize + 'px',
+							'font-weight': boxData.styles?.fontWeight || 'normal',
+							'text-align': boxData.styles?.textAlign || 'left',
+							'font-family': boxData.styles?.fontFamily || 'Arial, sans-serif',
+							'padding': '10px',
+							'visibility': 'visible',
+							'display': 'block',
+							'opacity': '1'
+						});
+
+						// Transform 적용 (안전한 방식)
+						if (boxData.transform && boxData.transform !== 'none') {
+							try {
+								console.log('Transform 적용:', boxData.transform);
+								$box.css({
+									'transform': boxData.transform,
+									'transform-origin': boxData.transformOrigin || '50% 50%'
+								});
+							} catch (transformError) {
+								console.warn('Transform 적용 실패:', transformError);
+							}
+						}
+
+						// ✅ [핵심 수정] 데이터 속성 통일
+						$box.data('relativeState', {
+							position: boxData.position || { left: 10, top: 10 },
+							size: boxData.size || { width: 20, height: 10 },
+							transform: boxData.transform || 'none',
+							transformOrigin: boxData.transformOrigin || '50% 50%'
+						});
+
+						// 모든 폰트 관련 데이터를 base-font-size로 통일
+						$box.data('base-font-size', baseFontSize);
+						$box.data('savedFontFamily', boxData.styles?.fontFamily || 'Arial');
+
+						// 이벤트 설정
+						EventManager.setupTextEvents($box);
+
+						console.log('텍스트박스 복원 완료');
+						checkCompletion();
+
+					} catch (error) {
+						console.error(`텍스트박스 ${index} 복원 실패:`, error);
+						checkCompletion();
+					}
+				});
+			}
+		}
+
+		// 배경 이미지 처리 후 요소 렌더링
+		if (design.background && bgImg.attr('src') !== design.background) {
+			bgImg.off('load.render').one('load.render', renderElements);
+			bgImg.attr('src', design.background);
+			if (bgImg[0].complete) bgImg.trigger('load.render');
+		} else {
+			renderElements();
+		}
+	}
+
+	// ✅ [핵심 수정] 세션 관리자를 전역으로 이동
+	const SessionManager = {
+		timeout: 1800 * 1000, // 30분 (밀리초 단위)
+		timer: null,
+
+		// 타이머를 시작하고 초기화하는 함수
+		reset: function() {
+			clearTimeout(this.timer);
+			console.log("사용자 활동 감지. 세션 타이머를 재시작합니다.");
+
+			this.timer = setTimeout(() => {
+				console.log("세션 만료 시간이 임박하여 자동 저장을 시작합니다.");
+				this.autoSaveAndLogout();
+			}, this.timeout);
+		},
+
+		// 타이머 완전 중지 함수
+		stop: function() {
+			clearTimeout(this.timer);
+			console.log("세션 타이머를 중지합니다.");
+		},
+
+		autoSaveAndLogout: function() {
+			if (!activePageThumb) {
+				console.log("저장할 대상이 없어 로그아웃만 진행합니다.");
+				this.logout();
+				return;
+			}
+
+			$('#btn-save').trigger('click');
+
+			$(document).one('saveComplete', () => {
+				setTimeout(() => {
+					this.logout();
+				}, 1000);
+			});
+		},
+
+		logout: function() {
+			const form = document.createElement('form');
+			form.method = 'POST';
+			form.action = `${ctx}/logout`;
+			document.body.appendChild(form);
+			form.submit();
+		}
+	};
+
+	// ✅ [핵심 수정] 페이지 순서 관리 함수들을 전역으로 이동
+	let isMoveModeActive = false;
+	let draggedCardId = null;
+
+	// 드롭 위치 계산 헬퍼 함수
+	function getDragAfterElement(container, x) {
+		const draggableElements = [...$(container).find('.page-card:not(.dragging)')];
+
+		return draggableElements.reduce((closest, child) => {
+			const box = child.getBoundingClientRect();
+			const offset = x - box.left - box.width / 2;
+			if (offset < 0 && offset > closest.offset) {
+				return { offset: offset, element: child };
+			} else {
+				return closest;
+			}
+		}, { offset: Number.NEGATIVE_INFINITY }).element;
+	}
+
+	// 자동 저장을 위한 AJAX 함수
+	function savePageOrder() {
+		const orderData = [];
+		$('.slide-container').each(function() {
+			$(this).find('.page-card').each(function(index) {
+				const cardId = $(this).attr('id');
+				const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+
+				if (yearbookId) {
+					orderData.push({
+						id: yearbookId,
+						pageNo: index + 1
+					});
+				}
+			});
+		});
+
+		if (orderData.length === 0) {
+			return;
+		}
+
+		$.ajax({
+			url: `${ctx}/edit/updatePageOrder`,
+			method: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify(orderData),
+			success: function(response) {
+				if (response.success) {
+					console.log("페이지 순서가 성공적으로 자동 저장되었습니다.");
+				} else {
+					alert("오류: 페이지 순서 저장에 실패했습니다.");
+				}
+			},
+			error: function() {
+				alert("오류: 서버 통신 중 페이지 순서 저장에 실패했습니다.");
+			}
+		});
+	}
+
+	// ✅ [핵심 수정] 이벤트 핸들러들을 전역으로 이동 (중복 바인딩 방지)
+
+	// 모달 이벤트는 한 번만 바인딩
+	$('#editModal').on('show.bs.modal', function() {
+		console.log('모달 열리기 직전 - 추가 정리');
+		$('#frame-container').empty();
+		if (window.selectionManager) {
+			window.selectionManager.clearSelection();
+		}
+
+		// 세션 관리 시작
+		console.log("모달이 열렸습니다. 세션 관리를 시작합니다.");
+		SessionManager.reset();
+
+		// 편집 영역에서 발생하는 모든 활동을 감지
+		$('#page-preview').on('mousedown.session keydown.session', function() {
+			SessionManager.reset();
+		});
+	});
+
+	$('#editModal').on('shown.bs.modal', function() {
+		setTimeout(() => {
+			if (window.safeLineManager) {
+				window.safeLineManager.update();
+			}
+			if (window.updateAllPositions) {
+				window.updateAllPositions();
+			}
+		}, 200);
+	});
+
+	$('#btn-close-modal').on('click', function() {
+		if (confirm("Do you want to save?")) {
+			$(document).one('saveComplete', function() {
+				hasSaved = true;
+				$('#editModal').modal('hide');
+			});
+			$('#btn-save').trigger('click');
+		} else {
+			$('#editModal').modal('hide');
+		}
+	});
+
+	$('#editModal').on('hidden.bs.modal', function() {
+		forceCompleteReset();
+
+		if (hasSaved) {
+			console.log('저장이 완료되어 페이지를 새로고침합니다.');
+			hasSaved = false;
+		}
+
+		const $message = $('#save-confirmation-message');
+		$message.removeClass('show');
+		activePageThumb = null;
+
+		// 세션 관리 중지
+		console.log("모달이 닫혔습니다. 세션 관리를 중지합니다.");
+		SessionManager.stop();
+		$('#page-preview').off('.session');
+	});
+
+	// Edit 버튼 클릭 이벤트
 	$('.content').on('click', '.edit-btn', async function(e) {
 		e.preventDefault();
 
-		// ✅ 가장 최신 데이터 속성을 읽도록 수정
 		const $pageCard = $(this).closest('.page-card');
 		activePageThumb = $pageCard.find('.page-thumb');
-
-		// jQuery data()가 아닌 attr()로 최신 값 읽기
 		const yearbookId = activePageThumb.attr('data-yearbook-id');
 
 		console.log('Edit 버튼 클릭 - yearbookId:', yearbookId);
@@ -152,7 +584,7 @@ $(document).ready(function() {
 						method: 'GET',
 						data: {
 							id: yearbookId,
-							_: new Date().getTime() // 캐시 방지
+							_: new Date().getTime()
 						},
 						cache: false,
 						success: function(data) {
@@ -170,7 +602,6 @@ $(document).ready(function() {
 				}
 			});
 
-			forceCompleteReset();
 			renderPage(pageData, hideLoader);
 
 			if (pageData && pageData.lastSaved) {
@@ -191,7 +622,6 @@ $(document).ready(function() {
 		showLoader();
 		window.selectionManager.clearSelection();
 
-		// --- 1단계: 기존과 동일하게, 안정적이었던 방식으로 JSON 데이터를 준비합니다. ---
 		const designData = {
 			frames: [],
 			textBoxes: [],
@@ -205,14 +635,14 @@ $(document).ready(function() {
 			return;
 		}
 
-		// [로직 유지] 기존 프레임 저장 방식 (transform 제거 후 측정)
+		// 프레임 저장 로직 (기존과 동일)
 		$('#frame-container .frame-group').each(function() {
 			const $frame = $(this);
 			if ($frame.width() <= 0 || $frame.height() <= 0) return;
 
 			const frameTransform = $frame.css('transform');
 			const frameTransformOrigin = $frame.css('transform-origin');
-			$frame.css({ 'transform': 'none' }); // 임시 제거
+			$frame.css({ 'transform': 'none' });
 
 			const frameWidth = $frame.width();
 			const frameHeight = $frame.height();
@@ -249,17 +679,27 @@ $(document).ready(function() {
 			};
 			designData.frames.push(frameData);
 
-			$frame.css({ 'transform': frameTransform, 'transform-origin': frameTransformOrigin }); // 복원
+			$frame.css({ 'transform': frameTransform, 'transform-origin': frameTransformOrigin });
 		});
 
-		// [로직 유지] 기존 텍스트박스 저장 방식
+		// ✅ [핵심 수정] 텍스트박스 저장 로직 개선
 		$('#frame-container .text-box').each(function() {
 			const $box = $(this);
 			if (!$box.text().trim() || $box.outerWidth() <= 0) return;
+
 			const boxTransform = $box.css('transform');
 			const boxPos = $box.position();
 			const boxW = $box.outerWidth();
 			const boxH = $box.outerHeight();
+
+			// base-font-size를 우선 사용하고, 없으면 CSS에서 역계산
+			let baseFontSize = $box.data('base-font-size');
+			if (!baseFontSize) {
+				const currentCssSize = parseInt($box.css('font-size'));
+				const scaleRatio = actualBgRect.width / 786;
+				baseFontSize = Math.round(currentCssSize / scaleRatio);
+			}
+
 			designData.textBoxes.push({
 				html: $box.html(),
 				position: {
@@ -270,11 +710,11 @@ $(document).ready(function() {
 					width: (boxW / actualBgRect.width) * 100,
 					height: (boxH / actualBgRect.height) * 100
 				},
-				transform: boxTransform,
+				transform: boxTransform || 'none',
+				transformOrigin: $box.css('transform-origin') || '50% 50%',
 				styles: {
 					color: $box.css('color'),
-					// ✅ [핵심 수정] 계산된 px값이 아닌, 저장해둔 '기본' 폰트 크기를 저장합니다.
-					fontSize: $box.data('base-font-size') || 12, // 숫자 형태로 저장
+					fontSize: baseFontSize, // 숫자 형태로 저장
 					fontWeight: $box.css('font-weight'),
 					textAlign: $box.css('text-align'),
 					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
@@ -282,7 +722,7 @@ $(document).ready(function() {
 			});
 		});
 
-		// --- 2단계: 준비된 데이터를 가지고 썸네일 캡처 및 서버 전송을 실행합니다. ---
+		// 썸네일 캡처 및 서버 전송
 		const captureTarget = document.getElementById('page-preview');
 		html2canvas(captureTarget, { useCORS: true, backgroundColor: null, scale: 2 }).then(canvas => {
 			canvas.toBlob(blob => {
@@ -312,7 +752,6 @@ $(document).ready(function() {
 								activePageThumb.attr('data-yearbook-id', response.newYearbookId);
 								activePageThumb.closest('.page-card').attr('id', `card-${response.newYearbookId}`);
 							}
-							// ... (기존 success 로직과 동일) ...
 						} else {
 							alert("Save succeeded, but thumbnail update failed.");
 						}
@@ -334,32 +773,28 @@ $(document).ready(function() {
 		});
 	});
 
-	// 파일 업로드 처리
+	// 파일 업로드 처리 (기존과 동일하므로 생략 - 필요시 추가)
 	$('#image-upload-input').on('change', function(e) {
 		const file = e.target.files[0];
 		if (!file) {
-			// 파일을 선택하지 않았으면 아무것도 하지 않음
-			$(this).val(''); // input 값 초기화
+			$(this).val('');
 			return;
 		}
 
-		// 3. 허용되는 파일 확장자 정의 (HEIC 포함)
 		const allowedExtensions = ['jpg', 'jpeg', 'png', 'heic'];
 		const fileExtension = file.name.split('.').pop().toLowerCase();
 
 		if (!allowedExtensions.includes(fileExtension)) {
 			alert("Only JPG, PNG, and HEIC files can be uploaded.");
-			$(this).val(''); // input 값 초기화
+			$(this).val('');
 			return;
 		}
 
-		// 2. 파일 크기 검사 (400KB = 400 * 1024 bytes)
 		const fileSizeInKB = file.size / 1024;
 		if (fileSizeInKB < 400) {
-			const confirmationMessage = "The size of the uploaded image does not adhere to the standard requirements. (Less than 400kb may result in reduced image quality). Please click “confirm” to proceed.";
+			const confirmationMessage = "The size of the uploaded image does not adhere to the standard requirements. (Less than 400kb may result in reduced image quality). Please click confirm to proceed.";
 			if (!confirm(confirmationMessage)) {
-				// 사용자가 '취소'를 누르면 업로드 중단
-				$(this).val(''); // input 값 초기화
+				$(this).val('');
 				return;
 			}
 		}
@@ -488,7 +923,7 @@ $(document).ready(function() {
 
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
-		if (confirm("All designs on this page will be reset. Please click “Confirm” to proceed.")) {
+		if (confirm("All designs on this page will be reset. Please click Confirm to proceed.")) {
 			forceCompleteReset();
 			loadDefaultBackground();
 		}
@@ -497,11 +932,7 @@ $(document).ready(function() {
 	// 전역 이벤트 설정
 	EventManager.setupGlobalEvents();
 
-	/**
-		 * 함수가 너무 자주 실행되는 것을 방지하는 Debounce 함수
-		 * @param {Function} func - 실행할 함수
-		 * @param {number} wait - 지연 시간 (밀리초)
-		 */
+	// Debounce 함수
 	function debounce(func, wait) {
 		let timeout;
 		return function(...args) {
@@ -510,413 +941,15 @@ $(document).ready(function() {
 		};
 	}
 
-	// 브라우저 창 크기가 조절될 때마다 세이프라인을 다시 계산하도록 이벤트 리스너 추가
-	// debounce 함수를 사용하여 0.25초마다 한 번씩만 실행되도록 하여 성능을 최적화합니다.
+	// 윈도우 리사이즈 이벤트
 	$(window).on('resize', debounce(function() {
 		if ($('#editModal').is(':visible')) {
 			window.safeLineManager.update();
-			window.updateAllPositions(); // 명시적으로 호출
+			window.updateAllPositions();
 		}
 	}, 250));
 
-	// ✨ 기본 배경 이미지 로드 함수
-	function loadDefaultBackground() {
-		const defaultBgPath = `${ctx}/images/background.png`;
-		const bgImg = $('#page-preview-img');
-		bgImg.off('load error');
-
-		bgImg.one('load', function() {
-			console.log('기본 배경 로드 완료');
-			setTimeout(() => {
-				if (window.safeLineManager) {
-					window.safeLineManager.update();
-				}
-			}, 150);
-		});
-
-		bgImg.attr('src', defaultBgPath);
-
-		// 이미지가 캐시되어 있을 경우 대비
-		if (bgImg[0].complete) {
-			bgImg.trigger('load');
-		}
-	}
-
-	/**
-	 * 서버에서 받은 디자인 데이터(JSON)를 사용해 편집 페이지의 내용을 복원하는 함수
-	 * @param {object} pageData - yearbook 객체 전체
-	 */
-	function renderPage(pageData, onComplete) {
-		forceCompleteReset(); // 렌더링 전 완전 정리
-
-		if (!pageData || !pageData.designData) {
-			loadDefaultBackground();
-			if (typeof onComplete === 'function') setTimeout(onComplete, 200);
-			return;
-		}
-
-		let design;
-		try {
-			design = JSON.parse(pageData.designData);
-		} catch (e) {
-			console.error('JSON 파싱 에러:', e);
-			loadDefaultBackground();
-			if (typeof onComplete === 'function') setTimeout(onComplete, 200);
-			return;
-		}
-
-		const bgImg = $('#page-preview-img');
-
-		// 요소 렌더링 함수
-		function renderElements() {
-			const totalFrames = design.frames?.length || 0;
-			const totalTextBoxes = design.textBoxes?.length || 0;
-			let renderedCount = 0;
-			const totalElements = totalFrames + totalTextBoxes;
-
-			function checkCompletion() {
-				renderedCount++;
-				if (renderedCount >= totalElements) {
-					if (typeof onComplete === 'function') onComplete();
-				}
-			}
-
-			if (totalElements === 0) {
-				if (typeof onComplete === 'function') onComplete();
-				return;
-			}
-
-			// 프레임 렌더링
-			if (design.frames) {
-				design.frames.forEach(frameData => {
-					FrameManager.applyFrame(frameData.theme, frameData);
-					checkCompletion();
-				});
-			}
-
-			// ✅ [핵심 수정] 텍스트박스 복원 로직 (단순화 및 안정화)
-			if (design.textBoxes) {
-			    console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
-			    
-			    design.textBoxes.forEach((boxData, index) => {
-			        console.log(`텍스트박스 ${index} 데이터:`, boxData);
-			        
-			        // 텍스트박스 생성
-			        const $box = $('<div class="text-box" contenteditable="true"></div>')
-			            .html(boxData.html);
-			        
-			        // 먼저 DOM에 추가
-			        $('#frame-container').append($box);
-			        
-			        // 배경 이미지 정보 가져오기
-			        const bg = $('#page-preview-img');
-			        const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-			        
-			        if (!actualBgRect) {
-			            console.error('배경 이미지 정보를 가져올 수 없음');
-			            checkCompletion();
-			            return;
-			        }
-			        
-			        // 위치와 크기 계산
-			        const pixelLeft = (boxData.position.left / 100) * actualBgRect.width + actualBgRect.left;
-			        const pixelTop = (boxData.position.top / 100) * actualBgRect.height + actualBgRect.top;
-			        const pixelWidth = (boxData.size.width / 100) * actualBgRect.width;
-			        const pixelHeight = (boxData.size.height / 100) * actualBgRect.height;
-			        
-			        // 폰트 크기 계산
-			        const baseFontSize = boxData.styles.fontSize || 12;
-			        const TEMPLATE_WEB_BG_WIDTH = 786;
-			        const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-			        const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
-			        
-			        console.log(`계산된 위치: left=${pixelLeft}, top=${pixelTop}, width=${pixelWidth}, height=${pixelHeight}`);
-			        console.log(`폰트 크기: base=${baseFontSize}, adjusted=${adjustedFontSize}`);
-			        
-			        // 스타일 적용
-			        $box.css({
-			            'position': 'absolute',
-			            'z-index': 100,
-			            'left': pixelLeft + 'px',
-			            'top': pixelTop + 'px',
-			            'width': pixelWidth + 'px',
-			            'height': pixelHeight + 'px',
-			            'color': boxData.styles.color || '#000000',
-			            'font-size': adjustedFontSize + 'px',
-			            'font-weight': boxData.styles.fontWeight || 'normal',
-			            'text-align': boxData.styles.textAlign || 'left',
-			            'font-family': boxData.styles.fontFamily || 'Arial',
-			            'padding': '10px',
-			            'visibility': 'visible',
-			            'display': 'block',
-			            'opacity': '1'
-			        });
-			        
-			        // Transform은 별도로 적용
-			        if (boxData.transform && boxData.transform !== 'none') {
-			            $box.css({
-			                'transform': boxData.transform,
-			                'transform-origin': boxData.transformOrigin || '50% 50%'
-			            });
-			        }
-			        
-			        // 데이터 속성 저장
-			        $box.data('relativeState', {
-			            position: boxData.position,
-			            size: boxData.size,
-			            transform: boxData.transform || 'none',
-			            transformOrigin: boxData.transformOrigin || '50% 50%'
-			        });
-			        $box.data('base-font-size', baseFontSize);
-			        $box.data('savedFontFamily', boxData.styles.fontFamily);
-			        
-			        // 이벤트 설정
-			        EventManager.setupTextEvents($box);
-			        
-			        console.log('텍스트박스 생성 완료, HTML:', $box.html());
-			        console.log('텍스트박스 CSS:', $box.attr('style'));
-			        
-			        checkCompletion();
-			    });
-			}
-		}
-
-		// 배경 이미지 처리 후 요소 렌더링
-		if (design.background && bgImg.attr('src') !== design.background) {
-			bgImg.off('load.render').one('load.render', renderElements);
-			bgImg.attr('src', design.background);
-			if (bgImg[0].complete) bgImg.trigger('load.render');
-		} else {
-			renderElements();
-		}
-	}
-
-	// 저장 시간 표시 함수
-	function displayLastSaveTime(lastSaved) {
-		const savedDate = new Date(lastSaved);
-
-		const year = savedDate.getFullYear();
-		const month = (savedDate.getMonth() + 1).toString().padStart(2, '0');
-		const day = savedDate.getDate().toString().padStart(2, '0');
-
-		let hours = savedDate.getHours();
-		const minutes = savedDate.getMinutes().toString().padStart(2, '0');
-		const ampm = hours >= 12 ? 'PM' : 'AM';
-
-		hours = hours % 12;
-		hours = hours ? hours : 12;
-
-		const formattedDate = `${year}.${month}.${day}`;
-		const formattedTime = `${hours}:${minutes}${ampm}`;
-
-		const message = `The Page has been saved.${formattedDate} ${formattedTime}`;
-
-		$('#save-confirmation-message').html(message).show();
-	}
-
-	// ✨ 3. 모달 이벤트에 추가 초기화 로직 추가
-	$('#editModal').on('show.bs.modal', function() {
-		console.log('모달 열리기 직전 - 추가 정리');
-		// 모달이 열리는 순간에도 한번 더 정리
-		$('#frame-container').empty();
-		if (window.selectionManager) {
-			window.selectionManager.clearSelection();
-		}
-	});
-
-	$('#editModal').on('shown.bs.modal', function() {
-		setTimeout(() => {
-			if (window.safeLineManager) {
-				window.safeLineManager.update();
-			}
-			if (window.updateAllPositions) {
-				window.updateAllPositions();
-			}
-		}, 200);
-	});
-
-	$('#btn-close-modal').on('click', function() {
-		if (confirm("Do you want to save?")) {
-			// "확인"을 누르면, 저장이 완료된 후 모달을 닫도록 이벤트를 한 번만 리스닝
-			$(document).one('saveComplete', function() {
-				hasSaved = true;
-				$('#editModal').modal('hide');
-			});
-			// 저장 버튼 클릭을 프로그래밍적으로 트리거
-			$('#btn-save').trigger('click');
-		} else {
-			// "취소"를 누르면 바로 모달을 닫음
-			$('#editModal').modal('hide');
-		}
-	});
-
-	// 모달이 완전히 닫혔을 때, 만약 저장된 내용이 있었다면 페이지를 새로고침합니다.
-	$('#editModal').on('hidden.bs.modal', function() {
-
-		forceCompleteReset();
-
-		if (hasSaved) {
-			console.log('저장이 완료되어 페이지를 새로고침합니다.');
-
-			// 새로고침 전 플래그 즉시 초기화 (중복 방지)
-			hasSaved = false;
-		}
-
-		const $message = $('#save-confirmation-message');
-		$message.removeClass('show');
-
-		// 모달 닫을 때 activePageThumb 초기화
-		activePageThumb = null;
-	});
-
-	// ✨ 2. 강력한 완전 초기화 함수
-	function forceCompleteReset() {
-		console.log('=== 강력한 완전 초기화 시작 ===');
-
-		// Step 1: 모든 DOM 요소 강제 제거
-		$('#frame-container').empty().html(''); // 완전히 비우기
-		$('#page-preview').find('.frame-group, .text-box, .photo-selection-box, .rotate-handle, .rotate-line, .selection-handle, .element-resize-handle, #photo-full-overlay, .photo-silhouette').remove();
-
-		// Step 2: 모든 이벤트 리스너 완전 해제
-		$(document).off('.photoDrag .photoRotate .photoResize .frameDrag .elementDrag .textDrag');
-		$('#frame-container').off(); // 컨테이너의 모든 이벤트 해제
-		$('.frame-group, .uploaded-photo, .text-box').off(); // 기존 요소들의 이벤트 해제
-
-		// Step 3: 전역 변수 완전 초기화
-		window.selectedFrame = null;
-		window.selectedPhotoWrapper = null;
-		window.selectedBox = null;
-		selectedFrame = null;
-		selectedPhotoWrapper = null;
-		selectedBox = null;
-		hasSaved = false;
-
-		// Step 4: 매니저 인스턴스들 완전 초기화
-		if (window.selectionManager) {
-			window.selectionManager.selectedMode = null;
-			window.selectionManager.currentFrame = null;
-			window.selectionManager.currentPhoto = null;
-			window.selectionManager.currentElement = null;
-			window.selectionManager.photoOverlay = null;
-			window.selectionManager.safeConstraintsCache = null;
-		}
-
-		if (window.safeLineManager) {
-			window.safeLineManager.safeConstraintsCache = null;
-			// SafeLine 컨테이너 재생성
-			$('#safe-line-overlay').remove();
-			window.safeLineManager.createContainer();
-		}
-
-		// Step 5: PhotoManager 완전 정리
-		if (typeof PhotoManager !== 'undefined') {
-			PhotoManager.photoOverlay = null;
-			PhotoManager.removeSelectionUI();
-			PhotoManager.hideOverlay();
-		}
-
-		// Step 6: UI 상태 완전 초기화
-		$('#save-confirmation-message').hide().empty();
-
-		// 모든 툴바 숨기기
-		$('#frame-controls, #photo-controls, #text-controls, #element-controls').addClass('d-none');
-		$('#editor-toolbar .context-controls > div').addClass('d-none');
-
-		// Step 7: 패널 상태 강제 초기화
-		$('#btn-background, #btn-photo-frame, #btn-textbox-frame, #btn-text, #btn-element').removeClass('active');
-		$('#background-panel, #frame-panel, #text-panel, #element-panel').addClass('d-none');
-		$('#photoFrameList, #textboxFrameList').addClass('d-none');
-
-		// Background 패널을 기본으로 설정
-		$('#btn-background').addClass('active');
-		$('#background-panel').removeClass('d-none');
-
-		// Step 8: CSS 스타일 강제 정리
-		$('*').removeClass('selected-frame selected-photo selected editing dragging selected-element selected-thumbnail');
-
-		// Step 9: 배경 이미지 강제 초기화
-		const $bgImg = $('#page-preview-img');
-		$bgImg.off('.render .defaultBg'); // 기존 이벤트 제거
-
-		// Step 10: 입력 요소 초기화
-		$('#image-upload-input').val('').removeData();
-
-		console.log('=== 강력한 완전 초기화 완료 ===');
-	}
-
-	//편집 화면 세션 타임아웃 관리 로직
-	const SessionManager = {
-		timeout: 1800 * 1000, // 30분 (밀리초 단위)
-		timer: null,
-
-		// 타이머를 시작하고 초기화하는 함수
-		reset: function() {
-			// 기존 타이머가 있으면 중지
-			clearTimeout(this.timer);
-			console.log("사용자 활동 감지. 세션 타이머를 재시작합니다.");
-
-			// 새로운 30분 타이머 설정
-			this.timer = setTimeout(() => {
-				console.log("세션 만료 시간이 임박하여 자동 저장을 시작합니다.");
-				this.autoSaveAndLogout();
-			}, this.timeout);
-		},
-
-		// 타이머 완전 중지 함수
-		stop: function() {
-			clearTimeout(this.timer);
-			console.log("세션 타이머를 중지합니다.");
-		},
-
-		autoSaveAndLogout: function() {
-			if (!activePageThumb) {
-				console.log("저장할 대상이 없어 로그아웃만 진행합니다.");
-				this.logout();
-				return;
-			}
-
-			$('#btn-save').trigger('click');
-
-			$(document).one('saveComplete', () => {
-				setTimeout(() => {
-					this.logout();
-				}, 1000);
-			});
-		},
-
-		logout: function() {
-			const form = document.createElement('form');
-			form.method = 'POST';
-			form.action = `${ctx}/logout`;
-			document.body.appendChild(form);
-			form.submit();
-		}
-	};
-
-	// 모달이 열릴 때 세션 타이머 시작
-	$('#editModal').on('show.bs.modal', function() {
-		console.log("모달이 열렸습니다. 세션 관리를 시작합니다.");
-		SessionManager.reset(); // 시작 시 타이머 설정
-
-		// 편집 영역(#page-preview) 내에서 발생하는 모든 활동을 감지
-		// mousedown: 마우스 클릭
-		// keydown: 키보드 입력
-		//mousemove: 마우스 이동
-		$('#page-preview').on('mousedown.session keydown.session', function() {
-			SessionManager.reset();
-		});
-	});
-
-	// 모달이 닫힐 때 세션 타이머 중지 및 이벤트 핸들러 제거
-	$('#editModal').on('hidden.bs.modal', function() {
-		console.log("모달이 닫혔습니다. 세션 관리를 중지합니다.");
-		SessionManager.stop();
-		$('#page-preview').off('.session'); // 네임스페이스로 추가한 이벤트만 제거
-	});
-
-	// ================= ▼▼▼ [최종 통합본] Page Reset 및 순서 이동 기능 ▼▼▼ =================
-
-	// --- Page Reset 기능 (중복 제거된 최종 버전) ---
+	// Page Reset 기능
 	$('.content').on('click', '.menu-dots-btn', function(e) {
 		e.stopPropagation();
 		const cardId = $(this).closest('.page-card').attr('id');
@@ -927,7 +960,7 @@ $(document).ready(function() {
 			return;
 		}
 
-		if (confirm("All designs on this page will be reset. Please click “Confirm” to proceed.")) {
+		if (confirm("All designs on this page will be reset. Please click Confirm to proceed.")) {
 			$.ajax({
 				url: `${ctx}/edit/resetPage`,
 				method: 'POST',
@@ -946,12 +979,6 @@ $(document).ready(function() {
 			});
 		}
 	});
-
-
-	// ================= ▼▼▼ [최종 안정화 버전] 페이지 순서 이동 기능 ▼▼▼ =================
-
-	let isMoveModeActive = false;
-	let draggedCardId = null;
 
 	// 'Move Pages' 토글 스위치 변경 이벤트
 	$('#toggle-page-move').on('change', function() {
@@ -981,7 +1008,7 @@ $(document).ready(function() {
 		draggedCardId = null;
 	});
 
-	// [안정 버전 로직] dragover 이벤트를 .slide-container에서 처리
+	// dragover 이벤트를 .slide-container에서 처리
 	$('.content').on('dragover', '.slide-container', function(e) {
 		e.preventDefault();
 		if (!isMoveModeActive) return;
@@ -1000,7 +1027,7 @@ $(document).ready(function() {
 		}
 	});
 
-	// [안정 버전 로직] drop 이벤트 처리 후 자동 저장 함수 호출
+	// drop 이벤트 처리 후 자동 저장 함수 호출
 	$('.content').on('drop', '.slide-container', function(e) {
 		e.preventDefault();
 		const placeholder = $(this).find('.drop-placeholder');
@@ -1008,82 +1035,23 @@ $(document).ready(function() {
 
 		if (placeholder.length > 0 && draggedElement) {
 			placeholder.replaceWith(draggedElement);
-			// ✨ 드롭 성공 시 자동 저장 함수 호출
 			savePageOrder();
 		}
 	});
 
-
-	// [안정 버전 로직] 드롭 위치 계산 헬퍼 함수
-	function getDragAfterElement(container, x) {
-		const draggableElements = [...$(container).find('.page-card:not(.dragging)')];
-
-		return draggableElements.reduce((closest, child) => {
-			const box = child.getBoundingClientRect();
-			const offset = x - box.left - box.width / 2;
-			if (offset < 0 && offset > closest.offset) {
-				return { offset: offset, element: child };
-			} else {
-				return closest;
-			}
-		}, { offset: Number.NEGATIVE_INFINITY }).element;
-	}
-
-
-	// 자동 저장을 위한 AJAX 함수
-	function savePageOrder() {
-		const orderData = [];
-		$('.slide-container').each(function() {
-			$(this).find('.page-card').each(function(index) {
-				const cardId = $(this).attr('id');
-				const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
-
-				if (yearbookId) {
-					orderData.push({
-						id: yearbookId,
-						pageNo: index + 1
-					});
-				}
-			});
-		});
-
-		if (orderData.length === 0) {
-			return;
-		}
-
-		$.ajax({
-			url: `${ctx}/edit/updatePageOrder`,
-			method: 'POST',
-			contentType: 'application/json',
-			data: JSON.stringify(orderData),
-			success: function(response) {
-				if (response.success) {
-					console.log("페이지 순서가 성공적으로 자동 저장되었습니다.");
-				} else {
-					alert("오류: 페이지 순서 저장에 실패했습니다.");
-				}
-			},
-			error: function() {
-				alert("오류: 서버 통신 중 페이지 순서 저장에 실패했습니다.");
-			}
-		});
-	}
-	// ================= ▲▲▲ [최종 안정화 버전] 페이지 순서 이동 기능 ▲▲▲ =================
-
+	// 기타 설정
 	$(document).on('click', '.edit-btn', function() {
 		const pageCategory = $(this).data('category');
 		$('#editModal').data('page-category', pageCategory);
 		console.log('Setting page category to:', pageCategory);
 	});
+
 });
 
 // ============================================================================
-// 새로운 복원 함수들
+// 전역 함수들
 // ============================================================================
 
-/**
- * ✅ Transform을 고려한 텍스트박스 복원 함수
- */
 function restoreTextBoxWithTransform($box) {
 	const relativeState = $box.data('relativeState');
 	if (!relativeState) return;
@@ -1092,7 +1060,6 @@ function restoreTextBoxWithTransform($box) {
 	const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 	if (!actualBgRect) return;
 
-	// ✅ 1단계: 저장된 스타일 복원 (스케일링 없이)
 	const savedFontSize = $box.data('savedFontSize');
 	const savedFontFamily = $box.data('savedFontFamily');
 
@@ -1105,7 +1072,6 @@ function restoreTextBoxWithTransform($box) {
 		$box.css('font-family', savedFontFamily);
 	}
 
-	// ✅ 2단계: 위치 계산 및 적용
 	const pixelPos = {
 		left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
 		top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
@@ -1116,16 +1082,14 @@ function restoreTextBoxWithTransform($box) {
 		height: (relativeState.size.height / 100) * actualBgRect.height
 	};
 
-	// ✅ 3단계: 기본 위치/크기 설정 (Transform 없이)
 	$box.css({
 		left: pixelPos.left,
 		top: pixelPos.top,
 		width: pixelSize.width,
 		height: pixelSize.height,
-		transform: 'none' // 일단 Transform 제거
+		transform: 'none'
 	});
 
-	// ✅ 4단계: Transform 별도 적용 (약간의 지연)
 	setTimeout(() => {
 		if (relativeState.transform && relativeState.transform !== 'none') {
 			console.log('Transform 적용:', relativeState.transform);
@@ -1146,27 +1110,23 @@ window.getRotationMatrix = function($element) {
 	const matrix = transform.match(/matrix\((.+)\)/);
 	if (matrix && matrix[1]) {
 		const values = matrix[1].split(',').map(s => s.trim());
-		// values[4]와 values[5]가 이동(translate) 값이므로 0으로 설정합니다.
 		return `matrix(${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, 0, 0)`;
 	}
-	return transform; // matrix 형식이 아니면 원본 반환
+	return transform;
 };
 
-// Transform 매트릭스에서 정확한 회전 각도 추출
 window.getRotationAngle = function(transform) {
 	if (!transform || transform === 'none') return 0;
 
 	const matrix = transform.match(/matrix\((.+)\)/);
 	if (matrix && matrix[1]) {
 		const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
-		// atan2를 사용한 정확한 각도 계산
 		const angle = Math.atan2(values[1], values[0]);
 		return angle * (180 / Math.PI);
 	}
 	return 0;
 };
 
-// Transform 매트릭스에서 스케일 추출
 window.getScaleFromMatrix = function(transform) {
 	if (!transform || transform === 'none') return { x: 1, y: 1 };
 

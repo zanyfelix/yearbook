@@ -124,41 +124,29 @@ class UIManager {
     
     // 텍스트 툴팁 이벤트 바인딩
     static bindTextTooltipEvents(textBox) {
-        $('#tooltip-color, #tooltip-size, #tooltip-align, #tooltip-remove').off();
-        
-        this.bindTextRotationEvents(textBox);
-        
-        $('#tooltip-color').on('input', function() {
-            textBox.css('color', $(this).val());
-        });
-        
-        $('#tooltip-size').on('change', function() {
-            const selectedSize = parseInt($(this).val());
-            textBox.data('originalFontSize', $(this).val());
-            
-            const bg = $('#page-preview-img');
-            const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-            
-            if (actualBgRect) {
-                const TEMPLATE_WEB_BG_WIDTH = 786;
-                const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-                const adjustedFontSize = Math.round(selectedSize * scaleRatio);
-                textBox.css('font-size', adjustedFontSize + 'px');
-            } else {
-                textBox.css('font-size', $(this).val());
-            }
-        });
-        
-        $('#tooltip-align').on('change', function() {
-            textBox.css('text-align', $(this).val());
-        });
-        
-        $('#tooltip-remove').on('click', function() {
-            if (confirm('Do you want to delete the text box?')) {
-                textBox.remove();
-                window.selectionManager.clearSelection();
-            }
-        });
+		$('#tooltip-color, #tooltip-size, #tooltip-align, #tooltip-remove').off();
+
+		this.bindTextRotationEvents(textBox);
+
+		$('#tooltip-color').on('input', function() {
+			textBox.css('color', $(this).val());
+		});
+
+		// ✅ TextManager의 updateFontSize 사용
+		$('#tooltip-size').on('change', function() {
+			TextManager.updateFontSize($(this).val());
+		});
+
+		$('#tooltip-align').on('change', function() {
+			TextManager.updateTextAlign($(this).val());
+		});
+
+		$('#tooltip-remove').on('click', function() {
+			if (confirm('Do you want to delete the text box?')) {
+				textBox.remove();
+				window.selectionManager.clearSelection();
+			}
+		});
     }
     
     // 텍스트 회전 이벤트 바인딩
