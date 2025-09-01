@@ -331,11 +331,6 @@ $(document).ready(function() {
 							}
 						}
 
-						// 화면 비율에 따른 폰트 크기 스케일링
-						const TEMPLATE_WEB_BG_WIDTH = 786;
-						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-						const adjustedFontSize = Math.max(8, Math.round(baseFontSize * scaleRatio));
-
 						// 스타일 적용
 						$box.css({
 							'position': 'absolute',
@@ -345,7 +340,7 @@ $(document).ready(function() {
 							'width': pixelWidth + 'px',
 							'height': pixelHeight + 'px',
 							'color': boxData.styles?.color || '#000000',
-							'font-size': adjustedFontSize + 'px',
+							'font-size': baseFontSize + 'px',
 							'font-weight': boxData.styles?.fontWeight || 'normal',
 							'text-align': boxData.styles?.textAlign || 'left',
 							'font-family': boxData.styles?.fontFamily || 'Arial, sans-serif',
