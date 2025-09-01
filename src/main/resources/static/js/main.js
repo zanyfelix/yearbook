@@ -256,7 +256,7 @@ $(document).ready(function() {
 
 							// 플레이스홀더를 숨기고 사진 요소를 일단 화면에 표시합니다.
 							$placeholder.hide();
-							$photo.show();
+							$photo.css('visibility', 'hidden').show();
 						}
 					}
 					checkCompletion();
@@ -1171,7 +1171,8 @@ function updateAllPhotosPosition() {
             left: (photoData.position.left / 100) * frameW,
             top: (photoData.position.top / 100) * frameH,
             transform: photoData.transform || 'none',
-            transformOrigin: photoData.transformOrigin || '50% 50%'
+            transformOrigin: photoData.transformOrigin || '50% 50%',
+			visibility: 'visible'
         };
         
         // 최종 계산된 CSS를 사진에 적용합니다.
