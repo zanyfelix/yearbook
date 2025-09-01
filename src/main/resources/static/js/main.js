@@ -64,6 +64,7 @@ $(document).ready(function() {
 			finalCss['transform-origin'] = relativeState.transformOrigin;
 		}
 
+		finalCss['visibility'] = 'visible';
 		$element.css(finalCss);
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
@@ -104,7 +105,8 @@ $(document).ready(function() {
 		if (relativeState.transformOrigin) {
 			finalCss['transform-origin'] = relativeState.transformOrigin;
 		}
-
+		
+		finalCss['visibility'] = 'visible';
 		$element.css(finalCss);
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
@@ -345,7 +347,7 @@ $(document).ready(function() {
 							'text-align': boxData.styles?.textAlign || 'left',
 							'font-family': boxData.styles?.fontFamily || 'Arial, sans-serif',
 							'padding': '10px',
-							'visibility': 'visible',
+							'visibility': 'hidden',
 							'display': 'block',
 							'opacity': '1'
 						});

@@ -228,7 +228,8 @@ class FrameManager {
 		        width: frameWidth + 'px',
 		        height: frameHeight + 'px',
 				'transform': frameRelativeState.transform,
-				'transform-origin': frameRelativeState.transformOrigin
+				'transform-origin': frameRelativeState.transformOrigin,
+				'visibility': 'hidden'
 		    });
 		    
 		    // 🔴 프레임 Transform 별도 적용
