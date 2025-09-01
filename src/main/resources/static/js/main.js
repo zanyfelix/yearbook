@@ -47,14 +47,19 @@ $(document).ready(function() {
 		};
 
 		if ($element.hasClass('text-box')) {
-			// ✅ [핵심 수정] 'savedFontSize'(계산된 px값) 대신 'base-font-size'(순수 숫자)를 읽습니다.
 			const baseFontSize = $element.data('base-font-size') || 12;
-			const scaleRatio = baseRect.width / 786;
-			const adjustedFontSize = Math.max(8, Math.round(baseFontSize * scaleRatio));
+			const TEMPLATE_WEB_BG_WIDTH = 786; // 템플릿 기준 너비
+			const scaleRatio = baseRect.width / TEMPLATE_WEB_BG_WIDTH;
+
+			// 스케일 비율을 더 정확하게 계산
+			const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
+
 			finalCss['font-size'] = adjustedFontSize + 'px';
 
-			// 계산된 최종 px값은 참고용으로 'savedFontSize'에 저장해 둘 수 있습니다.
-			$element.data('savedFontSize', finalCss['font-size']);
+			// 폰트 크기 외 다른 스타일도 복원
+			if ($element.data('savedFontFamily')) {
+				finalCss['font-family'] = $element.data('savedFontFamily');
+			}
 		}
 
 		$element.css(finalCss);
@@ -591,38 +596,88 @@ $(document).ready(function() {
 
 			// ✅ [핵심 수정] 텍스트박스 복원 로직 (단순화 및 안정화)
 			if (design.textBoxes) {
-				design.textBoxes.forEach(boxData => {
-					const initialStyles = {
-						position: 'absolute',
-						zIndex: 100,
-						color: boxData.styles.color,
-						fontWeight: boxData.styles.fontWeight,
-						textAlign: boxData.styles.textAlign,
-						fontFamily: boxData.styles.fontFamily
-					};
-					const $box = $('<div class="text-box" contenteditable="true"></div>')
-						.html(boxData.html)
-						.css(initialStyles);
-
-					$('#frame-container').append($box);
-					EventManager.setupTextEvents($box);
-
-					// 모든 상태 정보를 data에 저장
-					const relativeState = {
-						position: boxData.position,
-						size: boxData.size,
-						transform: boxData.transform || 'none',
-						transformOrigin: boxData.transformOrigin || '50% 50%'
-					};
-					$box.data('relativeState', relativeState);
-					// ✅ [핵심 수정] JSON에 저장된 '기본' 폰트 크기를 data 속성에 저장합니다.
-					$box.data('base-font-size', boxData.styles.fontSize);
-					$box.data('savedFontFamily', boxData.styles.fontFamily);
-
-					// 통합된 업데이트 함수를 호출하여 위치/크기/회전을 한 번에 적용
-					window.updateElementPosition($box);
-					checkCompletion();
-				});
+			    console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
+			    
+			    design.textBoxes.forEach((boxData, index) => {
+			        console.log(`텍스트박스 ${index} 데이터:`, boxData);
+			        
+			        // 텍스트박스 생성
+			        const $box = $('<div class="text-box" contenteditable="true"></div>')
+			            .html(boxData.html);
+			        
+			        // 먼저 DOM에 추가
+			        $('#frame-container').append($box);
+			        
+			        // 배경 이미지 정보 가져오기
+			        const bg = $('#page-preview-img');
+			        const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+			        
+			        if (!actualBgRect) {
+			            console.error('배경 이미지 정보를 가져올 수 없음');
+			            checkCompletion();
+			            return;
+			        }
+			        
+			        // 위치와 크기 계산
+			        const pixelLeft = (boxData.position.left / 100) * actualBgRect.width + actualBgRect.left;
+			        const pixelTop = (boxData.position.top / 100) * actualBgRect.height + actualBgRect.top;
+			        const pixelWidth = (boxData.size.width / 100) * actualBgRect.width;
+			        const pixelHeight = (boxData.size.height / 100) * actualBgRect.height;
+			        
+			        // 폰트 크기 계산
+			        const baseFontSize = boxData.styles.fontSize || 12;
+			        const TEMPLATE_WEB_BG_WIDTH = 786;
+			        const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+			        const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
+			        
+			        console.log(`계산된 위치: left=${pixelLeft}, top=${pixelTop}, width=${pixelWidth}, height=${pixelHeight}`);
+			        console.log(`폰트 크기: base=${baseFontSize}, adjusted=${adjustedFontSize}`);
+			        
+			        // 스타일 적용
+			        $box.css({
+			            'position': 'absolute',
+			            'z-index': 100,
+			            'left': pixelLeft + 'px',
+			            'top': pixelTop + 'px',
+			            'width': pixelWidth + 'px',
+			            'height': pixelHeight + 'px',
+			            'color': boxData.styles.color || '#000000',
+			            'font-size': adjustedFontSize + 'px',
+			            'font-weight': boxData.styles.fontWeight || 'normal',
+			            'text-align': boxData.styles.textAlign || 'left',
+			            'font-family': boxData.styles.fontFamily || 'Arial',
+			            'padding': '10px',
+			            'visibility': 'visible',
+			            'display': 'block',
+			            'opacity': '1'
+			        });
+			        
+			        // Transform은 별도로 적용
+			        if (boxData.transform && boxData.transform !== 'none') {
+			            $box.css({
+			                'transform': boxData.transform,
+			                'transform-origin': boxData.transformOrigin || '50% 50%'
+			            });
+			        }
+			        
+			        // 데이터 속성 저장
+			        $box.data('relativeState', {
+			            position: boxData.position,
+			            size: boxData.size,
+			            transform: boxData.transform || 'none',
+			            transformOrigin: boxData.transformOrigin || '50% 50%'
+			        });
+			        $box.data('base-font-size', baseFontSize);
+			        $box.data('savedFontFamily', boxData.styles.fontFamily);
+			        
+			        // 이벤트 설정
+			        EventManager.setupTextEvents($box);
+			        
+			        console.log('텍스트박스 생성 완료, HTML:', $box.html());
+			        console.log('텍스트박스 CSS:', $box.attr('style'));
+			        
+			        checkCompletion();
+			    });
 			}
 		}
 

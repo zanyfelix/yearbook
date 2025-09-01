@@ -59,15 +59,18 @@ class SelectionManager {
 	    UIManager.showTextTooltip(textBox);
 		
 		// ✅ [핵심 수정] 선택된 텍스트박스의 현재 상태를 툴바 UI에 반영합니다.
+		    // --------------------------------------------------------------------
+		    // 1. 기본 폰트 사이즈를 가져와서 해당하는 픽셀 값으로 설정
+		    const baseFontSize = textBox.data('base-font-size') || 12;
+		    const fontSizeInPx = baseFontSize + 'px'; // 12 -> "12px", 16 -> "16px", 24 -> "24px"
+		
+		// ✅ [핵심 수정] 선택된 텍스트박스의 현재 상태를 툴바 UI에 반영합니다.
 		// --------------------------------------------------------------------
 		// 1. 현재 텍스트박스의 스타일 값들을 가져옵니다.
-		const currentFontSize = textBox.data('savedFontSize') || textBox.css('font-size');
 		const currentFontFamily = textBox.data('savedFontFamily') || textBox.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
 		const currentTextAlign = textBox.css('text-align');
 		const currentColor = textBox.css('color');
 		
-		const currentFontWeight = textBox.css('font-weight');
-
 		// 2. 가져온 값들을 툴바의 각 컨트롤에 설정합니다.
 		$('#tooltip-size').val(currentFontSize);
 		$('#tooltip-font').val(currentFontFamily);
