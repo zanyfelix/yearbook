@@ -19,14 +19,16 @@
 <body>
 <div class="sidebar">
     <h5>${sessionScope.loginUser.schoolName}</h5>
-    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
-		<button type="submit" class="btn btn-secondary w-100">Logout</button>
-	</form>
+    
     <a href="/home?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/edit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
     <a href="/submit?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
     <a href="/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">Contact Us</a>
+    
+    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
+	</form>
 </div>
 <div class="content">
   	<div class="top-bar">

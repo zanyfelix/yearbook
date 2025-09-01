@@ -27,10 +27,6 @@
 
    <h5>${sessionScope.loginUser.schoolName}</h5>
 	
-	<form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
-		<button type="submit" class="btn btn-secondary w-100">Logout</button>
-	</form>
-		
 	<a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
 	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
 	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
@@ -38,6 +34,10 @@
 	<a href="/admin/submit" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
 	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
     <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
+    
+    <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
+		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
+	</form>
 </div>
 
 <div class="content">
