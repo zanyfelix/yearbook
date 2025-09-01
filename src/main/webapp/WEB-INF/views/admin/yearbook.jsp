@@ -39,6 +39,13 @@
 		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
 	</form>
 </div>
+<!-- Loading -->
+<div id="loading-spinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; text-align: center; padding-top: 20%;">
+  <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p style="margin-top: 1rem; font-size: 1.2rem;">Downloading and rendering yearbook... Please wait.</p>
+</div>
 
 <div class="content">
     <div class="container-fluid">

@@ -16,9 +16,9 @@ $(document).ready(function() {
 	        alert('Please select at least one user to download.');
 	        return;
 	    }
-	
-	    // 1. 로딩 상태 표시 (예: 스피너 보이기)
-	    // $('#loading-spinner').show();
+		
+		// Show loading spinner
+		$('#loading-spinner').show();
 	
 	    // 2. Fetch API를 위한 타임아웃 설정 (예: 5분)
 	    const controller = new AbortController();
@@ -65,8 +65,8 @@ $(document).ready(function() {
 	            alert(`An error occurred during download: ${error.message}`);
 	        }
 	    } finally {
-	        // 5. 로딩 상태 종료 (예: 스피너 숨기기)
-	        // $('#loading-spinner').hide();
+			// Hide loading spinner regardless of success/error
+			$('#loading-spinner').hide();
 	    }
 	});	
 });
