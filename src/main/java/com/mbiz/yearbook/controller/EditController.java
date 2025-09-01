@@ -249,13 +249,10 @@ public class EditController {
         page.setDesignData(designDataJson);
         page.setLastSaved(new Date());
 
+        // ✅ 썸네일 생성 로직 없이 데이터만 저장하고 바로 종료합니다.
         Yearbook savedPage = yearbookRepository.saveAndFlush(page);
-        
-        String newImagePath = generateThumbnail(designDataJson, savedPage.getId());
-        savedPage.setThumbnailPath(newImagePath);
-        yearbookRepository.saveAndFlush(savedPage);
 
-        return createSaveResponse(savedPage, newImagePath);
+        return createSaveResponse(savedPage, savedPage.getThumbnailPath());
     }
     
     // --- 페이지 데이터 로드, 리셋, 순서 변경 API (기존과 동일) ---
