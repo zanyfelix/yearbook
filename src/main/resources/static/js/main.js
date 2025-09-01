@@ -694,6 +694,8 @@ $(document).ready(function() {
 			if (!$box.text().trim() || $box.outerWidth() <= 0) return;
 
 			const boxTransform = $box.css('transform');
+			const boxTransformOrigin = $box.css('transform-origin');
+			$box.css({ 'transform': 'none' }); 
 			const boxPos = $box.position();
 			const boxW = $box.outerWidth();
 			const boxH = $box.outerHeight();
@@ -730,7 +732,7 @@ $(document).ready(function() {
 					height: (boxH / actualBgRect.height) * 100
 				},
 				transform: boxTransform || 'none',
-				transformOrigin: $box.css('transform-origin') || '50% 50%',
+				transformOrigin: boxTransformOrigin || '50% 50%',
 				styles: {
 					color: $box.css('color'),
 					fontSize: baseFontSize,
@@ -739,6 +741,9 @@ $(document).ready(function() {
 					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
 				}
 			});
+			// --- ⬇️ 원상 복구 ⬇️ ---
+			// 계산이 끝난 후 원래 transform 속성으로 복구
+			$box.css({ 'transform': boxTransform, 'transform-origin': boxTransformOrigin });
 		});
 
 		// 썸네일 캡처 및 서버 전송

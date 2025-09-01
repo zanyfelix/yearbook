@@ -901,6 +901,7 @@ body {
     width: auto;  /* 너비 자동 조정 */
     max-width: none;  /* 최대 너비 제한 없음 */
     overflow: visible;  /* 내용이 넘쳐도 보이도록 */
+    box-sizing: border-box;
 }
 
 /* 선택 상태 */
