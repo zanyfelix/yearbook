@@ -116,7 +116,7 @@ html, body {
 /* ────────────────────────────────────────────────────────── */
 /* ── 문의 리스트 테이블 ── */
 .container-fluid table {
-  width: 100%;
+  width: 50%;
   border-collapse: collapse;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);
