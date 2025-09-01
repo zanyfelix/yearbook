@@ -133,7 +133,7 @@
 		          </div>
 		          <div class="mb-3">
 		            <label for="passwordInput" class="form-label">PASSWORD</label>
-		            <input type="password" class="form-control" id="passwordInput" name="password" required />
+		            <input type="text" class="form-control" id="passwordInput" name="password" required />
 		          </div>
 		          <div class="mb-3">
 		            <label for="nameInput" class="form-label">NAME</label>
