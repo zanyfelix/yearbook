@@ -72,57 +72,14 @@ $(document).ready(function() {
 		}
 	};
 
-	// updateTextBoxPosition 함수 (기존과 동일)
-	window.updateTextBoxPosition = function($element) {
-		const relativeState = $element.data('relativeState');
-		if (!relativeState) return;
-
-		const bg = $('#page-preview-img');
-		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-		if (!actualBgRect) return;
-
-		const currentTransform = $element.css('transform');
-		$element.css('transform', 'none');
-
-		const newPixelPos = {
-			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
-			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
-		};
-
-		const newPixelSize = {
-			width: (relativeState.size.width / 100) * actualBgRect.width,
-			height: (relativeState.size.height / 100) * actualBgRect.height
-		};
-
-		const finalCss = {
-			left: newPixelPos.left,
-			top: newPixelPos.top,
-			width: newPixelSize.width,
-			height: newPixelSize.height,
-			transform: relativeState.transform || 'none'
-		};
-
-		if (relativeState.transformOrigin) {
-			finalCss['transform-origin'] = relativeState.transformOrigin;
-		}
-		
-		finalCss['visibility'] = 'visible';
-		$element.css(finalCss);
-
-		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
-			PhotoManager.updateSelectionUI($element);
-		}
-	};
-
 	// updateAllPositions 함수 (기존과 동일)
 	window.updateAllPositions = function() {
 		$('#frame-container .frame-group').each(function() {
 			window.updateElementPosition($(this));
-			const $photo = $(this).find('.uploaded-photo');
-			if ($photo.length) window.updateElementPosition($photo);
 		});
 		$('#frame-container .text-box').each(function() {
-			window.updateTextBoxPosition($(this));
+			// updateTextBoxPosition 대신 updateElementPosition 호출
+			window.updateElementPosition($(this));
 		});
 	}
 
@@ -285,6 +242,23 @@ $(document).ready(function() {
 			if (design.frames) {
 				design.frames.forEach(frameData => {
 					FrameManager.applyFrame(frameData.theme, frameData);
+
+					if (frameData.photo && frameData.photo.src) {
+						const $frame = $('#frame-container .frame-group:last-child');
+						const $photo = $frame.find('.uploaded-photo');
+						const $placeholder = $frame.find('.placeholder-link');
+
+						if ($photo.length > 0) {
+							// 이미지 경로(src)와 상태 데이터만 저장합니다. (계산 X)
+							$photo.attr('src', `${ctx}${frameData.photo.src}`);
+							$photo.data('filePath', frameData.photo.src);
+							$photo.data('relativeState', frameData.photo);
+
+							// 플레이스홀더를 숨기고 사진 요소를 일단 화면에 표시합니다.
+							$placeholder.hide();
+							$photo.show();
+						}
+					}
 					checkCompletion();
 				});
 			}
@@ -379,7 +353,6 @@ $(document).ready(function() {
 
 						EventManager.setupTextEvents($box);
 
-						console.log(`텍스트박스 ${index} 복원 완료 - 타입: ${textType}, 기본 크기: ${baseFontSize}px, 표시 크기: ${adjustedFontSize}px`);
 						checkCompletion();
 
 					} catch (error) {
@@ -533,6 +506,14 @@ $(document).ready(function() {
 			if (window.updateAllPositions) {
 				window.updateAllPositions();
 			}
+
+			// ▼▼▼ [핵심] 이 부분을 추가하세요 ▼▼▼
+			// 모든 프레임 위치가 잡힌 후, 사진 위치를 최종적으로 계산합니다.
+			if (window.updateAllPhotosPosition) {
+				updateAllPhotosPosition();
+			}
+			// ▲▲▲ [핵심] 이 부분을 추가하세요 ▲▲▲
+
 		}, 200);
 	});
 
@@ -584,7 +565,7 @@ $(document).ready(function() {
 		try {
 			await DataLoader.loadAndSetupFonts();
 			console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
-
+			
 			const pageData = await new Promise((resolve, reject) => {
 				if (yearbookId) {
 					$.ajax({
@@ -699,8 +680,8 @@ $(document).ready(function() {
 			const boxTransformOrigin = $box.css('transform-origin');
 			$box.css({ 'transform': 'none' }); 
 			const boxPos = $box.position();
-			const boxW = $box.outerWidth();
-			const boxH = $box.outerHeight();
+			const boxW = $box.width();
+			const boxH = $box.height();
 
 			// base-font-size를 우선 사용하고, 없으면 CSS에서 역계산
 			const baseFontSize = $box.data('base-font-size') || 12;
@@ -1165,3 +1146,35 @@ window.getScaleFromMatrix = function(transform) {
 	}
 	return { x: 1, y: 1 };
 };
+
+function updateAllPhotosPosition() {
+    $('#frame-container .uploaded-photo').each(function() {
+        const $photo = $(this);
+        const $frame = $photo.closest('.frame-group');
+        const photoData = $photo.data('relativeState');
+
+        // 프레임이나 사진 데이터가 없으면 건너뜁니다.
+        if (!$frame.length || !photoData) {
+            return; 
+        }
+
+        const frameW = $frame.width();
+        const frameH = $frame.height();
+
+        // 프레임 크기가 0이면 계산하지 않습니다.
+        if (frameW === 0 || frameH === 0) return;
+
+        // 저장된 %값을 기반으로 사진의 실제 픽셀 크기와 위치를 계산합니다.
+        const photoCss = {
+            width: (photoData.size.width / 100) * frameW,
+            height: (photoData.size.height / 100) * frameH,
+            left: (photoData.position.left / 100) * frameW,
+            top: (photoData.position.top / 100) * frameH,
+            transform: photoData.transform || 'none',
+            transformOrigin: photoData.transformOrigin || '50% 50%'
+        };
+        
+        // 최종 계산된 CSS를 사진에 적용합니다.
+        $photo.css(photoCss);
+    });
+}
