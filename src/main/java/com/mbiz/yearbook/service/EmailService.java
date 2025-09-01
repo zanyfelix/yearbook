@@ -1,12 +1,16 @@
 package com.mbiz.yearbook.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mbiz.yearbook.model.ContactUs;
+import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.UserRepository;
 
 import jakarta.mail.MessagingException;
@@ -20,6 +24,9 @@ public class EmailService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Value("${spring.mail.username}")
+    private String smtpAuthEmail;
 
     /**
      * Contact Us 문의 내용을 이메일로 발송합니다.
@@ -33,12 +40,14 @@ public class EmailService {
         try {
             // MimeMessageHelper를 사용하면 파일 첨부나 HTML 메일 전송이 쉬워집니다. (true는 multipart 메일임을 의미)
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            
+            List<User> user = userRepository.findByUserId("admin");
 
             // 1. 메일 수신자 설정 (관리자 이메일)
-            helper.setTo("support@capturecord.com");
+            helper.setTo(user.get(0).getMail());
 
             // 2. 메일 발신자 설정 (서버 계정)
-            helper.setFrom("support@capturecord.com");
+            helper.setFrom(smtpAuthEmail);
             
             // 3. 답장 받을 이메일 주소 설정 (문의한 사용자의 이메일)
             helper.setReplyTo(contact.getMail());
