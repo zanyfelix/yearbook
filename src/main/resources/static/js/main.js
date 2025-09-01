@@ -646,8 +646,8 @@ $(document).ready(function() {
 						src: $photo.data('filePath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
-						transform: photoRelativeState.transform || 'none',
-						transformOrigin: photoRelativeState.transformOrigin || '50% 50%'
+						transform: $photo.css('transform') || 'none',
+						transformOrigin: $photo.css('transform-origin') || '50% 50%'
 					};
 				}
 			}
