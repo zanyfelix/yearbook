@@ -267,6 +267,15 @@ class TextManager {
 			selectedBox.css('color', color);
 		}
 	}
+	
+	// 폰트 패밀리 변경
+	static updateFontFamily(fontFamily) {
+		const selectedBox = DataLoader.getCurrentSelectedTextBox();
+		if (selectedBox && selectedBox.length > 0) {
+			selectedBox.css('font-family', fontFamily);
+			selectedBox.data('savedFontFamily', fontFamily);
+		}
+	}
 
 	// 폰트 로드 완료 처리
 	static onFontsLoaded() {
