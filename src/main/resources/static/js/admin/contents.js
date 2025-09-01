@@ -1,6 +1,15 @@
 // $(document).ready()의 축약형입니다.
 // DOM이 완전히 로드된 후 스크립트가 실행되도록 보장합니다.
 $(function() {
+
+	if (!userId) {
+		const $userSelect = $('#userId');
+		if ($userSelect.find('option').length > 0) {
+			$userSelect.val($userSelect.find('option:first').val()); // Select the first option
+			$('.search-form').submit(); // Trigger form submission
+		}
+	}
+	
   // 전체 선택/해제
   $('#selectAll').on('click', function() {
     // this는 #selectAll 체크박스 자체를 가리킵니다.
