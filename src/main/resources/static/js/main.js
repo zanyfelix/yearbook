@@ -18,17 +18,14 @@ $(document).ready(function() {
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
 
-	// updateElementPosition 함수 (기존과 동일)
 	window.updateElementPosition = function($element, state) {
+		console.log("update");
 		const relativeState = $element.data('relativeState');
 		if (!relativeState) return;
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
-
-		const currentTransform = $element.css('transform');
-		$element.css('transform', 'none');
 
 		const newPixelPos = {
 			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
@@ -45,10 +42,11 @@ $(document).ready(function() {
 			top: newPixelPos.top,
 			width: newPixelSize.width,
 			height: newPixelSize.height,
-			transform: relativeState.transform || 'none'
+			transform: relativeState.transform || 'none', // data에 저장된 transform 값을 사용
+	        transformOrigin: relativeState.transformOrigin || '50% 50%' // data에 저장된 origin 값 사용
 		};
 
-		// 텍스트 박스 스타일 복원 (font-size 스케일링)
+		// 텍스트 박스 관련 로직은 그대로 유지
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
 			const TEMPLATE_WEB_BG_WIDTH = 786;
@@ -60,11 +58,15 @@ $(document).ready(function() {
 			}
 		}
 
+		// transform-origin 이 relativeState에 있으면 finalCss에 추가
 		if (relativeState.transformOrigin) {
 			finalCss['transform-origin'] = relativeState.transformOrigin;
 		}
 
 		finalCss['visibility'] = 'visible';
+
+		// 모든 계산이 끝난 후, CSS를 한 번에 적용합니다.
+		console.log(finalCss);
 		$element.css(finalCss);
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
@@ -72,8 +74,8 @@ $(document).ready(function() {
 		}
 	};
 
-	// updateAllPositions 함수 (기존과 동일)
 	window.updateAllPositions = function() {
+		console.log("updateAllPositions");
 		$('#frame-container .frame-group').each(function() {
 			window.updateElementPosition($(this));
 		});
@@ -240,6 +242,7 @@ $(document).ready(function() {
 
 			// 프레임 렌더링
 			if (design.frames) {
+				console.log('프레임 복원 시작, 개수:', design.frames.length);
 				design.frames.forEach(frameData => {
 					FrameManager.applyFrame(frameData.theme, frameData);
 
@@ -263,10 +266,6 @@ $(document).ready(function() {
 				});
 			}
 
-			// ✅ [핵심 수정] 텍스트박스 복원 로직 개선
-			// main.js의 renderPage 함수 내 텍스트박스 복원 부분 수정
-
-			// 텍스트박스 복원 로직 - 수정된 버전
 			if (design.textBoxes) {
 				console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
 
@@ -499,18 +498,17 @@ $(document).ready(function() {
 	});
 
 	$('#editModal').on('shown.bs.modal', function() {
-		/*setTimeout(() => {*/
-			if (window.safeLineManager) {
-				window.safeLineManager.update();
-			}
-			if (window.updateAllPositions) {
-				window.updateAllPositions();
-			}
-
-			if (window.updateAllPhotosPosition) {
-				updateAllPhotosPosition();
-			}
-		/*}, 200);*/
+		if (window.safeLineManager) {
+			window.safeLineManager.update();
+		}
+		//틀잡기(프레임과 텍스트박스 배치)
+		if (window.updateAllPositions) {
+			window.updateAllPositions();
+		}
+		//내용채우기(사진)
+		if (window.updateAllPhotosPosition) {
+			updateAllPhotosPosition();
+		}
 	});
 
 	$('#btn-close-modal').on('click', function() {
@@ -620,18 +618,12 @@ $(document).ready(function() {
 			return;
 		}
 
-		// 프레임 저장 로직 (기존과 동일)
 		$('#frame-container .frame-group').each(function() {
 			const $frame = $(this);
-			if ($frame.width() <= 0 || $frame.height() <= 0) return;
-
-			const frameTransform = $frame.css('transform');
-			const frameTransformOrigin = $frame.css('transform-origin');
-			$frame.css({ 'transform': 'none' });
-
-			const frameWidth = $frame.width();
-			const frameHeight = $frame.height();
-			const framePos = $frame.position();
+			
+			// 1. 이미 저장된 가장 정확한 relativeState 값을 가져온다.
+			const relativeState = $frame.data('relativeState');
+			if (!relativeState) return; // 데이터가 없으면 건너뛰기
 
 			let photoData = null;
 			const $photo = $frame.find('.uploaded-photo');
@@ -648,23 +640,18 @@ $(document).ready(function() {
 				}
 			}
 
+			// 2. DOM을 측정하는 대신, 저장된 데이터를 그대로 사용한다.
 			const frameData = {
 				theme: $frame.data('frameTheme'),
-				position: {
-					left: ((framePos.left - actualBgRect.left) / actualBgRect.width) * 100,
-					top: ((framePos.top - actualBgRect.top) / actualBgRect.height) * 100
-				},
-				size: {
-					width: (frameWidth / actualBgRect.width) * 100,
-					height: (frameHeight / actualBgRect.height) * 100
-				},
-				transform: frameTransform || 'none',
-				transformOrigin: frameTransformOrigin || '50% 50%',
+				position: relativeState.position, // ✅ 신뢰할 수 있는 데이터 사용
+				size: relativeState.size,         // ✅ 신뢰할 수 있는 데이터 사용
+				transform: $frame.css('transform') || 'none', // 현재 transform 값만 읽어온다
+				transformOrigin: $frame.css('transform-origin') || '50% 50%',
 				photo: photoData
 			};
+			
+			console.log(frameData);
 			designData.frames.push(frameData);
-
-			$frame.css({ 'transform': frameTransform, 'transform-origin': frameTransformOrigin });
 		});
 
 		// ✅ [핵심 수정] 텍스트박스 저장 로직 개선
@@ -946,6 +933,7 @@ $(document).ready(function() {
 
 	// 윈도우 리사이즈 이벤트
 	$(window).on('resize', debounce(function() {
+		console.log("resize");
 		if ($('#editModal').is(':visible')) {
 			window.safeLineManager.update();
 			window.updateAllPositions();
@@ -1162,18 +1150,25 @@ function updateAllPhotosPosition() {
 			const frameW = $frame.width();
 			const frameH = $frame.height();
 			if (frameW === 0 || frameH === 0) return;
+			
+			// position에 저장된 translate % 값을 px로 다시 변환
+			const translateX = (photoData.position.left / 100) * frameW;
+			const translateY = (photoData.position.top / 100) * frameH;
+
+			const finalTransform = `${photoData.transform || ''} translate(${translateX}px, ${translateY}px)`.trim();
 
 			const photoCss = {
 				display: 'block',
 				visibility: 'visible',
 				width: (photoData.size.width / 100) * frameW,
 				height: (photoData.size.height / 100) * frameH,
-				left: (photoData.position.left / 100) * frameW,
-				top: (photoData.position.top / 100) * frameH,
-				transform: photoData.transform || 'none',
+				// left, top은 더 이상 위치 제어에 사용하지 않음 (초기값 0으로 설정)
+				left: 0,
+				top: 0,
+				transform: finalTransform,
 				transformOrigin: photoData.transformOrigin || '50% 50%'
 			};
-
+			
 			$photo.css(photoCss);
 
 		} else {
@@ -1183,3 +1178,15 @@ function updateAllPhotosPosition() {
 		}
 	});
 }
+
+window.getTranslateValues = function(transformString) {
+    if (!transformString || transformString === 'none') {
+        return { x: 0, y: 0 };
+    }
+    const matrix = transformString.match(/matrix\((.+)\)/);
+    if (matrix && matrix[1]) {
+        const values = matrix[1].split(',').map(parseFloat);
+        return { x: values[4], y: values[5] };
+    }
+    return { x: 0, y: 0 };
+};

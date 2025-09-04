@@ -77,43 +77,42 @@ class PhotoManager {
     // === 드래그 처리 ===
     
     static handleDrag(photo, frameGroup, maskContainer, e) {
-        const dragData = {
-            startX: e.clientX,
-            startY: e.clientY,
-            initialLeft: photo.position().left,
-            initialTop: photo.position().top,
-            containerBounds: this.getContainerBounds(maskContainer, photo),
-            rafId: null
-        };
-        
-        const onMouseMove = (ev) => {
-			if (dragData.rafId) cancelAnimationFrame(dragData.rafId);
+		const initialTransform = photo.css('transform');
+		const initialTranslate = window.getTranslateValues(initialTransform);
 
-			dragData.rafId = requestAnimationFrame(() => {
-				const deltaX = ev.clientX - dragData.startX;
-				const deltaY = ev.clientY - dragData.startY;
+		const dragData = {
+			startX: e.clientX,
+			startY: e.clientY,
+			initialTranslateX: initialTranslate.x,
+			initialTranslateY: initialTranslate.y,
+			// 회전/크기 정보는 그대로 유지하기 위해 translate를 제외한 transform 값을 저장
+			baseTransform: initialTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, '').trim()
+		};
 
-				const newPosition = this.calculateConstrainedPosition(
-					dragData.initialLeft + deltaX,
-					dragData.initialTop + deltaY,
-					dragData.containerBounds
-				);
+		const onMouseMove = (ev) => {
+			ev.preventDefault();
+			const deltaX = ev.clientX - dragData.startX;
+			const deltaY = ev.clientY - dragData.startY;
 
-				// ✅ 이미 계산된 newPosition 값을 모든 요소에 한 번에 적용
-				photo.css(newPosition);
-				$('.photo-silhouette').css(newPosition);
-				$('.photo-selection-box').css(newPosition); // ✅ 불필요한 읽기 과정 없이 바로 적용
-			});
-        };
-        
-        const onMouseUp = () => {
-            if (dragData.rafId) cancelAnimationFrame(dragData.rafId);
-            $(document).off('.photoDrag');
-            this.savePhotoState(photo, frameGroup);
-        };
-        
-        $(document).on('mousemove.photoDrag', onMouseMove)
-                  .on('mouseup.photoDrag', onMouseUp);
+			const newTranslateX = dragData.initialTranslateX + deltaX;
+			const newTranslateY = dragData.initialTranslateY + deltaY;
+
+			// 기존의 회전/크기 값 + 새로운 translate 값을 합쳐서 최종 transform 문자열 생성
+			const newTransform = `${dragData.baseTransform} translate(${newTranslateX}px, ${newTranslateY}px)`;
+
+			photo.css('transform', newTransform);
+			// 선택 UI도 동일하게 이동
+			$('.photo-selection-box').css('transform', newTransform);
+		};
+
+		const onMouseUp = () => {
+			$(document).off('.photoDrag');
+			// 드래그가 끝나면 isManual 플래그를 false로 설정하여 저장
+			this.savePhotoState(photo, frameGroup, { isManual: false });
+		};
+
+		$(document).on('mousemove.photoDrag', onMouseMove)
+			.on('mouseup.photoDrag', onMouseUp);
     }
     
     static getContainerBounds(maskContainer, photo) {
@@ -134,7 +133,16 @@ class PhotoManager {
         };
     }
     
-    static calculateConstrainedPosition(newLeft, newTop, bounds) {
+    static calculateConstrainedPosition(newLeft, newTop, bounds, photo) {
+		const currentState = photo.data('relativeState');
+		
+		if (currentState && currentState.isManuallyAdjusted) {
+			return {
+				left: `${newLeft}px`,
+				top: `${newTop}px`
+			};
+		}
+		
         let constrainedLeft = newLeft;
         let constrainedTop = newTop;
         
@@ -190,6 +198,9 @@ class PhotoManager {
             
             $(document).on('mouseup.photoRotate', () => {
                 $(document).off('.photoRotate');
+				const state = photo.data('relativeState') || {};
+				state.isManuallyAdjusted = true; // '수동 조절됨' 플래그 추가
+				this.savePhotoState(photo, photo.closest('.frame-group'), { isManual: true });
             });
         });
     }
@@ -244,7 +255,9 @@ class PhotoManager {
             
             $(document).on('mouseup.photoResize', () => {
                 $(document).off('.photoResize');
-                this.savePhotoState(photo, photo.closest('.frame-group'));
+				const state = photo.data('relativeState') || {};
+				state.isManuallyAdjusted = true; // '수동 조절됨' 플래그 추가
+				this.savePhotoState(photo, photo.closest('.frame-group'), { isManual: true });
             });
         });
     }
@@ -364,15 +377,22 @@ class PhotoManager {
     static savePhotoState(photo, frameGroup) {
         const frameW = frameGroup.width();
         const frameH = frameGroup.height();
-        const photoPos = photo.position();
-        
-        const currentState = photo.data('relativeState') || {};
-        
-        currentState.position = {
-            left: (photoPos.left / frameW) * 100,
-            top: (photoPos.top / frameH) * 100
-        };
-        
+		
+		// 현재 transform에서 translate 값(px)을 읽어옴
+		const currentTransform = photo.css('transform');
+		const translateValues = window.getTranslateValues(currentTransform);
+
+		const currentState = photo.data('relativeState') || {};
+
+		// translate 값을 %로 변환하여 position에 저장
+		currentState.position = {
+			left: frameW > 0 ? (translateValues.x / frameW) * 100 : 0,
+			top: frameH > 0 ? (translateValues.y / frameH) * 100 : 0
+		};
+
+		// translate를 제외한 나머지 transform 정보(회전, 크기)를 저장
+		currentState.transform = currentTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, '').trim() || 'none';
+
         if (!currentState.size) {
             currentState.size = {
                 width: (photo.width() / frameW) * 100,
@@ -380,7 +400,14 @@ class PhotoManager {
             };
         }
         
-        currentState.transform = photo.css('transform') || 'none';
+		currentState.transform = photo.css('transform') || 'none';
+		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
+		
+		// isManuallyAdjusted 플래그를 options 파라미터로 제어
+		if (options.isManual !== undefined) {
+			currentState.isManuallyAdjusted = options.isManual;
+		}
+		
         photo.data('relativeState', currentState);
     }
     
