@@ -242,77 +242,33 @@ class FrameManager {
 
 		// 사진이 있으면 복원
 		if (!frameType.isSimple && savedState.photo?.src) {
-		    // 프레임 설정 완료 후 사진 복원
-		    setTimeout(() => {
+		    /*setTimeout(() => {*/
 		        this.restorePhoto(frameGroup, savedState.photo);
-		    }, 100);
+		    /*}, 100);*/
 		}
     }
     
-    static restorePhoto(frameGroup, photoState) {
-        const uploadedPhoto = frameGroup.find('.uploaded-photo');
-        const placeholderLink = frameGroup.find('.place-image-here-link');
-        
-		// 🔴 핵심 수정 1: relativeState를 먼저 설정
-		const photoRelativeState = {
-		    position: photoState.position || { left: 0, top: 0 },
-		    size: photoState.size || { width: 100, height: 100 },
-		    transform: photoState.transform || 'none',
-		    transformOrigin: photoState.transformOrigin || '50% 50%'
-		};
+	static restorePhoto(frameGroup, photoState) {
+		const uploadedPhoto = frameGroup.find('.uploaded-photo');
 
+		// 1. relativeState 데이터 저장 (핵심)
+		const photoRelativeState = {
+			position: photoState.position || { left: 0, top: 0 },
+			size: photoState.size || { width: 100, height: 100 },
+			transform: photoState.transform || 'none',
+			transformOrigin: photoState.transformOrigin || '50% 50%'
+		};
 		uploadedPhoto.data('relativeState', photoRelativeState);
 
-		// 🔴 핵심 수정 2: 이미지 소스 처리 개선
-		let imageSrc;
-		if (photoState.fullSrc) {
-		    imageSrc = photoState.fullSrc;
-		} else if (photoState.src) {
-		    // src가 Base64가 아니면 경로 추가
-		    imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
+		// 2. 이미지 경로(src)와 파일 경로(filePath) 데이터 설정
+		let imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
+		if (photoState.src && !photoState.src.startsWith('data:')) {
+			uploadedPhoto.data('filePath', photoState.src);
 		}
 
-		// 🔴 핵심 수정 3: filePath 데이터 먼저 설정
-		if (photoState.filePath) {
-		    uploadedPhoto.data('filePath', photoState.filePath);
-		} else if (photoState.src && !photoState.src.startsWith('data:')) {
-		    uploadedPhoto.data('filePath', photoState.src);
-		}
-
-		// 🔴 핵심 수정 4: 로드 이벤트 핸들러 개선
-		uploadedPhoto.off('load.restore').on('load.restore', function() {
-		    const $this = $(this);
-		    placeholderLink.hide();
-		    
-		    const frameWidth = frameGroup.width();
-		    const frameHeight = frameGroup.height();
-		    
-		    const photoLeft = (photoRelativeState.position.left / 100) * frameWidth;
-		    const photoTop = (photoRelativeState.position.top / 100) * frameHeight;
-		    const photoWidth = (photoRelativeState.size.width / 100) * frameWidth;
-		    const photoHeight = (photoRelativeState.size.height / 100) * frameHeight;
-
-		    // ✅ setTimeout을 제거하고 모든 CSS 속성을 한 번에 적용합니다.
-		    $this.css({
-		        position: 'absolute',
-		        left: photoLeft + 'px',
-		        top: photoTop + 'px',
-		        width: photoWidth + 'px',
-		        height: photoHeight + 'px',
-		        display: 'block',
-		        'transform': photoRelativeState.transform || 'none',
-		        'transform-origin': photoRelativeState.transformOrigin || '50% 50%'
-		    });
-		});
-
-		// 이미지 소스 설정
+		// 3. 이미지 소스 설정
 		uploadedPhoto.attr('src', imageSrc);
-
-		// 이미 로드된 경우 즉시 트리거
-		if (uploadedPhoto[0].complete) {
-		    uploadedPhoto.trigger('load.restore');
-		}
-    }
+	}
     
     static setupNewFrame(frameGroup, frameTheme, frameType) {
         this.setupPosition(frameGroup, frameTheme);

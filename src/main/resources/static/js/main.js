@@ -499,7 +499,7 @@ $(document).ready(function() {
 	});
 
 	$('#editModal').on('shown.bs.modal', function() {
-		setTimeout(() => {
+		/*setTimeout(() => {*/
 			if (window.safeLineManager) {
 				window.safeLineManager.update();
 			}
@@ -507,14 +507,10 @@ $(document).ready(function() {
 				window.updateAllPositions();
 			}
 
-			// ▼▼▼ [핵심] 이 부분을 추가하세요 ▼▼▼
-			// 모든 프레임 위치가 잡힌 후, 사진 위치를 최종적으로 계산합니다.
 			if (window.updateAllPhotosPosition) {
 				updateAllPhotosPosition();
 			}
-			// ▲▲▲ [핵심] 이 부분을 추가하세요 ▲▲▲
-
-		}, 200);
+		/*}, 200);*/
 	});
 
 	$('#btn-close-modal').on('click', function() {
@@ -1148,34 +1144,42 @@ window.getScaleFromMatrix = function(transform) {
 };
 
 function updateAllPhotosPosition() {
-    $('#frame-container .uploaded-photo').each(function() {
-        const $photo = $(this);
-        const $frame = $photo.closest('.frame-group');
-        const photoData = $photo.data('relativeState');
+	$('#frame-container .frame-group').each(function() {
+		const $frame = $(this);
+		const $photo = $frame.find('.uploaded-photo');
+		const $placeholder = $frame.find('.place-image-here-link');
 
-        // 프레임이나 사진 데이터가 없으면 건너뜁니다.
-        if (!$frame.length || !photoData) {
-            return; 
-        }
+		// 사진 이미지의 src 속성이 있는지 확인
+		const photoSrc = $photo.attr('src');
 
-        const frameW = $frame.width();
-        const frameH = $frame.height();
+		if (photoSrc && photoSrc !== '#') {
+			// 사진이 있으면 플레이스홀더를 숨김
+			$placeholder.hide();
 
-        // 프레임 크기가 0이면 계산하지 않습니다.
-        if (frameW === 0 || frameH === 0) return;
+			const photoData = $photo.data('relativeState');
+			if (!photoData) return;
 
-        // 저장된 %값을 기반으로 사진의 실제 픽셀 크기와 위치를 계산합니다.
-        const photoCss = {
-            width: (photoData.size.width / 100) * frameW,
-            height: (photoData.size.height / 100) * frameH,
-            left: (photoData.position.left / 100) * frameW,
-            top: (photoData.position.top / 100) * frameH,
-            transform: photoData.transform || 'none',
-            transformOrigin: photoData.transformOrigin || '50% 50%',
-			visibility: 'visible'
-        };
-        
-        // 최종 계산된 CSS를 사진에 적용합니다.
-        $photo.css(photoCss);
-    });
+			const frameW = $frame.width();
+			const frameH = $frame.height();
+			if (frameW === 0 || frameH === 0) return;
+
+			const photoCss = {
+				display: 'block',
+				visibility: 'visible',
+				width: (photoData.size.width / 100) * frameW,
+				height: (photoData.size.height / 100) * frameH,
+				left: (photoData.position.left / 100) * frameW,
+				top: (photoData.position.top / 100) * frameH,
+				transform: photoData.transform || 'none',
+				transformOrigin: photoData.transformOrigin || '50% 50%'
+			};
+
+			$photo.css(photoCss);
+
+		} else {
+			// 사진이 없으면 플레이스홀더를 보여줌
+			$placeholder.show();
+			$photo.hide();
+		}
+	});
 }
