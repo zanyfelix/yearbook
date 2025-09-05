@@ -277,21 +277,21 @@ class EventManager {
 	}
 
 	// 공통 드래그 핸들러
-	static setupDragHandler(element, type, onComplete) {
+	static setupDragHandler(element, type) {
 		let dragData = null;
 
 		element.on('mousedown', (e) => {
 			if (e.button !== 0 || !this.canDrag(element, type)) return;
-
 			e.preventDefault();
 			e.stopPropagation();
 
+			const initialPosition = element.position();
 			dragData = {
-			    startX: e.clientX,
-			    startY: e.clientY,
-			    // ✅ initialLeft/Top 대신 초기 transform 값을 저장
-			    initialTransform: element.css('transform'),
-			    isDragging: false,
+				startX: e.clientX,
+				startY: e.clientY,
+				initialLeft: initialPosition.left,
+				initialTop: initialPosition.top,
+				isDragging: false,
 			};
 
 			$(document).on('mousemove.drag', (ev) => {
@@ -304,10 +304,18 @@ class EventManager {
 				}
 
 				if (dragData.isDragging) {
-				    // ✅ left/top을 직접 바꾸는 대신, transform에 이동 값을 누적
-				    const newTransform = TransformHelper.applyTranslation(dragData.initialTransform, deltaX, deltaY);
-				    element.css('transform', newTransform);
-				    
+					// ✨ 1. 새로운 위치 계산
+					const newLeft = dragData.initialLeft + deltaX;
+					const newTop = dragData.initialTop + deltaY;
+
+					// ✨ 2. SafeLine 제약 조건 적용
+					const constrainedPos = window.selectionManager.applySafeLineConstraints(newLeft, newTop, element);
+
+					// ✨ 3. 제약이 적용된 최종 위치로 CSS 업데이트
+					element.css({
+						left: constrainedPos.left + 'px',
+						top: constrainedPos.top + 'px'
+					});
 				    // 툴팁 등 부가 기능 업데이트
 				    this.updateTooltipIfNeeded(element, type, dragData); 
 				}
@@ -318,11 +326,8 @@ class EventManager {
 				element.removeClass('dragging');
 
 				if (dragData.isDragging) {
-				    // ✅ 최종 transform 값을 relativeState에 저장
-				    const currentState = element.data('relativeState') || {};
-				    currentState.transform = element.css('transform');
-				    element.data('relativeState', currentState);
-				    // onComplete 콜백 호출 (필요시)
+					// ✨ 최종 위치를 relativeState에 저장
+					this.saveElementPosition(element);
 				}
 
 				dragData = null;

@@ -1155,7 +1155,15 @@ function updateAllPhotosPosition() {
 			const translateX = (photoData.position.left / 100) * frameW;
 			const translateY = (photoData.position.top / 100) * frameH;
 
-			const finalTransform = `${photoData.transform || ''} translate(${translateX}px, ${translateY}px)`.trim();
+			const baseMatrix = window.getRotationMatrix($photo); // "matrix(a,b,c,d,0,0)" 또는 "none":contentReference[oaicite:4]{index=4}
+			let finalTransform;
+			if (baseMatrix && baseMatrix !== 'none') {
+			  // e,f(이동)를 화면 좌표(px)로 직접 주입
+			  finalTransform = baseMatrix.replace(/,\s*0\s*,\s*0\s*\)$/, `, ${translateX}, ${translateY})`);
+			} else {
+			  // 회전/스케일이 없을 때는 translate만
+			  finalTransform = `translate(${translateX}px, ${translateY}px)`;
+			}
 
 			const photoCss = {
 				display: 'block',

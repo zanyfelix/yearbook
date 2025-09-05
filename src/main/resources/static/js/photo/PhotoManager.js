@@ -374,7 +374,7 @@ class PhotoManager {
     
     // === 상태 저장 ===
     
-    static savePhotoState(photo, frameGroup) {
+    static savePhotoState(photo, frameGroup, options = {}) { 
         const frameW = frameGroup.width();
         const frameH = frameGroup.height();
 		
@@ -391,24 +391,28 @@ class PhotoManager {
 		};
 
 		// translate를 제외한 나머지 transform 정보(회전, 크기)를 저장
-		currentState.transform = currentTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, '').trim() || 'none';
+		let transformNoTranslate = window.getRotationMatrix(photo); // matrix(a,b,c,d,0,0) 또는 'none':contentReference[oaicite:2]{index=2}
+		if (transformNoTranslate === 'none' && currentTransform && currentTransform !== 'none') {
+			// rotate/scale로만 구성된 비-matrix 문자열일 경우(브라우저에 따라 다름) 방어적으로 translate를 제거
+			transformNoTranslate = currentTransform.replace(/translate\([^)]+\)/, '').trim() || 'none';
+		}
+		currentState.transform = transformNoTranslate;
 
-        if (!currentState.size) {
-            currentState.size = {
-                width: (photo.width() / frameW) * 100,
-                height: (photo.height() / frameH) * 100
-            };
-        }
-        
-		currentState.transform = photo.css('transform') || 'none';
+		// 3) 크기 저장(필요 시 항상 갱신해도 무방)
+		currentState.size = {
+			width: (photo.width() / frameW) * 100,
+			height: (photo.height() / frameH) * 100
+		};
+
+		// 4) transform-origin 저장
 		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
-		
-		// isManuallyAdjusted 플래그를 options 파라미터로 제어
-		if (options.isManual !== undefined) {
+
+		// 5) 수동 조절 플래그 반영
+		if (typeof options.isManual === 'boolean') {
 			currentState.isManuallyAdjusted = options.isManual;
 		}
-		
-        photo.data('relativeState', currentState);
+
+		photo.data('relativeState', currentState);
     }
     
     // === 유틸리티 메서드 ===
