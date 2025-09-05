@@ -879,14 +879,12 @@ $(document).ready(function() {
 					transform: `translate(${newLeft}px, ${newTop}px)`
 				});
 
-				const frameW = frameGroup.width();
-				const frameH = frameGroup.height();
-
 				// 2. 저장될 상태(relativeState)를 생성합니다.
 				const initialState = {
-					position: { left: (newLeft / frameW) * 100, top: (newTop / frameH) * 100 },
-					size: { width: (newWidth / frameW) * 100, height: (newHeight / frameH) * 100 },
-					transform: 'none'
+					position: { leftPx: newLeft, topPx: newTop },
+					size: { widthPx: newWidth, heightPx: newHeight },
+					transform: 'none',
+					transformOrigin: '50% 50%'
 				};
 				photo.data('relativeState', initialState);
 				window.selectionManager.clearSelection();
@@ -1148,29 +1146,23 @@ function updateAllPhotosPosition() {
 			const photoData = $photo.data('relativeState');
 			if (!photoData) return;
 
-			const frameW = $frame.width();
-			const frameH = $frame.height();
-			if (frameW === 0 || frameH === 0) return;
+			// ✨ 저장된 픽셀 데이터를 직접 읽어옵니다.
+			const photoLeft = photoData.position.leftPx || 0;
+			const photoTop = photoData.position.topPx || 0;
+			const photoWidth = photoData.size.widthPx || 100;
+			const photoHeight = photoData.size.heightPx || 100;
 
-			// 1. 저장된 position(%)으로 이동(translate) 픽셀 값을 계산합니다.
-			const translateX = (photoData.position.left / 100) * frameW;
-			const translateY = (photoData.position.top / 100) * frameH;
-			const translationPart = `translate(${translateX}px, ${translateY}px)`;
-
-			// 2. 저장된 transform에서 회전/크기 정보 부분을 가져옵니다.
-			const rotationPart = (photoData.transform && photoData.transform !== 'none') ? photoData.transform : '';
-
-			// 3. 회전/크기 정보를 먼저 적용하고, 그 다음에 이동(translate)을 적용합니다.
-			const finalTransform = `${rotationPart} ${translationPart}`.trim();
+			// ✨ 사진 자체의 회전 정보는 transform 속성에만 할당합니다.
+			const photoRotation = photoData.transform || 'none';
 
 			const photoCss = {
 				display: 'block',
 				visibility: 'visible',
-				width: (photoData.size.width / 100) * frameW,
-				height: (photoData.size.height / 100) * frameH,
-				left: 0,
-				top: 0,
-				transform: finalTransform,
+				width: photoWidth,
+				height: photoHeight,
+				left: photoLeft,          // ✨ 위치는 left, top으로 적용
+				top: photoTop,
+				transform: photoRotation, // ✨ 회전/크기는 transform으로 적용
 				transformOrigin: photoData.transformOrigin || '50% 50%'
 			};
 
