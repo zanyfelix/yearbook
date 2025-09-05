@@ -76,6 +76,10 @@ class EventManager {
 			e.preventDefault();
 			e.stopPropagation();
 
+			if (element.hasClass('uploaded-photo')) {
+				element.closest('.frame-group').data('isRotatingPhoto', true);
+			}
+
 			const rect = element[0].getBoundingClientRect();
 			const elementCenter = {
 				x: rect.left + rect.width / 2,
@@ -97,19 +101,45 @@ class EventManager {
 
 				// ✨ 위치(translate)와 새로운 회전(rotate) 값을 조합하여 CSS를 업데이트합니다.
 				const newTransform = `translate(${initialTranslate.x}px, ${initialTranslate.y}px) rotate(${newAngleDeg}deg)`;
-				element.css('transform', newTransform);
-				if (element.hasClass('uploaded-photo')) {
-					$('.photo-selection-box').css('transform', newTransform);
-					$('.photo-silhouette').css('transform', newTransform);
+
+				// ✨ 회전하기 전에 교차 여부를 확인하는 로직
+				const originalTransform = element.css('transform');
+				element.css('transform', newTransform); // 임시로 회전
+
+				const elementCorners = GeometryHelper.getRotatedCorners(element);
+				const frameCorners = GeometryHelper.getRotatedCorners(element.closest('.frame-group'));
+
+				if (frameCorners.length === 0 || GeometryHelper.checkIntersection(elementCorners, frameCorners)) {
+					// 교차하면 회전을 확정하고, 나머지 요소들도 업데이트
+					if (element.hasClass('uploaded-photo')) {
+						$('.photo-selection-box').css('transform', newTransform);
+						$('.photo-silhouette').css('transform', newTransform);
+					}
+				} else {
+					// 교차하지 않으면(프레임을 완전히 벗어나면), 원래 각도로 되돌림
+					element.css('transform', originalTransform);
 				}
 			});
 
 			$(document).on('mouseup.rotator', () => {
 				$(document).off('.rotator');
+
 				const currentState = element.data('relativeState') || {};
-				// ✨ 최종 transform 값을 올바르게 저장합니다.
 				currentState.transform = element.css('transform');
 				element.data('relativeState', currentState);
+
+				// ✨ --- START: 선택 상태 유지를 위한 코드 추가 --- ✨
+				// 회전 대상이 사진일 경우, 회전이 끝난 후 다시 사진을 선택합니다.
+				if (element.hasClass('uploaded-photo')) {
+					const frameGroup = element.closest('.frame-group');
+					window.selectionManager.selectPhoto(element, frameGroup);
+
+					// ✨ 회전 종료 후 아주 잠시 뒤에 플래그 해제
+					setTimeout(() => {
+						frameGroup.removeData('isRotatingPhoto');
+					}, 0);
+				}
+				// ✨ --- END: 선택 상태 유지를 위한 코드 추가 --- ✨
 			});
 		});
 	}
@@ -127,7 +157,6 @@ class EventManager {
 		// 기존의 포괄적인 이벤트 설정 함수를 호출
 		this.setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer);
 	}
-	// ▲▲▲ [신규 추가] 종료 ▲▲▲
 
 	// 프레임 이벤트 설정 (기존 함수)
 	static setupFrameEvents(frameGroup, placeholderLink, uploadedPhoto, maskContainer) {
@@ -144,6 +173,10 @@ class EventManager {
 		let clickTimer = null;
 
 		frameGroup.on('click', (e) => {
+			if (frameGroup.data('isDraggingPhoto') || frameGroup.data('isRotatingPhoto')) {
+				return;
+			}
+
 			// 더블클릭이 진행 중이면, 싱글클릭 로직을 실행하지 않음
 			clearTimeout(clickTimer);
 

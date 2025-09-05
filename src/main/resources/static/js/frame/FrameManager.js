@@ -10,7 +10,6 @@ class FrameManager {
     };
 
     static applyFrame(frameTheme, savedState = null) {
-        // ... (이하 다른 부분은 모두 동일) ...
         const frameContainer = $('#frame-container');
         const frameType = this.getFrameType(frameTheme);
         const frameGroup = this.createFrameGroup(frameType);
@@ -29,6 +28,17 @@ class FrameManager {
         if (frameTheme.editPath) {
             frameOverlay.attr('src', frameTheme.editPath);
         }
+		
+		if (!frameType.isSimple && frameTheme.editMaskPath) {
+			MaskBoundsCalculator.getBounds(`${ctx}${frameTheme.editMaskPath}`)
+				.then(bounds => {
+					// 계산된 영역 정보를 프레임 요소의 데이터로 저장
+					frameGroup.data('maskBounds', bounds);
+				})
+				.catch(err => {
+					console.error("마스크 영역 계산 실패:", err);
+				});
+		}
         
         if (savedState) {
             this.restoreFrameState(frameGroup, savedState, frameType);

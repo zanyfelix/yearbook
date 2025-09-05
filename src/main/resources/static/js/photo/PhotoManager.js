@@ -77,39 +77,83 @@ class PhotoManager {
 	// === 드래그 처리 ===
 
 	static handleDrag(photo, frameGroup, maskContainer, e) {
-		const initialTransform = photo.css('transform');
-		const initialTranslate = window.getTranslateValues(initialTransform);
+		
+		frameGroup.data('isDraggingPhoto', true);
+		
+		// 1. 움직일 요소들을 한 번만 찾아 변수에 저장(캐싱)합니다.
 		const $selectionBox = $('.photo-selection-box');
 		const $silhouette = $('.photo-silhouette');
 
+		// 2. 드래그에 필요한 초기 정보를 계산합니다.
+		const initialTransform = photo.css('transform');
+		const photoOffset = photo.offset();
+		const frameOffset = frameGroup.offset();
+
 		const dragData = {
-			startX: e.clientX,
-			startY: e.clientY,
-			initialTranslateX: initialTranslate.x,
-			initialTranslateY: initialTranslate.y,
-			// ✨ 드래그 시작 시점의 회전/크기 정보만 따로 저장합니다.
-			baseTransform: window.getRotationMatrix(photo)
+			offsetX: e.clientX - photoOffset.left,
+			offsetY: e.clientY - photoOffset.top,
+			frameOffsetX: frameOffset.left,
+			frameOffsetY: frameOffset.top,
+			baseTransform: window.getRotationMatrix(photo),
+			latestMouseX: e.clientX,
+			latestMouseY: e.clientY,
+			ticking: false
 		};
 
-		const onMouseMove = (ev) => {
-			ev.preventDefault();
-			const deltaX = ev.clientX - dragData.startX;
-			const deltaY = ev.clientY - dragData.startY;
+		// 3. 드래그 중 위치를 업데이트하는 함수입니다. (프레임 이탈 방지 로직 포함)
+		const updatePositions = () => {
+			const newAbsoluteX = dragData.latestMouseX - dragData.offsetX;
+			const newAbsoluteY = dragData.latestMouseY - dragData.offsetY;
 
-			const newTranslateX = dragData.initialTranslateX + deltaX;
-			const newTranslateY = dragData.initialTranslateY + deltaY;
+			const newTranslateX = newAbsoluteX - dragData.frameOffsetX;
+			const newTranslateY = newAbsoluteY - dragData.frameOffsetY;
 
-			// ✨ 회전/크기 정보는 유지한 채, 위치 정보만 새로 조합합니다.
 			const newTransform = `${dragData.baseTransform} translate(${newTranslateX}px, ${newTranslateY}px)`;
 
-			photo.css('transform', newTransform);
-			$selectionBox.css('transform', newTransform);
-			$silhouette.css('transform', newTransform);
+			// 이동하기 전에 교차 여부를 확인합니다.
+			const originalTransform = photo.css('transform');
+			photo.css('transform', newTransform); // 임시로 이동
+
+			const photoCorners = GeometryHelper.getRotatedCorners(photo);
+			const frameCorners = GeometryHelper.getRotatedCorners(frameGroup);
+
+			if (GeometryHelper.checkIntersection(photoCorners, frameCorners)) {
+				// 교차하면(프레임에 걸쳐있으면) 이동을 확정하고 나머지 요소들도 업데이트합니다.
+				$selectionBox.css('transform', newTransform);
+				$silhouette.css('transform', newTransform);
+			} else {
+				// 교차하지 않으면(프레임을 완전히 벗어나면), 원래 위치로 되돌립니다.
+				photo.css('transform', originalTransform);
+			}
+
+			dragData.ticking = false;
 		};
 
+		// 4. 마우스 움직임에 따라 업데이트를 요청합니다.
+		const onMouseMove = (ev) => {
+			ev.preventDefault();
+			dragData.latestMouseX = ev.clientX;
+			dragData.latestMouseY = ev.clientY;
+
+			if (!dragData.ticking) {
+				requestAnimationFrame(updatePositions);
+				dragData.ticking = true;
+			}
+		};
+
+		// 5. 마우스를 놓았을 때 드래그를 종료하고 상태를 저장합니다.
 		const onMouseUp = () => {
 			$(document).off('.photoDrag');
-			this.savePhotoState(photo, frameGroup, { isManual: false });
+			if (dragData.ticking) {
+				updatePositions();
+			}
+			this.savePhotoState(photo, frameGroup, { isManual: true });
+			window.selectionManager.selectPhoto(photo, frameGroup);
+
+			// ✨ 드래그 종료 후 아주 잠시 뒤에 플래그 해제 (click 이벤트가 먼저 체크할 시간을 줌)
+			setTimeout(() => {
+				frameGroup.removeData('isDraggingPhoto');
+			}, 0);
 		};
 
 		$(document).on('mousemove.photoDrag', onMouseMove)
