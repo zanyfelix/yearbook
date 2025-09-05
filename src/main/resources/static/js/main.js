@@ -1146,23 +1146,34 @@ function updateAllPhotosPosition() {
 			const photoData = $photo.data('relativeState');
 			if (!photoData) return;
 
-			// ✨ 저장된 픽셀 데이터를 직접 읽어옵니다.
-			const photoLeft = photoData.position.leftPx || 0;
-			const photoTop = photoData.position.topPx || 0;
+			// 1. 저장된 깨끗한 픽셀 데이터를 읽어옵니다.
+			const translateX = photoData.position.leftPx || 0;
+			const translateY = photoData.position.topPx || 0;
 			const photoWidth = photoData.size.widthPx || 100;
 			const photoHeight = photoData.size.heightPx || 100;
+			// 이 값은 'matrix(a, b, c, d, 0, 0)' 형태의 순수한 회전/크기 정보입니다.
+			const rotationTransform = photoData.transform || 'none';
 
-			// ✨ 사진 자체의 회전 정보는 transform 속성에만 할당합니다.
-			const photoRotation = photoData.transform || 'none';
+			// 2. 회전 정보와 위치 정보를 하나의 최종 transform 값으로 완벽하게 조합합니다.
+			let finalTransform;
+			if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
+				// 회전이 없는 경우, 위치 정보만으로 transform을 생성합니다.
+				finalTransform = `translate(${translateX}px, ${translateY}px)`;
+			} else {
+				// 회전 정보가 있는 경우(matrix), 마지막 두 값(tx, ty)을 저장된 위치 값으로 교체합니다.
+				// "matrix(a,b,c,d,0,0)" -> "matrix(a,b,c,d,tx,ty)"
+				finalTransform = rotationTransform.replace(/, 0, 0\)$/, `, ${translateX}, ${translateY})`);
+			}
 
+			// 3. left/top은 0으로 고정하고, 오직 transform으로만 모든 것을 제어합니다.
 			const photoCss = {
 				display: 'block',
 				visibility: 'visible',
 				width: photoWidth,
 				height: photoHeight,
-				left: photoLeft,          // ✨ 위치는 left, top으로 적용
-				top: photoTop,
-				transform: photoRotation, // ✨ 회전/크기는 transform으로 적용
+				left: 0, // ✨ left/top을 사용하지 않는 것이 핵심입니다.
+				top: 0,  // ✨
+				transform: finalTransform, // ✨ 위치와 회전이 통합된 하나의 값
 				transformOrigin: photoData.transformOrigin || '50% 50%'
 			};
 

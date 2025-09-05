@@ -210,10 +210,7 @@ class PhotoManager {
 			const startHeight = photo.outerHeight();
 			const handleClass = handle.attr('class');
 
-			// 회전 각도 및 중심점 계산
 			const angle = Math.atan2(initialMatrix.b, initialMatrix.a);
-			const rect = photo[0].getBoundingClientRect();
-			const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 
 			const resizeData = {
 				startX: e.clientX,
@@ -223,7 +220,6 @@ class PhotoManager {
 				startHeight: startHeight,
 				aspectRatio: startWidth / startHeight,
 				angle: angle,
-				center: center,
 				// 핸들 위치에 따라 크기 조절 기준점을 설정
 				anchor: {
 					x: handleClass.includes('handle-w') ? 1 : -1,
@@ -240,45 +236,22 @@ class PhotoManager {
 				let rotatedDx = dx * cos - dy * sin;
 				let rotatedDy = dx * sin + dy * cos;
 
-				// 핸들 위치에 따라 최종 변화량 결정
 				const deltaW = rotatedDx * resizeData.anchor.x;
-				const deltaH = rotatedDy * resizeData.anchor.y;
+				let newWidth = resizeData.startWidth + deltaW;
+				if (newWidth < this.config.minSize) newWidth = this.config.minSize;
 
-				// 가로/세로 중 더 많이 변한 쪽을 기준으로 비율 유지
-				let newWidth, newHeight;
-				if (Math.abs(deltaW) > Math.abs(deltaH * resizeData.aspectRatio)) {
-					newWidth = resizeData.startWidth + deltaW;
-					newHeight = newWidth / resizeData.aspectRatio;
-				} else {
-					newHeight = resizeData.startHeight + deltaH;
-					newWidth = newHeight * resizeData.aspectRatio;
-				}
-
-				if (newWidth < this.config.minSize || newHeight < this.config.minSize) return;
-
-				// 새로운 크기 비율(scale) 계산
-				const scaleX = newWidth / resizeData.startWidth;
-				const scaleY = newHeight / resizeData.startHeight;
+				const scale = newWidth / resizeData.startWidth;
 
 				// 기존 행렬에 scale 변환을 곱하여 최종 행렬 계산
 				const newMatrix = { ...resizeData.initialMatrix };
-				newMatrix.a *= scaleX;
-				newMatrix.b *= scaleX;
-				newMatrix.c *= scaleY;
-				newMatrix.d *= scaleY;
+				newMatrix.a *= scale;
+				newMatrix.b *= scale;
+				newMatrix.c *= scale;
+				newMatrix.d *= scale;
 
-				// 크기 조절로 인한 위치 이동 보정
-				const newCenterX = resizeData.center.x + (dx / 2);
-				const newCenterY = resizeData.center.y + (dy / 2);
-				const finalRect = { left: newCenterX - newWidth / 2, top: newCenterY - newHeight / 2 };
-
-				// 이 부분은 복잡하므로, 일단 크기 조절만 적용
 				const finalTransform = TransformHelper.composeMatrix(newMatrix);
 
-				photo.css({
-					'transform': finalTransform
-				});
-
+				photo.css({ 'transform': finalTransform });
 				this.updateSelectionUI(photo);
 				$('.photo-silhouette').css('transform', finalTransform);
 			});

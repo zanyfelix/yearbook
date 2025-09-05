@@ -76,10 +76,6 @@ class EventManager {
 			e.preventDefault();
 			e.stopPropagation();
 
-			if (element.hasClass('uploaded-photo')) {
-				element.closest('.frame-group').data('isRotatingPhoto', true);
-			}
-
 			const rect = element[0].getBoundingClientRect();
 			const elementCenter = {
 				x: rect.left + rect.width / 2,
@@ -87,8 +83,6 @@ class EventManager {
 			};
 
 			const initialTransform = element.css('transform');
-			// ✨ 현재 위치(translate) 값을 미리 가져옵니다.
-			const initialTranslate = window.getTranslateValues(initialTransform);
 			const initialMatrix = TransformHelper.parseMatrix(initialTransform);
 			const initialElementAngleRad = Math.atan2(initialMatrix.b, initialMatrix.a);
 			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
@@ -97,49 +91,36 @@ class EventManager {
 				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
 				const deltaAngleRad = currentAngleRad - startAngleRad;
 				const newAngleRad = initialElementAngleRad + deltaAngleRad;
-				const newAngleDeg = newAngleRad * (180 / Math.PI);
 
-				// ✨ 위치(translate)와 새로운 회전(rotate) 값을 조합하여 CSS를 업데이트합니다.
-				const newTransform = `translate(${initialTranslate.x}px, ${initialTranslate.y}px) rotate(${newAngleDeg}deg)`;
+				// ✨ 기존 행렬의 회전 부분만 새로운 각도로 교체합니다. (위치, 크기 정보는 보존)
+				const newMatrix = { ...initialMatrix };
+				const scaleX = Math.sqrt(initialMatrix.a * initialMatrix.a + initialMatrix.c * initialMatrix.c);
+				const scaleY = Math.sqrt(initialMatrix.b * initialMatrix.b + initialMatrix.d * initialMatrix.d);
+				const cos = Math.cos(newAngleRad);
+				const sin = Math.sin(newAngleRad);
+				newMatrix.a = cos * scaleX;
+				newMatrix.b = sin * scaleX;
+				newMatrix.c = -sin * scaleY;
+				newMatrix.d = cos * scaleY;
 
-				// ✨ 회전하기 전에 교차 여부를 확인하는 로직
-				const originalTransform = element.css('transform');
-				element.css('transform', newTransform); // 임시로 회전
+				const newTransform = TransformHelper.composeMatrix(newMatrix);
 
-				const elementCorners = GeometryHelper.getRotatedCorners(element);
-				const frameCorners = GeometryHelper.getRotatedCorners(element.closest('.frame-group'));
-
-				if (frameCorners.length === 0 || GeometryHelper.checkIntersection(elementCorners, frameCorners)) {
-					// 교차하면 회전을 확정하고, 나머지 요소들도 업데이트
-					if (element.hasClass('uploaded-photo')) {
-						$('.photo-selection-box').css('transform', newTransform);
-						$('.photo-silhouette').css('transform', newTransform);
-					}
-				} else {
-					// 교차하지 않으면(프레임을 완전히 벗어나면), 원래 각도로 되돌림
-					element.css('transform', originalTransform);
+				element.css('transform', newTransform);
+				if (element.hasClass('uploaded-photo')) {
+					$('.photo-selection-box, .photo-silhouette').css('transform', newTransform);
 				}
 			});
 
 			$(document).on('mouseup.rotator', () => {
 				$(document).off('.rotator');
-
-				const currentState = element.data('relativeState') || {};
-				currentState.transform = element.css('transform');
-				element.data('relativeState', currentState);
-
-				// ✨ --- START: 선택 상태 유지를 위한 코드 추가 --- ✨
-				// 회전 대상이 사진일 경우, 회전이 끝난 후 다시 사진을 선택합니다.
+				// 최종 상태 저장
+				const frameGroup = element.closest('.frame-group');
+				PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
+				// 선택 상태 유지
 				if (element.hasClass('uploaded-photo')) {
-					const frameGroup = element.closest('.frame-group');
 					window.selectionManager.selectPhoto(element, frameGroup);
-
-					// ✨ 회전 종료 후 아주 잠시 뒤에 플래그 해제
-					setTimeout(() => {
-						frameGroup.removeData('isRotatingPhoto');
-					}, 0);
+					setTimeout(() => { frameGroup.removeData('isRotatingPhoto'); }, 0);
 				}
-				// ✨ --- END: 선택 상태 유지를 위한 코드 추가 --- ✨
 			});
 		});
 	}
