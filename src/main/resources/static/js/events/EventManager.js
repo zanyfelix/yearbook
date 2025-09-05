@@ -113,11 +113,15 @@ class EventManager {
 
 			$(document).on('mouseup.rotator', () => {
 				$(document).off('.rotator');
-				// 최종 상태 저장
-				const frameGroup = element.closest('.frame-group');
-				PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
+
+				if (!element.hasClass('uploaded-photo')) {
+					this.saveElementPosition(element);
+				}
+
 				// 선택 상태 유지
 				if (element.hasClass('uploaded-photo')) {
+					const frameGroup = element.closest('.frame-group');
+					PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
 					window.selectionManager.selectPhoto(element, frameGroup);
 					setTimeout(() => { frameGroup.removeData('isRotatingPhoto'); }, 0);
 				}
