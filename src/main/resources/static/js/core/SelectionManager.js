@@ -13,7 +13,7 @@ class SelectionManager {
 	// --- Public Selection Methods ---
 
 	selectFrame(frameGroup) {
-		if (this.currentFrame === frameGroup) return;
+		if (this.selectedMode === 'frame' && this.currentFrame === frameGroup) return;
 		this.clearSelection();
 
 		this.selectedMode = 'frame';
@@ -27,7 +27,7 @@ class SelectionManager {
 	}
 
 	selectPhoto(photo, frameGroup) {
-		if (this.currentPhoto === photo) return;
+		if (this.selectedMode === 'photo' && this.currentPhoto === photo) return;
 		this.clearSelection();
 
 		this.selectedMode = 'photo';

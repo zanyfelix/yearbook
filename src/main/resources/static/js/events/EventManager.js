@@ -140,24 +140,27 @@ class EventManager {
 			this.triggerImageUpload(frameGroup, uploadedPhoto, placeholderLink, maskContainer);
 		});
 
-		// 프레임 클릭 이벤트
+		// ✨ --- START: Click/Dblclick 로직 전면 수정 --- ✨
+		let clickTimer = null;
+
 		frameGroup.on('click', (e) => {
-			if (this.isPlaceholderClick(e)) return;
+			// 더블클릭이 진행 중이면, 싱글클릭 로직을 실행하지 않음
+			clearTimeout(clickTimer);
 
-			e.preventDefault();
-			e.stopPropagation();
-
-			if (!this.isFrameSelected(frameGroup)) {
+			clickTimer = setTimeout(() => {
+				// 200ms 이내에 다른 클릭이 없으면 싱글클릭으로 간주하고 프레임을 선택
 				window.selectionManager.selectFrame(frameGroup);
-			}
+			}, 200);
 		});
 
-		// 프레임 더블클릭 이벤트
 		frameGroup.on('dblclick', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
+			// 더블클릭이 인식되면, 대기 중이던 싱글클릭을 취소
+			clearTimeout(clickTimer);
+
+			// 더블클릭 토글 로직 실행
 			this.handleFrameDoubleClick(e, frameGroup, uploadedPhoto);
 		});
+		// ✨ --- END: Click/Dblclick 로직 전면 수정 --- ✨
 
 		// 사진 이벤트 설정
 		this.setupPhotoEvents(uploadedPhoto, frameGroup, maskContainer);
@@ -435,22 +438,6 @@ class EventManager {
 
 	// 사진 이벤트 설정
 	static setupPhotoEvents(photo, frameGroup, maskContainer) {
-		photo.on('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			const selectionMode = window.selectionManager.selectedMode;
-
-			if (!selectionMode) {
-				window.selectionManager.selectFrame(frameGroup);
-			} else if (selectionMode === 'frame' && this.isFrameSelected(frameGroup)) {
-				// 프레임 선택 상태에서 사진 클릭은 무시
-			} else if (selectionMode === 'photo' && this.isPhotoSelected(photo)) {
-				// 이미 선택된 사진 클릭은 무시
-			} else {
-				window.selectionManager.selectFrame(frameGroup);
-			}
-		});
 
 		photo.on('mousedown', (e) => {
 			if (e.button !== 0) return;
@@ -624,18 +611,22 @@ class EventManager {
 	}
 
 	static handleFrameDoubleClick(e, frameGroup, uploadedPhoto) {
-		const target = $(e.target);
-		const isPhotoClick = target.hasClass('uploaded-photo') ||
-			target.closest('.uploaded-photo').length > 0;
+		// 1. Check if a visible photo was the target of the double-click.
+		const isPhotoClick = ($(e.target).hasClass('uploaded-photo') ||
+			$(e.target).closest('.uploaded-photo').length > 0) &&
+			uploadedPhoto.is(':visible');
 
-		if (isPhotoClick && uploadedPhoto.is(':visible')) {
-			if (window.selectionManager.selectedMode === 'photo') {
+		if (isPhotoClick) {
+			// Case 1: The photo itself was double-clicked.
+			if (window.selectionManager.selectedMode === 'photo' && window.selectionManager.currentPhoto[0] === uploadedPhoto[0]) {
+				// If this specific photo is already selected, switch to selecting the parent frame.
 				window.selectionManager.selectFrame(frameGroup);
 			} else {
+				// Otherwise (if the frame is selected, or nothing is), select this photo.
 				window.selectionManager.selectPhoto(uploadedPhoto, frameGroup);
 			}
-		} else if (window.selectionManager.selectedMode === 'photo' &&
-			window.selectionManager.currentPhoto === uploadedPhoto) {
+		} else {
+			// Case 2: The empty area of the frame was double-clicked. Always select the frame.
 			window.selectionManager.selectFrame(frameGroup);
 		}
 	}
