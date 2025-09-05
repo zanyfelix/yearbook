@@ -40,8 +40,8 @@ class SelectionManager {
 
 		photo.addClass('selected-photo');
 		PhotoManager.addSelectionUI(photo, frameGroup);
-		UIManager.showPhotoTooltip(photo, frameGroup);
 		PhotoManager.showOverlay(photo, frameGroup);
+		UIManager.showPhotoTooltip(photo, frameGroup);
 	}
 
 	selectTextBox(textBox) {

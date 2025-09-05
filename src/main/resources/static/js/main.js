@@ -1191,13 +1191,22 @@ function updateAllPhotosPosition() {
 }
 
 window.getTranslateValues = function(transformString) {
-    if (!transformString || transformString === 'none') {
-        return { x: 0, y: 0 };
-    }
-    const matrix = transformString.match(/matrix\((.+)\)/);
-    if (matrix && matrix[1]) {
-        const values = matrix[1].split(',').map(parseFloat);
-        return { x: values[4], y: values[5] };
-    }
-    return { x: 0, y: 0 };
+	if (!transformString || transformString === 'none') {
+		return { x: 0, y: 0 };
+	}
+
+	// 1. matrix 형태에서 위치 값(tx, ty) 추출 시도
+	let matrix = transformString.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+	if (matrix) {
+		return { x: parseFloat(matrix[5]), y: parseFloat(matrix[6]) };
+	}
+
+	// 2. matrix가 아닐 경우, translate 형태에서 위치 값 추출 시도
+	let translate = transformString.match(/translate\(([^,p]+)px,\s*([^,p]+)px\)/);
+	if (translate) {
+		return { x: parseFloat(translate[1]), y: parseFloat(translate[2]) };
+	}
+
+	// 3. 둘 다 아닐 경우 (예: rotate만 있을 경우) 위치는 0, 0
+	return { x: 0, y: 0 };
 };

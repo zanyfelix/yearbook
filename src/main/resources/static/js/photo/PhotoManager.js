@@ -32,7 +32,7 @@ class PhotoManager {
 		this.updateSelectionUI(photo);
 
 		// 이벤트 바인딩
-		this.bindRotationEvent(photo, rotateHandle);
+		EventManager.makeRotatable(photo, rotateHandle);
 		resizeHandles.forEach(handle => this.bindResizeEvent(photo, handle));
 	}
 
@@ -77,75 +77,38 @@ class PhotoManager {
 	// === 드래그 처리 ===
 
 	static handleDrag(photo, frameGroup, maskContainer, e) {
-		// 이제 모든 사진은 transform 값을 가지고 있으므로 예외 처리가 필요 없습니다.
 		const initialTransform = photo.css('transform');
-
-		// 1. 움직일 요소들을 한 번만 찾아 변수에 저장(캐싱)합니다.
+		const initialTranslate = window.getTranslateValues(initialTransform);
 		const $selectionBox = $('.photo-selection-box');
 		const $silhouette = $('.photo-silhouette');
 
-		// 2. 드래그에 필요한 초기 정보를 계산합니다.
-		const photoOffset = photo.offset();
-		const frameOffset = frameGroup.offset();
-
 		const dragData = {
-			offsetX: e.clientX - photoOffset.left,
-			offsetY: e.clientY - photoOffset.top,
-			frameOffsetX: frameOffset.left,
-			frameOffsetY: frameOffset.top,
-			baseTransform: initialTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, ''),
-			latestMouseX: e.clientX,
-			latestMouseY: e.clientY,
-			ticking: false
+			startX: e.clientX,
+			startY: e.clientY,
+			initialTranslateX: initialTranslate.x,
+			initialTranslateY: initialTranslate.y,
+			// ✨ 드래그 시작 시점의 회전/크기 정보만 따로 저장합니다.
+			baseTransform: window.getRotationMatrix(photo)
 		};
 
-		// 3. 드래그 중 위치를 업데이트하는 함수입니다.
-		const updatePositions = () => {
-			const newAbsoluteX = dragData.latestMouseX - dragData.offsetX;
-			const newAbsoluteY = dragData.latestMouseY - dragData.offsetY;
+		const onMouseMove = (ev) => {
+			ev.preventDefault();
+			const deltaX = ev.clientX - dragData.startX;
+			const deltaY = ev.clientY - dragData.startY;
 
-			let newTranslateX = newAbsoluteX - dragData.frameOffsetX;
-			let newTranslateY = newAbsoluteY - dragData.frameOffsetY;
+			const newTranslateX = dragData.initialTranslateX + deltaX;
+			const newTranslateY = dragData.initialTranslateY + deltaY;
 
-			const bounds = this.getContainerBounds(maskContainer, photo);
-			if (bounds.photoWidth > bounds.containerWidth) {
-				newTranslateX = Math.max(bounds.minLeft, Math.min(newTranslateX, bounds.maxLeft));
-			} else {
-				newTranslateX = (bounds.containerWidth - bounds.photoWidth) / 2;
-			}
-			if (bounds.photoHeight > bounds.containerHeight) {
-				newTranslateY = Math.max(bounds.minTop, Math.min(newTranslateY, bounds.maxTop));
-			} else {
-				newTranslateY = (bounds.containerHeight - bounds.photoHeight) / 2;
-			}
-
+			// ✨ 회전/크기 정보는 유지한 채, 위치 정보만 새로 조합합니다.
 			const newTransform = `${dragData.baseTransform} translate(${newTranslateX}px, ${newTranslateY}px)`;
 
 			photo.css('transform', newTransform);
 			$selectionBox.css('transform', newTransform);
 			$silhouette.css('transform', newTransform);
-
-			dragData.ticking = false;
 		};
 
-		// 4. 마우스 움직임에 따라 업데이트를 요청합니다.
-		const onMouseMove = (ev) => {
-			ev.preventDefault();
-			dragData.latestMouseX = ev.clientX;
-			dragData.latestMouseY = ev.clientY;
-
-			if (!dragData.ticking) {
-				requestAnimationFrame(updatePositions);
-				dragData.ticking = true;
-			}
-		};
-
-		// 5. 마우스를 놓았을 때 드래그를 종료하고 상태를 저장합니다.
 		const onMouseUp = () => {
 			$(document).off('.photoDrag');
-			if (dragData.ticking) {
-				updatePositions();
-			}
 			this.savePhotoState(photo, frameGroup, { isManual: false });
 		};
 
@@ -202,59 +165,6 @@ class PhotoManager {
 			left: `${constrainedLeft}px`,
 			top: `${constrainedTop}px`
 		};
-	}
-
-	// === 회전 처리 ===
-
-	static bindRotationEvent(photo, handle) {
-		handle.on('mousedown', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			const rotationData = {
-				center: this.getPhotoCenter(photo),
-				initialAngle: Helpers.getPhotoRotation(photo),
-				startAngleRad: null
-			};
-
-			rotationData.startAngleRad = Math.atan2(
-				e.clientY - rotationData.center.y,
-				e.clientX - rotationData.center.x
-			);
-
-			$(document).on('mousemove.photoRotate', (ev) => {
-				const currentAngleRad = Math.atan2(
-					ev.clientY - rotationData.center.y,
-					ev.clientX - rotationData.center.x
-				);
-
-				const deltaAngle = (currentAngleRad - rotationData.startAngleRad) * (180 / Math.PI);
-				const newAngle = rotationData.initialAngle + deltaAngle;
-
-				this.applyRotation(photo, newAngle);
-			});
-
-			$(document).on('mouseup.photoRotate', () => {
-				$(document).off('.photoRotate');
-				const state = photo.data('relativeState') || {};
-				state.isManuallyAdjusted = true; // '수동 조절됨' 플래그 추가
-				this.savePhotoState(photo, photo.closest('.frame-group'), { isManual: true });
-			});
-		});
-	}
-
-	static getPhotoCenter(photo) {
-		return {
-			x: photo.offset().left + photo.width() / 2,
-			y: photo.offset().top + photo.height() / 2
-		};
-	}
-
-	static applyRotation(photo, angle) {
-		const transform = `rotate(${angle}deg)`;
-		photo.css('transform', transform);
-		$('.photo-silhouette').css('transform', transform);
-		this.updateSelectionUI(photo);
 	}
 
 	// === 크기 조절 처리 ===

@@ -3,60 +3,60 @@
 // ============================================================================
 
 const TransformHelper = {
-    // "matrix(a, b, c, d, tx, ty)" 문자열을 객체로 파싱
-    parseMatrix(transformString) {
-        if (!transformString || transformString === 'none') {
-            return { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
-        }
-        const values = transformString.match(/matrix\((.+)\)/)[1].split(',').map(parseFloat);
-        return { a: values[0], b: values[1], c: values[2], d: values[3], tx: values[4], ty: values[5] };
-    },
+	// "matrix(a, b, c, d, tx, ty)" 문자열을 객체로 파싱
+	parseMatrix(transformString) {
+		if (!transformString || transformString === 'none') {
+			return { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+		}
+		const values = transformString.match(/matrix\((.+)\)/)[1].split(',').map(parseFloat);
+		return { a: values[0], b: values[1], c: values[2], d: values[3], tx: values[4], ty: values[5] };
+	},
 
-    // 매트릭스 객체를 CSS 문자열로 변환
-    composeMatrix(matrix) {
-        return `matrix(${matrix.a}, ${matrix.b}, ${matrix.c}, ${matrix.d}, ${matrix.tx}, ${matrix.ty})`;
-    },
+	// 매트릭스 객체를 CSS 문자열로 변환
+	composeMatrix(matrix) {
+		return `matrix(${matrix.a}, ${matrix.b}, ${matrix.c}, ${matrix.d}, ${matrix.tx}, ${matrix.ty})`;
+	},
 
-    // 기존 매트릭스에 이동(translation)을 적용
-    applyTranslation(transformString, dx, dy) {
-        const matrix = this.parseMatrix(transformString);
-        matrix.tx += dx;
-        matrix.ty += dy;
-        return this.composeMatrix(matrix);
-    },
+	// 기존 매트릭스에 이동(translation)을 적용
+	applyTranslation(transformString, dx, dy) {
+		const matrix = this.parseMatrix(transformString);
+		matrix.tx += dx;
+		matrix.ty += dy;
+		return this.composeMatrix(matrix);
+	},
 
-    // 기존 매트릭스에 회전(rotation)을 적용 (행렬 곱셈)
-    applyRotation(transformString, angleDegrees, centerX, centerY) {
-        const matrix = this.parseMatrix(transformString);
-        const angleRad = angleDegrees * (Math.PI / 180);
-        const cos = Math.cos(angleRad);
-        const sin = Math.sin(angleRad);
+	// 기존 매트릭스에 회전(rotation)을 적용 (행렬 곱셈)
+	applyRotation(transformString, angleDegrees, centerX, centerY) {
+		const matrix = this.parseMatrix(transformString);
+		const angleRad = angleDegrees * (Math.PI / 180);
+		const cos = Math.cos(angleRad);
+		const sin = Math.sin(angleRad);
 
-        // 1. 중심점으로 이동
-        matrix.tx -= centerX;
-        matrix.ty -= centerY;
+		// 1. 중심점으로 이동
+		matrix.tx -= centerX;
+		matrix.ty -= centerY;
 
-        // 2. 회전 행렬과 곱셈
-        const newA = matrix.a * cos - matrix.b * sin;
-        const newB = matrix.a * sin + matrix.b * cos;
-        const newC = matrix.c * cos - matrix.d * sin;
-        const newD = matrix.c * sin + matrix.d * cos;
-        const newTx = matrix.tx * cos - matrix.ty * sin;
-        const newTy = matrix.tx * sin + matrix.ty * cos;
-        
-        matrix.a = newA;
-        matrix.b = newB;
-        matrix.c = newC;
-        matrix.d = newD;
-        matrix.tx = newTx;
-        matrix.ty = newTy;
+		// 2. 회전 행렬과 곱셈
+		const newA = matrix.a * cos - matrix.b * sin;
+		const newB = matrix.a * sin + matrix.b * cos;
+		const newC = matrix.c * cos - matrix.d * sin;
+		const newD = matrix.c * sin + matrix.d * cos;
+		const newTx = matrix.tx * cos - matrix.ty * sin;
+		const newTy = matrix.tx * sin + matrix.ty * cos;
 
-        // 3. 다시 원래 위치로 복귀
-        matrix.tx += centerX;
-        matrix.ty += centerY;
+		matrix.a = newA;
+		matrix.b = newB;
+		matrix.c = newC;
+		matrix.d = newD;
+		matrix.tx = newTx;
+		matrix.ty = newTy;
 
-        return this.composeMatrix(matrix);
-    }
+		// 3. 다시 원래 위치로 복귀
+		matrix.tx += centerX;
+		matrix.ty += centerY;
+
+		return this.composeMatrix(matrix);
+	}
 };
 class EventManager {
 	// 공통 드래그 설정
@@ -72,71 +72,46 @@ class EventManager {
 	 * @param {jQuery} handle - 회전 트리거 핸들
 	 */
 	static makeRotatable(element, handle) {
-	    handle.off('mousedown.rotator').on('mousedown.rotator', (e) => {
-	        e.preventDefault();
-	        e.stopPropagation();
+		handle.off('mousedown.rotator').on('mousedown.rotator', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-	        // --- 1. 마우스 클릭 시점의 상태를 모두 기록 ---
-	        
-	        // ✅ getBoundingClientRect로 현재 보이는 그대로의 중심점을 정확히 계산
-	        const rect = element[0].getBoundingClientRect();
-	        const elementCenter = {
-	            x: rect.left + rect.width / 2,
-	            y: rect.top + rect.height / 2
-	        };
+			const rect = element[0].getBoundingClientRect();
+			const elementCenter = {
+				x: rect.left + rect.width / 2,
+				y: rect.top + rect.height / 2
+			};
 
-	        // ✅ 회전을 시작하는 시점의 '초기 transform' 상태를 저장
-	        const initialTransform = element.css('transform');
+			const initialTransform = element.css('transform');
+			// ✨ 현재 위치(translate) 값을 미리 가져옵니다.
+			const initialTranslate = window.getTranslateValues(initialTransform);
+			const initialMatrix = TransformHelper.parseMatrix(initialTransform);
+			const initialElementAngleRad = Math.atan2(initialMatrix.b, initialMatrix.a);
+			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
 
-	        // ✅ 마우스의 '초기 각도'를 저장
-	        const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
-	        
-	        // ✅ TransformHelper를 통해 초기 각도를 파싱 (선택 사항이지만 더 정확함)
-	        const initialMatrix = TransformHelper.parseMatrix(initialTransform);
-	        const initialElementAngleRad = Math.atan2(initialMatrix.b, initialMatrix.a);
+			$(document).on('mousemove.rotator', (ev) => {
+				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
+				const deltaAngleRad = currentAngleRad - startAngleRad;
+				const newAngleRad = initialElementAngleRad + deltaAngleRad;
+				const newAngleDeg = newAngleRad * (180 / Math.PI);
 
+				// ✨ 위치(translate)와 새로운 회전(rotate) 값을 조합하여 CSS를 업데이트합니다.
+				const newTransform = `translate(${initialTranslate.x}px, ${initialTranslate.y}px) rotate(${newAngleDeg}deg)`;
+				element.css('transform', newTransform);
+				if (element.hasClass('uploaded-photo')) {
+					$('.photo-selection-box').css('transform', newTransform);
+					$('.photo-silhouette').css('transform', newTransform);
+				}
+			});
 
-	        $(document).on('mousemove.rotator', (ev) => {
-	            // --- 2. 마우스 이동 시 '초기 상태'를 기준으로 총 변화량 계산 ---
-	            
-	            const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
-	            
-	            // ✅ 마우스의 시작 각도 대비 현재 각도의 '총 변화량'을 계산
-	            const deltaAngleRad = currentAngleRad - startAngleRad;
-	            
-	            // ✅ 요소의 '초기 각도'에 마우스의 '총 변화량'을 더해 새로운 각도를 계산
-	            const newAngleRad = initialElementAngleRad + deltaAngleRad;
-	            
-	            // 새 각도를 CSS transform 문자열로 만듦
-	            const newAngleDeg = newAngleRad * (180 / Math.PI);
-
-	            // 기존 matrix에서 회전 부분만 새로운 각도로 교체
-	            // 이렇게 하면 기존의 이동(translate) 값은 그대로 유지됨
-	            const newMatrix = { ...initialMatrix }; // 초기 matrix 복사
-	            const cos = Math.cos(newAngleRad);
-	            const sin = Math.sin(newAngleRad);
-	            // 크기 조절(scale)을 고려하지 않는 순수 회전의 경우 (더 안정적)
-	            // 실제 크기(scale) 값은 initialMatrix에서 가져올 수 있으나, 단순화를 위해 1로 가정
-	            const scaleX = Math.sqrt(initialMatrix.a * initialMatrix.a + initialMatrix.c * initialMatrix.c);
-	            const scaleY = Math.sqrt(initialMatrix.b * initialMatrix.b + initialMatrix.d * initialMatrix.d);
-
-	            newMatrix.a = cos * scaleX;
-	            newMatrix.b = sin * scaleX;
-	            newMatrix.c = -sin * scaleY;
-	            newMatrix.d = cos * scaleY;
-	            
-	            element.css('transform', TransformHelper.composeMatrix(newMatrix));
-	        });
-
-	        $(document).on('mouseup.rotator', () => {
-	            $(document).off('.rotator');
-
-	            // --- 3. 최종 상태를 relativeState에 저장 ---
-	            const currentState = element.data('relativeState') || {};
-	            currentState.transform = element.css('transform');
-	            element.data('relativeState', currentState);
-	        });
-	    });
+			$(document).on('mouseup.rotator', () => {
+				$(document).off('.rotator');
+				const currentState = element.data('relativeState') || {};
+				// ✨ 최종 transform 값을 올바르게 저장합니다.
+				currentState.transform = element.css('transform');
+				element.data('relativeState', currentState);
+			});
+		});
 	}
 	// ▼▼▼ [신규 추가] setupPhotoFrameEvents 함수 ▼▼▼
 	/**
@@ -199,44 +174,44 @@ class EventManager {
 
 		// 클릭: 선택 상태
 		textBox.on('click', (e) => {
-		    e.stopPropagation();
-		    
-		    if (!textBox.hasClass('selected')) {
-		        // 🔴 선택 전 현재 위치 저장
-		        const currentTransform = textBox.css('transform');
-		        textBox.css('transform', 'none');
-		        const currentPos = textBox.position();
-		        textBox.css('transform', currentTransform);
-		        
-		        // 선택 처리
-		        window.selectionManager.selectTextBox(textBox);
-		        
-		        // 🔴 위치가 변경되었는지 확인하고 복원
-		        setTimeout(() => {
-		            const newTransform = textBox.css('transform');
-		            textBox.css('transform', 'none');
-		            const newPos = textBox.position();
-		            
-		            // 위치가 변경되었다면 원래 위치로 복원
-		            if (Math.abs(newPos.left - currentPos.left) > 1 || 
-		                Math.abs(newPos.top - currentPos.top) > 1) {
-		                textBox.css({
-		                    left: currentPos.left + 'px',
-		                    top: currentPos.top + 'px'
-		                });
-		            }
-		            
-		            textBox.css('transform', newTransform || currentTransform);
-		        }, 10);
-		    }
+			e.stopPropagation();
+
+			if (!textBox.hasClass('selected')) {
+				// 🔴 선택 전 현재 위치 저장
+				const currentTransform = textBox.css('transform');
+				textBox.css('transform', 'none');
+				const currentPos = textBox.position();
+				textBox.css('transform', currentTransform);
+
+				// 선택 처리
+				window.selectionManager.selectTextBox(textBox);
+
+				// 🔴 위치가 변경되었는지 확인하고 복원
+				setTimeout(() => {
+					const newTransform = textBox.css('transform');
+					textBox.css('transform', 'none');
+					const newPos = textBox.position();
+
+					// 위치가 변경되었다면 원래 위치로 복원
+					if (Math.abs(newPos.left - currentPos.left) > 1 ||
+						Math.abs(newPos.top - currentPos.top) > 1) {
+						textBox.css({
+							left: currentPos.left + 'px',
+							top: currentPos.top + 'px'
+						});
+					}
+
+					textBox.css('transform', newTransform || currentTransform);
+				}, 10);
+			}
 		});
 
 		// 나머지 이벤트는 기존과 동일...
 		textBox.on('dblclick', (e) => {
-		    e.stopPropagation();
-		    if (textBox.hasClass('selected')) {
-		        this.enterEditMode(textBox);
-		    }
+			e.stopPropagation();
+			if (textBox.hasClass('selected')) {
+				this.enterEditMode(textBox);
+			}
 		});
 
 		textBox.on('input', () => this.handleTextInput(textBox));
@@ -316,8 +291,8 @@ class EventManager {
 						left: constrainedPos.left + 'px',
 						top: constrainedPos.top + 'px'
 					});
-				    // 툴팁 등 부가 기능 업데이트
-				    this.updateTooltipIfNeeded(element, type, dragData); 
+					// 툴팁 등 부가 기능 업데이트
+					this.updateTooltipIfNeeded(element, type, dragData);
 				}
 			});
 
