@@ -43,7 +43,7 @@ $(document).ready(function() {
 			width: newPixelSize.width,
 			height: newPixelSize.height,
 			transform: relativeState.transform || 'none', // data에 저장된 transform 값을 사용
-	        transformOrigin: relativeState.transformOrigin || '50% 50%' // data에 저장된 origin 값 사용
+			transformOrigin: relativeState.transformOrigin || '50% 50%' // data에 저장된 origin 값 사용
 		};
 
 		// 텍스트 박스 관련 로직은 그대로 유지
@@ -559,7 +559,7 @@ $(document).ready(function() {
 		try {
 			await DataLoader.loadAndSetupFonts();
 			console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
-			
+
 			const pageData = await new Promise((resolve, reject) => {
 				if (yearbookId) {
 					$.ajax({
@@ -620,7 +620,7 @@ $(document).ready(function() {
 
 		$('#frame-container .frame-group').each(function() {
 			const $frame = $(this);
-			
+
 			// 1. 이미 저장된 가장 정확한 relativeState 값을 가져온다.
 			const relativeState = $frame.data('relativeState');
 			if (!relativeState) return; // 데이터가 없으면 건너뛰기
@@ -634,8 +634,8 @@ $(document).ready(function() {
 						src: $photo.data('filePath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
-						transform: $photo.css('transform') || 'none',
-						transformOrigin: $photo.css('transform-origin') || '50% 50%'
+						transform: photoRelativeState.transform, // 회전/크기 정보
+						transformOrigin: photoRelativeState.transformOrigin
 					};
 				}
 			}
@@ -649,7 +649,7 @@ $(document).ready(function() {
 				transformOrigin: $frame.css('transform-origin') || '50% 50%',
 				photo: photoData
 			};
-			
+
 			console.log(frameData);
 			designData.frames.push(frameData);
 		});
@@ -661,7 +661,7 @@ $(document).ready(function() {
 
 			const boxTransform = $box.css('transform');
 			const boxTransformOrigin = $box.css('transform-origin');
-			$box.css({ 'transform': 'none' }); 
+			$box.css({ 'transform': 'none' });
 			const boxPos = $box.position();
 			const boxW = $box.width();
 			const boxH = $box.height();
@@ -1140,11 +1140,9 @@ function updateAllPhotosPosition() {
 		const $photo = $frame.find('.uploaded-photo');
 		const $placeholder = $frame.find('.place-image-here-link');
 
-		// 사진 이미지의 src 속성이 있는지 확인
 		const photoSrc = $photo.attr('src');
 
 		if (photoSrc && photoSrc !== '#') {
-			// 사진이 있으면 플레이스홀더를 숨김
 			$placeholder.hide();
 
 			const photoData = $photo.data('relativeState');
@@ -1153,37 +1151,32 @@ function updateAllPhotosPosition() {
 			const frameW = $frame.width();
 			const frameH = $frame.height();
 			if (frameW === 0 || frameH === 0) return;
-			
-			// position에 저장된 translate % 값을 px로 다시 변환
+
+			// 1. 저장된 position(%)으로 이동(translate) 픽셀 값을 계산합니다.
 			const translateX = (photoData.position.left / 100) * frameW;
 			const translateY = (photoData.position.top / 100) * frameH;
+			const translationPart = `translate(${translateX}px, ${translateY}px)`;
 
-			const baseMatrix = window.getRotationMatrix($photo); // "matrix(a,b,c,d,0,0)" 또는 "none":contentReference[oaicite:4]{index=4}
-			let finalTransform;
-			if (baseMatrix && baseMatrix !== 'none') {
-			  // e,f(이동)를 화면 좌표(px)로 직접 주입
-			  finalTransform = baseMatrix.replace(/,\s*0\s*,\s*0\s*\)$/, `, ${translateX}, ${translateY})`);
-			} else {
-			  // 회전/스케일이 없을 때는 translate만
-			  finalTransform = `translate(${translateX}px, ${translateY}px)`;
-			}
+			// 2. 저장된 transform에서 회전/크기 정보 부분을 가져옵니다.
+			const rotationPart = (photoData.transform && photoData.transform !== 'none') ? photoData.transform : '';
+
+			// 3. 회전/크기 정보를 먼저 적용하고, 그 다음에 이동(translate)을 적용합니다.
+			const finalTransform = `${rotationPart} ${translationPart}`.trim();
 
 			const photoCss = {
 				display: 'block',
 				visibility: 'visible',
 				width: (photoData.size.width / 100) * frameW,
 				height: (photoData.size.height / 100) * frameH,
-				// left, top은 더 이상 위치 제어에 사용하지 않음 (초기값 0으로 설정)
 				left: 0,
 				top: 0,
 				transform: finalTransform,
 				transformOrigin: photoData.transformOrigin || '50% 50%'
 			};
-			
+
 			$photo.css(photoCss);
 
 		} else {
-			// 사진이 없으면 플레이스홀더를 보여줌
 			$placeholder.show();
 			$photo.hide();
 		}

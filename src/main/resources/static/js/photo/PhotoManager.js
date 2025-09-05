@@ -29,7 +29,9 @@ class PhotoManager {
 		selectionBox.append(rotateHandle, rotateLine, ...resizeHandles);
 		frameGroup.append(selectionBox);
 
-		this.updateSelectionUI(photo);
+		setTimeout(() => {
+			this.updateSelectionUI(photo);
+		}, 0);
 
 		// 이벤트 바인딩
 		EventManager.makeRotatable(photo, rotateHandle);
@@ -77,80 +79,67 @@ class PhotoManager {
 	// === 드래그 처리 ===
 
 	static handleDrag(photo, frameGroup, maskContainer, e) {
-		
+		// ✨ 1. 드래그 시작 시 '유령 클릭' 방지 플래그를 설정합니다.
 		frameGroup.data('isDraggingPhoto', true);
-		
-		// 1. 움직일 요소들을 한 번만 찾아 변수에 저장(캐싱)합니다.
-		const $selectionBox = $('.photo-selection-box');
-		const $silhouette = $('.photo-silhouette');
 
 		// 2. 드래그에 필요한 초기 정보를 계산합니다.
 		const initialTransform = photo.css('transform');
-		const photoOffset = photo.offset();
-		const frameOffset = frameGroup.offset();
-
 		const dragData = {
-			offsetX: e.clientX - photoOffset.left,
-			offsetY: e.clientY - photoOffset.top,
-			frameOffsetX: frameOffset.left,
-			frameOffsetY: frameOffset.top,
-			baseTransform: window.getRotationMatrix(photo),
-			latestMouseX: e.clientX,
-			latestMouseY: e.clientY,
+			startX: e.clientX,
+			startY: e.clientY,
+			initialTransform: initialTransform,
 			ticking: false
 		};
 
-		// 3. 드래그 중 위치를 업데이트하는 함수입니다. (프레임 이탈 방지 로직 포함)
-		const updatePositions = () => {
-			const newAbsoluteX = dragData.latestMouseX - dragData.offsetX;
-			const newAbsoluteY = dragData.latestMouseY - dragData.offsetY;
+		// 3. 움직일 요소들을 한 번만 찾아 변수에 저장(캐싱)합니다.
+		const $selectionBox = $('.photo-selection-box');
+		const $silhouette = $('.photo-silhouette');
 
-			const newTranslateX = newAbsoluteX - dragData.frameOffsetX;
-			const newTranslateY = newAbsoluteY - dragData.frameOffsetY;
+		// 4. 드래그 중 위치를 업데이트하는 함수입니다.
+		const updatePositions = (latestEvent) => {
+			const deltaX = latestEvent.clientX - dragData.startX;
+			const deltaY = latestEvent.clientY - dragData.startY;
 
-			const newTransform = `${dragData.baseTransform} translate(${newTranslateX}px, ${newTranslateY}px)`;
+			let newTransform = TransformHelper.applyTranslation(dragData.initialTransform, deltaX, deltaY);
 
-			// 이동하기 전에 교차 여부를 확인합니다.
 			const originalTransform = photo.css('transform');
-			photo.css('transform', newTransform); // 임시로 이동
+			photo.css('transform', newTransform);
 
 			const photoCorners = GeometryHelper.getRotatedCorners(photo);
-			const frameCorners = GeometryHelper.getRotatedCorners(frameGroup);
+			const maskCorners = GeometryHelper.getMaskedAreaCorners(frameGroup);
 
-			if (GeometryHelper.checkIntersection(photoCorners, frameCorners)) {
-				// 교차하면(프레임에 걸쳐있으면) 이동을 확정하고 나머지 요소들도 업데이트합니다.
-				$selectionBox.css('transform', newTransform);
-				$silhouette.css('transform', newTransform);
+			if (maskCorners && GeometryHelper.checkIntersection(photoCorners, maskCorners)) {
+				// 교차하면 이동 확정
 			} else {
-				// 교차하지 않으면(프레임을 완전히 벗어나면), 원래 위치로 되돌립니다.
-				photo.css('transform', originalTransform);
+				newTransform = originalTransform;
+				photo.css('transform', newTransform);
 			}
+
+			$selectionBox.css('transform', newTransform);
+			$silhouette.css('transform', newTransform);
 
 			dragData.ticking = false;
 		};
 
-		// 4. 마우스 움직임에 따라 업데이트를 요청합니다.
+		// 5. 마우스 움직임에 따라 업데이트를 요청합니다.
 		const onMouseMove = (ev) => {
 			ev.preventDefault();
-			dragData.latestMouseX = ev.clientX;
-			dragData.latestMouseY = ev.clientY;
-
 			if (!dragData.ticking) {
-				requestAnimationFrame(updatePositions);
+				requestAnimationFrame(() => updatePositions(ev));
 				dragData.ticking = true;
 			}
 		};
 
-		// 5. 마우스를 놓았을 때 드래그를 종료하고 상태를 저장합니다.
-		const onMouseUp = () => {
+		// 6. 마우스를 놓았을 때 드래그를 종료하고 상태를 저장합니다.
+		const onMouseUp = (ev) => {
 			$(document).off('.photoDrag');
-			if (dragData.ticking) {
-				updatePositions();
-			}
+			updatePositions(ev);
 			this.savePhotoState(photo, frameGroup, { isManual: true });
+
+			// ✨ 사진 선택 상태를 유지합니다.
 			window.selectionManager.selectPhoto(photo, frameGroup);
 
-			// ✨ 드래그 종료 후 아주 잠시 뒤에 플래그 해제 (click 이벤트가 먼저 체크할 시간을 줌)
+			// ✨ 7. 드래그 종료 후 아주 잠시 뒤에 플래그를 해제하여 다음 클릭에 영향을 주지 않도록 합니다.
 			setTimeout(() => {
 				frameGroup.removeData('isDraggingPhoto');
 			}, 0);
