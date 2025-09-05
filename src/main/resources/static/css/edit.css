@@ -433,7 +433,6 @@ body {
    6. 사진 시스템 (PhotoManager 대응)
    =========================================== */
 .uploaded-photo {
-    transition: all 0.3s ease;
     border-radius: 4px;
     pointer-events: none;  /* 기본적으로 클릭 불가 */
 }

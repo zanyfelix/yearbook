@@ -81,8 +81,15 @@ class PhotoManager {
 
 		if (initialTransform === 'none') {
 			const pos = photo.position();
+			const newTransform = `translate(${pos.left}px, ${pos.top}px)`;
 			photo.css({
 				transform: `translate(${pos.left}px, ${pos.top}px)`,
+				left: 0,
+				top: 0
+			});
+			
+			$('.photo-silhouette').css({
+				transform: newTransform,
 				left: 0,
 				top: 0
 			});
@@ -114,6 +121,8 @@ class PhotoManager {
 			photo.css('transform', newTransform);
 			// 선택 UI도 동일하게 이동
 			$('.photo-selection-box').css('transform', newTransform);
+			// 실루엣도 함께 이동시킵니다.
+			$('.photo-silhouette').css('transform', newTransform);
 		};
 
 		const onMouseUp = () => {
