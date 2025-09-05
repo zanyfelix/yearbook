@@ -64,8 +64,8 @@ class PhotoManager {
 		selectionBox.css({
 			left: photo.css('left'),
 			top: photo.css('top'),
-			width: photo.width(),
-			height: photo.height(),
+			width: photo.outerWidth(),
+			height: photo.outerHeight(),
 			transform: photo.css('transform')
 		});
 	}
