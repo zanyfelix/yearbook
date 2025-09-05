@@ -77,57 +77,75 @@ class PhotoManager {
 	// === 드래그 처리 ===
 
 	static handleDrag(photo, frameGroup, maskContainer, e) {
-		let initialTransform = photo.css('transform');
+		// 이제 모든 사진은 transform 값을 가지고 있으므로 예외 처리가 필요 없습니다.
+		const initialTransform = photo.css('transform');
 
-		if (initialTransform === 'none') {
-			const pos = photo.position();
-			const newTransform = `translate(${pos.left}px, ${pos.top}px)`;
-			photo.css({
-				transform: `translate(${pos.left}px, ${pos.top}px)`,
-				left: 0,
-				top: 0
-			});
-			
-			$('.photo-silhouette').css({
-				transform: newTransform,
-				left: 0,
-				top: 0
-			});
-			// 변환된 transform 값을 다시 읽어옵니다.
-			initialTransform = photo.css('transform');
-		}
+		// 1. 움직일 요소들을 한 번만 찾아 변수에 저장(캐싱)합니다.
+		const $selectionBox = $('.photo-selection-box');
+		const $silhouette = $('.photo-silhouette');
 
-		const initialTranslate = window.getTranslateValues(initialTransform);
+		// 2. 드래그에 필요한 초기 정보를 계산합니다.
+		const photoOffset = photo.offset();
+		const frameOffset = frameGroup.offset();
 
 		const dragData = {
-			startX: e.clientX,
-			startY: e.clientY,
-			initialTranslateX: initialTranslate.x,
-			initialTranslateY: initialTranslate.y,
-			baseTransform: initialTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, '').trim()
+			offsetX: e.clientX - photoOffset.left,
+			offsetY: e.clientY - photoOffset.top,
+			frameOffsetX: frameOffset.left,
+			frameOffsetY: frameOffset.top,
+			baseTransform: initialTransform.replace(/matrix\([^)]+\)/, '').replace(/translate\([^)]+\)/, ''),
+			latestMouseX: e.clientX,
+			latestMouseY: e.clientY,
+			ticking: false
 		};
 
-		const onMouseMove = (ev) => {
-			ev.preventDefault();
-			const deltaX = ev.clientX - dragData.startX;
-			const deltaY = ev.clientY - dragData.startY;
+		// 3. 드래그 중 위치를 업데이트하는 함수입니다.
+		const updatePositions = () => {
+			const newAbsoluteX = dragData.latestMouseX - dragData.offsetX;
+			const newAbsoluteY = dragData.latestMouseY - dragData.offsetY;
 
-			const newTranslateX = dragData.initialTranslateX + deltaX;
-			const newTranslateY = dragData.initialTranslateY + deltaY;
+			let newTranslateX = newAbsoluteX - dragData.frameOffsetX;
+			let newTranslateY = newAbsoluteY - dragData.frameOffsetY;
 
-			// 기존의 회전/크기 값 + 새로운 translate 값을 합쳐서 최종 transform 문자열 생성
+			const bounds = this.getContainerBounds(maskContainer, photo);
+			if (bounds.photoWidth > bounds.containerWidth) {
+				newTranslateX = Math.max(bounds.minLeft, Math.min(newTranslateX, bounds.maxLeft));
+			} else {
+				newTranslateX = (bounds.containerWidth - bounds.photoWidth) / 2;
+			}
+			if (bounds.photoHeight > bounds.containerHeight) {
+				newTranslateY = Math.max(bounds.minTop, Math.min(newTranslateY, bounds.maxTop));
+			} else {
+				newTranslateY = (bounds.containerHeight - bounds.photoHeight) / 2;
+			}
+
 			const newTransform = `${dragData.baseTransform} translate(${newTranslateX}px, ${newTranslateY}px)`;
 
 			photo.css('transform', newTransform);
-			// 선택 UI도 동일하게 이동
-			$('.photo-selection-box').css('transform', newTransform);
-			// 실루엣도 함께 이동시킵니다.
-			$('.photo-silhouette').css('transform', newTransform);
+			$selectionBox.css('transform', newTransform);
+			$silhouette.css('transform', newTransform);
+
+			dragData.ticking = false;
 		};
 
+		// 4. 마우스 움직임에 따라 업데이트를 요청합니다.
+		const onMouseMove = (ev) => {
+			ev.preventDefault();
+			dragData.latestMouseX = ev.clientX;
+			dragData.latestMouseY = ev.clientY;
+
+			if (!dragData.ticking) {
+				requestAnimationFrame(updatePositions);
+				dragData.ticking = true;
+			}
+		};
+
+		// 5. 마우스를 놓았을 때 드래그를 종료하고 상태를 저장합니다.
 		const onMouseUp = () => {
 			$(document).off('.photoDrag');
-			// 드래그가 끝나면 isManual 플래그를 false로 설정하여 저장
+			if (dragData.ticking) {
+				updatePositions();
+			}
 			this.savePhotoState(photo, frameGroup, { isManual: false });
 		};
 

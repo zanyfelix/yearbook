@@ -854,7 +854,6 @@ $(document).ready(function() {
 
 			photo.attr('src', fullImagePath).css('display', 'block');
 
-			// ▼▼▼ [핵심] DB에 저장될 파일 경로를 data 속성에 저장 ▼▼▼
 			photo.data('filePath', imagePath);
 
 			photo.on('load', function() {
@@ -872,14 +871,18 @@ $(document).ready(function() {
 				const newLeft = (maskWidth - newWidth) / 2;
 				const newTop = (maskHeight - newHeight) / 2;
 
+				// 1. 사진 위치를 처음부터 transform으로 설정합니다.
 				photo.css({
 					width: `${newWidth}px`, height: `${newHeight}px`,
-					left: `${newLeft}px`, top: `${newTop}px`
+					left: 0,
+					top: 0,
+					transform: `translate(${newLeft}px, ${newTop}px)`
 				});
 
 				const frameW = frameGroup.width();
 				const frameH = frameGroup.height();
 
+				// 2. 저장될 상태(relativeState)를 생성합니다.
 				const initialState = {
 					position: { left: (newLeft / frameW) * 100, top: (newTop / frameH) * 100 },
 					size: { width: (newWidth / frameW) * 100, height: (newHeight / frameH) * 100 },
@@ -887,9 +890,9 @@ $(document).ready(function() {
 				};
 				photo.data('relativeState', initialState);
 				window.selectionManager.clearSelection();
+
 			}).on('error', function() {
 				alert('Failed to load the uploaded image.');
-				// 에러 발생 시 플레이스홀더 다시 표시
 				photo.hide();
 				placeholder.show();
 			});
