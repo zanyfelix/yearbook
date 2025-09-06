@@ -146,9 +146,36 @@ class SelectionManager {
 		if (!actualBgRect) {
 			return { left: newLeft, top: newTop };
 		}
+		
+		// 회전된 요소의 실제 경계 박스 계산
+		const rect = element[0].getBoundingClientRect();
+		const elementWidth = rect.width;
+		const elementHeight = rect.height;
 
-		const elementWidth = element.outerWidth();
-		const elementHeight = element.outerHeight();
+		// 회전을 고려한 경계 계산
+		const transform = element.css('transform');
+		if (transform && transform !== 'none') {
+			// 회전된 경우 대각선 길이 사용
+			const diagonal = Math.sqrt(
+				element.outerWidth() ** 2 +
+				element.outerHeight() ** 2
+			);
+			const margin = (diagonal - Math.min(element.outerWidth(), element.outerHeight())) / 2;
+
+			// 여유 공간 추가
+			const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width + margin;
+			const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height + margin;
+
+			const minLeft = actualBgRect.left + safeMarginX;
+			const maxLeft = actualBgRect.left + actualBgRect.width - safeMarginX - element.outerWidth();
+			const minTop = actualBgRect.top + safeMarginY;
+			const maxTop = actualBgRect.top + actualBgRect.height - safeMarginY - element.outerHeight();
+
+			return {
+				left: Math.max(minLeft, Math.min(newLeft, maxLeft)),
+				top: Math.max(minTop, Math.min(newTop, maxTop))
+			};
+		}
 
 		const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
 		const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;

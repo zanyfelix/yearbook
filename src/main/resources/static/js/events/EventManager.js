@@ -274,61 +274,98 @@ class EventManager {
 
 	// 공통 드래그 핸들러
 	static setupDragHandler(element, type) {
-		let dragData = null;
+	    let dragData = null;
 
-		element.on('mousedown', (e) => {
-			if (e.button !== 0 || !this.canDrag(element, type)) return;
-			e.preventDefault();
-			e.stopPropagation();
+	    element.on('mousedown', (e) => {
+	        if (e.button !== 0 || !this.canDrag(element, type)) return;
+	        e.preventDefault();
+	        e.stopPropagation();
 
-			const initialPosition = element.position();
-			dragData = {
-				startX: e.clientX,
-				startY: e.clientY,
-				initialLeft: initialPosition.left,
-				initialTop: initialPosition.top,
-				isDragging: false,
-			};
+	        // 현재 transform 매트릭스 파싱
+	        const currentTransform = element.css('transform');
+	        const matrix = TransformHelper.parseMatrix(currentTransform);
+	        
+	        // transform이 적용된 실제 위치 가져오기
+	        const computedStyle = window.getComputedStyle(element[0]);
+	        const transformMatrix = new DOMMatrix(computedStyle.transform);
+	        
+	        // 요소의 실제 경계 박스
+	        const rect = element[0].getBoundingClientRect();
+	        const parentRect = element.parent()[0].getBoundingClientRect();
+	        
+	        // 부모 기준 상대 위치 계산
+	        const relativeX = rect.left - parentRect.left;
+	        const relativeY = rect.top - parentRect.top;
+	        
+	        // 회전 중심점 계산
+	        const centerX = relativeX + rect.width / 2;
+	        const centerY = relativeY + rect.height / 2;
+	        
+	        // 마우스와 중심점 간의 오프셋 (회전된 좌표계에서)
+	        const mouseOffsetX = e.clientX - (parentRect.left + centerX);
+	        const mouseOffsetY = e.clientY - (parentRect.top + centerY);
+	        
+	        // 회전 역변환을 적용하여 로컬 오프셋 계산
+	        const angle = Math.atan2(matrix.b, matrix.a);
+	        const cos = Math.cos(-angle);
+	        const sin = Math.sin(-angle);
+	        const localOffsetX = mouseOffsetX * cos - mouseOffsetY * sin;
+	        const localOffsetY = mouseOffsetX * sin + mouseOffsetY * cos;
 
-			$(document).on('mousemove.drag', (ev) => {
-				const deltaX = ev.clientX - dragData.startX;
-				const deltaY = ev.clientY - dragData.startY;
+	        dragData = {
+	            startX: e.clientX,
+	            startY: e.clientY,
+	            // CSS의 left/top 값 직접 사용
+	            initialLeft: parseFloat(element.css('left')) || 0,
+	            initialTop: parseFloat(element.css('top')) || 0,
+	            isDragging: false,
+	            // 회전 정보 저장
+	            transform: currentTransform,
+	            angle: angle,
+	            localOffsetX: localOffsetX,
+	            localOffsetY: localOffsetY
+	        };
 
-				if (!dragData.isDragging && this.exceedsMinDistance(deltaX, deltaY)) {
-					dragData.isDragging = true;
-					element.addClass('dragging');
-				}
+	        $(document).on('mousemove.drag', (ev) => {
+	            const deltaX = ev.clientX - dragData.startX;
+	            const deltaY = ev.clientY - dragData.startY;
 
-				if (dragData.isDragging) {
-					// ✨ 1. 새로운 위치 계산
-					const newLeft = dragData.initialLeft + deltaX;
-					const newTop = dragData.initialTop + deltaY;
+	            if (!dragData.isDragging && this.exceedsMinDistance(deltaX, deltaY)) {
+	                dragData.isDragging = true;
+	                element.addClass('dragging');
+	            }
 
-					// ✨ 2. SafeLine 제약 조건 적용
-					const constrainedPos = window.selectionManager.applySafeLineConstraints(newLeft, newTop, element);
+	            if (dragData.isDragging) {
+	                // 새로운 위치 계산 (회전 고려 없이 직접 이동)
+	                const newLeft = dragData.initialLeft + deltaX;
+	                const newTop = dragData.initialTop + deltaY;
 
-					// ✨ 3. 제약이 적용된 최종 위치로 CSS 업데이트
-					element.css({
-						left: constrainedPos.left + 'px',
-						top: constrainedPos.top + 'px'
-					});
-					// 툴팁 등 부가 기능 업데이트
-					this.updateTooltipIfNeeded(element, type, dragData);
-				}
-			});
+	                // SafeLine 제약 적용
+	                const constrainedPos = window.selectionManager.applySafeLineConstraints(
+	                    newLeft, newTop, element
+	                );
 
-			$(document).on('mouseup.drag', () => {
-				$(document).off('.drag');
-				element.removeClass('dragging');
+	                // 위치 업데이트 (transform은 유지)
+	                element.css({
+	                    left: constrainedPos.left + 'px',
+	                    top: constrainedPos.top + 'px'
+	                });
 
-				if (dragData.isDragging) {
-					// ✨ 최종 위치를 relativeState에 저장
-					this.saveElementPosition(element);
-				}
+	                this.updateTooltipIfNeeded(element, type, dragData);
+	            }
+	        });
 
-				dragData = null;
-			});
-		});
+	        $(document).on('mouseup.drag', () => {
+	            $(document).off('.drag');
+	            element.removeClass('dragging');
+
+	            if (dragData.isDragging) {
+	                this.saveElementPosition(element);
+	            }
+
+	            dragData = null;
+	        });
+	    });
 	}
 
 	// 텍스트 드래그 전용 처리
