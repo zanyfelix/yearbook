@@ -33,7 +33,7 @@ class PhotoManager {
 			this.updateSelectionUI(photo);
 		}, 0);
 
-		// 이벤트 바인딩
+		// 이벤트 바인딩 (중복 제거)
 		EventManager.makeRotatable(photo, rotateHandle);
 		resizeHandles.forEach(handle => this.bindResizeEvent(photo, handle));
 	}
@@ -63,12 +63,18 @@ class PhotoManager {
 		const selectionBox = $('.photo-selection-box');
 		if (!selectionBox.length) return;
 
+		// 사진의 현재 transform 가져오기
+		const photoTransform = photo.css('transform') || 'none';
+		const photoTransformOrigin = photo.css('transform-origin') || '50% 50%';
+
+		// Selection box를 사진과 완전히 동기화
 		selectionBox.css({
 			left: photo.css('left'),
 			top: photo.css('top'),
-			width: photo.outerWidth(),
-			height: photo.outerHeight(),
-			transform: photo.css('transform')
+			width: photo.outerWidth() + 'px',
+			height: photo.outerHeight() + 'px',
+			transform: photoTransform,
+			'transform-origin': photoTransformOrigin
 		});
 	}
 
@@ -204,56 +210,78 @@ class PhotoManager {
 			e.preventDefault();
 			e.stopPropagation();
 
-			const initialTransform = photo.css('transform');
-			const initialMatrix = TransformHelper.parseMatrix(initialTransform);
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
+			const startLeft = parseFloat(photo.css('left')) || 0;
+			const startTop = parseFloat(photo.css('top')) || 0;
+			const aspectRatio = startWidth / startHeight;
 			const handleClass = handle.attr('class');
-
-			const angle = Math.atan2(initialMatrix.b, initialMatrix.a);
 
 			const resizeData = {
 				startX: e.clientX,
 				startY: e.clientY,
-				initialMatrix: initialMatrix,
 				startWidth: startWidth,
 				startHeight: startHeight,
-				aspectRatio: startWidth / startHeight,
-				angle: angle,
-				// 핸들 위치에 따라 크기 조절 기준점을 설정
-				anchor: {
-					x: handleClass.includes('handle-w') ? 1 : -1,
-					y: handleClass.includes('handle-n') ? 1 : -1
-				}
+				startLeft: startLeft,
+				startTop: startTop,
+				aspectRatio: aspectRatio,
+				handlePosition: this.getHandlePosition(handle)
 			};
 
 			$(document).on('mousemove.photoResize', (ev) => {
-				// 마우스 이동량을 회전된 사진의 좌표계에 맞게 변환
-				let dx = ev.clientX - resizeData.startX;
-				let dy = ev.clientY - resizeData.startY;
-				const cos = Math.cos(-resizeData.angle);
-				const sin = Math.sin(-resizeData.angle);
-				let rotatedDx = dx * cos - dy * sin;
-				let rotatedDy = dx * sin + dy * cos;
+				const deltaX = ev.clientX - resizeData.startX;
+				const deltaY = ev.clientY - resizeData.startY;
 
-				const deltaW = rotatedDx * resizeData.anchor.x;
-				let newWidth = resizeData.startWidth + deltaW;
-				if (newWidth < this.config.minSize) newWidth = this.config.minSize;
+				let newWidth = resizeData.startWidth;
+				let newHeight = resizeData.startHeight;
+				let newLeft = resizeData.startLeft;
+				let newTop = resizeData.startTop;
 
-				const scale = newWidth / resizeData.startWidth;
+				// 핸들 위치에 따른 크기 조절 (방향 수정)
+				switch (resizeData.handlePosition) {
+					case 'se': // 우하단
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaX);
+						newHeight = newWidth / resizeData.aspectRatio;
+						break;
 
-				// 기존 행렬에 scale 변환을 곱하여 최종 행렬 계산
-				const newMatrix = { ...resizeData.initialMatrix };
-				newMatrix.a *= scale;
-				newMatrix.b *= scale;
-				newMatrix.c *= scale;
-				newMatrix.d *= scale;
+					case 'sw': // 좌하단
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth - deltaX);
+						newHeight = newWidth / resizeData.aspectRatio;
+						newLeft = resizeData.startLeft + (resizeData.startWidth - newWidth);
+						break;
 
-				const finalTransform = TransformHelper.composeMatrix(newMatrix);
+					case 'ne': // 우상단
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaX);
+						newHeight = newWidth / resizeData.aspectRatio;
+						newTop = resizeData.startTop + (resizeData.startHeight - newHeight);
+						break;
 
-				photo.css({ 'transform': finalTransform });
+					case 'nw': // 좌상단
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth - deltaX);
+						newHeight = newWidth / resizeData.aspectRatio;
+						newLeft = resizeData.startLeft + (resizeData.startWidth - newWidth);
+						newTop = resizeData.startTop + (resizeData.startHeight - newHeight);
+						break;
+				}
+
+				// width/height 직접 변경 (transform scale 사용 안함)
+				photo.css({
+					width: newWidth + 'px',
+					height: newHeight + 'px',
+					left: newLeft + 'px',
+					top: newTop + 'px'
+				});
+
+				// Selection UI 업데이트
 				this.updateSelectionUI(photo);
-				$('.photo-silhouette').css('transform', finalTransform);
+
+				// Silhouette 업데이트
+				$('.photo-silhouette').css({
+					width: newWidth + 'px',
+					height: newHeight + 'px',
+					left: newLeft + 'px',
+					top: newTop + 'px'
+				});
 			});
 
 			$(document).on('mouseup.photoResize', () => {

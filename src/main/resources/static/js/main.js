@@ -1387,8 +1387,7 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 		transform: `translate(${newLeft}px, ${newTop}px)`,
 		position: 'absolute',
 		maxWidth: 'none',
-		maxHeight: 'none',
-		transition: 'all 0.3s ease'
+		maxHeight: 'none'
 	});
 
 	// 상태 저장

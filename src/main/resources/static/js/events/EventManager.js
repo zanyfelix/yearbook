@@ -104,8 +104,8 @@ class EventManager {
 				newMatrix.d = cos * scaleY;
 
 				const newTransform = TransformHelper.composeMatrix(newMatrix);
-
 				element.css('transform', newTransform);
+
 				if (element.hasClass('uploaded-photo')) {
 					$('.photo-selection-box, .photo-silhouette').css('transform', newTransform);
 				}
