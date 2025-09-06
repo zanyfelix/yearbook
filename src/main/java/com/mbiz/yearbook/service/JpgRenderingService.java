@@ -8,7 +8,9 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
+import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
@@ -233,34 +235,29 @@ public class JpgRenderingService {
 			logger.error("Failed to load fonts from database", e);
 		}
 	}
-	
+
 	// 폰트 디렉토리 확인 메서드 추가
 	private void verifyFontDirectory() {
-	    logger.info("=== 폰트 디렉토리 확인 ===");
-	    
-	    String[] possiblePaths = {
-	        themePath.replace("/theme", "/fonts"),
-	        themePath + "/fonts",
-	        "fonts",
-	        System.getProperty("user.dir") + "/fonts"
-	    };
-	    
-	    for (String path : possiblePaths) {
-	        File dir = new File(path);
-	        if (dir.exists() && dir.isDirectory()) {
-	            logger.info("✓ 폰트 디렉토리 발견: {}", dir.getAbsolutePath());
-	            File[] fontFiles = dir.listFiles((d, name) -> 
-	                name.toLowerCase().endsWith(".ttf") || 
-	                name.toLowerCase().endsWith(".otf"));
-	            
-	            if (fontFiles != null && fontFiles.length > 0) {
-	                logger.info("  폰트 파일 {} 개 발견:", fontFiles.length);
-	                for (File f : fontFiles) {
-	                    logger.info("    - {} ({} KB)", f.getName(), f.length() / 1024);
-	                }
-	            }
-	        }
-	    }
+		logger.info("=== 폰트 디렉토리 확인 ===");
+
+		String[] possiblePaths = { themePath.replace("/theme", "/fonts"), themePath + "/fonts", "fonts",
+				System.getProperty("user.dir") + "/fonts" };
+
+		for (String path : possiblePaths) {
+			File dir = new File(path);
+			if (dir.exists() && dir.isDirectory()) {
+				logger.info("✓ 폰트 디렉토리 발견: {}", dir.getAbsolutePath());
+				File[] fontFiles = dir.listFiles(
+						(d, name) -> name.toLowerCase().endsWith(".ttf") || name.toLowerCase().endsWith(".otf"));
+
+				if (fontFiles != null && fontFiles.length > 0) {
+					logger.info("  폰트 파일 {} 개 발견:", fontFiles.length);
+					for (File f : fontFiles) {
+						logger.info("    - {} ({} KB)", f.getName(), f.length() / 1024);
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -402,53 +399,49 @@ public class JpgRenderingService {
 	 * Transform 문자열 파싱 유틸리티 클래스
 	 */
 	private static class TransformParser {
-		double a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0;
-		double rotation = 0;
-		double scaleX = 1, scaleY = 1;
-		boolean hasTranslation = false;
-
-		static TransformParser parse(String transform) {
-			TransformParser parser = new TransformParser();
-			if (transform == null || "none".equals(transform)) {
-				return parser;
-			}
-
-			// matrix(a, b, c, d, tx, ty) 형식 파싱
-			Pattern matrixPattern = Pattern.compile("matrix\\(([^)]+)\\)");
-			Matcher matcher = matrixPattern.matcher(transform);
-
-			if (matcher.find()) {
-				String[] values = matcher.group(1).split(",");
-				if (values.length >= 4) {
-					parser.a = Double.parseDouble(values[0].trim());
-					parser.b = Double.parseDouble(values[1].trim());
-					parser.c = Double.parseDouble(values[2].trim());
-					parser.d = Double.parseDouble(values[3].trim());
-
-					if (values.length >= 6) {
-						parser.tx = Double.parseDouble(values[4].trim());
-						parser.ty = Double.parseDouble(values[5].trim());
-						parser.hasTranslation = (parser.tx != 0 || parser.ty != 0);
-					}
-
-					// 회전 각도 계산
-					parser.rotation = Math.atan2(parser.b, parser.a);
-
-					// 스케일 계산
-					parser.scaleX = Math.sqrt(parser.a * parser.a + parser.b * parser.b);
-					parser.scaleY = Math.sqrt(parser.c * parser.c + parser.d * parser.d);
-				}
-			}
-
-			// rotate(angle) 형식 파싱
-			Pattern rotatePattern = Pattern.compile("rotate\\(([^d]+)deg\\)");
-			matcher = rotatePattern.matcher(transform);
-			if (matcher.find()) {
-				parser.rotation = Math.toRadians(Double.parseDouble(matcher.group(1).trim()));
-			}
-
-			return parser;
-		}
+	    double a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0;
+	    double rotation = 0;
+	    double scaleX = 1, scaleY = 1;
+	    
+	    static TransformParser parse(String transform) {
+	        TransformParser parser = new TransformParser();
+	        if (transform == null || "none".equals(transform)) {
+	            return parser;
+	        }
+	        
+	        // matrix 파싱
+	        Pattern matrixPattern = Pattern.compile("matrix\\(([^)]+)\\)");
+	        Matcher matcher = matrixPattern.matcher(transform);
+	        
+	        if (matcher.find()) {
+	            String[] values = matcher.group(1).split(",");
+	            if (values.length >= 4) {
+	                parser.a = Double.parseDouble(values[0].trim());
+	                parser.b = Double.parseDouble(values[1].trim());
+	                parser.c = Double.parseDouble(values[2].trim());
+	                parser.d = Double.parseDouble(values[3].trim());
+	                
+	                if (values.length >= 6) {
+	                    // 편집기 스케일을 렌더링 스케일로 변환
+	                    parser.tx = Double.parseDouble(values[4].trim()) * SCALE_RATIO;
+	                    parser.ty = Double.parseDouble(values[5].trim()) * SCALE_RATIO;
+	                }
+	                
+	                // 회전 각도 계산 (라디안)
+	                parser.rotation = Math.atan2(parser.b, parser.a);
+	                
+	                // 스케일 계산
+	                parser.scaleX = Math.sqrt(parser.a * parser.a + parser.b * parser.b);
+	                parser.scaleY = Math.sqrt(parser.c * parser.c + parser.d * parser.d);
+	                
+	                // 음수 스케일 처리
+	                if (parser.a < 0) parser.scaleX = -parser.scaleX;
+	                if (parser.d < 0) parser.scaleY = -parser.scaleY;
+	            }
+	        }
+	        
+	        return parser;
+	    }
 	}
 
 	/**
@@ -963,19 +956,11 @@ public class JpgRenderingService {
 		// 색상 파싱
 		Color textColor = parseColor(styles.path("color").asText("rgb(0, 0, 0)"));
 
-		// 폰트 정보 가져오기
+		// 폰트 정보
 		String fontFamily = styles.path("fontFamily").asText("Arial");
 
-		// 폰트 파일명도 확인 (DB에서 가져온 경우)
-		String fontFile = textBox.path("fontFile").asText("");
-
-		logger.info("=== 텍스트 박스 스타일 정보 ===");
-		logger.info("fontFamily: {}", fontFamily);
-		logger.info("fontFile: {}", fontFile);
-		logger.info("color: {}", styles.path("color").asText());
-
-		// fontSize 처리 - 다양한 형식 지원
-		float baseFontSize = 12; // 기본값
+		// fontSize 처리
+		float baseFontSize = 12;
 		JsonNode fontSizeNode = styles.path("fontSize");
 		if (fontSizeNode.isNumber()) {
 			baseFontSize = (float) fontSizeNode.asDouble();
@@ -987,28 +972,38 @@ public class JpgRenderingService {
 			try {
 				baseFontSize = Float.parseFloat(fontSizeStr);
 			} catch (NumberFormatException e) {
-				// textType으로 폰트 크기 결정
-				String textType = textBox.path("textType").asText("");
-				if ("Title".equals(textType))
-					baseFontSize = 24;
-				else if ("Sub-Title".equals(textType))
-					baseFontSize = 16;
-				else
-					baseFontSize = 12;
+				// 기본값 사용
 			}
 		}
 
 		// 스케일 적용
 		int renderFontSize = (int) Math.round(baseFontSize * SCALE_RATIO);
 
-		// 폰트 스타일
+		// 폰트 스타일 - 더 정확한 처리
 		String fontWeight = styles.path("fontWeight").asText("normal");
-		int fontStyle = "bold".equals(fontWeight) ? Font.BOLD : Font.PLAIN;
+		String fontStyle = styles.path("fontStyle").asText("normal");
 
-		// 폰트 가져오기 (개선된 버전)
-		Font font = getFontImproved(fontFamily, fontFile, fontStyle, renderFontSize);
+		int javaFontStyle = Font.PLAIN;
 
-		logger.info("최종 사용 폰트: Family={}, Size={}, Color={}", font.getFamily(), font.getSize(), textColor);
+		// fontWeight 처리 (100-900 또는 normal/bold)
+		if (fontWeight.matches("\\d+")) {
+			int weight = Integer.parseInt(fontWeight);
+			if (weight >= 600) {
+				javaFontStyle |= Font.BOLD;
+			}
+		} else if ("bold".equalsIgnoreCase(fontWeight) || "bolder".equalsIgnoreCase(fontWeight)) {
+			javaFontStyle |= Font.BOLD;
+		}
+
+		// fontStyle 처리 (italic/oblique)
+		if ("italic".equalsIgnoreCase(fontStyle) || "oblique".equalsIgnoreCase(fontStyle)) {
+			javaFontStyle |= Font.ITALIC;
+		}
+
+		// 폰트 생성
+		Font font = getFont(fontFamily, javaFontStyle, renderFontSize);
+
+		logger.debug("폰트 스타일 - Weight: {}, Style: {}, Java Style: {}", fontWeight, fontStyle, javaFontStyle);
 
 		// 텍스트 정렬
 		String textAlign = styles.path("textAlign").asText("left");
@@ -1017,78 +1012,147 @@ public class JpgRenderingService {
 		String transform = textBox.path("transform").asText("none");
 		String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
 
-		// Graphics2D 컨텍스트 저장 및 Transform 적용
+		// Graphics2D 생성
 		Graphics2D g2dText = (Graphics2D) g2d.create();
 		setHighQualityRenderingHints(g2dText);
 
-		// Transform 적용
-		if (!"none".equals(transform)) {
+		// Transform 적용 - 개선된 버전
+		if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+			// transformOrigin을 정확히 계산
 			double[] origin = parseTransformOrigin(transformOrigin, boxWidth, boxHeight);
+
+			// Transform 파싱
 			TransformParser parser = TransformParser.parse(transform);
 
-			AffineTransform at = new AffineTransform();
-			at.translate(boxX + origin[0], boxY + origin[1]);
-			at.rotate(parser.rotation);
-			at.translate(-origin[0], -origin[1]);
+			// 회전 중심점을 박스의 절대 위치로 계산
+			double pivotX = boxX + origin[0];
+			double pivotY = boxY + origin[1];
+
+			// Transform 적용
+			AffineTransform at = g2dText.getTransform();
+			at.translate(pivotX, pivotY); // 회전 중심으로 이동
+			at.rotate(parser.rotation); // 회전
+			at.translate(-origin[0], -origin[1]); // 원점으로 복귀
 
 			g2dText.setTransform(at);
+
+			logger.debug("텍스트 회전 - 각도: {} rad, 중심: ({}, {})", parser.rotation, pivotX, pivotY);
 		} else {
+			// 회전 없을 때는 단순 이동
 			g2dText.translate(boxX, boxY);
 		}
 
 		// 텍스트 렌더링
 		g2dText.setFont(font);
-		g2dText.setColor(textColor); // 색상 적용
+		g2dText.setColor(textColor);
 
-		// 텍스트 위치 계산
-		FontMetrics fm = g2dText.getFontMetrics();
-		int textY = fm.getAscent() + 10; // padding
+		// 텍스트 위치 계산 - 더 정확한 메트릭 사용
+		FontMetrics fm = g2dText.getFontMetrics(font);
+		FontRenderContext frc = g2dText.getFontRenderContext();
 
 		// 줄바꿈 처리
 		String[] lines = text.split("\n");
+
+		// 전체 텍스트 높이 계산
+		int totalHeight = lines.length * fm.getHeight();
+		int startY = fm.getAscent(); // 첫 줄 시작 위치
+
+		// 수직 정렬 처리 (필요시)
+		String verticalAlign = styles.path("verticalAlign").asText("top");
+		if ("middle".equals(verticalAlign)) {
+			startY = (int) (boxHeight - totalHeight) / 2 + fm.getAscent();
+		} else if ("bottom".equals(verticalAlign)) {
+			startY = (int) (boxHeight - totalHeight) + fm.getAscent();
+		}
+
 		for (int i = 0; i < lines.length; i++) {
-			int textX = calculateTextX(lines[i], textAlign, (int) boxWidth, fm);
-			g2dText.drawString(lines[i], textX, textY + (i * fm.getHeight()));
+			if (lines[i].trim().isEmpty())
+				continue;
+
+			// 각 줄의 정확한 바운드 계산
+			Rectangle2D bounds = font.getStringBounds(lines[i], frc);
+
+			// X 위치 계산 (정렬 고려)
+			int textX = calculateTextXPrecise(lines[i], textAlign, (int) boxWidth, bounds);
+			int textY = startY + (i * fm.getHeight());
+
+			g2dText.drawString(lines[i], textX, textY);
 		}
 
 		g2dText.dispose();
+	}
+	
+	// 더 정확한 X 위치 계산
+	private int calculateTextXPrecise(String text, String align, int boxWidth, Rectangle2D bounds) {
+	    int textWidth = (int)bounds.getWidth();
+	    int padding = 10;
+	    
+	    switch (align.toLowerCase()) {
+	        case "center":
+	            return (boxWidth - textWidth) / 2;
+	        case "right":
+	            return boxWidth - textWidth - padding;
+	        case "justify":
+	            return padding; // justify는 별도 처리 필요
+	        default: // left
+	            return padding;
+	    }
 	}
 
 	/**
 	 * 폰트 가져오기 (커스텀 폰트 우선, 대소문자 구분 없이 검색)
 	 */
 	private Font getFont(String fontFamily, int style, int size) {
-		// 정확한 이름으로 먼저 검색
-		Font customFont = customFonts.get(fontFamily);
-
-		// 정확한 매치가 없으면 대소문자 구분 없이 검색
-		if (customFont == null) {
-			String searchName = fontFamily.toLowerCase().replaceAll("\\s+", "");
-			for (Map.Entry<String, Font> entry : customFonts.entrySet()) {
-				String keyName = entry.getKey().toLowerCase().replaceAll("\\s+", "");
-				if (keyName.equals(searchName)) {
-					customFont = entry.getValue();
-					break;
-				}
-			}
-		}
-
-		// 커스텀 폰트를 찾았으면 사용
-		if (customFont != null) {
-			return customFont.deriveFont(style, (float) size);
-		}
-
-		// 시스템 폰트로 시도
-		Font systemFont = new Font(fontFamily, style, size);
-
-		// 시스템 폰트가 실제로 존재하는지 확인
-		if (!systemFont.getFamily().equals(Font.DIALOG)) {
-			return systemFont;
-		}
-
-		// 모두 실패하면 기본 폰트 사용
-		logger.debug("Font '{}' not found, using default", fontFamily);
-		return new Font("Arial", style, size);
+		Font baseFont = null;
+	    
+	    // 1. 커스텀 폰트 검색
+	    if (!fontFamily.isEmpty()) {
+	        baseFont = customFonts.get(fontFamily);
+	        
+	        if (baseFont == null) {
+	            // 대소문자 구분 없이 검색
+	            for (Map.Entry<String, Font> entry : customFonts.entrySet()) {
+	                if (entry.getKey().equalsIgnoreCase(fontFamily)) {
+	                    baseFont = entry.getValue();
+	                    break;
+	                }
+	            }
+	        }
+	    }
+	    
+	    // 2. 시스템 폰트 시도
+	    if (baseFont == null) {
+	        baseFont = new Font(fontFamily, Font.PLAIN, size);
+	        if (baseFont.getFamily().equals(Font.DIALOG)) {
+	            baseFont = new Font("Arial", Font.PLAIN, size);
+	        }
+	    }
+	    
+	    // 3. 스타일 적용 - deriveFont 사용
+	    Font styledFont = baseFont.deriveFont(style, (float)size);
+	    
+	    // 4. Bold가 제대로 적용되지 않는 경우 강제 적용
+	    if ((style & Font.BOLD) != 0 && !styledFont.isBold()) {
+	        // 일부 폰트는 Bold 스타일이 없을 수 있음
+	        logger.debug("Bold 스타일 강제 적용 시도");
+	        
+	        // Bold 버전 폰트 찾기
+	        String boldVariant = fontFamily + " Bold";
+	        Font boldFont = customFonts.get(boldVariant);
+	        
+	        if (boldFont != null) {
+	            styledFont = boldFont.deriveFont((float)size);
+	            if ((style & Font.ITALIC) != 0) {
+	                styledFont = styledFont.deriveFont(Font.ITALIC);
+	            }
+	        }
+	    }
+	    
+	    logger.debug("최종 폰트 - Family: {}, Bold: {}, Italic: {}, Size: {}", 
+	                styledFont.getFamily(), styledFont.isBold(), 
+	                styledFont.isItalic(), styledFont.getSize());
+	    
+	    return styledFont;
 	}
 
 	/**
