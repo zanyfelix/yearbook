@@ -198,6 +198,10 @@ class EventManager {
 			e.stopPropagation();
 
 			if (!textBox.hasClass('selected')) {
+
+				// 먼저 크기 재조정
+				this.autoResizeTextBox(textBox);
+
 				// 🔴 선택 전 현재 위치 저장
 				const currentTransform = textBox.css('transform');
 				textBox.css('transform', 'none');
@@ -630,44 +634,44 @@ class EventManager {
 	}
 
 	static saveElementPosition(element) {
-	    const bg = $('#page-preview-img');
-	    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-	    
-	    if (!actualBgRect) return null;
-	    
-	    // 현재 transform 백업
-	    const currentTransform = element.css('transform');
-	    const currentTransformOrigin = element.css('transform-origin');
-	    
-	    // transform 일시 제거하여 순수 위치 얻기
-	    element.css('transform', 'none');
-	    const elementPos = element.position();
-	    const elementWidth = element.outerWidth();
-	    const elementHeight = element.outerHeight();
-	    
-	    // transform 즉시 복원
-	    element.css('transform', currentTransform);
-	    
-	    const currentState = element.data('relativeState') || {};
-	    
-	    // transform이 제거된 상태의 순수 위치를 저장
-	    currentState.position = {
-	        left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
-	        top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
-	    };
-	    
-	    currentState.size = {
-	        width: (elementWidth / actualBgRect.width) * 100,
-	        height: (elementHeight / actualBgRect.height) * 100
-	    };
-	    
-	    // transform 정보는 별도 저장
-	    currentState.transform = currentTransform || 'none';
-	    currentState.transformOrigin = currentTransformOrigin || '50% 50%';
-	    
-	    element.data('relativeState', currentState);
-	    
-	    return currentState;
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+
+		if (!actualBgRect) return null;
+
+		// 현재 transform 백업
+		const currentTransform = element.css('transform');
+		const currentTransformOrigin = element.css('transform-origin');
+
+		// transform 일시 제거하여 순수 위치 얻기
+		element.css('transform', 'none');
+		const elementPos = element.position();
+		const elementWidth = element.outerWidth();
+		const elementHeight = element.outerHeight();
+
+		// transform 즉시 복원
+		element.css('transform', currentTransform);
+
+		const currentState = element.data('relativeState') || {};
+
+		// transform이 제거된 상태의 순수 위치를 저장
+		currentState.position = {
+			left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
+			top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
+		};
+
+		currentState.size = {
+			width: (elementWidth / actualBgRect.width) * 100,
+			height: (elementHeight / actualBgRect.height) * 100
+		};
+
+		// transform 정보는 별도 저장
+		currentState.transform = currentTransform || 'none';
+		currentState.transformOrigin = currentTransformOrigin || '50% 50%';
+
+		element.data('relativeState', currentState);
+
+		return currentState;
 	}
 
 	static saveFramePosition(frameGroup, position) {
@@ -753,8 +757,7 @@ class EventManager {
 				'font-weight': $box.css('font-weight'),
 				'padding': $box.css('padding'),
 				'border': $box.css('border'),
-				'box-sizing': 'border-box',
-				'max-width': '500px'
+				'box-sizing': 'border-box'
 			});
 
 		$('body').append($temp);

@@ -53,6 +53,11 @@ class SelectionManager {
 
 		window.selectedBox = textBox;
 
+		// autoResize를 먼저 실행
+		if (typeof EventManager !== 'undefined' && EventManager.autoResizeTextBox) {
+			EventManager.autoResizeTextBox(textBox);
+		}
+
 		textBox.addClass('selected');
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
@@ -140,33 +145,33 @@ class SelectionManager {
 	}
 
 	applySafeLineConstraints(newLeft, newTop, element) {
-	    const bg = $('#page-preview-img');
-	    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 
-	    if (!actualBgRect) {
-	        return { left: newLeft, top: newTop };
-	    }
-	    
-	    // SafeLine 마진 계산 (3mm)
-	    const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
-	    const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
+		if (!actualBgRect) {
+			return { left: newLeft, top: newTop };
+		}
 
-	    // 회전 여부와 관계없이 요소의 외곽 박스 기준으로 제약 적용
-	    const elementWidth = element.outerWidth();
-	    const elementHeight = element.outerHeight();
+		// SafeLine 마진 계산 (3mm)
+		const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
+		const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
 
-	    const minLeft = actualBgRect.left + safeMarginX;
-	    const maxLeft = actualBgRect.left + actualBgRect.width - safeMarginX - elementWidth;
-	    const minTop = actualBgRect.top + safeMarginY;
-	    const maxTop = actualBgRect.top + actualBgRect.height - safeMarginY - elementHeight;
+		// 회전 여부와 관계없이 요소의 외곽 박스 기준으로 제약 적용
+		const elementWidth = element.outerWidth();
+		const elementHeight = element.outerHeight();
 
-	    const constrainedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-	    const constrainedTop = Math.max(minTop, Math.min(newTop, maxTop));
+		const minLeft = actualBgRect.left + safeMarginX;
+		const maxLeft = actualBgRect.left + actualBgRect.width - safeMarginX - elementWidth;
+		const minTop = actualBgRect.top + safeMarginY;
+		const maxTop = actualBgRect.top + actualBgRect.height - safeMarginY - elementHeight;
 
-	    return {
-	        left: constrainedLeft,
-	        top: constrainedTop
-	    };
+		const constrainedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+		const constrainedTop = Math.max(minTop, Math.min(newTop, maxTop));
+
+		return {
+			left: constrainedLeft,
+			top: constrainedTop
+		};
 	}
 
 	addTextRotationHandle(textBox) {
