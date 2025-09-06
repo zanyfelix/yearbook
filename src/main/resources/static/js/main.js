@@ -714,7 +714,7 @@ $(document).ready(function() {
 
 		// 썸네일 캡처 및 서버 전송
 		const captureTarget = document.getElementById('page-preview');
-		html2canvas(captureTarget, { useCORS: true, backgroundColor: null, scale: 2 }).then(canvas => {
+		html2canvas(captureTarget, { useCORS: true, backgroundColor: null, scale: 1.5 }).then(canvas => {
 			canvas.toBlob(blob => {
 				const payload = {
 					userId: $('#id').val(),
