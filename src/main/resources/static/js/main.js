@@ -797,120 +797,142 @@ $(document).ready(function() {
 
 		if (!frameGroup || !photo || !placeholder || !mask) return;
 
-		/**
-		 * HEIC 파일을 JPEG Blob으로 변환하는 함수
-		 */
-		const convertHeicToJpeg = (heicFile) => {
-			return new Promise((resolve, reject) => {
-				if (typeof heic2any === 'undefined') {
-					return reject('HEIC conversion library is not loaded.');
-				}
-				heic2any({ blob: heicFile, toType: "image/jpeg", quality: 0.9 })
-					.then(resolve)
-					.catch(reject);
-			});
-		};
+		// HEIC 처리를 포함한 업로드
+		processAndUploadImage(file, frameGroup, photo, placeholder);
+	});
 
-		/**
-		 * 파일(Blob)을 서버에 업로드하고 경로를 반환받는 함수
-		 */
-		const uploadFileToServer = (fileToUpload) => {
+	// 통합 처리 함수
+	async function processAndUploadImage(file, frameGroup, photo, placeholder) {
+		showLoader();
+
+		try {
+			let processedFile = file;
+			const fileExtension = file.name.split('.').pop().toLowerCase();
+
+			// HEIC인 경우 JPEG로 변환
+			if (fileExtension === 'heic') {
+				processedFile = await convertHeicToJpeg(file);
+			}
+
+			// 클라이언트에서 편집용 버전 생성
+			const editBlob = await createEditVersion(processedFile);
+
+			// FormData에 원본과 편집용 모두 추가
 			const formData = new FormData();
-			formData.append('file', fileToUpload, file.name.replace(/\.heic$/i, ".jpg")); // HEIC인 경우 확장자 변경
+			formData.append('originalFile', processedFile,
+				file.name.replace(/\.heic$/i, '.jpg'));
+			formData.append('editFile', editBlob,
+				'edit_' + file.name.replace(/\.heic$/i, '.jpg'));
 
-			showLoader(); // 업로드 중 로더 표시
-
+			// 서버로 전송
 			$.ajax({
-				url: `${ctx}/edit/uploadImage`,
+				url: `${ctx}/edit/uploadImageVersions`,
 				method: 'POST',
 				data: formData,
 				processData: false,
 				contentType: false,
 				success: function(response) {
-					if (response.filePath) {
-						// 성공 시, 반환된 경로로 이미지 표시
-						displayImageInFrame(response.filePath);
+					if (response.success) {
+						displayImageWithVersions(
+							response.editPath,
+							response.originalPath,
+							frameGroup,
+							photo,
+							placeholder
+						);
 					} else {
-						alert("File upload succeeded, but no path was returned.");
+						alert("업로드 실패");
 					}
 				},
-				error: function(jqXHR) {
-					const errorMsg = jqXHR.responseJSON ? jqXHR.responseJSON.error : "An unknown error occurred.";
-					console.error("File upload failed:", errorMsg);
-					alert("File upload failed: " + errorMsg);
+				error: function(xhr) {
+					const errorMsg = xhr.responseJSON?.error || "업로드 실패";
+					alert(errorMsg);
 				},
 				complete: function() {
-					hideLoader(); // 완료 후 로더 숨기기
-					$input.val(''); // input 초기화
+					hideLoader();
+					$('#image-upload-input').val('');
 				}
 			});
-		};
 
-		/**
-			 * 서버 경로를 받아 프레임에 이미지를 표시하는 함수
-			 */
-		const displayImageInFrame = (imagePath) => {
-			const fullImagePath = `${ctx}${imagePath}`;
-
-			photo.attr('src', fullImagePath).css('display', 'block');
-
-			photo.data('filePath', imagePath);
-
-			photo.on('load', function() {
-				const maskWidth = mask.width();
-				const maskHeight = mask.height();
-				const imgNaturalWidth = this.naturalWidth;
-				const imgNaturalHeight = this.naturalHeight;
-
-				const scaleX = maskWidth / imgNaturalWidth;
-				const scaleY = maskHeight / imgNaturalHeight;
-				const scale = Math.max(scaleX, scaleY);
-
-				const newWidth = imgNaturalWidth * scale;
-				const newHeight = imgNaturalHeight * scale;
-				const newLeft = (maskWidth - newWidth) / 2;
-				const newTop = (maskHeight - newHeight) / 2;
-
-				// 1. 사진 위치를 처음부터 transform으로 설정합니다.
-				photo.css({
-					width: `${newWidth}px`, height: `${newHeight}px`,
-					left: 0,
-					top: 0,
-					transform: `translate(${newLeft}px, ${newTop}px)`
-				});
-
-				// 2. 저장될 상태(relativeState)를 생성합니다.
-				const initialState = {
-					position: { leftPx: newLeft, topPx: newTop },
-					size: { widthPx: newWidth, heightPx: newHeight },
-					transform: 'none',
-					transformOrigin: '50% 50%'
-				};
-				photo.data('relativeState', initialState);
-				window.selectionManager.clearSelection();
-
-			}).on('error', function() {
-				alert('Failed to load the uploaded image.');
-				photo.hide();
-				placeholder.show();
-			});
-
-			placeholder.hide();
-		};
-
-		// --- 실행 로직 ---
-		if (fileExtension === 'heic') {
-			convertHeicToJpeg(file)
-				.then(uploadFileToServer)
-				.catch(err => {
-					console.error("HEIC conversion failed:", err);
-					alert("HEIC file could not be converted. " + err);
-					$input.val('');
-				});
-		} else {
-			uploadFileToServer(file);
+		} catch (error) {
+			console.error('이미지 처리 오류:', error);
+			alert('이미지 처리 중 오류가 발생했습니다: ' + error.message);
+			hideLoader();
+			$('#image-upload-input').val('');
 		}
-	});
+	}
+
+	// HEIC 변환 함수 (기존 유지)
+	function convertHeicToJpeg(heicFile) {
+		return new Promise((resolve, reject) => {
+			if (typeof heic2any === 'undefined') {
+				reject(new Error('HEIC 변환 라이브러리가 로드되지 않았습니다.'));
+				return;
+			}
+
+			heic2any({
+				blob: heicFile,
+				toType: "image/jpeg",
+				quality: 0.9
+			})
+				.then(result => {
+					// heic2any는 Blob 또는 Blob 배열을 반환할 수 있음
+					const blob = Array.isArray(result) ? result[0] : result;
+					resolve(blob);
+				})
+				.catch(reject);
+		});
+	}
+
+	// 클라이언트에서 편집용 버전 생성
+	function createEditVersion(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = function(e) {
+				const img = new Image();
+
+				img.onload = function() {
+					const canvas = document.createElement('canvas');
+					const ctx = canvas.getContext('2d');
+
+					// 최대 800px로 제한
+					const maxSize = 800;
+					let width = img.width;
+					let height = img.height;
+
+					if (width > height && width > maxSize) {
+						height = Math.round((maxSize / width) * height);
+						width = maxSize;
+					} else if (height > maxSize) {
+						width = Math.round((maxSize / height) * width);
+						height = maxSize;
+					}
+
+					canvas.width = width;
+					canvas.height = height;
+
+					// 이미지 그리기
+					ctx.drawImage(img, 0, 0, width, height);
+
+					// Blob으로 변환 (JPEG, 85% 품질)
+					canvas.toBlob(
+						blob => resolve(blob),
+						'image/jpeg',
+						0.85
+					);
+				};
+
+				img.onerror = () => reject(new Error('이미지 로드 실패'));
+				img.src = e.target.result;
+			};
+
+			reader.onerror = () => reject(new Error('파일 읽기 실패'));
+
+			// File이 이미 Blob이므로 바로 읽기 가능
+			reader.readAsDataURL(file);
+		});
+	}
 
 	// 클리어 버튼
 	$('#btn-clear').on('click', function() {
@@ -1206,3 +1228,193 @@ window.getTranslateValues = function(transformString) {
 	// 3. 둘 다 아닐 경우 (예: rotate만 있을 경우) 위치는 0, 0
 	return { x: 0, y: 0 };
 };
+
+// 이미지 표시 함수
+function displayImageWithVersions(editPath, originalPath, frameGroup, photo, placeholder) {
+	const fullEditPath = `${ctx}${editPath}`;
+
+	// 편집 중에는 편집용 이미지 사용
+	photo.attr('src', fullEditPath).css('display', 'block');
+
+	// 데이터 저장
+	photo.data({
+		'editPath': editPath,
+		'originalPath': originalPath,
+		'filePath': originalPath, // 호환성
+		'currentDisplay': 'edit' // 현재 표시 중인 버전
+	});
+
+	photo.on('load', function() {
+		// 초기 위치 설정 로직...
+		const maskContainer = frameGroup.find('.mask-container');
+		if (maskContainer.length) {
+			// 기본 cover 모드로 위치 설정
+			positionImageInMaskAdvanced(photo, maskContainer, {
+				fit: 'cover',
+				position: 'center'
+			});
+		} else {
+			// 마스크가 없는 경우 기본 위치
+			positionImageInMask(photo, frameGroup);
+		}
+
+		placeholder.hide();
+		window.selectionManager.clearSelection();
+	});
+
+	photo.on('error', function() {
+		console.error('이미지 로드 실패:', fullEditPath);
+		alert('이미지를 표시할 수 없습니다.');
+		photo.hide();
+		placeholder.show();
+	});
+}
+
+// 성능 측정 (디버깅용)
+function measurePerformance(operation, callback) {
+	const startTime = performance.now();
+
+	return callback().then(result => {
+		const endTime = performance.now();
+		console.log(`${operation}: ${(endTime - startTime).toFixed(2)}ms`);
+		return result;
+	});
+}
+
+// 개선된 버전 - 다양한 fit 옵션 지원
+function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
+    const settings = {
+        fit: 'cover', // 'cover', 'contain', 'fill', 'none'
+        position: 'center', // 'center', 'top', 'bottom', 'left', 'right'
+        ...options
+    };
+    
+    const maskWidth = maskContainer.width();
+    const maskHeight = maskContainer.height();
+    const maskBounds = maskContainer.data('maskBounds');
+    
+    // 마스크 경계가 있으면 실제 영역 사용
+    const actualWidth = maskBounds ? maskWidth * maskBounds.width : maskWidth;
+    const actualHeight = maskBounds ? maskHeight * maskBounds.height : maskHeight;
+    const offsetX = maskBounds ? maskWidth * maskBounds.x : 0;
+    const offsetY = maskBounds ? maskHeight * maskBounds.y : 0;
+    
+    if (!photo[0].naturalWidth) {
+        photo.on('load', function() {
+            positionImageInMaskAdvanced(photo, maskContainer, settings);
+        });
+        return;
+    }
+    
+    const imgNaturalWidth = photo[0].naturalWidth;
+    const imgNaturalHeight = photo[0].naturalHeight;
+    
+    let scale, newWidth, newHeight;
+    
+    // Fit 모드에 따른 스케일 계산
+    switch (settings.fit) {
+        case 'cover':
+            // 마스크를 완전히 채움 (일부가 잘릴 수 있음)
+            scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+            break;
+            
+        case 'contain':
+            // 이미지 전체가 보이도록 (여백이 생길 수 있음)
+            scale = Math.min(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+            break;
+            
+        case 'fill':
+            // 마스크 크기에 정확히 맞춤 (비율 무시)
+            newWidth = actualWidth;
+            newHeight = actualHeight;
+            break;
+            
+        case 'none':
+            // 원본 크기 유지
+            scale = 1;
+            break;
+            
+        default:
+            scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+    }
+    
+    if (settings.fit !== 'fill') {
+        newWidth = imgNaturalWidth * scale;
+        newHeight = imgNaturalHeight * scale;
+    }
+    
+    // Position에 따른 위치 계산
+    let newLeft, newTop;
+    
+    switch (settings.position) {
+        case 'top':
+            newLeft = offsetX + (actualWidth - newWidth) / 2;
+            newTop = offsetY;
+            break;
+            
+        case 'bottom':
+            newLeft = offsetX + (actualWidth - newWidth) / 2;
+            newTop = offsetY + actualHeight - newHeight;
+            break;
+            
+        case 'left':
+            newLeft = offsetX;
+            newTop = offsetY + (actualHeight - newHeight) / 2;
+            break;
+            
+        case 'right':
+            newLeft = offsetX + actualWidth - newWidth;
+            newTop = offsetY + (actualHeight - newHeight) / 2;
+            break;
+            
+        case 'center':
+        default:
+            newLeft = offsetX + (actualWidth - newWidth) / 2;
+            newTop = offsetY + (actualHeight - newHeight) / 2;
+            break;
+    }
+    
+    // 애니메이션 효과와 함께 적용
+    photo.css({
+        width: `${newWidth}px`,
+        height: `${newHeight}px`,
+        left: 0,
+        top: 0,
+        transform: `translate(${newLeft}px, ${newTop}px)`,
+        position: 'absolute',
+        maxWidth: 'none',
+        maxHeight: 'none',
+        transition: 'all 0.3s ease'
+    });
+    
+    // 상태 저장
+    saveImageState(photo, {
+        position: { leftPx: newLeft, topPx: newTop },
+        size: { widthPx: newWidth, heightPx: newHeight },
+        fit: settings.fit,
+        alignment: settings.position
+    });
+}
+
+// 이미지 상태 저장 헬퍼
+function saveImageState(photo, state) {
+    const currentState = photo.data('relativeState') || {};
+    
+    const updatedState = {
+        ...currentState,
+        ...state,
+        editPath: photo.data('editPath'),
+        originalPath: photo.data('originalPath'),
+        lastModified: new Date().toISOString()
+    };
+    
+    photo.data('relativeState', updatedState);
+    
+    // 프레임 그룹에도 업데이트
+    const frameGroup = photo.closest('.frame-group');
+    if (frameGroup.length) {
+        const frameState = frameGroup.data('relativeState') || {};
+        frameState.photo = updatedState;
+        frameGroup.data('relativeState', frameState);
+    }
+}
