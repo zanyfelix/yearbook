@@ -637,7 +637,8 @@ $(document).ready(function() {
 				const photoRelativeState = $photo.data('relativeState');
 				if (photoRelativeState) {
 					photoData = {
-						src: $photo.data('filePath'),
+						src: $photo.data('originalPath') || $photo.data('filePath'), // 원본 경로 우선
+						editSrc: $photo.data('editPath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
 						transform: photoRelativeState.transform,
