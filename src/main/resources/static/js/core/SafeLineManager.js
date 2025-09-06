@@ -90,42 +90,45 @@ class SafeLineManager {
         });
     }
     
-    update() {
-        if (!this.container) return;
+	update() {
+	    if (!this.container) return;
 
-        const img = $('#page-preview-img');
-        const src = img.attr('src');
+	    const img = $('#page-preview-img');
+	    const src = img.attr('src');
 
-        // 이미지가 없거나 placeholder인 경우
-        if (!src || src.includes('data:image/gif;base64')) {
-            this.container.hide();
-            this.clearSelectionCache();
-            return;
-        }
+	    if (!src || src.includes('data:image/gif;base64')) {
+	        this.container.hide();
+	        this.clearSelectionCache();
+	        return;
+	    }
 
-        const imgElement = img[0];
-        
-        // 이미지가 로드되지 않은 경우
-        if (img.width() === 0 || img.height() === 0 || !imgElement.complete) {
-            this.container.hide();
-            return;
-        }
+	    const imgElement = img[0];
+	    
+	    // 이미지 로드 완료 확인 개선
+	    if (!imgElement.complete || !imgElement.naturalWidth) {
+	        this.container.hide();
+	        // 이미지 로드 후 재시도
+	        img.off('load.safeline').one('load.safeline', () => {
+	            setTimeout(() => this.update(), 100);
+	        });
+	        return;
+	    }
 
-        const imgPosition = this.getActualImagePosition(img);
-        if (!imgPosition) {
-            this.container.hide();
-            return;
-        }
+	    const imgPosition = this.getActualImagePosition(img);
+	    if (!imgPosition) {
+	        this.container.hide();
+	        return;
+	    }
 
-        this.container.show();
-        
-        const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
-        const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
+	    this.container.show();
+	    
+	    const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
+	    const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
 
-        this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
-        this.updateMessagePosition(imgPosition);
-        this.clearSelectionCache();
-    }
+	    this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
+	    this.updateMessagePosition(imgPosition);
+	    this.clearSelectionCache();
+	}
     
     drawHatchedSafeAreas(imgPosition, marginX, marginY) {
         this.container.empty();

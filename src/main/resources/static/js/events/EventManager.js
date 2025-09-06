@@ -274,98 +274,106 @@ class EventManager {
 
 	// 공통 드래그 핸들러
 	static setupDragHandler(element, type) {
-	    let dragData = null;
+		let dragData = null;
 
-	    element.on('mousedown', (e) => {
-	        if (e.button !== 0 || !this.canDrag(element, type)) return;
-	        e.preventDefault();
-	        e.stopPropagation();
+		element.on('mousedown', (e) => {
+			if (e.button !== 0 || !this.canDrag(element, type)) return;
+			e.preventDefault();
+			e.stopPropagation();
 
-	        // 현재 transform 매트릭스 파싱
-	        const currentTransform = element.css('transform');
-	        const matrix = TransformHelper.parseMatrix(currentTransform);
-	        
-	        // transform이 적용된 실제 위치 가져오기
-	        const computedStyle = window.getComputedStyle(element[0]);
-	        const transformMatrix = new DOMMatrix(computedStyle.transform);
-	        
-	        // 요소의 실제 경계 박스
-	        const rect = element[0].getBoundingClientRect();
-	        const parentRect = element.parent()[0].getBoundingClientRect();
-	        
-	        // 부모 기준 상대 위치 계산
-	        const relativeX = rect.left - parentRect.left;
-	        const relativeY = rect.top - parentRect.top;
-	        
-	        // 회전 중심점 계산
-	        const centerX = relativeX + rect.width / 2;
-	        const centerY = relativeY + rect.height / 2;
-	        
-	        // 마우스와 중심점 간의 오프셋 (회전된 좌표계에서)
-	        const mouseOffsetX = e.clientX - (parentRect.left + centerX);
-	        const mouseOffsetY = e.clientY - (parentRect.top + centerY);
-	        
-	        // 회전 역변환을 적용하여 로컬 오프셋 계산
-	        const angle = Math.atan2(matrix.b, matrix.a);
-	        const cos = Math.cos(-angle);
-	        const sin = Math.sin(-angle);
-	        const localOffsetX = mouseOffsetX * cos - mouseOffsetY * sin;
-	        const localOffsetY = mouseOffsetX * sin + mouseOffsetY * cos;
+			// 현재 transform 매트릭스 파싱
+			const currentTransform = element.css('transform');
+			const matrix = TransformHelper.parseMatrix(currentTransform);
 
-	        dragData = {
-	            startX: e.clientX,
-	            startY: e.clientY,
-	            // CSS의 left/top 값 직접 사용
-	            initialLeft: parseFloat(element.css('left')) || 0,
-	            initialTop: parseFloat(element.css('top')) || 0,
-	            isDragging: false,
-	            // 회전 정보 저장
-	            transform: currentTransform,
-	            angle: angle,
-	            localOffsetX: localOffsetX,
-	            localOffsetY: localOffsetY
-	        };
+			// transform이 적용된 실제 위치 가져오기
+			const computedStyle = window.getComputedStyle(element[0]);
+			const transformMatrix = new DOMMatrix(computedStyle.transform);
 
-	        $(document).on('mousemove.drag', (ev) => {
-	            const deltaX = ev.clientX - dragData.startX;
-	            const deltaY = ev.clientY - dragData.startY;
+			// 요소의 실제 경계 박스
+			const rect = element[0].getBoundingClientRect();
+			const parentRect = element.parent()[0].getBoundingClientRect();
 
-	            if (!dragData.isDragging && this.exceedsMinDistance(deltaX, deltaY)) {
-	                dragData.isDragging = true;
-	                element.addClass('dragging');
-	            }
+			// 부모 기준 상대 위치 계산
+			const relativeX = rect.left - parentRect.left;
+			const relativeY = rect.top - parentRect.top;
 
-	            if (dragData.isDragging) {
-	                // 새로운 위치 계산 (회전 고려 없이 직접 이동)
-	                const newLeft = dragData.initialLeft + deltaX;
-	                const newTop = dragData.initialTop + deltaY;
+			// 회전 중심점 계산
+			const centerX = relativeX + rect.width / 2;
+			const centerY = relativeY + rect.height / 2;
 
-	                // SafeLine 제약 적용
-	                const constrainedPos = window.selectionManager.applySafeLineConstraints(
-	                    newLeft, newTop, element
-	                );
+			// 마우스와 중심점 간의 오프셋 (회전된 좌표계에서)
+			const mouseOffsetX = e.clientX - (parentRect.left + centerX);
+			const mouseOffsetY = e.clientY - (parentRect.top + centerY);
 
-	                // 위치 업데이트 (transform은 유지)
-	                element.css({
-	                    left: constrainedPos.left + 'px',
-	                    top: constrainedPos.top + 'px'
-	                });
+			// 회전 역변환을 적용하여 로컬 오프셋 계산
+			const angle = Math.atan2(matrix.b, matrix.a);
+			const cos = Math.cos(-angle);
+			const sin = Math.sin(-angle);
+			const localOffsetX = mouseOffsetX * cos - mouseOffsetY * sin;
+			const localOffsetY = mouseOffsetX * sin + mouseOffsetY * cos;
 
-	                this.updateTooltipIfNeeded(element, type, dragData);
-	            }
-	        });
+			dragData = {
+				startX: e.clientX,
+				startY: e.clientY,
+				// CSS의 left/top 값 직접 사용
+				initialLeft: parseFloat(element.css('left')) || 0,
+				initialTop: parseFloat(element.css('top')) || 0,
+				isDragging: false,
+				// 회전 정보 저장
+				transform: currentTransform,
+				angle: angle,
+				localOffsetX: localOffsetX,
+				localOffsetY: localOffsetY
+			};
 
-	        $(document).on('mouseup.drag', () => {
-	            $(document).off('.drag');
-	            element.removeClass('dragging');
+			$(document).on('mousemove.drag', (ev) => {
+				const deltaX = ev.clientX - dragData.startX;
+				const deltaY = ev.clientY - dragData.startY;
 
-	            if (dragData.isDragging) {
-	                this.saveElementPosition(element);
-	            }
+				if (!dragData.isDragging && this.exceedsMinDistance(deltaX, deltaY)) {
+					dragData.isDragging = true;
+					element.addClass('dragging');
+				}
 
-	            dragData = null;
-	        });
-	    });
+				if (dragData.isDragging) {
+					// 새로운 위치 계산 (회전 고려 없이 직접 이동)
+					const newLeft = dragData.initialLeft + deltaX;
+					const newTop = dragData.initialTop + deltaY;
+
+					if (window.selectionManager) {
+						window.selectionManager.safeConstraintsCache = null;
+					}
+
+					// SafeLine 제약 적용
+					const constrainedPos = window.selectionManager.applySafeLineConstraints(
+						newLeft, newTop, element
+					);
+
+					// 위치 업데이트 (transform은 유지)
+					element.css({
+						left: constrainedPos.left + 'px',
+						top: constrainedPos.top + 'px'
+					});
+
+					this.updateTooltipIfNeeded(element, type, dragData);
+				}
+			});
+
+			$(document).on('mouseup.drag', () => {
+				$(document).off('.drag');
+				element.removeClass('dragging');
+
+				if (dragData.isDragging) {
+					// 드래그 종료 시점에 transform 제거한 상태로 저장
+					const currentTransform = element.css('transform');
+					element.css('transform', 'none');
+					this.saveElementPosition(element);
+					element.css('transform', currentTransform);
+				}
+
+				dragData = null;
+			});
+		});
 	}
 
 	// 텍스트 드래그 전용 처리
@@ -622,29 +630,44 @@ class EventManager {
 	}
 
 	static saveElementPosition(element) {
-		const bg = $('#page-preview-img');
-		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
-
-		if (!actualBgRect) return null;
-
-		const elementPos = element.position();
-		const currentState = element.data('relativeState') || {};
-
-		currentState.position = {
-			left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
-			top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
-		};
-
-		// ✅ if 조건문을 제거하여 항상 size를 업데이트하도록 수정
-		currentState.size = {
-			width: (element.outerWidth() / actualBgRect.width) * 100,
-			height: (element.outerHeight() / actualBgRect.height) * 100
-		};
-
-		currentState.transform = element.css('transform') || 'none';
-		element.data('relativeState', currentState);
-
-		return currentState.position;
+	    const bg = $('#page-preview-img');
+	    const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+	    
+	    if (!actualBgRect) return null;
+	    
+	    // 현재 transform 백업
+	    const currentTransform = element.css('transform');
+	    const currentTransformOrigin = element.css('transform-origin');
+	    
+	    // transform 일시 제거하여 순수 위치 얻기
+	    element.css('transform', 'none');
+	    const elementPos = element.position();
+	    const elementWidth = element.outerWidth();
+	    const elementHeight = element.outerHeight();
+	    
+	    // transform 즉시 복원
+	    element.css('transform', currentTransform);
+	    
+	    const currentState = element.data('relativeState') || {};
+	    
+	    // transform이 제거된 상태의 순수 위치를 저장
+	    currentState.position = {
+	        left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
+	        top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
+	    };
+	    
+	    currentState.size = {
+	        width: (elementWidth / actualBgRect.width) * 100,
+	        height: (elementHeight / actualBgRect.height) * 100
+	    };
+	    
+	    // transform 정보는 별도 저장
+	    currentState.transform = currentTransform || 'none';
+	    currentState.transformOrigin = currentTransformOrigin || '50% 50%';
+	    
+	    element.data('relativeState', currentState);
+	    
+	    return currentState;
 	}
 
 	static saveFramePosition(frameGroup, position) {

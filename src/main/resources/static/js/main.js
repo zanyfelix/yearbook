@@ -618,12 +618,18 @@ $(document).ready(function() {
 			return;
 		}
 
+		// Save 버튼 클릭 이벤트 내 프레임 저장 부분
 		$('#frame-container .frame-group').each(function() {
 			const $frame = $(this);
 
-			// 1. 이미 저장된 가장 정확한 relativeState 값을 가져온다.
-			const relativeState = $frame.data('relativeState');
-			if (!relativeState) return; // 데이터가 없으면 건너뛰기
+			// relativeState가 없으면 현재 상태로 생성
+			let relativeState = $frame.data('relativeState');
+			if (!relativeState) {
+				EventManager.saveElementPosition($frame);
+				relativeState = $frame.data('relativeState');
+			}
+
+			if (!relativeState) return;
 
 			let photoData = null;
 			const $photo = $frame.find('.uploaded-photo');
@@ -634,23 +640,21 @@ $(document).ready(function() {
 						src: $photo.data('filePath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
-						transform: photoRelativeState.transform, // 회전/크기 정보
+						transform: photoRelativeState.transform,
 						transformOrigin: photoRelativeState.transformOrigin
 					};
 				}
 			}
 
-			// 2. DOM을 측정하는 대신, 저장된 데이터를 그대로 사용한다.
 			const frameData = {
 				theme: $frame.data('frameTheme'),
-				position: relativeState.position, // ✅ 신뢰할 수 있는 데이터 사용
-				size: relativeState.size,         // ✅ 신뢰할 수 있는 데이터 사용
-				transform: $frame.css('transform') || 'none', // 현재 transform 값만 읽어온다
+				position: relativeState.position,
+				size: relativeState.size,
+				transform: $frame.css('transform') || 'none',  // 현재 transform 값 직접 읽기
 				transformOrigin: $frame.css('transform-origin') || '50% 50%',
 				photo: photoData
 			};
 
-			console.log(frameData);
 			designData.frames.push(frameData);
 		});
 
@@ -1283,138 +1287,138 @@ function measurePerformance(operation, callback) {
 
 // 개선된 버전 - 다양한 fit 옵션 지원
 function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
-    const settings = {
-        fit: 'cover', // 'cover', 'contain', 'fill', 'none'
-        position: 'center', // 'center', 'top', 'bottom', 'left', 'right'
-        ...options
-    };
-    
-    const maskWidth = maskContainer.width();
-    const maskHeight = maskContainer.height();
-    const maskBounds = maskContainer.data('maskBounds');
-    
-    // 마스크 경계가 있으면 실제 영역 사용
-    const actualWidth = maskBounds ? maskWidth * maskBounds.width : maskWidth;
-    const actualHeight = maskBounds ? maskHeight * maskBounds.height : maskHeight;
-    const offsetX = maskBounds ? maskWidth * maskBounds.x : 0;
-    const offsetY = maskBounds ? maskHeight * maskBounds.y : 0;
-    
-    if (!photo[0].naturalWidth) {
-        photo.on('load', function() {
-            positionImageInMaskAdvanced(photo, maskContainer, settings);
-        });
-        return;
-    }
-    
-    const imgNaturalWidth = photo[0].naturalWidth;
-    const imgNaturalHeight = photo[0].naturalHeight;
-    
-    let scale, newWidth, newHeight;
-    
-    // Fit 모드에 따른 스케일 계산
-    switch (settings.fit) {
-        case 'cover':
-            // 마스크를 완전히 채움 (일부가 잘릴 수 있음)
-            scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
-            break;
-            
-        case 'contain':
-            // 이미지 전체가 보이도록 (여백이 생길 수 있음)
-            scale = Math.min(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
-            break;
-            
-        case 'fill':
-            // 마스크 크기에 정확히 맞춤 (비율 무시)
-            newWidth = actualWidth;
-            newHeight = actualHeight;
-            break;
-            
-        case 'none':
-            // 원본 크기 유지
-            scale = 1;
-            break;
-            
-        default:
-            scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
-    }
-    
-    if (settings.fit !== 'fill') {
-        newWidth = imgNaturalWidth * scale;
-        newHeight = imgNaturalHeight * scale;
-    }
-    
-    // Position에 따른 위치 계산
-    let newLeft, newTop;
-    
-    switch (settings.position) {
-        case 'top':
-            newLeft = offsetX + (actualWidth - newWidth) / 2;
-            newTop = offsetY;
-            break;
-            
-        case 'bottom':
-            newLeft = offsetX + (actualWidth - newWidth) / 2;
-            newTop = offsetY + actualHeight - newHeight;
-            break;
-            
-        case 'left':
-            newLeft = offsetX;
-            newTop = offsetY + (actualHeight - newHeight) / 2;
-            break;
-            
-        case 'right':
-            newLeft = offsetX + actualWidth - newWidth;
-            newTop = offsetY + (actualHeight - newHeight) / 2;
-            break;
-            
-        case 'center':
-        default:
-            newLeft = offsetX + (actualWidth - newWidth) / 2;
-            newTop = offsetY + (actualHeight - newHeight) / 2;
-            break;
-    }
-    
-    // 애니메이션 효과와 함께 적용
-    photo.css({
-        width: `${newWidth}px`,
-        height: `${newHeight}px`,
-        left: 0,
-        top: 0,
-        transform: `translate(${newLeft}px, ${newTop}px)`,
-        position: 'absolute',
-        maxWidth: 'none',
-        maxHeight: 'none',
-        transition: 'all 0.3s ease'
-    });
-    
-    // 상태 저장
-    saveImageState(photo, {
-        position: { leftPx: newLeft, topPx: newTop },
-        size: { widthPx: newWidth, heightPx: newHeight },
-        fit: settings.fit,
-        alignment: settings.position
-    });
+	const settings = {
+		fit: 'cover', // 'cover', 'contain', 'fill', 'none'
+		position: 'center', // 'center', 'top', 'bottom', 'left', 'right'
+		...options
+	};
+
+	const maskWidth = maskContainer.width();
+	const maskHeight = maskContainer.height();
+	const maskBounds = maskContainer.data('maskBounds');
+
+	// 마스크 경계가 있으면 실제 영역 사용
+	const actualWidth = maskBounds ? maskWidth * maskBounds.width : maskWidth;
+	const actualHeight = maskBounds ? maskHeight * maskBounds.height : maskHeight;
+	const offsetX = maskBounds ? maskWidth * maskBounds.x : 0;
+	const offsetY = maskBounds ? maskHeight * maskBounds.y : 0;
+
+	if (!photo[0].naturalWidth) {
+		photo.on('load', function() {
+			positionImageInMaskAdvanced(photo, maskContainer, settings);
+		});
+		return;
+	}
+
+	const imgNaturalWidth = photo[0].naturalWidth;
+	const imgNaturalHeight = photo[0].naturalHeight;
+
+	let scale, newWidth, newHeight;
+
+	// Fit 모드에 따른 스케일 계산
+	switch (settings.fit) {
+		case 'cover':
+			// 마스크를 완전히 채움 (일부가 잘릴 수 있음)
+			scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+			break;
+
+		case 'contain':
+			// 이미지 전체가 보이도록 (여백이 생길 수 있음)
+			scale = Math.min(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+			break;
+
+		case 'fill':
+			// 마스크 크기에 정확히 맞춤 (비율 무시)
+			newWidth = actualWidth;
+			newHeight = actualHeight;
+			break;
+
+		case 'none':
+			// 원본 크기 유지
+			scale = 1;
+			break;
+
+		default:
+			scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+	}
+
+	if (settings.fit !== 'fill') {
+		newWidth = imgNaturalWidth * scale;
+		newHeight = imgNaturalHeight * scale;
+	}
+
+	// Position에 따른 위치 계산
+	let newLeft, newTop;
+
+	switch (settings.position) {
+		case 'top':
+			newLeft = offsetX + (actualWidth - newWidth) / 2;
+			newTop = offsetY;
+			break;
+
+		case 'bottom':
+			newLeft = offsetX + (actualWidth - newWidth) / 2;
+			newTop = offsetY + actualHeight - newHeight;
+			break;
+
+		case 'left':
+			newLeft = offsetX;
+			newTop = offsetY + (actualHeight - newHeight) / 2;
+			break;
+
+		case 'right':
+			newLeft = offsetX + actualWidth - newWidth;
+			newTop = offsetY + (actualHeight - newHeight) / 2;
+			break;
+
+		case 'center':
+		default:
+			newLeft = offsetX + (actualWidth - newWidth) / 2;
+			newTop = offsetY + (actualHeight - newHeight) / 2;
+			break;
+	}
+
+	// 애니메이션 효과와 함께 적용
+	photo.css({
+		width: `${newWidth}px`,
+		height: `${newHeight}px`,
+		left: 0,
+		top: 0,
+		transform: `translate(${newLeft}px, ${newTop}px)`,
+		position: 'absolute',
+		maxWidth: 'none',
+		maxHeight: 'none',
+		transition: 'all 0.3s ease'
+	});
+
+	// 상태 저장
+	saveImageState(photo, {
+		position: { leftPx: newLeft, topPx: newTop },
+		size: { widthPx: newWidth, heightPx: newHeight },
+		fit: settings.fit,
+		alignment: settings.position
+	});
 }
 
 // 이미지 상태 저장 헬퍼
 function saveImageState(photo, state) {
-    const currentState = photo.data('relativeState') || {};
-    
-    const updatedState = {
-        ...currentState,
-        ...state,
-        editPath: photo.data('editPath'),
-        originalPath: photo.data('originalPath'),
-        lastModified: new Date().toISOString()
-    };
-    
-    photo.data('relativeState', updatedState);
-    
-    // 프레임 그룹에도 업데이트
-    const frameGroup = photo.closest('.frame-group');
-    if (frameGroup.length) {
-        const frameState = frameGroup.data('relativeState') || {};
-        frameState.photo = updatedState;
-        frameGroup.data('relativeState', frameState);
-    }
+	const currentState = photo.data('relativeState') || {};
+
+	const updatedState = {
+		...currentState,
+		...state,
+		editPath: photo.data('editPath'),
+		originalPath: photo.data('originalPath'),
+		lastModified: new Date().toISOString()
+	};
+
+	photo.data('relativeState', updatedState);
+
+	// 프레임 그룹에도 업데이트
+	const frameGroup = photo.closest('.frame-group');
+	if (frameGroup.length) {
+		const frameState = frameGroup.data('relativeState') || {};
+		frameState.photo = updatedState;
+		frameGroup.data('relativeState', frameState);
+	}
 }
