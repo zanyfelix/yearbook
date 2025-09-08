@@ -2,6 +2,7 @@ package com.mbiz.yearbook.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,17 +50,30 @@ public class AdminThemeController {
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, 
 			@RequestParam(defaultValue = "background") String category, Model model) {
 		
+		if (id != null) {
+			Optional<User> userOptional = userRepository.findById(id);
+			if (userOptional.isPresent()) {
+	            User user = userOptional.get();
+	            String role = user.getRole().toUpperCase();
+	            
+	            switch (role) {
+	                case "USER":
+	                    return "redirect:/admin/home?userId="+id;
+	                default:
+	                    break;
+	            }
+	        }
+	    }
+		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
 	    List<User> allUsers = userRepository.findAll();
 	    model.addAttribute("allUsers", allUsers);
 		
-	    List<User> userList = (id == null)
-	            ? userRepository.findByRole("user")
-	            : userRepository.findById(id).map(List::of).orElse(List.of());
+	    List<User> userList = userRepository.findByRole("user");
 	    
-	 // 1. 모든 UserTheme 정보를 한 번에 가져와 Map으로 변환 (효율적인 조회를 위해)
+	    // 1. 모든 UserTheme 정보를 한 번에 가져와 Map으로 변환 (효율적인 조회를 위해)
         Map<Long, UserTheme> userThemeMap = userThemeRepository.findAll().stream()
                 .collect(Collectors.toMap(ut -> ut.getUser().getId(), ut -> ut, (existing, replacement) -> existing));
 

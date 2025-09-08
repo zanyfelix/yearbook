@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -52,6 +53,20 @@ public class AdminContactUsController {
             @RequestParam(value = "keyword", required = false) String keyword,
             Model model) {
     	
+		if (id != null) {
+			Optional<User> userOptional = userRepository.findById(id);
+			if (userOptional.isPresent()) {
+	            User user = userOptional.get();
+	            String role = user.getRole().toUpperCase();
+	            
+	            switch (role) {
+	                case "USER":
+	                    return "redirect:/admin/home?userId="+id;
+	                default:
+	                    break;
+	            }
+	        }
+	    }
     	User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    

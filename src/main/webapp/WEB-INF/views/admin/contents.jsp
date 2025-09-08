@@ -25,15 +25,19 @@
 </c:if>
 <div class="sidebar">
 
-	<h5>${sessionScope.loginUser.schoolName}</h5>
+	<div class="userList">
+		<form action="<c:url value='/admin/contents' />" method="get"><!-- 관리자 사용자 시작은 테마가 먼저 -->
+		<select name="userId" class="form-select" onchange="this.form.submit()">
+		    	<c:forEach var="item" items="${allUsers}" varStatus="st">
+		    		<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
+		    	</c:forEach>
+		    </select>
+		</form>
+	</div>
 
-    <a href="/admin/user" class="${currentMenu eq 'user' ? 'active' : ''}">User</a>
-	<a href="/admin/theme" class="${currentMenu eq 'theme' ? 'active' : ''}">Theme</a>
-	<a href="/admin/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
-	<a href="/admin/contents" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
-	<a href="/admin/submit" class="${currentMenu eq 'submisstion' ? 'active' : ''}">Submission</a>
-	<a href="/admin/yearbook" class="${currentMenu eq 'yearbook' ? 'active' : ''}">Yearbook</a>
-    <a href="/admin/contactUs" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
+    <a href="/admin/home?userId=${userId}" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
+	<a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
+	<a href="/admin/submit?userId=${userId}" class="${currentMenu eq 'submission' ? 'active' : ''}">Submission</a>
     
     <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
 		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
@@ -43,16 +47,6 @@
 <div class="content">
     <div class="container-fluid">
     
-    <!-- 검색 바 -->
-	<form method="get" action="${pageContext.request.contextPath}/admin/contents" class="search-form">
-	    <select id="userId" name="userId" class="form-select">
-	        <c:forEach var="item" items="${users}" varStatus="st">
-	        	<option value="${item.id}" <c:if test="${item.id eq userId}">selected</c:if>>${item.schoolName}</option>
-	        </c:forEach>
-	    </select>
-	    <button type="submit" class="btn btn-primary" id="search">SEARCH</button>
-	</form>
-	
 	<p>
       Total Pages:
       <strong id="totalPages">${totalPages}</strong>

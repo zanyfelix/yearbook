@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,12 +57,27 @@ public class AdminHomeController {
 	@GetMapping("/admin/home")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long userId, @RequestParam(required = false) Long id, Model model) {
 		
+		if (userId != null) {
+			Optional<User> userOptional = userRepository.findById(userId);
+			if (userOptional.isPresent()) {
+	            User user = userOptional.get();
+	            String role = user.getRole().toUpperCase();
+	            
+	            switch (role) {
+	                case "ADMIN":
+	                    return "redirect:/admin/user?id="+userId;
+	                default:
+	                    break;
+	            }
+	        }
+	    }
+		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
 	    
-	    List<User> users = userRepository.findByRole("user");
-        model.addAttribute("users", users);
-		
+	    List<User> allUsers = userService.findAll();
+	    model.addAttribute("allUsers", allUsers);
+	    
 	    model.addAttribute("id", id);
 	    model.addAttribute("userId", userId);
 	    

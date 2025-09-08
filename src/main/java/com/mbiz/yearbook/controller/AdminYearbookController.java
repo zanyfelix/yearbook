@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -50,6 +51,21 @@ public class AdminYearbookController {
 
 	@GetMapping("/admin/yearbook")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
+		
+		if (id != null) {
+			Optional<User> userOptional = userRepository.findById(id);
+			if (userOptional.isPresent()) {
+	            User user = userOptional.get();
+	            String role = user.getRole().toUpperCase();
+	            
+	            switch (role) {
+	                case "USER":
+	                    return "redirect:/admin/home?userId="+id;
+	                default:
+	                    break;
+	            }
+	        }
+	    }
 		
 		User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null) {

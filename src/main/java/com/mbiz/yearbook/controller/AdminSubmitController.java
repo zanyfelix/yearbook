@@ -3,6 +3,7 @@ package com.mbiz.yearbook.controller;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -57,6 +58,21 @@ public class AdminSubmitController {
 
 	@GetMapping("/submit")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
+		
+		if (userId != null) {
+			Optional<User> userOptional = userRepository.findById(userId);
+			if (userOptional.isPresent()) {
+	            User user = userOptional.get();
+	            String role = user.getRole().toUpperCase();
+	            
+	            switch (role) {
+	                case "ADMIN":
+	                    return "redirect:/admin/user?id="+userId;
+	                default:
+	                    break;
+	            }
+	        }
+	    }
 		
 		User loginUser = (User) session.getAttribute("loginUser");
 	    model.addAttribute("loginUser", loginUser);
@@ -113,7 +129,7 @@ public class AdminSubmitController {
 	    List<Submit> submitList = submitRepository.findAll();
 	    
 	    model.addAttribute("submitList", submitList);
-	    model.addAttribute("currentMenu", "submit");
+	    model.addAttribute("currentMenu", "submission");
 
 	    return "admin/submit";
 	}
