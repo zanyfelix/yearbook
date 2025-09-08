@@ -16,9 +16,10 @@ html, body {
 }
 
 .sidebar h5 {
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 1.1rem;
+	text-align: center;
+	margin-top: 15px;
+	margin-bottom: 40px;
+	font-size: 1.1rem;
 }
 
 .sidebar a {
