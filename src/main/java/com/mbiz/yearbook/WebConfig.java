@@ -19,6 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
 	@Autowired
     private SessionInterceptor sessionInterceptor;
 	
+	@Autowired
+    private ImpersonateInterceptor impersonateInterceptor;
+	
 	@Value("${file.path.theme}")
     private String themePath;
 	
@@ -49,11 +52,13 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         
+        // 세션 인터셉터 (로그인 체크)
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")  // 모든 경로에 적용
                 .excludePathPatterns(
                     "/login",           // 로그인 페이지
                     "/",               // 루트 경로
+                    "/admin/impersonate/**", // Impersonate 관련 경로 추가
                     "/css/**",         // CSS 파일들
                     "/js/**",          // JavaScript 파일들
                     "/images/**",      // 이미지 파일들
@@ -61,8 +66,28 @@ public class WebConfig implements WebMvcConfigurer {
                     "/favicon.ico"     // 파비콘
                 );
         
+        // 로케일 변경 인터셉터
         registry.addInterceptor(localeChangeInterceptor())
-        .addPathPatterns("/**");  // 모든 경로에 로케일 변경을 적용
+                .addPathPatterns("/**");  // 모든 경로에 로케일 변경을 적용
+        
+        // Impersonate 인터셉터 - 실제 사용자 페이지 경로로 수정
+        registry.addInterceptor(impersonateInterceptor)
+                .addPathPatterns(
+                    "/home/**",        // 홈 페이지
+                    "/edit/**",        // Yearbook 편집 페이지
+                    "/progress/**",    // 진행 상황 보고서
+                    "/submit/**",      // MBIZ 제출 페이지
+                    "/contactUs/**",   // 문의하기 페이지
+                    "/userDownloadGuidance/**"  // 가이드 다운로드
+                )
+                .excludePathPatterns(
+                    "/css/**", 
+                    "/js/**", 
+                    "/images/**",
+                    "/admin/**",      // 관리자 페이지 제외
+                    "/login",         // 로그인 페이지 제외
+                    "/logout"         // 로그아웃 제외
+                );
     }
 	
     @Override
@@ -91,5 +116,6 @@ public class WebConfig implements WebMvcConfigurer {
         System.out.println("Theme Path: " + themePath);
         System.out.println("Upload Path: " + uploadPath);
         System.out.println("Thumbnail Path: " + thumbnailPath);
+        System.out.println("User Photos Path: " + userPhotosPath);
     }
 }
