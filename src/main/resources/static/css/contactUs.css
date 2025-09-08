@@ -7,7 +7,7 @@ html, body {
 }
 
 .sidebar {
-	width: 200px;
+	width: 250px;
 	background-color: #333;
 	color: white;
 	position: fixed;
@@ -26,10 +26,12 @@ html, body {
 	padding: 12px 20px;
 	color: white;
 	text-decoration: none;
+	background: #555;
+	margin-bottom: 1px;
 }
 
 .sidebar a:hover {
-	background-color: #555;
+	background-color: #777;
 }
 
 .sidebar a.active {
@@ -43,11 +45,8 @@ html, body {
 }
 
 .content {
-  margin-left: 200px;
-  /* 기존 패딩 유지 */
+  margin-left: 250px;
   padding: 20px 30px;
-
-  /* flex 설정 추가 */
   display: flex;
   flex-direction: column;
   height: 100vh;           /* 뷰포트 전체 높이 사용 */
@@ -67,7 +66,8 @@ html, body {
 
 .top-bar .badge {
 	font-size: 0.95rem;
-	padding: 10px 16px;
+    padding: 10px 16px;
+    color: #fff !important;
 }
 
 .contact-card {
