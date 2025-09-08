@@ -181,78 +181,86 @@ body {
 
 /* 모달 대화 상자 스타일 */
 .modal-dialog {
-    /* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
-    max-width: 600px; 
+    max-width: 800px;
 }
 
 /* 모달 내용 전체 스타일 */
 .modal-content {
-    /* 스크랩북 배경 이미지 */
     background-image: url('https://www.transparenttextures.com/patterns/crumpled-paper.png');
-    border: 2px solid #a58e7c; /* 갈색 계열 테두리 */
+    border: 2px solid #a58e7c;
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
 }
 
-/* 이미지와 화살표를 감싸는 부모 컨테이너 */
+/* 모달 바디 중앙 정렬 */
+.modal-body {
+    padding: 20px;
+    text-align: center;     /* 추가: 중앙 정렬 */
+}
+
+/* 이미지와 화살표를 감싸는 부모 컨테이너 - 중요! */
 .preview-container {
     position: relative;
+    display: inline-block;  /* 추가: 이미지 크기에 맞춤 */
+    width: auto;            /* 추가: 자동 너비 */
 }
 
-/* 이미지는 컨테이너에 꽉 차게 */
+/* 이미지 스타일 */
 #previewImage {
-    width: 100%;
     display: block;
+    max-width: 100%;        /* width: 100% 대신 max-width 사용 */
+    height: auto;           /* 추가: 높이 자동 */
 }
 
-/* 화살표 버튼 스타일 수정 */
+/* 화살표 버튼 기본 스타일 */
 .arrow-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background-color: rgba(100, 100, 100, 0.5); /* 반투명 회색 */
+    background-color: rgba(0, 0, 0, 0.5); /* 검은색 반투명으로 변경 */
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    border-radius: 4px;
-    width: 40px;
-    height: 70px;
-    font-size: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    width: 45px;
+    height: 75px;
+    font-size: 28px;
     font-weight: bold;
     cursor: pointer;
-    z-index: 10;
-    transition: background-color 0.2s;
+    z-index: 100; /* z-index 높임 */
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
 }
 
 .arrow-btn:hover {
-    background-color: rgba(50, 50, 50, 0.7);
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.8);
 }
 
 .prev-btn {
-    left: 0px; /* 왼쪽 가장자리에 붙임 */
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    left: 145px;
 }
 
 .next-btn {
-    right: 0px; /* 오른쪽 가장자리에 붙임 */
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    right: 145px;
 }
 
-/* 닫기 버튼 컨테이너는 제거하고 버튼에 직접 스타일 적용 */
+/* 닫기 버튼 컨테이너 */
 .close-btn-container {
-     margin-top: 20px;
-     text-align: center;
+    margin-top: 20px;
+    text-align: center;
 }
 
 /* CLOSE 버튼 커스텀 스타일 */
 .custom-close-btn {
-    background-color: #2c3e50; /* 진한 남색 */
+    background-color: #2c3e50;
     color: white;
     font-family: Arial, sans-serif;
     font-weight: bold;
     font-size: 18px;
-    border: 3px solid #34495e; /* 버튼 배경보다 약간 밝은 테두리 */
+    border: 3px solid #34495e;
     border-radius: 5px;
     padding: 10px 40px;
     cursor: pointer;
