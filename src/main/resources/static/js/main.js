@@ -613,7 +613,7 @@ $(document).ready(function() {
 		const bgImg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
 		if (!actualBgRect) {
-			alert("배경 정보를 찾을 수 없어 저장할 수 없습니다.");
+			alert("Could not save because background information could not be found.");
 			hideLoader();
 			return;
 		}
@@ -719,7 +719,19 @@ $(document).ready(function() {
 
 		// 썸네일 캡처 및 서버 전송
 		const captureTarget = document.getElementById('page-preview');
-		html2canvas(captureTarget, { useCORS: true, backgroundColor: null, scale: 1 }).then(canvas => {
+		html2canvas(captureTarget, { 
+			useCORS: true,
+			backgroundColor: null,
+			scale: 1,
+			// 백그라운드 이미지 영역만 크롭
+			x: actualBgRect.left,
+			y: actualBgRect.top,
+			width: actualBgRect.width,
+			height: actualBgRect.height,
+			// 스크롤 무시
+			scrollX: 0,
+			scrollY: 0
+		}).then(canvas => {
 			canvas.toBlob(blob => {
 				const payload = {
 					userId: $('#id').val(),

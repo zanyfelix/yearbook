@@ -181,7 +181,7 @@ body {
 
 /* 모달 대화 상자 스타일 */
 .modal-dialog {
-    max-width: 800px;
+    max-width: 500px;
 }
 
 /* 모달 내용 전체 스타일 */
@@ -194,22 +194,23 @@ body {
 
 /* 모달 바디 중앙 정렬 */
 .modal-body {
-    padding: 20px;
-    text-align: center;     /* 추가: 중앙 정렬 */
+    padding: 10px;  /* 20px에서 10px로 축소 */
+    text-align: center;
 }
 
 /* 이미지와 화살표를 감싸는 부모 컨테이너 - 중요! */
 .preview-container {
     position: relative;
-    display: inline-block;  /* 추가: 이미지 크기에 맞춤 */
-    width: auto;            /* 추가: 자동 너비 */
+    margin: 0 auto;  /* 중앙 정렬 */
 }
 
 /* 이미지 스타일 */
 #previewImage {
+    width: 100%;
+    height: auto;
+    max-height: 600px;  /* 높이 유지 */
     display: block;
-    max-width: 100%;        /* width: 100% 대신 max-width 사용 */
-    height: auto;           /* 추가: 높이 자동 */
+    object-fit: contain;  /* 이미지 비율 유지하면서 꽉 채우기 */
 }
 
 /* 화살표 버튼 기본 스타일 */
@@ -240,11 +241,11 @@ body {
 }
 
 .prev-btn {
-    left: 145px;
+    left: 0px;
 }
 
 .next-btn {
-    right: 145px;
+    right: 0px;
 }
 
 /* 닫기 버튼 컨테이너 */
