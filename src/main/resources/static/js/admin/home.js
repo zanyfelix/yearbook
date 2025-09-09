@@ -202,12 +202,12 @@ function openImpersonateWindow() {
 	const selectedOption = selectElement.options[selectElement.selectedIndex];
 	const userName = selectedOption ? selectedOption.text : 'User';
 
-	if (!confirm('Open ' + userName + ' in new window?\n\nThe window will be restored to admin mode when you close the popup.')) {
+	if (!confirm('Open ' + userName + ' in new window?')) {
 		return;
 	}
 
-	const width = 1280;
-	const height = 900;
+	const width = 1920;
+	const height = 1080;
 	const left = (screen.width - width) / 2;
 	const top = (screen.height - height) / 2;
 
@@ -227,7 +227,7 @@ function openImpersonateWindow() {
 				console.log('Popup closed, restoring admin session...');
 
 				// 로그아웃 대신 restoreSession=true로 리다이렉트
-				window.location.href = ctx + '/admin/home?restoreSession=true';
+				window.location.href = ctx + '/logout';
 			}
 		}, 500);
 	}
