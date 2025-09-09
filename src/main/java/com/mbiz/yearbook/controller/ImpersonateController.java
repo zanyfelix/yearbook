@@ -1,6 +1,8 @@
 package com.mbiz.yearbook.controller;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.ImpersonateConfig;
@@ -67,16 +70,30 @@ public class ImpersonateController {
             return "redirect:/admin/user";
         }
         
+        User currentUser = (User) session.getAttribute("loginUser");
+        
+        // ★★★ 수정 1: Impersonate 중이면 관리자 복원 (위치 변경) ★★★
+        if (Boolean.TRUE.equals(session.getAttribute("isImpersonating"))) {
+            User adminBackup = (User) session.getAttribute("adminBackup");
+            if (adminBackup != null) {
+                session.setAttribute("loginUser", adminBackup);
+                session.removeAttribute("isImpersonating");
+                currentUser = adminBackup;
+                logger.info("Admin restored from backup: {}", adminBackup.getUserId());
+            }
+        }
+        
         // 관리자 권한 확인
-        User adminUser = (User) session.getAttribute("loginUser");
-        if (adminUser == null) {
+        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+            logger.warn("Not admin user, redirecting. Current user: {}", 
+                       currentUser != null ? currentUser.getUserId() : "null");
             return "redirect:/login";
         }
         
         // 권한 확인 (설정된 역할만 허용)
-        if (!impersonateConfig.canImpersonate(adminUser.getRole(), adminUser.getUserId())) {
+        if (!impersonateConfig.canImpersonate(currentUser.getRole(), currentUser.getUserId())) {
             logger.warn("Impersonate attempt blocked - User {} with role {} is not authorized", 
-                       adminUser.getUserId(), adminUser.getRole());
+                       currentUser.getUserId(), currentUser.getRole());
             model.addAttribute("error", "You are not authorized to use Impersonate feature");
             return "redirect:/admin/user";
         }
@@ -115,11 +132,11 @@ public class ImpersonateController {
         // 자동 로그인 폼 페이지로 이동
         model.addAttribute("token", impersonateToken);
         model.addAttribute("targetUser", targetUser);
-        model.addAttribute("adminUser", adminUser);
+        model.addAttribute("adminUser", currentUser);
         model.addAttribute("config", impersonateConfig);
         
         logger.info("Impersonate form shown - Admin: {}, Target: {}", 
-                   adminUser.getUserId(), targetUser.getUserId());
+                   currentUser.getUserId(), targetUser.getUserId());
         
         return "admin/impersonateForm";
     }
@@ -132,14 +149,12 @@ public class ImpersonateController {
                                           HttpServletRequest request,
                                           RedirectAttributes redirectAttributes) {
         
-        HttpSession parentSession = request.getSession(false);
-        if (parentSession == null) {
-            return "redirect:/login";
-        }
+        // ★★★ 수정 2: 기존 세션 사용 (새 세션 생성하지 않음) ★★★
+        HttpSession session = request.getSession();  // getSession(true) 대신 getSession() 사용
         
         // 토큰 검증
-        User targetUser = (User) parentSession.getAttribute("impersonateToken_" + token);
-        Long tokenTime = (Long) parentSession.getAttribute("impersonateTokenTime_" + token);
+        User targetUser = (User) session.getAttribute("impersonateToken_" + token);
+        Long tokenTime = (Long) session.getAttribute("impersonateTokenTime_" + token);
         
         if (targetUser == null || tokenTime == null) {
             logger.error("Invalid token: {}", token);
@@ -147,45 +162,51 @@ public class ImpersonateController {
             return "redirect:/login";
         }
         
+        //선택한 사용자 ID 저장
+        session.setAttribute("selectedUserId", targetUser.getId());
+        
         // 토큰 타임아웃 확인
         long timeoutMillis = impersonateConfig.getTokenTimeout() * 1000L;
         if (System.currentTimeMillis() - tokenTime > timeoutMillis) {
-            parentSession.removeAttribute("impersonateToken_" + token);
-            parentSession.removeAttribute("impersonateTokenTime_" + token);
+            session.removeAttribute("impersonateToken_" + token);
+            session.removeAttribute("impersonateTokenTime_" + token);
             logger.warn("Token expired: {} (timeout: {} seconds)", 
                        token, impersonateConfig.getTokenTimeout());
             redirectAttributes.addFlashAttribute("error", "Token expired");
             return "redirect:/login";
         }
         
-        // 원본 관리자 정보
-        User adminUser = (User) parentSession.getAttribute("loginUser");
+        // 현재 로그인 사용자 (관리자)
+        User currentUser = (User) session.getAttribute("loginUser");
         
-        // 새로운 세션 생성
-        HttpSession newSession = request.getSession(true);
+        // ★★★ 수정 3: 관리자 백업 (중요!) ★★★
+        if (!Boolean.TRUE.equals(session.getAttribute("isImpersonating"))) {
+            session.setAttribute("adminBackup", currentUser);
+            logger.info("Admin backup saved: {}", currentUser.getUserId());
+        }
         
         // 세션 타임아웃 설정
-        newSession.setMaxInactiveInterval(impersonateConfig.getSessionTimeout());
+        session.setMaxInactiveInterval(impersonateConfig.getSessionTimeout());
         
         // 사용자로 로그인 처리
-        newSession.setAttribute("loginUser", targetUser);
-        newSession.setAttribute("isImpersonating", true);
-        newSession.setAttribute("originalAdmin", adminUser);
-        newSession.setAttribute("impersonateStartTime", new Date());
-        newSession.setAttribute("impersonatedUser", targetUser);
-        newSession.setAttribute("impersonateConfig", impersonateConfig);
+        session.setAttribute("loginUser", targetUser);
+        session.setAttribute("isImpersonating", Boolean.TRUE);  // Boolean 객체 사용
+        session.setAttribute("originalAdmin", currentUser);  // 호환성을 위해 유지
+        session.setAttribute("impersonateStartTime", new Date());
+        session.setAttribute("impersonatedUser", targetUser);
+        session.setAttribute("impersonateConfig", impersonateConfig);
         
         // 토큰 정리
-        parentSession.removeAttribute("impersonateToken_" + token);
-        parentSession.removeAttribute("impersonateTokenTime_" + token);
+        session.removeAttribute("impersonateToken_" + token);
+        session.removeAttribute("impersonateTokenTime_" + token);
         
         // 감사 로그 기록
         if (impersonateConfig.getAudit().isEnabled() && auditLogService != null) {
-            auditLogService.logImpersonate(adminUser, targetUser, request.getRemoteAddr());
+            auditLogService.logImpersonate(currentUser, targetUser, request.getRemoteAddr());
         }
         
         logger.info("Impersonate session started - Admin: {}, Target: {}, Timeout: {}s",
-                   adminUser.getUserId(), targetUser.getUserId(), 
+                   currentUser.getUserId(), targetUser.getUserId(), 
                    impersonateConfig.getSessionTimeout());
         
         // 사용자 홈으로 리다이렉트
@@ -193,7 +214,7 @@ public class ImpersonateController {
     }
     
     /**
-     * Impersonate 종료
+     * Impersonate 종료 (팝업창 닫을 때)
      */
     @GetMapping("/impersonate/stop")
     public String stopImpersonate(HttpSession session) {
@@ -211,8 +232,19 @@ public class ImpersonateController {
                        originalAdmin.getUserId(), impersonatedUser.getUserId());
         }
         
-        // 세션 무효화
-        session.invalidate();
+        // ★★★ 수정 4: 세션 무효화 대신 관리자 복원 ★★★
+        User adminBackup = (User) session.getAttribute("adminBackup");
+        if (adminBackup != null) {
+            session.setAttribute("loginUser", adminBackup);
+            session.removeAttribute("isImpersonating");
+            session.removeAttribute("originalAdmin");
+            session.removeAttribute("impersonatedUser");
+            session.removeAttribute("impersonateStartTime");
+            logger.info("Admin session restored on stop: {}", adminBackup.getUserId());
+        } else {
+            // 백업이 없으면 세션 무효화
+            session.invalidate();
+        }
         
         return "admin/closeWindow";
     }
@@ -225,5 +257,55 @@ public class ImpersonateController {
         // 여기서는 간단히 세션 속성으로 카운트
         Integer count = (Integer) session.getAttribute("impersonateSessionCount");
         return count != null ? count : 0;
+    }
+    
+    /**
+     * 관리자 세션 복원 (팝업창 닫을 때 호출)
+     */
+    @GetMapping("/impersonate/restore")
+    @ResponseBody
+    public Map<String, Object> restoreAdminSession(HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Impersonate 중인지 확인
+            if (Boolean.TRUE.equals(session.getAttribute("isImpersonating"))) {
+                // 백업된 관리자 정보 복원
+                User adminBackup = (User) session.getAttribute("adminBackup");
+                
+                if (adminBackup != null) {
+                    // 관리자로 복원
+                    session.setAttribute("loginUser", adminBackup);
+                    session.removeAttribute("isImpersonating");
+                    session.removeAttribute("originalAdmin");
+                    session.removeAttribute("impersonatedUser");
+                    session.removeAttribute("impersonateStartTime");
+                    // adminBackup은 유지 (다음 Impersonate를 위해)
+                    
+                    response.put("success", true);
+                    response.put("message", "Admin session restored");
+                    response.put("adminId", adminBackup.getUserId());
+                    
+                    logger.info("Admin session restored via restore endpoint: {}", adminBackup.getUserId());
+                } else {
+                    response.put("success", false);
+                    response.put("message", "No admin backup found");
+                }
+            } else {
+                response.put("success", false);
+                response.put("message", "Not in impersonate mode");
+            }
+            
+            // 현재 사용자 정보 추가
+            User currentUser = (User) session.getAttribute("loginUser");
+            response.put("currentUser", currentUser != null ? currentUser.getUserId() : "null");
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            logger.error("Error restoring admin session", e);
+        }
+        
+        return response;
     }
 }

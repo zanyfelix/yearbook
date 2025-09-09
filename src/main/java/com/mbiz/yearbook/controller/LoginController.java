@@ -11,6 +11,7 @@ import com.mbiz.yearbook.exception.UserNotFoundException;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.service.UserService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -53,6 +54,29 @@ public class LoginController {
 			model.addAttribute("error", "An unexpected error occurred.");
 			return "login";
 		}
+	}
+
+	@GetMapping("/logout")
+	public String logoutGet(HttpSession session, HttpServletRequest request) {
+
+		if (Boolean.TRUE.equals(session.getAttribute("isImpersonating"))) {
+			User adminBackup = (User) session.getAttribute("adminBackup");
+			Long selectedUserId = (Long) session.getAttribute("selectedUserId");
+
+			if (adminBackup != null) {
+				session.setAttribute("loginUser", adminBackup);
+				session.removeAttribute("isImpersonating");
+				session.removeAttribute("selectedUserId");
+
+				// ✅ 선택했던 사용자 화면으로 복귀
+				if (selectedUserId != null) {
+					return "redirect:/admin/home?userId=" + selectedUserId;
+				}
+			}
+		}
+
+		session.invalidate();
+		return "redirect:/login";
 	}
 
 	@PostMapping("/logout")

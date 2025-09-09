@@ -1,5 +1,8 @@
 // js/admin/home.js
 
+// ★★★ 전역 변수로 팝업 참조 저장 ★★★
+var impersonatePopup = null;
+
 $(function() {
 
 	//userId가 없을 경우 첫번째 강제 선택
@@ -141,16 +144,6 @@ $(function() {
 			type: 'POST',
 			contentType: 'application/json',
 			data: JSON.stringify(payload),
-			// CSRF 토큰이 필요하다면 아래 주석을 해제하고 설정
-			/*
-			beforeSend: function(xhr) {
-			  const token = $('meta[name="_csrf"]').attr('content');
-			  const header = $('meta[name="_csrf_header"]').attr('content');
-			  if (token && header) {
-				xhr.setRequestHeader(header, token);
-			  }
-			},
-			*/
 			success: function() {
 				// 성공 시 특별한 동작 없음
 			},
@@ -190,3 +183,52 @@ $(function() {
 		}
 	}
 });
+
+// ★★★ 수정된 openImpersonateWindow 함수 ★★★
+function openImpersonateWindow() {
+	const selectElement = jQuery('select[name="userId"]')[0];
+	const selectedUserId = selectElement ? selectElement.value : null;
+
+	if (!selectedUserId) {
+		alert('Please select a user first');
+		return;
+	}
+
+	// 이미 열린 팝업이 있으면 닫기
+	if (impersonatePopup && !impersonatePopup.closed) {
+		impersonatePopup.close();
+	}
+
+	const selectedOption = selectElement.options[selectElement.selectedIndex];
+	const userName = selectedOption ? selectedOption.text : 'User';
+
+	if (!confirm('Open ' + userName + ' in new window?\n\nThe window will be restored to admin mode when you close the popup.')) {
+		return;
+	}
+
+	const width = 1280;
+	const height = 900;
+	const left = (screen.width - width) / 2;
+	const top = (screen.height - height) / 2;
+
+	impersonatePopup = window.open(
+		ctx + '/admin/impersonate?userId=' + selectedUserId,
+		'user_' + selectedUserId + '_' + Date.now(),
+		'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top +
+		',scrollbars=yes,resizable=yes'
+	);
+
+	if (impersonatePopup) {
+		impersonatePopup.focus();
+
+		var checkInterval = setInterval(function() {
+			if (impersonatePopup.closed) {
+				clearInterval(checkInterval);
+				console.log('Popup closed, restoring admin session...');
+
+				// 로그아웃 대신 restoreSession=true로 리다이렉트
+				window.location.href = ctx + '/admin/home?restoreSession=true';
+			}
+		}, 500);
+	}
+}
