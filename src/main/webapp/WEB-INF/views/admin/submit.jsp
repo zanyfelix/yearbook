@@ -63,8 +63,7 @@
 				<input type="hidden" name="userId" value="${userId}">
 				
 				<%-- Submit to MBIZ - Overview 섹션 --%>
-				<div class="section-box" data-section-id="overview"
-					data-section-type="default">
+				<div class="section-box" data-section-id="overview" data-section-type="default">
 					<div class="section-header">
 						<h5>Submit to MBIZ</h5>
 						<div class="section-controls">
@@ -79,6 +78,74 @@
 						<textarea name="sections[0].content" class="form-control readonly-mode" rows="4" readonly>${overviewSection.description}</textarea>
 					</div>
 				</div>
+				
+				<%-- 2. Previews 섹션 --%>
+                <div class="section-box" data-section-id="previews" data-section-type="default">
+                    <div class="section-header">
+                        <h5>Previews</h5>
+                        <div class="section-controls">
+                            <button type="button" class="btn-edit">EDIT</button>
+                            <button type="button" class="btn-save" style="display:none;">SAVE</button>
+                        </div>
+                    </div>
+                    <div class="section-content">
+                        <input type="hidden" name="sections[1].type" value="previews">
+                        <input type="hidden" name="sections[1].id" value="${previewsSection.id}">
+                        
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th width="50%">Preview Title</th>
+                                    <th width="25%" class="text-center">Status</th>
+                                    <th width="25%" class="text-center">Page Confirm</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <c:forEach var="item" items="${contentsList}" varStatus="st">
+                                    <tr data-completed="${item.savedPagesCount eq item.contentsInfo.pages}">
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${item.savedPagesCount ne item.contentsInfo.pages}">
+                                                    <span class="preview-incomplete" onclick="loadPreviewData('${item.contentsInfo.id}')">
+                                                        ${item.contentsInfo.title}
+                                                    </span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="preview-complete" onclick="loadPreviewData('${item.contentsInfo.id}')">
+                                                        ${item.contentsInfo.title}
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td class="text-center">
+                                            <c:choose>
+                                                <c:when test="${item.savedPagesCount eq item.contentsInfo.pages}">
+                                                    <span class="badge bg-success">Complete</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge bg-danger">Incomplete</span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   class="preview-confirm-check"
+                                                   disabled>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                            </tbody>
+                        </table>
+                        
+                        <div style="margin-top: 15px;">
+                            <strong>Note</strong>
+                            <textarea name="sections[1].note" 
+                                      class="form-control note-textarea readonly-mode" 
+                                      rows="2" 
+                                      readonly>${noteSection.description}</textarea>
+                        </div>
+                    </div>
+                </div>
 				
 				<%-- Page Submission 섹션 --%>
 				<div class="section-box" data-section-id="submission" data-section-type="default">
@@ -105,7 +172,23 @@
 	                </div>
 	            </div>
 	            
+	            <%-- 4. 커스텀 섹션들 --%>
+                <div id="customSectionsContainer">
+                    <c:forEach var="customSection" items="${customSections}" varStatus="status">
+                        <div class="section-box custom-section" data-section-id="custom_${customSection.id}" data-section-type="custom">
+                            <!-- 커스텀 섹션 내용 -->
+                        </div>
+                    </c:forEach>
+                </div>
+	            
 			</form>
+			
+			<%-- 하단 버튼들 --%>
+            <div class="btn-wrapper" style="text-align: center; margin-top: 30px;">
+                <button type="button" class="btn btn-primary btn-lg" onclick="applyAllSettings()">
+                    APPLY
+                </button>
+            </div>
 		</div>
 	</div>
 	<script>
