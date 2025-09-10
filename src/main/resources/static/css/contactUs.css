@@ -4,6 +4,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  font-size: 15px;
 }
 
 .sidebar {
@@ -84,6 +85,7 @@ html, body {
 .contact-card h2 {
 	text-align: center;
 	margin-bottom: 10px;
+	color: #eee;
 }
 
 .contact-card p.subtitle {
@@ -101,7 +103,7 @@ html, body {
 
 .form-group label {
 	width: 100px;
-	background-color: #0047AB;
+	background-color: #28a745;
 	color: white;
 	text-align: center;
 	padding: 10px;
@@ -128,7 +130,7 @@ html, body {
 
 .form-group-file label {
 	width: 100px;
-	background-color: #0047AB;
+	background-color: #28a745;
 	color: white;
 	text-align: center;
 	padding: 10px;
@@ -173,7 +175,7 @@ textarea {
 .btn-submit {
 	display: block;
 	margin: 0 auto;
-	background-color: #0047AB;
+	background-color: #28a745;
 	color: white;
 	padding: 10px 30px;
 	border: none;
