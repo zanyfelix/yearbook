@@ -151,7 +151,6 @@ html, body {
 }
 
 label {
-	font-weight: bold;
 	margin-bottom: 12px; /* 라벨과 인풋 사이 간격 넓힘 */
 	font-size: 15px;
 }
