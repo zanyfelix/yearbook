@@ -1,9 +1,10 @@
 @charset "UTF-8";
 
-body {
+html, body {
 	margin: 0;
 	padding: 0;
 	background-color: #f4f4f4;
+	font-size: 15px;
 }
 
 .sidebar {
@@ -36,7 +37,7 @@ body {
 }
 
 .sidebar a.active {
-	background-color: #28a745;
+	background-color: #1f973a;
 	font-weight: bold;
 }
 
@@ -46,8 +47,8 @@ body {
 }
 
 .top-bar {
-	background-color: #d2f4e8;
-	border: 1px solid #ccc;
+	background-color: #efefef;
+	border : 1px solid #ddd;
 	padding: 10px 20px;
 	border-radius: 8px;
 	margin-bottom: 20px;
@@ -60,6 +61,7 @@ body {
 	font-size: 0.95rem;
     padding: 10px 16px;
     color: #fff !important;
+    background-color: #1f973a !important;
 }
 
 .section-box {
