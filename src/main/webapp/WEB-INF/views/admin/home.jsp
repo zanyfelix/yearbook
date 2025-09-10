@@ -38,16 +38,16 @@
 	<a href="/admin/contents?userId=${userId}" class="${currentMenu eq 'contents' ? 'active' : ''}">Contents</a>
 	<a href="/admin/submit?userId=${userId}" class="${currentMenu eq 'submission' ? 'active' : ''}">Submission</a>
 	
-	<button type="button" 
+	<button type="button"
         id="impersonateBtn" 
         class="btn btn-primary w-100" 
-        style="position: absolute; width: 80% !important; bottom: 4rem; left: 50%; transform: translateX(-50%);"
+        style="position: absolute; width: 90% !important; bottom: 4rem; left: 50%; transform: translateX(-50%);"
         onclick="openImpersonateWindow()">
-    	View as User
+    	view as client
 	</button>
     
     <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
-		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
+		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 90% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
 	</form>
 </div>
 

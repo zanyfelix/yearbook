@@ -1,9 +1,9 @@
 @charset "UTF-8";
 /* 1) html, body에 높이를 100%로 지정 */
 html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+	height: 100%;
+	margin: 0;
+	padding: 0;
 }
 
 .section-box {
@@ -48,29 +48,29 @@ html, body {
 }
 
 .sidebar a:hover {
-    background-color: #777;
+	background-color: #777;
 }
 
 .sidebar a.active {
-    background-color: #28a745;
-    font-weight: bold;
+	background-color: #28a745;
+	font-weight: bold;
 }
 
 .sidebar .userList {
 	position: relative;
-	margin-bottom : 25px;
+	margin-bottom: 25px;
 	width: 80% !important;
-	left: 50%; 
+	left: 50%;
 	transform: translateX(-50%);
 }
 
 .content {
-  margin-left: 300px;
-  padding: 20px 30px;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
+	margin-left: 300px;
+	padding: 20px 30px;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	box-sizing: border-box;
 }
 
 .top-bar {
@@ -92,181 +92,198 @@ html, body {
 /* ── 검색 바 ── */
 /* .search-form 클래스로 스타일을 통합하고 정리합니다. */
 .search-form {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    width: 20%;
-	  min-width: 250px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 20px;
+	width: 20%;
+	min-width: 250px;
 }
-.search-form select,
-.search-form input[type="text"] {
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  background-color: #fff;
-  font-size: 0.95rem;
-  flex-grow: 1; /* select 요소가 남는 공간을 모두 차지하도록 설정 */
+
+.search-form select, .search-form input[type="text"] {
+	padding: 8px 12px;
+	border: 1px solid #ced4da;
+	border-radius: 4px;
+	background-color: #fff;
+	font-size: 0.95rem;
+	flex-grow: 1; /* select 요소가 남는 공간을 모두 차지하도록 설정 */
 }
+
 .search-form button {
-  padding: 8px 16px;
-  border: none;
-  background-color: #007bff;
-  color: #fff;
-  border-radius: 4px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
+	padding: 8px 16px;
+	border: none;
+	background-color: #007bff;
+	color: #fff;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	cursor: pointer;
+	transition: background-color 0.2s;
 }
+
 .search-form button:hover {
-  background-color: #0056b3;
+	background-color: #0056b3;
 }
 
 /* ────────────────────────────────────────────────────────── */
 /* ── 문의 리스트 테이블 ── */
 .container-fluid table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+	width: 100%;
+	border-collapse: collapse;
+	background-color: #fff;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
-.container-fluid th,
-.container-fluid td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #dee2e6;
-  text-align: left;
-  font-size: 0.95rem;
+
+.container-fluid th, .container-fluid td {
+	padding: 12px 15px;
+	border-bottom: 1px solid #dee2e6;
+	text-align: left;
+	font-size: 0.95rem;
 }
+
 .container-fluid thead {
-  background-color: #f8f9fa;
+	background-color: #f8f9fa;
 }
+
 .container-fluid tbody tr:hover {
-  background-color: #f1f3f5;
+	background-color: #f1f3f5;
 }
+
 .container-fluid td a {
-  color: #007bff;
-  text-decoration: none;
+	color: #007bff;
+	text-decoration: none;
 }
+
 .container-fluid td a:hover {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 
 /* ── 하단 액션 버튼 ── */
-.btn-wrapper > button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-right: 10px;
-  margin: 0.75rem 0;
-}
-.btn-wrapper > button:nth-of-type(1) {
-  background-color: #28a745;
-  color: #fff;
-}
-.btn-wrapper > button:nth-of-type(1):hover {
-  background-color: #1e7e34;
-}
-.btn-wrapper > button:nth-of-type(2) {
-  background-color: #6c757d;
-  color: #fff;
-}
-.btn-wrapper > button:nth-of-type(2):hover {
-  background-color: #5a6268;
-}
-.btn-wrapper > button:nth-of-type(3) {
-  background-color: #dc3545; /* red */
-  color: #fff;
-}
-.btn-wrapper > button:nth-of-type(3):hover {
-  background-color: #c82333; /* darker red on hover */
+.btn-wrapper>button {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	cursor: pointer;
+	transition: background-color 0.2s;
+	margin-right: 10px;
+	margin: 0.75rem 0;
 }
 
-.btn-wrapper > button:nth-of-type(4) {
-  background-color: #0d6efd; /* red */
-  color: #fff;
+.btn-wrapper>button:nth-of-type(1) {
+	background-color: #28a745;
+	color: #fff;
 }
-.btn-wrapper > button:nth-of-type(4):hover {
-  background-color: #0d6efd; /* darker red on hover */
+
+.btn-wrapper>button:nth-of-type(1):hover {
+	background-color: #1e7e34;
+}
+
+.btn-wrapper>button:nth-of-type(2) {
+	background-color: #6c757d;
+	color: #fff;
+}
+
+.btn-wrapper>button:nth-of-type(2):hover {
+	background-color: #5a6268;
+}
+
+.btn-wrapper>button:nth-of-type(3) {
+	background-color: #dc3545; /* red */
+	color: #fff;
+}
+
+.btn-wrapper>button:nth-of-type(3):hover {
+	background-color: #c82333; /* darker red on hover */
+}
+
+.btn-wrapper>button:nth-of-type(4) {
+	background-color: #0d6efd; /* red */
+	color: #fff;
+}
+
+.btn-wrapper>button:nth-of-type(4):hover {
+	background-color: #0d6efd; /* darker red on hover */
 }
 
 /* 토글 스위치 공통 */
 .toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 30px;
+	position: relative;
+	display: inline-block;
+	width: 60px;
+	height: 30px;
 }
+
 .toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+	opacity: 0;
+	width: 0;
+	height: 0;
 }
 /* 트랙(회색/녹색 배경) */
 .toggle-switch .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  border-radius: 30px;
-  transition: background-color 0.3s;
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	border-radius: 30px;
+	transition: background-color 0.3s;
 }
 /* 원판 + OFF 텍스트 */
 .toggle-switch .slider::before {
-  content: "OFF";
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 26px;
-  width: 26px;
-  left: 2px; bottom: 2px;
-  background-color: #fff;
-  color: #6c757d;
-  font-size: 10px;
-  border-radius: 50%;
-  transition: all 0.3s;
+	content: "OFF";
+	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 26px;
+	width: 26px;
+	left: 2px;
+	bottom: 2px;
+	background-color: #fff;
+	color: #6c757d;
+	font-size: 10px;
+	border-radius: 50%;
+	transition: all 0.3s;
 }
 /* 체크되었을 때(APPLY ON 스타일) */
-.toggle-switch input:checked + .slider {
-  background-color: #28a745;
+.toggle-switch input:checked+.slider {
+	background-color: #28a745;
 }
-.toggle-switch input:checked + .slider::before {
-  transform: translateX(30px);
-  content: "ON";
-  background-color: #28a745;
-  color: #fff;
+
+.toggle-switch input:checked+.slider::before {
+	transform: translateX(30px);
+	content: "ON";
+	background-color: #28a745;
+	color: #fff;
 }
 /* ────────────────────────────── */
 /* 전체 선택 / 개별 선택 체크박스 공통 */
-#selectAll,
-.selectBox {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-  accent-color: #28a745;
-  transition: accent-color 0.2s;
+#selectAll, .selectBox {
+	width: 1.25rem;
+	height: 1.25rem;
+	cursor: pointer;
+	accent-color: #28a745;
+	transition: accent-color 0.2s;
 }
-#selectAll:hover,
-.selectBox:hover {
-  accent-color: #1e7e34;
+
+#selectAll:hover, .selectBox:hover {
+	accent-color: #1e7e34;
 }
 /* ────────────────────────────── */
 
-
 /* ── 반응형 ── */
-@media (max-width: 768px) {
-  .sidebar {
-    display: none;
-  }
-  .content {
-    margin-left: 0;
-    padding: 20px;
-  }
-  /* 문제가 되던 부분을 제거하여 작은 화면에서도 가로 정렬을 유지합니다. */
-  /*
+@media ( max-width : 768px) {
+	.sidebar {
+		display: none;
+	}
+	.content {
+		margin-left: 0;
+		padding: 20px;
+	}
+	/* 문제가 되던 부분을 제거하여 작은 화면에서도 가로 정렬을 유지합니다. */
+	/*
   .container-fluid > form {
     flex-direction: column;
     align-items: stretch;
@@ -276,84 +293,249 @@ html, body {
 
 /* 모달 대화 상자 스타일 */
 .modal-dialog {
-    /* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
-    max-width: 600px; 
+	/* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
+	max-width: 600px;
 }
 
 /* 모달 내용 전체 스타일 */
 .modal-content {
-    /* 스크랩북 배경 이미지 */
-    background-image: url('https://www.transparenttextures.com/patterns/crumpled-paper.png');
-    border: 2px solid #a58e7c; /* 갈색 계열 테두리 */
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+	/* 스크랩북 배경 이미지 */
+	background-image:
+		url('https://www.transparenttextures.com/patterns/crumpled-paper.png');
+	border: 2px solid #a58e7c; /* 갈색 계열 테두리 */
+	border-radius: 10px;
+	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 /* 이미지와 화살표를 감싸는 부모 컨테이너 */
 .preview-container {
-    position: relative;
+	position: relative;
 }
 
 /* 이미지는 컨테이너에 꽉 차게 */
 #previewImage {
-    width: 100%;
-    display: block;
+	width: 100%;
+	display: block;
 }
 
 /* 화살표 버튼 스타일 수정 */
 .arrow-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: rgba(100, 100, 100, 0.5); /* 반투명 회색 */
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    border-radius: 4px;
-    width: 40px;
-    height: 70px;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 10;
-    transition: background-color 0.2s;
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	background-color: rgba(100, 100, 100, 0.5); /* 반투명 회색 */
+	color: white;
+	border: 1px solid rgba(255, 255, 255, 0.7);
+	border-radius: 4px;
+	width: 40px;
+	height: 70px;
+	font-size: 24px;
+	font-weight: bold;
+	cursor: pointer;
+	z-index: 10;
+	transition: background-color 0.2s;
 }
 
 .arrow-btn:hover {
-    background-color: rgba(50, 50, 50, 0.7);
+	background-color: rgba(50, 50, 50, 0.7);
 }
 
 .prev-btn {
-    left: 0px; /* 왼쪽 가장자리에 붙임 */
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+	left: 0px; /* 왼쪽 가장자리에 붙임 */
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 .next-btn {
-    right: 0px; /* 오른쪽 가장자리에 붙임 */
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+	right: 0px; /* 오른쪽 가장자리에 붙임 */
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 /* 닫기 버튼 컨테이너는 제거하고 버튼에 직접 스타일 적용 */
 .close-btn-container {
-     margin-top: 20px;
-     text-align: center;
+	margin-top: 20px;
+	text-align: center;
 }
 
 /* CLOSE 버튼 커스텀 스타일 */
 .custom-close-btn {
-    background-color: #2c3e50; /* 진한 남색 */
-    color: white;
-    font-family: Arial, sans-serif;
-    font-weight: bold;
-    font-size: 18px;
-    border: 3px solid #34495e; /* 버튼 배경보다 약간 밝은 테두리 */
-    border-radius: 5px;
-    padding: 10px 40px;
-    cursor: pointer;
-    transition: background-color 0.2s;
+	background-color: #2c3e50; /* 진한 남색 */
+	color: white;
+	font-family: Arial, sans-serif;
+	font-weight: bold;
+	font-size: 18px;
+	border: 3px solid #34495e; /* 버튼 배경보다 약간 밝은 테두리 */
+	border-radius: 5px;
+	padding: 10px 40px;
+	cursor: pointer;
+	transition: background-color 0.2s;
 }
 
 .custom-close-btn:hover {
-    background-color: #34495e;
+	background-color: #34495e;
+}
+
+/* 추가 스타일 -  */
+.section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 15px;
+}
+
+.section-controls {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.btn-edit, .btn-save, .btn-delete {
+	padding: 8px 16px;
+	border: none;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+.btn-edit {
+	background-color: #ffc107;
+	color: #000;
+}
+
+.btn-edit:hover {
+	background-color: #e0a800;
+}
+
+.btn-save {
+	background-color: #28a745;
+	color: #fff;
+}
+
+.btn-save:hover {
+	background-color: #1e7e34;
+}
+
+.btn-delete {
+	background-color: #dc3545;
+	color: #fff;
+}
+
+.btn-delete:hover {
+	background-color: #c82333;
+}
+
+.readonly-mode {
+	background-color: #f8f9fa;
+	border: 1px solid #dee2e6;
+}
+
+.edit-mode {
+	background-color: white;
+	border: 2px solid #007bff;
+}
+
+.custom-section {
+	border-left-color: #6f42c1 !important;
+}
+
+.submission-item {
+	background: #f8f9fa;
+	padding: 10px;
+	margin-bottom: 10px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.submission-item textarea {
+	flex: 1;
+}
+
+.note-textarea {
+	background-color: #fff3cd;
+	border: 1px solid #ffc107;
+	padding: 10px;
+	margin-top: 10px;
+}
+
+.btn-add-section {
+	background-color: #007bff;
+	color: #fff;
+	padding: 10px 25px;
+	border: none;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	cursor: pointer;
+	margin: 20px auto;
+	display: block;
+}
+
+.btn-add-section:hover {
+	background-color: #0056b3;
+}
+
+.btn-apply-all {
+	background-color: #28a745;
+	color: #fff;
+	padding: 12px 40px;
+	border: none;
+	border-radius: 4px;
+	font-size: 1rem;
+	cursor: pointer;
+	margin: 20px auto;
+	display: block;
+}
+
+.btn-apply-all:hover {
+	background-color: #1e7e34;
+}
+
+.preview-table {
+	width: 100%;
+	border-collapse: collapse;
+	background-color: #fff;
+	margin-top: 10px;
+}
+
+.preview-table th {
+	background-color: #f8f9fa;
+	padding: 12px 15px;
+	border-bottom: 2px solid #dee2e6;
+	text-align: left;
+	font-size: 0.95rem;
+}
+
+.preview-table td {
+	padding: 10px 15px;
+	border-bottom: 1px solid #dee2e6;
+}
+
+.preview-incomplete {
+	color: #dc3545;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.preview-complete {
+	color: #28a745;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.section-title-input {
+	border: none;
+	background: transparent;
+	font-size: 1.25rem;
+	font-weight: bold;
+	padding: 5px;
+	width: 300px;
+}
+
+.section-title-input.edit-mode {
+	border: 1px solid #007bff;
+	background: white;
+	border-radius: 4px;
 }

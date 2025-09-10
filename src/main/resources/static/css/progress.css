@@ -1,9 +1,10 @@
 @charset "UTF-8";
 
-body {
+html, body {
 	margin: 0;
 	padding: 0;
 	background-color: #f4f4f4;
+	font-size: 15px;
 }
 
 .sidebar {
@@ -42,7 +43,7 @@ body {
 
 .top-bar {
 	background-color: #d2f4e8;
-	border: 1px solid #ccc;
+	border : 1px solid #ddd;
 	padding: 10px 20px;
 	border-radius: 8px;
 	margin-bottom: 20px;
@@ -148,13 +149,15 @@ body {
 	position: relative;
     /* ✨ 수정: 자식 요소(.percentage-text)가 벗어나도 보이도록 설정 */
     overflow: visible; 
+    border-radius: 10px;
 }
 
 .progress-bar {
 	height: 100%;
 	text-align: center;
 	color: white;
-	line-height: 20px; /* Centers the text vertically */
+	line-height: 20px;
+	border-radius: 10px;
 }
 
 

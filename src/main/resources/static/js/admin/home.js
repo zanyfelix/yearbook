@@ -170,7 +170,7 @@ $(function() {
 			// 텍스트가 있을 때만 업데이트
 			if (selectedText && selectedText.trim() !== '') {
 				// 줄바꿈 추가
-				var newText = 'View as<br>' + selectedText;
+				var newText = '<small>view as </small>'+'<b>'+selectedText+'</b>';
 
 				// button의 HTML을 변경 (text() 대신 html() 사용)
 				button.html(newText);
