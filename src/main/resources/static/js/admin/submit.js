@@ -149,6 +149,18 @@ function saveSection(sectionId) {
         id: $section.find('input[type="hidden"][name*=".id"]').val()
     };
     
+    // submission 섹션의 경우 추가 데이터 수집
+    if (sectionId === 'submission') {
+        const submissions = [];
+        $section.find('.submission-item').each(function() {
+            const $item = $(this);
+            submissions.push({
+                description: $item.find('textarea').val()
+            });
+        });
+        sectionData.submissions = submissions;  // 복수형으로 변경
+    }
+    
     $.ajax({
         url: ctx + '/admin/submit/section/save',
         type: 'POST',
@@ -157,7 +169,6 @@ function saveSection(sectionId) {
         success: function(response) {
             if (response.success) {
                 console.log('Section saved successfully');
-                // 저장 성공 시 ID 업데이트
                 if (response.sectionId) {
                     $section.find('input[type="hidden"][name*=".id"]').val(response.sectionId);
                 }

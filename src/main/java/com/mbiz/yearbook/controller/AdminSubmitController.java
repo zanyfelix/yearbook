@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
 import com.mbiz.yearbook.model.Submit;
@@ -130,23 +129,22 @@ public class AdminSubmitController {
 		}
 
 		// 개별 섹션들을 명확하게 조회
-	    Submit overviewSection = submitRepository.findByTypeAndUserIdIsNull("Overview")
+	    Submit overviewSection = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
 	        .orElse(createDefaultSubmit("Overview", "Submit to MBIZ - Overview", 0));
 	    
-	    Submit previewsSection = submitRepository.findByTypeAndUserIdIsNull("Previews")
+	    Submit previewsSection = submitRepository.findFirstByTypeAndUserIdIsNull("Previews")
 	        .orElse(createDefaultSubmit("Previews", "Previews", 1));
 	    
-	    Submit noteSection = submitRepository.findByTypeAndUserIdIsNull("Note")
+	    Submit noteSection = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
 	        .orElse(createDefaultSubmit("Note", "Note", 2));
 	    
-	    Submit submissionSection = submitRepository.findByTypeAndUserIdIsNull("Submission")
-	        .orElse(createDefaultSubmit("Submission", "Page Submission", 3));
+	    List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
 	    
 	    // 모델에 개별 섹션 추가
 	    model.addAttribute("overviewSection", overviewSection);
 	    model.addAttribute("previewsSection", previewsSection);
 	    model.addAttribute("noteSection", noteSection);
-	    model.addAttribute("submissionSection", submissionSection);
+	    model.addAttribute("submissionItems", submissionItems);
 	    
 	    // 커스텀 섹션들 (사용자별)
 	    List<Submit> customSections = new ArrayList<>();
@@ -160,7 +158,6 @@ public class AdminSubmitController {
 	    submitList.add(overviewSection);
 	    submitList.add(previewsSection);
 	    submitList.add(noteSection);
-	    submitList.add(submissionSection);
 	    submitList.addAll(customSections);
 	    model.addAttribute("submitList", submitList);
 		model.addAttribute("currentMenu", "submission");
@@ -210,7 +207,7 @@ public class AdminSubmitController {
 	        Submit submit = null;
 	        
 	        if ("overview".equals(sectionType)) {
-	            submit = submitRepository.findByTypeAndUserIdIsNull("Overview")
+	            submit = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
 	                    .orElse(new Submit());
 	            submit.setType("Overview");
 	            submit.setTitle("Submit to MBIZ - Overview");
@@ -219,7 +216,7 @@ public class AdminSubmitController {
 	            submit.setDisplayOrder(0);
 	            
 	        } else if ("previews".equals(sectionType)) {
-	            submit = submitRepository.findByTypeAndUserIdIsNull("Previews")
+	            submit = submitRepository.findFirstByTypeAndUserIdIsNull("Previews")
 	                    .orElse(new Submit());
 	            submit.setType("Previews");
 	            submit.setTitle("Previews");
@@ -229,7 +226,7 @@ public class AdminSubmitController {
 	            
 	            // Note 처리
 	            if (sectionData.get("note") != null) {
-	                Submit noteSubmit = submitRepository.findByTypeAndUserIdIsNull("Note")
+	                Submit noteSubmit = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
 	                        .orElse(new Submit());
 	                noteSubmit.setType("Note");
 	                noteSubmit.setTitle("Note");
@@ -241,23 +238,33 @@ public class AdminSubmitController {
 	            }
 	            
 	        } else if ("submission".equals(sectionType)) {
-	            submit = submitRepository.findByTypeAndUserIdIsNull("Submission")
-	                    .orElse(new Submit());
-	            submit.setType("Submission");
-	            submit.setTitle("Page Submission");
-	            
-	            // Page Submission의 여러 체크리스트 항목들을 JSON으로 저장
-	            if (sectionData.get("submissions") != null) {
-	                // submissions 배열을 JSON 문자열로 변환하여 저장
-	                String submissionsJson = new ObjectMapper()
-	                    .writeValueAsString(sectionData.get("submissions"));
-	                submit.setDescription(submissionsJson);
+	        	if (sectionData.get("submissions") != null) {  // ← 복수형으로 변경
+	                List<Map<String, Object>> submissions = 
+	                    (List<Map<String, Object>>) sectionData.get("submissions");
+	                
+	                // 기존 Submission 타입 모두 삭제
+	                List<Submit> existingSubmissions = submitRepository.findByTypeAndUserIdIsNull("Submission");
+	                submitRepository.deleteAll(existingSubmissions);
+	                
+	                for (int i = 0; i < submissions.size(); i++) {
+	                    Map<String, Object> item = submissions.get(i);
+	                    Submit submissionItem = new Submit();
+	                    submissionItem.setType("Submission");
+	                    submissionItem.setTitle("Page Submission");
+	                    submissionItem.setDescription((String) item.get("description"));
+	                    submissionItem.setIsActive(true);  // 기본값 true
+	                    submissionItem.setUserId(null);
+	                    submissionItem.setDisplayOrder(3 + i);
+	                    submitRepository.save(submissionItem);
+	                }
+	                
+	                response.put("success", true);
+	                response.put("message", "All submission items saved");
 	            } else {
-	                submit.setDescription(content);
+	                response.put("success", false);
+	                response.put("message", "No submission items to save");
 	            }
-	            
-	            submit.setUserId(null);
-	            submit.setDisplayOrder(3);
+	            return response; // 여기서 리턴
 	            
 	        } else if ("custom".equals(sectionType)) {
 	            // 커스텀 섹션 처리

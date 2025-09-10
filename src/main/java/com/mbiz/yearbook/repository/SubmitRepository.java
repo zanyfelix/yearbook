@@ -23,8 +23,12 @@ public interface SubmitRepository extends JpaRepository<Submit, Long> {
 	Integer findMaxDisplayOrderByUserId(@Param("userId") Long userId);
 
 	List<Submit> findByUserIdOrderByDisplayOrder(Long userId);
+	
+	Optional<Submit> findFirstByTypeAndUserIdIsNull(String type);
+	
+	List<Submit> findByTypeAndUserIdIsNullOrderByDisplayOrder(String type);
 
-	Optional<Submit> findByTypeAndUserIdIsNull(String type);
+	List<Submit> findByTypeAndUserIdIsNull(String type);
 
 	// 중복 제거 - 하나만 남김
 	Optional<Submit> findFirstByType(String type);

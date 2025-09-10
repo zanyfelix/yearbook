@@ -61,6 +61,7 @@
 			<form action="${pageContext.request.contextPath}/admin/submit/save"
 				method="post" id="submitForm">
 				<input type="hidden" name="userId" value="${userId}">
+				
 				<%-- Submit to MBIZ - Overview 섹션 --%>
 				<div class="section-box" data-section-id="overview"
 					data-section-type="default">
@@ -73,13 +74,37 @@
 					</div>
 					<div class="section-content">
 						<input type="hidden" name="sections[0].type" value="overview">
-						<input type="hidden" name="sections[0].id"
-							value="${overviewSection.id}">
+						<input type="hidden" name="sections[0].id" value="${overviewSection.id}">
 						<h6>Overview</h6>
-						<textarea name="sections[0].content"
-							class="form-control readonly-mode" rows="4" readonly>${overviewSection.description}</textarea>
+						<textarea name="sections[0].content" class="form-control readonly-mode" rows="4" readonly>${overviewSection.description}</textarea>
 					</div>
 				</div>
+				
+				<%-- Page Submission 섹션 --%>
+				<div class="section-box" data-section-id="submission" data-section-type="default">
+	                <div class="section-header">
+	                    <h5>Page Submission</h5>
+	                    <div class="section-controls">
+	                        <button type="button" class="btn-edit" onclick="toggleEditMode('submission')">EDIT</button>
+	                        <button type="button" class="btn-save" onclick="saveSection('submission')" style="display:none;">SAVE</button>
+	                    </div>
+	                </div>
+	                <div class="section-content">
+	                    <input type="hidden" name="sections[2].type" value="submission">
+	                    <input type="hidden" name="sections[2].id" value="${submissionSection.id}">
+	                    <div id="submissionList">
+				            <c:forEach var="item" items="${submissionItems}" varStatus="status">
+				                <div class="submission-item" data-item-index="${status.index}">
+				                    <textarea name="submissions[${status.index}].description" 
+				                              class="form-control readonly-mode" 
+				                              rows="2"
+				                              readonly>${item.description}</textarea>
+				                </div>
+				            </c:forEach>
+				        </div>
+	                </div>
+	            </div>
+	            
 			</form>
 		</div>
 	</div>
