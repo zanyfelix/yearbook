@@ -41,7 +41,7 @@
     <a href="/admin/contactUs?id=${sessionScope.loginUser.id}" class="${currentMenu eq 'contactUs' ? 'active' : ''}">ContactUs</a>
     
     <form id="logoutForm" action="${pageContext.request.contextPath}/logout" method="post" style="margin-bottom: 1rem;">
-		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 80% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
+		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 90% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
 	</form>
 </div>
 <!-- Loading -->
