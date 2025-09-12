@@ -1477,8 +1477,10 @@ button:focus,
    23. Text 패널 버튼 텍스트 정렬
    =========================================== */
 #text-panel .btn {
+    font-size: 0.85rem !important;  /* button-container와 동일한 글자 크기 */
     text-align: left;
-    padding-left: 1rem; /* 텍스트가 왼쪽에 너무 붙지 않도록 여백 추가 */
+    padding-left: 1rem;
+    margin-bottom : 12px;
 }
 
 /* ===========================================

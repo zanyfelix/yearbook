@@ -124,13 +124,13 @@
 
 								<!-- Text 패널 -->
                             <div id="text-panel" class="d-none">
-                                <div class="w-100 mb-2">
+                                <div class="">
                                     <button id="add-title-btn" class="btn btn-outline-primary w-50">Click here to insert "Title"</button>
                                 </div>
-                                <div class="w-100 mb-2">
+                                <div class="">
                                     <button id="add-subtitle-btn" class="btn btn-outline-primary w-50">Click here to insert "Sub-Title"</button>
                                 </div>
-                                <div class="w-100 mb-2">
+                                <div class="">
                                     <button id="add-text-btn" class="btn btn-outline-primary w-50">Click here to insert "Text"</button>
                                 </div>
                             </div>
