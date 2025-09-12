@@ -206,6 +206,8 @@ class EventManager {
 
 				// 먼저 크기 재조정
 				this.autoResizeTextBox(textBox);
+				
+				textBox.css('transform-origin', '50% 50%');
 
 				// 🔴 선택 전 현재 위치 저장
 				const currentTransform = textBox.css('transform');

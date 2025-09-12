@@ -226,6 +226,9 @@ class TextManager {
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 
 		if (hasLineBreaks) {
+			
+			const currentTransformOrigin = textBox.css('transform-origin') || '50% 50%';
+			
 			// 각 줄을 개별적으로 추출
 			let lines = [];
 			const tempDiv = $('<div>').html(htmlContent);
@@ -299,7 +302,8 @@ class TextManager {
 				'height': measuredHeight + 'px', // 실제 측정된 높이 사용
 				'white-space': 'pre-wrap',
 				'word-break': 'keep-all',
-				'overflow-wrap': 'normal'
+				'overflow-wrap': 'normal',
+				'transform-origin': currentTransformOrigin  // 추가
 			});
 		} else {
 			// 줄바꿈이 없는 경우
