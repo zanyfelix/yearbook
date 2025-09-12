@@ -122,7 +122,10 @@ class EventManager {
 				if (element.hasClass('uploaded-photo')) {
 					const frameGroup = element.closest('.frame-group');
 					PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
-					window.selectionManager.selectPhoto(element, frameGroup);
+					// 이미 있는 코드지만 작동하지 않으면 setTimeout 추가
+					setTimeout(() => {
+						window.selectionManager.selectPhoto(element, frameGroup);
+					}, 10);
 					setTimeout(() => { frameGroup.removeData('isRotatingPhoto'); }, 0);
 				}
 			});
@@ -158,7 +161,9 @@ class EventManager {
 		let clickTimer = null;
 
 		frameGroup.on('click', (e) => {
-			if (frameGroup.data('isDraggingPhoto') || frameGroup.data('isRotatingPhoto')) {
+			if (frameGroup.data('isDraggingPhoto') ||
+				frameGroup.data('isRotatingPhoto') ||
+				frameGroup.data('isResizingPhoto')) {
 				return;
 			}
 

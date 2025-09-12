@@ -209,6 +209,9 @@ class PhotoManager {
 		handle.on('mousedown', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			const frameGroup = photo.closest('.frame-group');
+
+			frameGroup.data('isResizingPhoto', true);
 
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
@@ -284,9 +287,14 @@ class PhotoManager {
 				});
 			});
 
-			$(document).on('mouseup.photoResize', () => {
+			$(document).on('mouseup.photoResize', (ev) => {
 				$(document).off('.photoResize');
-				this.savePhotoState(photo, photo.closest('.frame-group'), { isManual: true });
+				ev.stopPropagation();
+				this.savePhotoState(photo, frameGroup, { isManual: true });
+				setTimeout(() => {
+					window.selectionManager.selectPhoto(photo, frameGroup);
+					frameGroup.removeData('isResizingPhoto');
+				}, 50);
 			});
 		});
 	}
