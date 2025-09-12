@@ -1,6 +1,6 @@
 // TextManager.js - 텍스트 관리 클래스
 class TextManager {
-	
+
 	static TEXT_TYPE_SIZES = {
 		'Title': 24,
 		'Sub-Title': 16,
@@ -192,13 +192,9 @@ class TextManager {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (!selectedBox || selectedBox.length === 0) return;
 
-		// 선택한 크기를 숫자로 변환
 		const numericSize = parseInt(fontSize);
-
-		// 기본 크기로 저장 (스케일링 전 원본 크기)
 		selectedBox.data('base-font-size', numericSize);
 
-		// 현재 배경 크기에 따른 스케일링 적용
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 
@@ -211,30 +207,116 @@ class TextManager {
 			scaledFontSize = numericSize;
 		}
 
-		// 실제 CSS에 스케일된 크기 적용
+		// 폰트 크기 적용
 		selectedBox.css('font-size', scaledFontSize + 'px');
-		this.resizeTextBox(selectedBox, scaledFontSize + 'px');
 
-		// 선택 상태 업데이트
+		// 줄바꿈 구조를 유지하면서 크기 조정
+		this.adjustBoxSizeForLineBreaks(selectedBox);
+
 		if (selectedBox.hasClass('selected')) {
 			selectedBox.trigger('resize');
 		}
 
-		// 상태 저장
 		setTimeout(() => this.updateTextBoxState(selectedBox), 50);
 	}
 
-	// 텍스트박스 크기 조절
-	static resizeTextBox(textBox, fontSize) {
+	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
+	static adjustBoxSizeForLineBreaks(textBox) {
 		const htmlContent = textBox.html();
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+
+		if (hasLineBreaks) {
+			// 각 줄을 개별적으로 추출
+			let lines = [];
+			const tempDiv = $('<div>').html(htmlContent);
+
+			// Chrome 스타일 처리 (<div> 태그)
+			if (htmlContent.includes('<div>')) {
+				const firstLineText = tempDiv.contents().filter(function() {
+					return this.nodeType === 3;
+				}).text();
+				if (firstLineText.trim()) lines.push(firstLineText);
+
+				tempDiv.find('div').each(function() {
+					lines.push($(this).text() || '\u00A0');
+				});
+			}
+			// Firefox 스타일 처리 (<br> 태그)
+			else if (htmlContent.includes('<br>')) {
+				const parts = htmlContent.split('<br>');
+				parts.forEach(part => {
+					const text = $('<div>').html(part).text();
+					lines.push(text || '\u00A0');
+				});
+			}
+
+			// 가장 긴 줄의 너비 측정
+			let maxWidth = 0;
+			lines.forEach(line => {
+				const $temp = $('<span>')
+					.text(line || '\u00A0')
+					.css({
+						'position': 'absolute',
+						'visibility': 'hidden',
+						'white-space': 'nowrap',
+						'font-size': textBox.css('font-size'),
+						'font-family': textBox.css('font-family'),
+						'font-weight': textBox.css('font-weight'),
+						'letter-spacing': textBox.css('letter-spacing')
+					});
+
+				$('body').append($temp);
+				maxWidth = Math.max(maxWidth, $temp.width());
+				$temp.remove();
+			});
+
+			// 정확한 높이 측정을 위한 임시 요소
+			const $heightTemp = $('<div>')
+				.html(htmlContent)
+				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'width': (maxWidth + 20) + 'px', // 패딩 포함
+					'white-space': 'pre-wrap',
+					'word-break': 'keep-all',
+					'font-size': textBox.css('font-size'),
+					'font-family': textBox.css('font-family'),
+					'font-weight': textBox.css('font-weight'),
+					'line-height': textBox.css('line-height'),
+					'padding': textBox.css('padding'),
+					'box-sizing': 'border-box'
+				});
+
+			$('body').append($heightTemp);
+			const measuredHeight = $heightTemp.outerHeight();
+			$heightTemp.remove();
+
+			// 패딩 고려
+			const padding = parseInt(textBox.css('padding')) || 10;
+
+			textBox.css({
+				'width': (maxWidth + padding * 2 + 5) + 'px',
+				'height': measuredHeight + 'px', // 실제 측정된 높이 사용
+				'white-space': 'pre-wrap',
+				'word-break': 'keep-all',
+				'overflow-wrap': 'normal'
+			});
+		} else {
+			// 줄바꿈이 없는 경우
+			this.resizeTextBox(textBox, textBox.css('font-size'));
+		}
+	}
+
+	// resizeTextBox는 줄바꿈 없는 경우에만 사용
+	static resizeTextBox(textBox, fontSize) {
+		const htmlContent = textBox.html();
 
 		const $temp = $('<div>')
 			.html(htmlContent || ' ')
 			.css({
 				'position': 'absolute',
 				'visibility': 'hidden',
-				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
+				'white-space': 'nowrap',
 				'font-size': fontSize,
 				'font-family': textBox.css('font-family'),
 				'font-weight': textBox.css('font-weight'),
@@ -248,7 +330,8 @@ class TextManager {
 
 		textBox.css({
 			'width': newWidth + 'px',
-			'height': newHeight + 'px'
+			'height': newHeight + 'px',
+			'white-space': 'nowrap'
 		});
 	}
 
@@ -267,7 +350,7 @@ class TextManager {
 			selectedBox.css('color', color);
 		}
 	}
-	
+
 	// 폰트 패밀리 변경
 	static updateFontFamily(fontFamily) {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
@@ -308,7 +391,7 @@ $(document).ready(function() {
 	$('#tooltip-color').on('change', function() {
 		TextManager.updateTextColor($(this).val());
 	});
-	
+
 	$('#tooltip-font').on('change', function() {
 		TextManager.updateFontFamily($(this).val());
 	});
