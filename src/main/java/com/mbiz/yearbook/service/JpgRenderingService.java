@@ -1,17 +1,13 @@
 package com.mbiz.yearbook.service;
 
 import java.awt.AlphaComposite;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
-import java.awt.Shape;
-import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
@@ -77,14 +73,12 @@ public class JpgRenderingService {
 
 	private static final Logger logger = LoggerFactory.getLogger(JpgRenderingService.class);
 
-	// --- 렌더링 상수 정의 ---
+	// 렌더링 상수 정의
 	private static final int RENDER_WIDTH = 2621; // 고해상도 렌더링 너비 (A4 300DPI)
 	private static final int RENDER_HEIGHT = 3371; // 고해상도 렌더링 높이 (A4 300DPI)
 	private static final double EDIT_WIDTH = 786.0; // 편집기 기준 너비
 	private static final double EDIT_HEIGHT = 1011.0; // 편집기 기준 높이
-
-	// 스케일 비율 (편집기 -> 렌더링)
-	private static final double SCALE_RATIO = RENDER_WIDTH / EDIT_WIDTH; // 약 3.33
+	private static final double SCALE_RATIO = RENDER_WIDTH / EDIT_WIDTH; // 약 3.333...
 
 	// 파일 경로 관련 상수
 	private static final String SUFFIX_ORIGINAL = "_B.png";
@@ -94,7 +88,7 @@ public class JpgRenderingService {
 	private static final int TARGET_DPI = 300;
 	private static final float JPEG_QUALITY = 1.0f;
 
-	// --- 의존성 주입 ---
+	// 의존성 주입
 	@Autowired
 	private YearbookRepository yearbookRepository;
 
@@ -129,13 +123,8 @@ public class JpgRenderingService {
 		logger.info("themePath 설정값: {}", themePath);
 		logger.info("userPhotosPath 설정값: {}", userPhotosPath);
 
-		// 경로 확인
 		verifyPaths();
-
-		// 폰트 디렉토리 확인
 		verifyFontDirectory();
-
-		// 폰트 로드
 		loadFontsFromDatabase();
 		registerSystemFonts();
 
@@ -144,7 +133,10 @@ public class JpgRenderingService {
 		logger.info("==================================================");
 	}
 
-	public void verifyPaths() {
+	/**
+	 * 경로 검증
+	 */
+	private void verifyPaths() {
 		logger.info("==============================================");
 		logger.info("=== JpgRenderingService 경로 설정 확인 ===");
 		logger.info("==============================================");
@@ -152,7 +144,7 @@ public class JpgRenderingService {
 
 		File photoDir = new File(userPhotosPath);
 		if (photoDir.exists()) {
-			logger.info("✓ 사진 디렉토리 존재: {}", photoDir.getAbsolutePath());
+			logger.info("✔ 사진 디렉토리 존재: {}", photoDir.getAbsolutePath());
 
 			File originalsDir = new File(photoDir, "originals");
 			File editsDir = new File(photoDir, "edits");
@@ -160,50 +152,35 @@ public class JpgRenderingService {
 			logger.info("  - originals 디렉토리: {} ({})", originalsDir.exists() ? "존재" : "없음",
 					originalsDir.getAbsolutePath());
 			logger.info("  - edits 디렉토리: {} ({})", editsDir.exists() ? "존재" : "없음", editsDir.getAbsolutePath());
-
-			if (originalsDir.exists()) {
-				File[] files = originalsDir.listFiles();
-				logger.info("  - originals 내 파일 수: {}", files != null ? files.length : 0);
-				if (files != null && files.length > 0 && files.length <= 5) {
-					// 처음 몇 개 파일명만 샘플로 출력
-					for (int i = 0; i < Math.min(3, files.length); i++) {
-						logger.info("    샘플 파일 {}: {}", i + 1, files[i].getName());
-					}
-				}
-			}
-
-			if (editsDir.exists()) {
-				File[] files = editsDir.listFiles();
-				logger.info("  - edits 내 파일 수: {}", files != null ? files.length : 0);
-			}
 		} else {
 			logger.error("✗ 사진 디렉토리가 존재하지 않음: {}", photoDir.getAbsolutePath());
-			logger.error("  디렉토리를 생성해주세요: {}", photoDir.getAbsolutePath());
 		}
 		logger.info("==============================================");
 	}
 
-	// PathUtils 클래스가 없다면 추가
-	private static class InternalPathUtils {
-		public static String normalizePath(String path) {
-			if (path == null)
-				return null;
+	/**
+	 * 폰트 디렉토리 확인
+	 */
+	private void verifyFontDirectory() {
+		logger.info("=== 폰트 디렉토리 확인 ===");
 
-			// Windows와 Unix 경로 구분자 통일
-			String normalized = path.replace('\\', '/');
+		String[] possiblePaths = { themePath.replace("/theme", "/fonts"), themePath + "/fonts", "fonts",
+				System.getProperty("user.dir") + "/fonts" };
 
-			// 중복된 구분자 제거
-			while (normalized.contains("//")) {
-				normalized = normalized.replace("//", "/");
+		for (String path : possiblePaths) {
+			File dir = new File(path);
+			if (dir.exists() && dir.isDirectory()) {
+				logger.info("✔ 폰트 디렉토리 발견: {}", dir.getAbsolutePath());
+				File[] fontFiles = dir.listFiles(
+						(d, name) -> name.toLowerCase().endsWith(".ttf") || name.toLowerCase().endsWith(".otf"));
+
+				if (fontFiles != null && fontFiles.length > 0) {
+					logger.info("  폰트 파일 {} 개 발견:", fontFiles.length);
+					for (File f : fontFiles) {
+						logger.info("    - {} ({} KB)", f.getName(), f.length() / 1024);
+					}
+				}
 			}
-
-			// Windows 드라이브 문자 처리 (E:/ -> E:/)
-			if (normalized.length() > 2 && normalized.charAt(1) == ':') {
-				// Windows 경로는 그대로 유지
-				return normalized;
-			}
-
-			return normalized;
 		}
 	}
 
@@ -223,7 +200,7 @@ public class JpgRenderingService {
 				if (theme.getFontPath() != null && !theme.getFontPath().isEmpty()) {
 					boolean success = loadFontFromPath(theme.getFontPath(), theme.getFilename());
 					if (success) {
-						logger.info("✓ 폰트 로드 성공: {}", theme.getFilename());
+						logger.info("✔ 폰트 로드 성공: {}", theme.getFilename());
 					} else {
 						logger.error("✗ 폰트 로드 실패: {}", theme.getFilename());
 					}
@@ -237,76 +214,33 @@ public class JpgRenderingService {
 		}
 	}
 
-	// 폰트 디렉토리 확인 메서드 추가
-	private void verifyFontDirectory() {
-		logger.info("=== 폰트 디렉토리 확인 ===");
-
-		String[] possiblePaths = { themePath.replace("/theme", "/fonts"), themePath + "/fonts", "fonts",
-				System.getProperty("user.dir") + "/fonts" };
-
-		for (String path : possiblePaths) {
-			File dir = new File(path);
-			if (dir.exists() && dir.isDirectory()) {
-				logger.info("✓ 폰트 디렉토리 발견: {}", dir.getAbsolutePath());
-				File[] fontFiles = dir.listFiles(
-						(d, name) -> name.toLowerCase().endsWith(".ttf") || name.toLowerCase().endsWith(".otf"));
-
-				if (fontFiles != null && fontFiles.length > 0) {
-					logger.info("  폰트 파일 {} 개 발견:", fontFiles.length);
-					for (File f : fontFiles) {
-						logger.info("    - {} ({} KB)", f.getName(), f.length() / 1024);
-					}
-				}
-			}
-		}
-	}
-
 	/**
 	 * 폰트 파일 경로로부터 폰트 로드
-	 * 
-	 * @return
 	 */
 	private boolean loadFontFromPath(String fontPath, String filename) {
 		try {
 			logger.info("=== 폰트 로드 시도 ===");
 			logger.info("fontPath (DB): {}", fontPath);
 			logger.info("filename: {}", filename);
-			logger.info("themePath: {}", themePath);
 
 			// 가능한 모든 경로 조합 시도
-			String[] pathVariants = {
-					// DB 경로 그대로
-					fontPath,
-
-					// /fonts/ 제거
-					fontPath.replace("/fonts/", "fonts/"),
-
-					// themePath와 조합
-					themePath + "/" + fontPath, themePath + fontPath, themePath + "/" + fontPath.replace("/fonts/", ""),
-
-					// 절대 경로
+			String[] pathVariants = { fontPath, fontPath.replace("/fonts/", "fonts/"), themePath + "/" + fontPath,
+					themePath + fontPath, themePath + "/" + fontPath.replace("/fonts/", ""),
 					System.getProperty("user.dir") + "/" + fontPath,
 					System.getProperty("user.dir") + "/" + fontPath.replace("/fonts/", "fonts/"),
-
-					// themePath가 E:/data/theme인 경우
-					themePath.replace("/theme", "") + fontPath, // E:/data/fonts/...
-			};
+					themePath.replace("/theme", "") + fontPath, };
 
 			File fontFile = null;
 			for (String path : pathVariants) {
 				if (path == null)
 					continue;
 
-				String normalizedPath = InternalPathUtils.normalizePath(path);
+				String normalizedPath = PathUtils.normalizePath(path);
 				File testFile = new File(normalizedPath);
-
-				logger.debug("경로 시도: {}", normalizedPath);
-				logger.debug("  -> 절대 경로: {}", testFile.getAbsolutePath());
-				logger.debug("  -> 존재 여부: {}", testFile.exists());
 
 				if (testFile.exists() && testFile.isFile()) {
 					fontFile = testFile;
-					logger.info("✓ 폰트 파일 발견!");
+					logger.info("✔ 폰트 파일 발견!");
 					logger.info("  최종 경로: {}", testFile.getAbsolutePath());
 					break;
 				}
@@ -314,20 +248,6 @@ public class JpgRenderingService {
 
 			if (fontFile == null) {
 				logger.error("❌ 폰트 파일을 찾을 수 없음");
-
-				// 디렉토리 구조 확인
-				File fontsDir = new File(themePath.replace("/theme", "/fonts"));
-				if (fontsDir.exists() && fontsDir.isDirectory()) {
-					logger.info("폰트 디렉토리 존재: {}", fontsDir.getAbsolutePath());
-					File[] files = fontsDir.listFiles();
-					if (files != null && files.length > 0) {
-						logger.info("폰트 디렉토리 내 파일들:");
-						for (int i = 0; i < Math.min(5, files.length); i++) {
-							logger.info("  - {}", files[i].getName());
-						}
-					}
-				}
-
 				return false;
 			}
 
@@ -349,25 +269,22 @@ public class JpgRenderingService {
 				customFonts.put(baseFont.getName(), baseFont); // 폰트 이름
 				customFonts.put(baseFont.getFontName(), baseFont); // 폰트 전체 이름
 
-				// 한글 폰트명 처리 (예: "맑은 고딕", "나눔고딕" 등)
+				// 한글 폰트명 처리
 				if (filename.matches(".*[ㄱ-ㅎㅏ-ㅣ가-힣]+.*")) {
 					String koreanName = filename.replaceAll("\\.(ttf|otf)$", "");
 					customFonts.put(koreanName, baseFont);
 				}
 
-				logger.info("✓ 폰트 로드 성공!");
+				logger.info("✔ 폰트 로드 성공!");
 				logger.info("  Font Family: {}", baseFont.getFamily());
 				logger.info("  Font Name: {}", baseFont.getName());
 				logger.info("  Font Full Name: {}", baseFont.getFontName());
-				logger.info("  저장된 키들: {}",
-						Arrays.asList(filename, cleanName, baseFont.getFamily(), baseFont.getName()));
 
 				return true;
 			}
 
 		} catch (Exception e) {
 			logger.error("폰트 로드 중 예외 발생: {}", fontPath, e);
-			e.printStackTrace();
 			return false;
 		}
 	}
@@ -387,11 +304,22 @@ public class JpgRenderingService {
 	 * 시스템 기본 폰트 등록
 	 */
 	private void registerSystemFonts() {
-		String[] defaultFonts = { "Arial", "Times New Roman", "Helvetica", "Verdana", "Sans-serif" };
+		// 기본 영문 폰트
+		String[] defaultFonts = { "Arial", "Times New Roman", "Helvetica", "Verdana" };
 		for (String fontName : defaultFonts) {
 			Font font = new Font(fontName, Font.PLAIN, 12);
-			if (font.getFamily().equals(fontName)) {
+			if (!font.getFamily().equals(Font.DIALOG)) {
 				customFonts.put(fontName, font);
+			}
+		}
+
+		// 한글 폰트 추가
+		String[] koreanFonts = { "맑은 고딕", "Malgun Gothic", "나눔고딕", "NanumGothic" };
+		for (String fontName : koreanFonts) {
+			Font font = new Font(fontName, Font.PLAIN, 12);
+			if (!font.getFamily().equals(Font.DIALOG) && canDisplayKorean(font)) {
+				customFonts.put(fontName, font);
+				logger.info("한글 폰트 등록: {}", fontName);
 			}
 		}
 	}
@@ -410,7 +338,6 @@ public class JpgRenderingService {
 				return parser;
 			}
 
-			// matrix 파싱
 			Pattern matrixPattern = Pattern.compile("matrix\\(([^)]+)\\)");
 			Matcher matcher = matrixPattern.matcher(transform);
 
@@ -423,26 +350,21 @@ public class JpgRenderingService {
 					parser.d = Double.parseDouble(values[3].trim());
 
 					if (values.length >= 6) {
-						// 편집기 스케일을 렌더링 스케일로 변환
-						parser.tx = Double.parseDouble(values[4].trim()) * SCALE_RATIO;
-						parser.ty = Double.parseDouble(values[5].trim()) * SCALE_RATIO;
+						// tx, ty는 편집기 좌표계 값이므로 스케일 적용하지 않음
+						parser.tx = Double.parseDouble(values[4].trim());
+						parser.ty = Double.parseDouble(values[5].trim());
 					}
 
-					// 회전 각도 계산 (라디안)
 					parser.rotation = Math.atan2(parser.b, parser.a);
-
-					// 스케일 계산
 					parser.scaleX = Math.sqrt(parser.a * parser.a + parser.b * parser.b);
 					parser.scaleY = Math.sqrt(parser.c * parser.c + parser.d * parser.d);
 
-					// 음수 스케일 처리
 					if (parser.a < 0)
 						parser.scaleX = -parser.scaleX;
 					if (parser.d < 0)
 						parser.scaleY = -parser.scaleY;
 				}
 			}
-
 			return parser;
 		}
 	}
@@ -498,10 +420,16 @@ public class JpgRenderingService {
 		return zipFile;
 	}
 
+	/**
+	 * 파일명 생성
+	 */
 	private String generateFileName(String title, int pageNo, String format) {
 		return String.format("%s_%03d.%s", title.replaceAll("[^a-zA-Z0-9.-]", "_"), pageNo, format);
 	}
 
+	/**
+	 * ZIP 파일 생성
+	 */
 	private void createZipFile(Path sourceDir, File targetZip) throws IOException {
 		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(targetZip))) {
 			Files.walk(sourceDir).filter(path -> !Files.isDirectory(path)).forEach(path -> {
@@ -518,6 +446,9 @@ public class JpgRenderingService {
 		}
 	}
 
+	/**
+	 * 임시 디렉토리 정리
+	 */
 	private void cleanupTempDirectory(Path tempDir) {
 		try {
 			Files.walk(tempDir).sorted((path1, path2) -> path2.compareTo(path1)).forEach(path -> {
@@ -537,9 +468,15 @@ public class JpgRenderingService {
 	 */
 	private void renderAndSaveSinglePageHighQuality(String designDataJson, File outputFile, String format)
 			throws IOException {
-
-		BufferedImage renderedImage = renderSinglePageHighQuality(designDataJson);
-		saveHighQualityJpegWith300DPI(renderedImage, outputFile);
+		BufferedImage renderedImage = null;
+		try {
+			renderedImage = renderSinglePageHighQuality(designDataJson);
+			saveHighQualityJpegWith300DPI(renderedImage, outputFile);
+		} finally {
+			if (renderedImage != null) {
+				renderedImage.flush();
+			}
+		}
 	}
 
 	/**
@@ -563,7 +500,6 @@ public class JpgRenderingService {
 		logger.info("frames 개수: {}", root.path("frames").size());
 		logger.info("textBoxes 개수: {}", root.path("textBoxes").size());
 
-		// 렌더링 전 요약 출력
 		logRenderingSummary(root);
 
 		// 1. 배경 렌더링
@@ -571,7 +507,6 @@ public class JpgRenderingService {
 			renderBackground(g2d, root);
 		} catch (Exception e) {
 			logger.error("배경 렌더링 실패", e);
-			// 배경 실패해도 계속 진행
 		}
 
 		// 2. 프레임 렌더링 (사진 포함)
@@ -585,6 +520,9 @@ public class JpgRenderingService {
 		return convertToRGB(canvas);
 	}
 
+	/**
+	 * 고품질 렌더링 힌트 설정
+	 */
 	private void setHighQualityRenderingHints(Graphics2D g2d) {
 		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
@@ -604,7 +542,6 @@ public class JpgRenderingService {
 
 		logger.info("=== 배경 렌더링 시작 ===");
 		logger.info("background 필드값: {}", bgEditPath);
-		logger.info("themePath 설정값: {}", themePath);
 
 		if (bgEditPath == null || bgEditPath.isEmpty()) {
 			logger.warn("배경 경로가 비어있음 - 배경 렌더링 스킵");
@@ -613,27 +550,20 @@ public class JpgRenderingService {
 
 		// _M.png를 _B.png로 교체
 		String bgOriginalPath = bgEditPath.replace(SUFFIX_EDIT, SUFFIX_ORIGINAL);
-		logger.info("편집용 경로: {}", bgEditPath);
 		logger.info("원본 경로로 변환: {}", bgOriginalPath);
 
-		// 경로 조합 시 중복 제거
+		// 경로 조합
 		String fullPath;
-
-		// DB 경로가 /theme/로 시작하고, themePath도 /theme로 끝나는 경우 중복 제거
 		if (bgOriginalPath.startsWith("/theme/") && themePath.endsWith("/theme")) {
-			// /theme/ 제거하고 조합
-			String cleanPath = bgOriginalPath.substring(6); // "/theme" 제거
-			fullPath = InternalPathUtils.normalizePath(themePath + cleanPath);
-		} else if (bgOriginalPath.startsWith("/theme/") && !themePath.endsWith("/theme")) {
-			// themePath에 theme가 없으면 /theme/ 제거
 			String cleanPath = bgOriginalPath.substring(6);
-			fullPath = InternalPathUtils.normalizePath(themePath + "/" + cleanPath);
+			fullPath = PathUtils.normalizePath(themePath + cleanPath);
+		} else if (bgOriginalPath.startsWith("/theme/") && !themePath.endsWith("/theme")) {
+			String cleanPath = bgOriginalPath.substring(6);
+			fullPath = PathUtils.normalizePath(themePath + "/" + cleanPath);
 		} else if (bgOriginalPath.startsWith("/")) {
-			// 절대 경로인 경우
-			fullPath = InternalPathUtils.normalizePath(themePath + bgOriginalPath);
+			fullPath = PathUtils.normalizePath(themePath + bgOriginalPath);
 		} else {
-			// 상대 경로인 경우
-			fullPath = InternalPathUtils.normalizePath(themePath + "/" + bgOriginalPath);
+			fullPath = PathUtils.normalizePath(themePath + "/" + bgOriginalPath);
 		}
 
 		logger.info("최종 전체 경로: {}", fullPath);
@@ -643,39 +573,7 @@ public class JpgRenderingService {
 
 		if (!bgFile.exists()) {
 			logger.error("배경 파일을 찾을 수 없음: {}", fullPath);
-
-			// 디렉토리 내용 확인
-			File parentDir = bgFile.getParentFile();
-			if (parentDir != null && parentDir.exists()) {
-				logger.error("디렉토리 {} 내의 파일들:", parentDir.getAbsolutePath());
-				File[] files = parentDir.listFiles();
-				if (files != null) {
-					for (int i = 0; i < Math.min(5, files.length); i++) {
-						logger.error("  - {}", files[i].getName());
-					}
-				}
-			}
-
-			// 대체 경로들 시도
-			String[] alternativePaths = { bgEditPath, // 원본 편집 경로 그대로
-					bgOriginalPath.replace("/theme/", "/"), // theme 중복 제거
-					"/" + bgOriginalPath.replaceFirst("^/+", "") // 선행 슬래시 정리
-			};
-
-			for (String altPath : alternativePaths) {
-				File altFile = new File(InternalPathUtils.normalizePath(themePath + altPath));
-				logger.info("대체 경로 시도: {}", altFile.getAbsolutePath());
-				if (altFile.exists()) {
-					logger.info("대체 경로로 배경 발견!");
-					bgFile = altFile;
-					break;
-				}
-			}
-
-			if (!bgFile.exists()) {
-				logger.error("모든 경로에서 배경 파일을 찾을 수 없음");
-				return;
-			}
+			return;
 		}
 
 		try {
@@ -686,7 +584,7 @@ public class JpgRenderingService {
 			}
 
 			g2d.drawImage(bgImage, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
-			logger.info("✓ 배경 렌더링 완료: {} (크기: {}x{})", bgFile.getName(), bgImage.getWidth(), bgImage.getHeight());
+			logger.info("✔ 배경 렌더링 완료: {} (크기: {}x{})", bgFile.getName(), bgImage.getWidth(), bgImage.getHeight());
 
 		} catch (IOException e) {
 			logger.error("배경 이미지 로드 중 오류: {}", fullPath, e);
@@ -725,82 +623,7 @@ public class JpgRenderingService {
 			if (photoNode.has("src")) {
 				String src = photoNode.path("src").asText();
 				if (!src.isEmpty() && !"null".equals(src)) {
-					try {
-						// 사진 로드
-						String originalSrc = convertToOriginalPath(src);
-						byte[] imageBytes = loadImageBytes(originalSrc);
-						if (imageBytes == null) {
-							imageBytes = loadImageBytes(src);
-						}
-
-						if (imageBytes != null) {
-							BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-							if (photoImage != null) {
-
-								// 사진 위치와 크기 계산
-								JsonNode position = photoNode.path("position");
-								JsonNode size = photoNode.path("size");
-
-								double photoX, photoY, photoWidth, photoHeight;
-
-								if (position.has("leftPx")) {
-									// 픽셀 단위 변환 - 간단하게
-									photoX = position.path("leftPx").asDouble() * SCALE_RATIO;
-									photoY = position.path("topPx").asDouble() * SCALE_RATIO;
-									photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
-									photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
-								} else {
-									// 퍼센트 단위
-									photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-									photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-									photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-									photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
-								}
-
-								// 마스크 확인
-								BufferedImage maskImage = null;
-								if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-									maskImage = loadMaskImage(theme.getOriginalMaskPath());
-								}
-
-								if (maskImage != null) {
-									// === 마스크가 있는 경우: 별도 레이어에서 마스킹 ===
-									BufferedImage maskedPhoto = new BufferedImage(frameComposite.getWidth(),
-											frameComposite.getHeight(), BufferedImage.TYPE_INT_ARGB);
-									Graphics2D g2dMasked = maskedPhoto.createGraphics();
-									setHighQualityRenderingHints(g2dMasked);
-
-									// 사진 그리기
-									drawPhoto(g2dMasked, photoImage, photoNode, photoX, photoY, photoWidth,
-											photoHeight);
-
-									// 마스크 적용
-									g2dMasked.setComposite(AlphaComposite.DstIn);
-									g2dMasked.drawImage(maskImage, 0, 0, frameComposite.getWidth(),
-											frameComposite.getHeight(), null);
-									g2dMasked.dispose();
-
-									// 마스킹된 사진을 프레임에 그리기
-									g2dFrame.drawImage(maskedPhoto, 0, 0, null);
-
-								} else {
-									// === 마스크가 없는 경우: 클리핑으로 프레임 영역 제한 ===
-									Graphics2D g2dClipped = (Graphics2D) g2dFrame.create();
-
-									// 중요: 프레임 영역으로 클리핑
-									g2dClipped.setClip(0, 0, frameComposite.getWidth(), frameComposite.getHeight());
-
-									// 사진 그리기
-									drawPhoto(g2dClipped, photoImage, photoNode, photoX, photoY, photoWidth,
-											photoHeight);
-
-									g2dClipped.dispose();
-								}
-							}
-						}
-					} catch (Exception e) {
-						logger.error("사진 렌더링 실패: {}", src, e);
-					}
+					renderPhotoInFrame(g2dFrame, photoNode, frameComposite.getWidth(), frameComposite.getHeight());
 				}
 			}
 
@@ -821,157 +644,93 @@ public class JpgRenderingService {
 	}
 
 	/**
-	 * 개선된 사진 렌더링 - 스케일 비율 정확히 적용
+	 * 프레임 내 사진 렌더링
 	 */
-	private void renderPhotoImproved(Graphics2D g2d, JsonNode photoNode, Theme theme, int frameWidth, int frameHeight)
-			throws IOException {
-
-		String src = photoNode.path("src").asText();
-		if (src == null || src.isEmpty()) {
-			logger.warn("사진 src가 비어있음 - 사진 없이 프레임만 렌더링됨");
-			return;
-		}
-
-		logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-		logger.info("📸 사진 렌더링 시작");
-		logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-		logger.info("저장된 경로: {}", src);
-
-		// 원본 경로로 변환
-		String originalSrc = convertToOriginalPath(src);
-		logger.info("변환된 원본 경로: {}", originalSrc);
-
-		// 원본 이미지 로드 시도
-		byte[] imageBytes = loadImageBytes(originalSrc);
-
-		if (imageBytes == null) {
-			logger.warn("⚠️ 원본 이미지 로드 실패, 편집용 이미지 시도");
-			imageBytes = loadImageBytes(src);
-
-			if (imageBytes == null) {
-				logger.error("❌ 이미지를 전혀 로드할 수 없음 - 사진 없이 렌더링됨!");
+	private void renderPhotoInFrame(Graphics2D g2dFrame, JsonNode photoNode, int frameWidth, int frameHeight) {
+		try {
+			String src = photoNode.path("src").asText();
+			if (src == null || src.isEmpty()) {
+				logger.warn("사진 src가 비어있음");
 				return;
 			}
-		}
 
-		logger.info("✓ 이미지 로드 성공: {} MB", imageBytes.length / (1024.0 * 1024.0));
+			logger.debug("사진 렌더링 시작: {}", src);
 
-		BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-		if (photoImage == null) {
-			logger.error("❌ 이미지 디코딩 실패");
-			return;
-		}
+			// 원본 경로로 변환
+			String originalSrc = convertToOriginalPath(src);
 
-		logger.info("✓ 이미지 디코딩 성공: {}x{} pixels", photoImage.getWidth(), photoImage.getHeight());
-
-		// 사진의 위치와 크기 정보 읽기
-		JsonNode position = photoNode.path("position");
-		JsonNode size = photoNode.path("size");
-
-		double photoX, photoY, photoWidth, photoHeight;
-
-		// 픽셀 단위로 저장된 경우 - 스케일 적용 필요!
-		if (position.has("leftPx")) {
-			// 편집기 픽셀값을 렌더링 크기로 스케일링
-			double frameScaleX = (double) frameWidth / (EDIT_WIDTH * (frameWidth / RENDER_WIDTH * 100) / 100);
-			double frameScaleY = (double) frameHeight / (EDIT_HEIGHT * (frameHeight / RENDER_HEIGHT * 100) / 100);
-
-			photoX = position.path("leftPx").asDouble() * frameScaleX;
-			photoY = position.path("topPx").asDouble() * frameScaleY;
-			photoWidth = size.path("widthPx").asDouble() * frameScaleX;
-			photoHeight = size.path("heightPx").asDouble() * frameScaleY;
-
-			logger.debug("사진 위치(픽셀->스케일): 원본({}, {}) -> 스케일({}, {})", position.path("leftPx").asDouble(),
-					position.path("topPx").asDouble(), photoX, photoY);
-		} else {
-			// 퍼센트로 저장된 경우
-			photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-			photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-			photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-			photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
-		}
-
-		// Transform 정보 처리
-		String photoTransform = photoNode.path("transform").asText("none");
-
-		if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-			Graphics2D g2dPhoto = (Graphics2D) g2d.create();
-			TransformParser parser = TransformParser.parse(photoTransform);
-
-			// 회전만 적용 (이동은 이미 position에 포함됨)
-			if (parser.rotation != 0) {
-				double centerX = photoX + photoWidth / 2;
-				double centerY = photoY + photoHeight / 2;
-				g2dPhoto.rotate(parser.rotation, centerX, centerY);
-				logger.debug("사진 회전 적용: {} radians", parser.rotation);
+			// 이미지 로드
+			byte[] imageBytes = loadImageBytes(originalSrc);
+			if (imageBytes == null) {
+				imageBytes = loadImageBytes(src);
+			}
+			if (imageBytes == null) {
+				logger.error("이미지 로드 실패: {}", src);
+				return;
 			}
 
-			g2dPhoto.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-			g2dPhoto.dispose();
-		} else {
-			g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-		}
-
-		g2d.setComposite(AlphaComposite.SrcOver);
-
-		boolean hasMask = false;
-		if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-			File maskFile = new File(InternalPathUtils.normalizePath(themePath + theme.getOriginalMaskPath()));
-			if (maskFile.exists()) {
-				hasMask = true;
-				BufferedImage maskImage = ImageIO.read(maskFile);
-
-				// 새로운 버퍼에 마스크 적용하여 그리기
-				BufferedImage maskedPhoto = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
-				Graphics2D g2dMask = maskedPhoto.createGraphics();
-				setHighQualityRenderingHints(g2dMask);
-
-				// 먼저 사진을 그리고
-				if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-					TransformParser parser = TransformParser.parse(photoTransform);
-					if (parser.rotation != 0) {
-						double centerX = photoX + photoWidth / 2;
-						double centerY = photoY + photoHeight / 2;
-						g2dMask.rotate(parser.rotation, centerX, centerY);
-					}
-				}
-				g2dMask.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-
-				// 마스크를 적용
-				g2dMask.setComposite(AlphaComposite.DstIn);
-				g2dMask.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
-				g2dMask.dispose();
-
-				// 마스크 적용된 이미지를 메인 캔버스에 그리기
-				g2d.drawImage(maskedPhoto, 0, 0, null);
+			BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
+			if (photoImage == null) {
+				logger.error("이미지 디코딩 실패");
+				return;
 			}
-		}
 
-		// 마스크가 없는 경우 직접 그리기
-		if (!hasMask) {
+			// 위치와 크기 계산
+			JsonNode position = photoNode.path("position");
+			JsonNode size = photoNode.path("size");
+
+			double photoX, photoY, photoWidth, photoHeight;
+
+			// main.js 분석: leftPx/topPx가 있으면 픽셀 단위로 저장됨
+			if (position.has("leftPx")) {
+				// 단순 스케일 적용
+				photoX = position.path("leftPx").asDouble() * SCALE_RATIO;
+				photoY = position.path("topPx").asDouble() * SCALE_RATIO;
+				photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
+				photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
+
+				logger.debug("사진 픽셀 좌표: 원본({}, {}) -> 렌더링({}, {})", position.path("leftPx").asDouble(),
+						position.path("topPx").asDouble(), photoX, photoY);
+			} else {
+				// 퍼센트 단위
+				photoX = frameWidth * (position.path("left").asDouble() / 100.0);
+				photoY = frameHeight * (position.path("top").asDouble() / 100.0);
+				photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
+				photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
+			}
+
+			// Transform은 회전 정보만 포함 (matrix(a,b,c,d,0,0) 형태)
+			String photoTransform = photoNode.path("transform").asText("none");
+
 			if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-				Graphics2D g2dPhoto = (Graphics2D) g2d.create();
+
 				TransformParser parser = TransformParser.parse(photoTransform);
 
-				if (parser.rotation != 0) {
+				if (Math.abs(parser.rotation) > 0.001) {
+					Graphics2D g2dRotated = (Graphics2D) g2dFrame.create();
 					double centerX = photoX + photoWidth / 2;
 					double centerY = photoY + photoHeight / 2;
-					g2dPhoto.rotate(parser.rotation, centerX, centerY);
+					g2dRotated.rotate(parser.rotation, centerX, centerY);
+					g2dRotated.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight,
+							null);
+					g2dRotated.dispose();
+				} else {
+					g2dFrame.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight,
+							null);
 				}
-
-				g2dPhoto.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-				g2dPhoto.dispose();
 			} else {
-				g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
+				g2dFrame.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
 			}
-		}
 
-		logger.info("✓ 사진 렌더링 완료");
-		logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+			logger.debug("✔ 사진 렌더링 완료: 위치({}, {}), 크기({}, {})", photoX, photoY, photoWidth, photoHeight);
+
+		} catch (Exception e) {
+			logger.error("사진 렌더링 중 오류", e);
+		}
 	}
 
 	/**
-	 * 텍스트박스 렌더링 - 편집기와 정확히 일치하도록 개선
+	 * 텍스트박스 렌더링
 	 */
 	private void renderTextBoxes(Graphics2D g2d, JsonNode root) {
 		for (JsonNode textBox : root.path("textBoxes")) {
@@ -983,167 +742,240 @@ public class JpgRenderingService {
 	 * 개선된 개별 텍스트박스 렌더링
 	 */
 	private void renderSingleTextBoxImproved(Graphics2D g2d, JsonNode textBox) {
+		// 디버깅을 위한 상세 로깅
+		logger.debug("=== 텍스트박스 렌더링 시작 ===");
+		logger.debug("원본 데이터: {}", textBox.toString());
+
 		// 위치와 크기 계산 (퍼센트 -> 픽셀)
 		double boxX = RENDER_WIDTH * (textBox.path("position").path("left").asDouble() / 100.0);
 		double boxY = RENDER_HEIGHT * (textBox.path("position").path("top").asDouble() / 100.0);
 		double boxWidth = RENDER_WIDTH * (textBox.path("size").path("width").asDouble() / 100.0);
 		double boxHeight = RENDER_HEIGHT * (textBox.path("size").path("height").asDouble() / 100.0);
 
-		// 텍스트 내용
-		String text = textBox.path("html").asText();
-		if (text.isEmpty())
-			return;
+		logger.debug("박스 위치: ({}, {}), 크기: ({}, {})", boxX, boxY, boxWidth, boxHeight);
 
-		// HTML 태그 제거
-		text = text.replaceAll("<[^>]*>", "");
+		// 텍스트 내용
+		String htmlText = textBox.path("html").asText();
+		if (htmlText == null || htmlText.isEmpty()) {
+			logger.warn("텍스트가 비어있음");
+			return;
+		}
+
+		logger.info("원본 HTML 텍스트: {}", htmlText);
+
+		String text = parseHtmlToPlainText(htmlText);
+		if (text == null || text.trim().isEmpty()) {
+			logger.warn("변환된 텍스트가 비어있음");
+			return;
+		}
+
+		logger.info("변환된 텍스트: {}", text);
 
 		// 스타일 정보
 		JsonNode styles = textBox.path("styles");
-
-		// 색상 파싱
 		Color textColor = parseColor(styles.path("color").asText("rgb(0, 0, 0)"));
+		logger.info("텍스트 색상: {}", textColor);
 
-		// 폰트 정보
 		String fontFamily = styles.path("fontFamily").asText("Arial");
+		logger.info("폰트 패밀리: {}", fontFamily);
 
-		// fontSize 처리
+		// fontSize - main.js 분석 결과: 저장된 값은 원본 크기
 		float baseFontSize = 12;
 		JsonNode fontSizeNode = styles.path("fontSize");
 		if (fontSizeNode.isNumber()) {
 			baseFontSize = (float) fontSizeNode.asDouble();
 		} else if (!fontSizeNode.isMissingNode()) {
 			String fontSizeStr = fontSizeNode.asText();
-			if (fontSizeStr.endsWith("px")) {
-				fontSizeStr = fontSizeStr.replace("px", "");
-			}
+			fontSizeStr = fontSizeStr.replace("px", "").trim();
 			try {
 				baseFontSize = Float.parseFloat(fontSizeStr);
 			} catch (NumberFormatException e) {
-				// 기본값 사용
+				logger.warn("fontSize 파싱 실패: {}", fontSizeStr);
 			}
 		}
 
 		// 스케일 적용
 		int renderFontSize = (int) Math.round(baseFontSize * SCALE_RATIO);
+		if (renderFontSize < 10) {
+			renderFontSize = 10; // 최소 크기를 10으로 상향
+		}
 
-		// 폰트 스타일 - 더 정확한 처리
+		logger.info("폰트 크기: 원본={}, 렌더링={}", baseFontSize, renderFontSize);
+
+		// 폰트 스타일
 		String fontWeight = styles.path("fontWeight").asText("normal");
 		String fontStyle = styles.path("fontStyle").asText("normal");
 
 		int javaFontStyle = Font.PLAIN;
-
-		// fontWeight 처리 (100-900 또는 normal/bold)
-		if (fontWeight.matches("\\d+")) {
-			int weight = Integer.parseInt(fontWeight);
-			if (weight >= 600) {
-				javaFontStyle |= Font.BOLD;
-			}
-		} else if ("bold".equalsIgnoreCase(fontWeight) || "bolder".equalsIgnoreCase(fontWeight)) {
+		if ("bold".equalsIgnoreCase(fontWeight)
+				|| (fontWeight.matches("\\d+") && Integer.parseInt(fontWeight) >= 600)) {
 			javaFontStyle |= Font.BOLD;
 		}
-
-		// fontStyle 처리 (italic/oblique)
-		if ("italic".equalsIgnoreCase(fontStyle) || "oblique".equalsIgnoreCase(fontStyle)) {
+		if ("italic".equalsIgnoreCase(fontStyle)) {
 			javaFontStyle |= Font.ITALIC;
 		}
 
 		// 폰트 생성
 		Font font = getFont(fontFamily, javaFontStyle, renderFontSize);
 
-		logger.debug("폰트 스타일 - Weight: {}, Style: {}, Java Style: {}", fontWeight, fontStyle, javaFontStyle);
-
 		// 텍스트 정렬
 		String textAlign = styles.path("textAlign").asText("left");
+		String verticalAlign = styles.path("verticalAlign").asText("top");
 
 		// Transform 정보
 		String transform = textBox.path("transform").asText("none");
 		String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
 
+		logger.debug("Transform: {}", transform);
+		logger.debug("TransformOrigin: {}", transformOrigin);
+
 		// Graphics2D 생성
 		Graphics2D g2dText = (Graphics2D) g2d.create();
 		setHighQualityRenderingHints(g2dText);
 
-		// Transform 적용 - 개선된 버전
-		if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-			// transformOrigin을 정확히 계산
-			double[] origin = parseTransformOrigin(transformOrigin, boxWidth, boxHeight);
+		// Transform 적용 - main.js와 동일한 방식
+		if (!"none".equals(transform) && !"matrix(1, 0, 0, 1, 0, 0)".equals(transform)) {
+			// main.js 분석: CSS transform이 그대로 저장됨
+			Pattern matrixPattern = Pattern.compile(
+					"matrix\\s*\\(\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^)]+)\\s*\\)");
+			Matcher matcher = matrixPattern.matcher(transform);
 
-			// Transform 파싱
-			TransformParser parser = TransformParser.parse(transform);
+			if (matcher.find()) {
+				double a = Double.parseDouble(matcher.group(1).trim());
+				double b = Double.parseDouble(matcher.group(2).trim());
+				double c = Double.parseDouble(matcher.group(3).trim());
+				double d = Double.parseDouble(matcher.group(4).trim());
+				double tx = Double.parseDouble(matcher.group(5).trim());
+				double ty = Double.parseDouble(matcher.group(6).trim());
 
-			// 회전 중심점을 박스의 절대 위치로 계산
-			double pivotX = boxX + origin[0];
-			double pivotY = boxY + origin[1];
+				// transformOrigin 파싱
+				double[] origin = parseTransformOrigin(transformOrigin, boxWidth, boxHeight);
 
-			// Transform 적용
-			AffineTransform at = g2dText.getTransform();
-			at.translate(pivotX, pivotY); // 회전 중심으로 이동
-			at.rotate(parser.rotation); // 회전
-			at.translate(-origin[0], -origin[1]); // 원점으로 복귀
+				// AffineTransform 생성 - CSS와 동일한 순서
+				AffineTransform at = new AffineTransform();
 
-			g2dText.setTransform(at);
+				// 1. 박스 위치로 이동
+				at.translate(boxX, boxY);
 
-			logger.debug("텍스트 회전 - 각도: {} rad, 중심: ({}, {})", parser.rotation, pivotX, pivotY);
+				// 2. transform-origin으로 이동
+				at.translate(origin[0], origin[1]);
+
+				// 3. matrix 적용 (tx, ty는 편집기 좌표계 값이므로 그대로 사용)
+				at.concatenate(new AffineTransform(a, b, c, d, tx, ty));
+
+				// 4. transform-origin 복원
+				at.translate(-origin[0], -origin[1]);
+
+				g2dText.setTransform(at);
+			} else {
+				g2dText.translate(boxX, boxY);
+			}
 		} else {
-			// 회전 없을 때는 단순 이동
 			g2dText.translate(boxX, boxY);
 		}
 
-		// 텍스트 렌더링
+		// 텍스트 렌더링 설정
 		g2dText.setFont(font);
 		g2dText.setColor(textColor);
 
-		// 텍스트 위치 계산 - 더 정확한 메트릭 사용
-		FontMetrics fm = g2dText.getFontMetrics(font);
-		FontRenderContext frc = g2dText.getFontRenderContext();
-
-		// 줄바꿈 처리
-		String[] lines = text.split("\n");
-
-		// 전체 텍스트 높이 계산
-		int totalHeight = lines.length * fm.getHeight();
-		int startY = fm.getAscent(); // 첫 줄 시작 위치
-
-		// 수직 정렬 처리 (필요시)
-		String verticalAlign = styles.path("verticalAlign").asText("top");
-		if ("middle".equals(verticalAlign)) {
-			startY = (int) (boxHeight - totalHeight) / 2 + fm.getAscent();
-		} else if ("bottom".equals(verticalAlign)) {
-			startY = (int) (boxHeight - totalHeight) + fm.getAscent();
+		// 한글 렌더링을 위한 추가 힌트
+		if (containsKorean(text)) {
+			g2dText.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+			g2dText.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 		}
 
-		for (int i = 0; i < lines.length; i++) {
-			if (lines[i].trim().isEmpty())
-				continue;
+		// 클리핑 영역 설정
+		g2dText.setClip(0, 0, (int) boxWidth, (int) boxHeight);
 
-			// 각 줄의 정확한 바운드 계산
-			Rectangle2D bounds = font.getStringBounds(lines[i], frc);
-
-			// X 위치 계산 (정렬 고려)
-			int textX = calculateTextXPrecise(lines[i], textAlign, (int) boxWidth, bounds);
-			int textY = startY + (i * fm.getHeight());
-
-			g2dText.drawString(lines[i], textX, textY);
-		}
+		// 텍스트 렌더링
+		renderTextContent(g2dText, text, font, textAlign, verticalAlign, (int) boxWidth, (int) boxHeight);
 
 		g2dText.dispose();
 	}
 
-	// 더 정확한 X 위치 계산
-	private int calculateTextXPrecise(String text, String align, int boxWidth, Rectangle2D bounds) {
-		int textWidth = (int) bounds.getWidth();
-		int padding = 10;
+	/**
+	 * 텍스트 내용 렌더링 헬퍼 메서드
+	 */
+	private void renderTextContent(Graphics2D g2d, String text, Font font, String textAlign, String verticalAlign,
+			int boxWidth, int boxHeight) {
+		FontMetrics fm = g2d.getFontMetrics(font);
+		String[] lines = text.split("\n");
 
-		switch (align.toLowerCase()) {
+		int lineHeight = fm.getHeight();
+		int lineSpacing = (int) (lineHeight * 0.2);
+
+		// 전체 텍스트 높이 계산
+		int totalHeight = calculateTotalTextHeight(lines, fm, lineSpacing, boxWidth);
+
+		// 시작 Y 위치 계산 (수직 정렬)
+		int startY;
+		switch (verticalAlign.toLowerCase()) {
+		case "middle":
 		case "center":
-			return (boxWidth - textWidth) / 2;
-		case "right":
-			return boxWidth - textWidth - padding;
-		case "justify":
-			return padding; // justify는 별도 처리 필요
-		default: // left
-			return padding;
+			startY = (boxHeight - totalHeight) / 2 + fm.getAscent();
+			break;
+		case "bottom":
+			startY = boxHeight - totalHeight + fm.getAscent();
+			break;
+		default:
+			startY = fm.getAscent() + 10;
 		}
+
+		if (startY < fm.getAscent()) {
+			startY = fm.getAscent();
+		}
+
+		int currentY = startY;
+
+		for (String line : lines) {
+			if (currentY > boxHeight - fm.getDescent())
+				break;
+
+			if (line.trim().isEmpty()) {
+				currentY += lineHeight / 2;
+				continue;
+			}
+
+			// Word wrap 처리
+			List<String> wrappedLines = wrapText(line, fm, boxWidth - 20);
+
+			for (String wrappedLine : wrappedLines) {
+				if (currentY > boxHeight - fm.getDescent())
+					break;
+
+				// X 위치 계산 (정렬)
+				int textWidth = fm.stringWidth(wrappedLine);
+				int textX = 10; // 기본 padding
+
+				switch (textAlign.toLowerCase()) {
+				case "center":
+					textX = (boxWidth - textWidth) / 2;
+					break;
+				case "right":
+					textX = boxWidth - textWidth - 10;
+					break;
+				}
+
+				g2d.drawString(wrappedLine, textX, currentY);
+				currentY += lineHeight + lineSpacing;
+			}
+		}
+	}
+
+	/**
+	 * 전체 텍스트 높이 계산
+	 */
+	private int calculateTotalTextHeight(String[] lines, FontMetrics fm, int lineSpacing, int boxWidth) {
+		int totalHeight = 0;
+		for (String line : lines) {
+			if (line.trim().isEmpty()) {
+				totalHeight += fm.getHeight() / 2;
+			} else {
+				List<String> wrappedLines = wrapText(line, fm, boxWidth - 20);
+				totalHeight += wrappedLines.size() * (fm.getHeight() + lineSpacing);
+			}
+		}
+		return totalHeight;
 	}
 
 	/**
@@ -1152,15 +984,18 @@ public class JpgRenderingService {
 	private Font getFont(String fontFamily, int style, int size) {
 		Font baseFont = null;
 
-		// 1. 커스텀 폰트 검색
-		if (!fontFamily.isEmpty()) {
+		logger.info("폰트 요청: family='{}', style={}, size={}", fontFamily, style, size);
+
+		// 1. 커스텀 폰트에서 검색
+		if (fontFamily != null && !fontFamily.isEmpty()) {
 			baseFont = customFonts.get(fontFamily);
 
 			if (baseFont == null) {
-				// 대소문자 구분 없이 검색
+				// 대소문자 무시 검색
 				for (Map.Entry<String, Font> entry : customFonts.entrySet()) {
 					if (entry.getKey().equalsIgnoreCase(fontFamily)) {
 						baseFont = entry.getValue();
+						logger.info("폰트 발견: {}", entry.getKey());
 						break;
 					}
 				}
@@ -1169,75 +1004,89 @@ public class JpgRenderingService {
 
 		// 2. 시스템 폰트 시도
 		if (baseFont == null) {
+			logger.info("커스텀 폰트에서 찾지 못함, 시스템 폰트 시도");
 			baseFont = new Font(fontFamily, Font.PLAIN, size);
+
+			// Dialog로 fallback 확인
 			if (baseFont.getFamily().equals(Font.DIALOG)) {
+				logger.warn("시스템 폰트 실패, 기본 폰트 사용");
 				baseFont = new Font("Arial", Font.PLAIN, size);
 			}
 		}
 
-		// 3. 스타일 적용 - deriveFont 사용
-		Font styledFont = baseFont.deriveFont(style, (float) size);
+		// 3. 스타일과 크기 적용
+		Font finalFont = baseFont.deriveFont(style, (float) size);
 
-		// 4. Bold가 제대로 적용되지 않는 경우 강제 적용
-		if ((style & Font.BOLD) != 0 && !styledFont.isBold()) {
-			// 일부 폰트는 Bold 스타일이 없을 수 있음
-			logger.debug("Bold 스타일 강제 적용 시도");
+		logger.info("최종 사용 폰트: family={}, canDisplayKorean={}", finalFont.getFamily(), canDisplayKorean(finalFont));
 
-			// Bold 버전 폰트 찾기
-			String boldVariant = fontFamily + " Bold";
-			Font boldFont = customFonts.get(boldVariant);
-
-			if (boldFont != null) {
-				styledFont = boldFont.deriveFont((float) size);
-				if ((style & Font.ITALIC) != 0) {
-					styledFont = styledFont.deriveFont(Font.ITALIC);
-				}
-			}
-		}
-
-		logger.debug("최종 폰트 - Family: {}, Bold: {}, Italic: {}, Size: {}", styledFont.getFamily(), styledFont.isBold(),
-				styledFont.isItalic(), styledFont.getSize());
-
-		return styledFont;
+		return finalFont;
 	}
 
 	/**
-	 * 텍스트 정렬에 따른 X 위치 계산
+	 * 한글 표시 가능 여부 확인
 	 */
-	private int calculateTextX(String text, String align, int boxWidth, FontMetrics fm) {
-		int textWidth = fm.stringWidth(text);
-		int padding = 10;
-
-		switch (align) {
-		case "center":
-			return (boxWidth - textWidth) / 2;
-		case "right":
-			return boxWidth - textWidth - padding;
-		default: // left
-			return padding;
+	private boolean canDisplayKorean(Font font) {
+		// 자음, 모음, 완성형 테스트
+		char[] testChars = { 'ㄱ', 'ㅏ', '가', '힣' };
+		for (char c : testChars) {
+			if (!font.canDisplay(c)) {
+				return false;
+			}
 		}
+		return true;
+	}
+
+	/**
+	 * 한글 포함 여부 확인
+	 */
+	private boolean containsKorean(String text) {
+		if (text == null)
+			return false;
+		return text.matches(".*[ㄱ-ㅎㅏ-ㅣ가-힣]+.*");
 	}
 
 	/**
 	 * Transform Origin 파싱
 	 */
 	private double[] parseTransformOrigin(String origin, double width, double height) {
-		String[] parts = origin.split(" ");
-		double x = 0, y = 0;
+		if (origin == null || origin.isEmpty()) {
+			return new double[] { width / 2, height / 2 }; // 기본값 50% 50%
+		}
 
+		String[] parts = origin.trim().split("\\s+");
+		double x = width / 2, y = height / 2;
+
+		// X 좌표
 		if (parts.length >= 1) {
-			if (parts[0].endsWith("%")) {
-				x = width * Double.parseDouble(parts[0].replace("%", "")) / 100.0;
-			} else if (parts[0].endsWith("px")) {
-				x = Double.parseDouble(parts[0].replace("px", ""));
+			String xStr = parts[0];
+			if (xStr.endsWith("%")) {
+				x = width * Double.parseDouble(xStr.replace("%", "")) / 100.0;
+			} else if (xStr.endsWith("px")) {
+				// px 단위는 편집기 좌표계 기준이므로 스케일 적용
+				x = Double.parseDouble(xStr.replace("px", "")) * SCALE_RATIO;
+			} else if (xStr.equals("center")) {
+				x = width / 2;
+			} else if (xStr.equals("left")) {
+				x = 0;
+			} else if (xStr.equals("right")) {
+				x = width;
 			}
 		}
 
+		// Y 좌표
 		if (parts.length >= 2) {
-			if (parts[1].endsWith("%")) {
-				y = height * Double.parseDouble(parts[1].replace("%", "")) / 100.0;
-			} else if (parts[1].endsWith("px")) {
-				y = Double.parseDouble(parts[1].replace("px", ""));
+			String yStr = parts[1];
+			if (yStr.endsWith("%")) {
+				y = height * Double.parseDouble(yStr.replace("%", "")) / 100.0;
+			} else if (yStr.endsWith("px")) {
+				// px 단위는 편집기 좌표계 기준이므로 스케일 적용
+				y = Double.parseDouble(yStr.replace("px", "")) * SCALE_RATIO;
+			} else if (yStr.equals("center")) {
+				y = height / 2;
+			} else if (yStr.equals("top")) {
+				y = 0;
+			} else if (yStr.equals("bottom")) {
+				y = height;
 			}
 		}
 
@@ -1264,45 +1113,29 @@ public class JpgRenderingService {
 
 			// /photo/로 시작하는 웹 경로 처리
 			if (src.startsWith("/photo/")) {
-				// /photo/ 제거하고 실제 경로와 조합
-				String relativePath = src.substring(7); // "/photo/" 제거
-				fullPath = InternalPathUtils.normalizePath(userPhotosPath + relativePath);
+				String relativePath = src.substring(7);
+				fullPath = PathUtils.normalizePath(userPhotosPath + relativePath);
 			} else if (src.startsWith("photo/")) {
-				// photo/로 시작하는 경우
-				String relativePath = src.substring(6); // "photo/" 제거
-				fullPath = InternalPathUtils.normalizePath(userPhotosPath + relativePath);
+				String relativePath = src.substring(6);
+				fullPath = PathUtils.normalizePath(userPhotosPath + relativePath);
 			} else {
-				// 이미 상대 경로인 경우
 				fullPath = PathUtils.normalizePath(userPhotosPath + src);
 			}
 
 			File imageFile = new File(fullPath);
 
-			logger.info("=== 이미지 로드 시도 ===");
-			logger.info("원본 src: {}", src);
-			logger.info("userPhotosPath: {}", userPhotosPath);
-			logger.info("조합된 전체 경로: {}", fullPath);
-			logger.info("파일 존재 여부: {}", imageFile.exists());
+			logger.debug("=== 이미지 로드 시도 ===");
+			logger.debug("원본 src: {}", src);
+			logger.debug("조합된 전체 경로: {}", fullPath);
+			logger.debug("파일 존재 여부: {}", imageFile.exists());
 
 			if (imageFile.exists()) {
-				logger.info("파일 크기: {}KB", imageFile.length() / 1024);
+				logger.debug("파일 크기: {}KB", imageFile.length() / 1024);
 				byte[] imageData = Files.readAllBytes(imageFile.toPath());
-				logger.info("이미지 데이터 로드 성공: {} bytes", imageData.length);
+				logger.debug("이미지 데이터 로드 성공: {} bytes", imageData.length);
 				return imageData;
 			} else {
 				logger.error("파일을 찾을 수 없음: {}", fullPath);
-
-				// 디렉토리 내용 확인 (디버깅용)
-				File parentDir = imageFile.getParentFile();
-				if (parentDir != null && parentDir.exists()) {
-					logger.error("디렉토리 {} 내의 파일들:", parentDir.getAbsolutePath());
-					File[] files = parentDir.listFiles();
-					if (files != null) {
-						for (File f : files) {
-							logger.error("  - {}", f.getName());
-						}
-					}
-				}
 			}
 		}
 		return null;
@@ -1354,7 +1187,6 @@ public class JpgRenderingService {
 
 			long renderTime = System.currentTimeMillis() - startTime;
 
-			// ✅ 렌더링 결과 상세 로깅
 			logger.info("=== 고해상도 렌더링 완료 ===");
 			logger.info("파일명: {}", file.getName());
 			logger.info("이미지 크기: {}x{} pixels", image.getWidth(), image.getHeight());
@@ -1629,23 +1461,24 @@ public class JpgRenderingService {
 		return rotatedImage;
 	}
 
-	// 새로운 헬퍼 메서드 추가
+	/**
+	 * 편집 경로를 원본 경로로 변환
+	 */
 	private String convertToOriginalPath(String editPath) {
 		if (editPath == null)
 			return null;
 
-		logger.info("=== 원본 경로 변환 시작 ===");
-		logger.info("입력 경로: {}", editPath);
+		logger.debug("=== 원본 경로 변환 시작 ===");
+		logger.debug("입력 경로: {}", editPath);
 
 		// 이미 원본 경로인 경우
 		if (editPath.contains("/originals/")) {
-			logger.info("이미 원본 경로입니다: {}", editPath);
+			logger.debug("이미 원본 경로입니다: {}", editPath);
 			return editPath;
 		}
 
 		// 편집 경로를 원본 경로로 변환
 		if (editPath.contains("/edits/")) {
-			// UUID 추출 (예: uuid_edit.jpg에서 uuid 부분)
 			String baseName = editPath.replace("/edits/", "/originals/").replace("_edit.jpg", "");
 
 			// 가능한 원본 확장자들 확인
@@ -1660,13 +1493,13 @@ public class JpgRenderingService {
 					fsPath = testPath.substring(7);
 				}
 
-				String fullPath = InternalPathUtils.normalizePath(userPhotosPath + fsPath);
+				String fullPath = PathUtils.normalizePath(userPhotosPath + fsPath);
 				File testFile = new File(fullPath);
 
 				if (testFile.exists()) {
-					logger.info("✓ 원본 파일 발견!");
-					logger.info("  경로: {}", testPath);
-					logger.info("  파일 크기: {} MB", testFile.length() / (1024.0 * 1024.0));
+					logger.debug("✔ 원본 파일 발견!");
+					logger.debug("  경로: {}", testPath);
+					logger.debug("  파일 크기: {} MB", testFile.length() / (1024.0 * 1024.0));
 					return testPath;
 				}
 			}
@@ -1677,6 +1510,9 @@ public class JpgRenderingService {
 		return editPath;
 	}
 
+	/**
+	 * 렌더링 요약 정보 로깅
+	 */
 	private void logRenderingSummary(JsonNode root) {
 		int frameCount = 0;
 		int photoCount = 0;
@@ -1707,466 +1543,169 @@ public class JpgRenderingService {
 		}
 	}
 
-	private void renderPhotoSimplified(Graphics2D g2d, JsonNode photoNode, Theme theme, int frameWidth, int frameHeight)
-			throws IOException {
+	/**
+	 * 프레임을 캔버스에 그리기
+	 */
+	private void drawFrameToCanvas(Graphics2D g2d, BufferedImage frameComposite, JsonNode frameNode, double frameX,
+			double frameY, double frameWidth, double frameHeight) {
+		String frameTransform = frameNode.path("transform").asText("none");
 
-		String src = photoNode.path("src").asText();
-		if (src == null || src.isEmpty()) {
-			logger.warn("사진 src가 비어있음");
-			return;
-		}
+		if (!"none".equals(frameTransform) && !frameTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+			Graphics2D g2dTransformed = (Graphics2D) g2d.create();
 
-		logger.info("사진 렌더링 시작: {}", src);
+			String transformOrigin = frameNode.path("transformOrigin").asText("50% 50%");
+			double[] origin = parseTransformOrigin(transformOrigin, frameWidth, frameHeight);
+			TransformParser parser = TransformParser.parse(frameTransform);
 
-// 원본 경로로 변환
-		String originalSrc = convertToOriginalPath(src);
-
-// 이미지 로드
-		byte[] imageBytes = loadImageBytes(originalSrc);
-		if (imageBytes == null) {
-			imageBytes = loadImageBytes(src);
-			if (imageBytes == null) {
-				logger.error("이미지 로드 실패: {}", src);
-				return;
+			if (Math.abs(parser.rotation) > 0.001) {
+				double pivotX = frameX + origin[0];
+				double pivotY = frameY + origin[1];
+				g2dTransformed.rotate(parser.rotation, pivotX, pivotY);
 			}
-		}
 
-		BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-		if (photoImage == null) {
-			logger.error("이미지 디코딩 실패");
-			return;
-		}
-
-// 위치와 크기 계산
-		JsonNode position = photoNode.path("position");
-		JsonNode size = photoNode.path("size");
-
-		double photoX, photoY, photoWidth, photoHeight;
-
-		if (position.has("leftPx")) {
-// 픽셀 단위로 저장된 경우
-			double frameScaleX = (double) frameWidth / (EDIT_WIDTH * (frameWidth / RENDER_WIDTH * 100) / 100);
-			double frameScaleY = (double) frameHeight / (EDIT_HEIGHT * (frameHeight / RENDER_HEIGHT * 100) / 100);
-
-			photoX = position.path("leftPx").asDouble() * frameScaleX;
-			photoY = position.path("topPx").asDouble() * frameScaleY;
-			photoWidth = size.path("widthPx").asDouble() * frameScaleX;
-			photoHeight = size.path("heightPx").asDouble() * frameScaleY;
+			g2dTransformed.drawImage(frameComposite, (int) Math.round(frameX), (int) Math.round(frameY), null);
+			g2dTransformed.dispose();
 		} else {
-// 퍼센트로 저장된 경우
-			photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-			photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-			photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-			photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
+			g2d.drawImage(frameComposite, (int) Math.round(frameX), (int) Math.round(frameY), null);
 		}
-
-		logger.info("사진 위치: ({}, {}), 크기: ({}, {})", photoX, photoY, photoWidth, photoHeight);
-
-// 마스크가 있는 경우 처리
-		if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-			String maskPath = theme.getOriginalMaskPath();
-			if (maskPath.startsWith("/theme/") && themePath.endsWith("/theme")) {
-				maskPath = maskPath.substring(6);
-			}
-
-			File maskFile = new File(InternalPathUtils.normalizePath(themePath + "/" + maskPath));
-
-			if (maskFile.exists()) {
-				logger.info("마스크 적용: {}", maskFile.getName());
-
-// 마스크를 적용한 이미지 생성
-				BufferedImage maskedImage = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
-				Graphics2D g2dMask = maskedImage.createGraphics();
-				setHighQualityRenderingHints(g2dMask);
-
-// 사진 그리기
-				g2dMask.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-
-// 마스크 적용
-				BufferedImage maskImage = ImageIO.read(maskFile);
-				g2dMask.setComposite(AlphaComposite.DstIn);
-				g2dMask.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
-				g2dMask.dispose();
-
-// 마스크 적용된 이미지를 그리기
-				g2d.drawImage(maskedImage, 0, 0, null);
-
-			} else {
-// 마스크 파일이 없으면 그냥 그리기
-				g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-			}
-		} else {
-// 마스크가 없으면 바로 그리기
-			g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-		}
-
-		logger.info("사진 렌더링 완료");
 	}
 
-	// 이미지에 알파 채널(투명도)이 있는지 확인하는 헬퍼 메서드
-	private boolean hasAlphaChannel(BufferedImage image) {
-		if (image == null)
-			return false;
-
-		// 이미지 타입 확인
-		int type = image.getType();
-		if (type == BufferedImage.TYPE_INT_ARGB || type == BufferedImage.TYPE_4BYTE_ABGR
-				|| type == BufferedImage.TYPE_INT_ARGB_PRE) {
-
-			// 실제로 투명 픽셀이 있는지 확인
-			for (int y = 0; y < Math.min(100, image.getHeight()); y += 10) {
-				for (int x = 0; x < Math.min(100, image.getWidth()); x += 10) {
-					int pixel = image.getRGB(x, y);
-					int alpha = (pixel >> 24) & 0xff;
-					if (alpha < 255) {
-						return true; // 투명 픽셀 발견
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	// 사진 렌더링 메서드 개선
-	private void renderPhotoInFrame(Graphics2D g2d, JsonNode photoNode, Theme theme, int frameWidth, int frameHeight)
-			throws IOException {
-
-		String src = photoNode.path("src").asText();
-		if (src == null || src.isEmpty()) {
-			logger.error("❌ 사진 src가 비어있음!");
-			return;
-		}
-
-		logger.info("사진 경로: {}", src);
-
-		// 이미지 로드
-		String originalSrc = convertToOriginalPath(src);
-		byte[] imageBytes = loadImageBytes(originalSrc);
-		if (imageBytes == null) {
-			imageBytes = loadImageBytes(src);
-			if (imageBytes == null) {
-				logger.error("❌ 이미지 로드 완전 실패: {}", src);
-				return;
-			}
-		}
-
-		BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-		if (photoImage == null) {
-			logger.error("❌ 이미지 디코딩 실패");
-			return;
-		}
-
-		logger.info("✓ 이미지 로드 성공: {}x{}", photoImage.getWidth(), photoImage.getHeight());
-
-		// 위치와 크기 계산
-		JsonNode position = photoNode.path("position");
-		JsonNode size = photoNode.path("size");
-
-		double photoX, photoY, photoWidth, photoHeight;
-
-		if (position.has("leftPx")) {
-			double frameScaleX = (double) frameWidth / (EDIT_WIDTH * (frameWidth / RENDER_WIDTH * 100) / 100);
-			double frameScaleY = (double) frameHeight / (EDIT_HEIGHT * (frameHeight / RENDER_HEIGHT * 100) / 100);
-
-			photoX = position.path("leftPx").asDouble() * frameScaleX;
-			photoY = position.path("topPx").asDouble() * frameScaleY;
-			photoWidth = size.path("widthPx").asDouble() * frameScaleX;
-			photoHeight = size.path("heightPx").asDouble() * frameScaleY;
-
-			logger.info("픽셀 단위 위치 계산 - 원본: ({}, {}), 스케일: ({}, {})", position.path("leftPx").asDouble(),
-					position.path("topPx").asDouble(), frameScaleX, frameScaleY);
-		} else {
-			photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-			photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-			photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-			photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
-
-			logger.info("퍼센트 단위 위치 계산");
-		}
-
-		logger.info("최종 사진 위치: ({}, {}), 크기: ({}, {})", photoX, photoY, photoWidth, photoHeight);
-		logger.info("프레임 크기: {}x{}", frameWidth, frameHeight);
-
-		if (photoX < 0 || photoY < 0 || photoX > frameWidth || photoY > frameHeight) {
-			logger.warn("⚠️ 사진이 프레임 영역 밖에 있을 수 있음!");
-		}
-
-		// ===================
-		// 디버깅: 빨간 사각형 먼저 그리기
-		// ===================
-		g2d.setColor(Color.RED);
-		g2d.fillRect((int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight);
-		logger.info("🔴 빨간 사각형 그림 - 이게 보이면 위치는 맞음");
-
-		// 그 다음 사진 그리기
-		g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-
-		// ===================
-		// 디버깅: 사진 위에 테두리 그리기
-		// ===================
-		g2d.setColor(Color.BLUE);
-		g2d.setStroke(new BasicStroke(5));
-		g2d.drawRect((int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight);
-		logger.info("🔵 파란 테두리 그림 - 이게 보이면 사진 위치 확인 가능");
-
-		// 마스크는 일단 무시하고 테스트
-		logger.info("✓ 사진 렌더링 완료! (마스크 무시)");
-	}
-
-	// 간단한 사진 렌더링 메서드 (위치 계산 단순화)
-	private void renderPhotoDirectly(Graphics2D g2d, JsonNode photoNode, int frameWidth, int frameHeight)
-			throws IOException {
-
-		String src = photoNode.path("src").asText();
-		if (src == null || src.isEmpty())
-			return;
-
-		// 이미지 로드
-		String originalSrc = convertToOriginalPath(src);
-		byte[] imageBytes = loadImageBytes(originalSrc);
-		if (imageBytes == null) {
-			imageBytes = loadImageBytes(src);
-		}
-		if (imageBytes == null)
-			return;
-
-		BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
-		if (photoImage == null)
-			return;
-
-		// 실제 위치와 크기 계산
-		JsonNode position = photoNode.path("position");
-		JsonNode size = photoNode.path("size");
-
-		double photoX, photoY, photoWidth, photoHeight;
-
-		if (position.has("leftPx")) {
-			// 픽셀 단위 - 간단한 스케일 적용
-			double scaleRatio = 3.33; // SCALE_RATIO
-
-			photoX = position.path("leftPx").asDouble() * scaleRatio;
-			photoY = position.path("topPx").asDouble() * scaleRatio;
-			photoWidth = size.path("widthPx").asDouble() * scaleRatio;
-			photoHeight = size.path("heightPx").asDouble() * scaleRatio;
-		} else {
-			// 퍼센트 단위
-			photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-			photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-			photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-			photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
-		}
-
-		// === 클리핑 영역 설정 (프레임 바깥으로 나가지 않도록) ===
-		Shape originalClip = g2d.getClip();
-		g2d.setClip(0, 0, frameWidth, frameHeight);
-
-		// Transform 처리
-		String photoTransform = photoNode.path("transform").asText("none");
-
-		if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-			Graphics2D g2dPhoto = (Graphics2D) g2d.create();
-			setHighQualityRenderingHints(g2dPhoto);
-
-			TransformParser parser = TransformParser.parse(photoTransform);
-
-			if (parser.rotation != 0) {
-				double centerX = photoX + photoWidth / 2;
-				double centerY = photoY + photoHeight / 2;
-				g2dPhoto.rotate(parser.rotation, centerX, centerY);
-			}
-
-			g2dPhoto.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-			g2dPhoto.dispose();
-		} else {
-			g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
-		}
-
-		// 클리핑 영역 복원
-		g2d.setClip(originalClip);
-
-		logger.info("✓ 사진 렌더링 완료: 위치({}, {}), 크기({}, {})", photoX, photoY, photoWidth, photoHeight);
-	}
-
-	private Font getFontImproved(String fontFamily, String fontFile, int style, int size) {
-		logger.info("폰트 검색 - fontFamily: {}, fontFile: {}", fontFamily, fontFile);
-
-		// 1. fontFile로 먼저 검색
-		if (!fontFile.isEmpty()) {
-			Font customFont = customFonts.get(fontFile);
-			if (customFont != null) {
-				logger.info("fontFile로 폰트 발견: {}", fontFile);
-				return customFont.deriveFont(style, (float) size);
-			}
-		}
-
-		// 2. fontFamily로 검색
-		if (!fontFamily.isEmpty()) {
-			// 정확한 매치
-			Font customFont = customFonts.get(fontFamily);
-			if (customFont != null) {
-				logger.info("fontFamily로 폰트 발견: {}", fontFamily);
-				return customFont.deriveFont(style, (float) size);
-			}
-
-			// 대소문자 구분 없이 검색
-			String searchName = fontFamily.toLowerCase().replaceAll("\\s+", "");
-			for (Map.Entry<String, Font> entry : customFonts.entrySet()) {
-				String keyName = entry.getKey().toLowerCase().replaceAll("\\s+", "");
-				if (keyName.contains(searchName) || searchName.contains(keyName)) {
-					logger.info("부분 매치로 폰트 발견: {} -> {}", fontFamily, entry.getKey());
-					return entry.getValue().deriveFont(style, (float) size);
-				}
-			}
-		}
-
-		// 3. 시스템 폰트 시도
-		Font systemFont = new Font(fontFamily.isEmpty() ? "Arial" : fontFamily, style, size);
-
-		// 시스템 폰트가 실제로 존재하는지 확인
-		if (!systemFont.getFamily().equals(Font.DIALOG)) {
-			logger.info("시스템 폰트 사용: {}", systemFont.getFamily());
-			return systemFont;
-		}
-
-		// 4. 기본 폰트
-		logger.warn("폰트를 찾을 수 없어 기본 폰트 사용: Arial");
-		return new Font("Arial", style, size);
-	}
-	
-	// 사진 그리기 헬퍼 메서드
-	private void drawPhoto(Graphics2D g2d, BufferedImage photoImage, JsonNode photoNode, 
-	                       double photoX, double photoY, double photoWidth, double photoHeight) {
-	    
-	    String photoTransform = photoNode.path("transform").asText("none");
-	    
-	    if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-	        TransformParser parser = TransformParser.parse(photoTransform);
-	        
-	        if (Math.abs(parser.rotation) > 0.001) {
-	            Graphics2D g2dRotated = (Graphics2D) g2d.create();
-	            double centerX = photoX + photoWidth / 2;
-	            double centerY = photoY + photoHeight / 2;
-	            g2dRotated.rotate(parser.rotation, centerX, centerY);
-	            g2dRotated.drawImage(photoImage, 
-	                (int)Math.round(photoX), 
-	                (int)Math.round(photoY), 
-	                (int)Math.round(photoWidth), 
-	                (int)Math.round(photoHeight), null);
-	            g2dRotated.dispose();
-	        } else {
-	            g2d.drawImage(photoImage, 
-	                (int)Math.round(photoX), 
-	                (int)Math.round(photoY), 
-	                (int)Math.round(photoWidth), 
-	                (int)Math.round(photoHeight), null);
-	        }
-	    } else {
-	        g2d.drawImage(photoImage, 
-	            (int)Math.round(photoX), 
-	            (int)Math.round(photoY), 
-	            (int)Math.round(photoWidth), 
-	            (int)Math.round(photoHeight), null);
-	    }
-	}
-
-	// 프레임을 캔버스에 그리기
-	private void drawFrameToCanvas(Graphics2D g2d, BufferedImage frameComposite, JsonNode frameNode,
-	                               double frameX, double frameY, double frameWidth, double frameHeight) {
-	    
-	    String frameTransform = frameNode.path("transform").asText("none");
-	    
-	    if (!"none".equals(frameTransform) && !frameTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-	        Graphics2D g2dTransformed = (Graphics2D) g2d.create();
-	        
-	        String transformOrigin = frameNode.path("transformOrigin").asText("50% 50%");
-	        double[] origin = parseTransformOrigin(transformOrigin, frameWidth, frameHeight);
-	        TransformParser parser = TransformParser.parse(frameTransform);
-	        
-	        if (Math.abs(parser.rotation) > 0.001) {
-	            double pivotX = frameX + origin[0];
-	            double pivotY = frameY + origin[1];
-	            g2dTransformed.rotate(parser.rotation, pivotX, pivotY);
-	        }
-	        
-	        g2dTransformed.drawImage(frameComposite, 
-	            (int)Math.round(frameX), 
-	            (int)Math.round(frameY), null);
-	        g2dTransformed.dispose();
-	    } else {
-	        g2d.drawImage(frameComposite, 
-	            (int)Math.round(frameX), 
-	            (int)Math.round(frameY), null);
-	    }
-	}
-
-	// 마스크 이미지 로드 헬퍼
+	/**
+	 * 마스크 이미지 로드 헬퍼
+	 */
 	private BufferedImage loadMaskImage(String maskPath) {
-	    if (maskPath == null || maskPath.isEmpty()) return null;
-	    
-	    try {
-	        // 경로 정규화
-	        String normalizedPath = maskPath;
-	        if (normalizedPath.startsWith("/theme/")) {
-	            normalizedPath = normalizedPath.substring(7);
-	        }
-	        
-	        // 여러 경로 조합 시도
-	        String[] pathVariants = {
-	            themePath + "/" + normalizedPath,
-	            themePath + normalizedPath,
-	            normalizedPath
-	        };
-	        
-	        for (String path : pathVariants) {
-	            File file = new File(InternalPathUtils.normalizePath(path));
-	            if (file.exists()) {
-	                BufferedImage mask = ImageIO.read(file);
-	                logger.debug("마스크 로드 성공: {}", file.getName());
-	                return mask;
-	            }
-	        }
-	        
-	        logger.warn("마스크 파일을 찾을 수 없음: {}", maskPath);
-	    } catch (Exception e) {
-	        logger.error("마스크 로드 실패: {}", maskPath, e);
-	    }
-	    
-	    return null;
+		if (maskPath == null || maskPath.isEmpty())
+			return null;
+
+		try {
+			String normalizedPath = maskPath;
+			if (normalizedPath.startsWith("/theme/")) {
+				normalizedPath = normalizedPath.substring(7);
+			}
+
+			String[] pathVariants = { themePath + "/" + normalizedPath, themePath + normalizedPath, normalizedPath };
+
+			for (String path : pathVariants) {
+				File file = new File(PathUtils.normalizePath(path));
+				if (file.exists()) {
+					BufferedImage mask = ImageIO.read(file);
+					logger.debug("마스크 로드 성공: {}", file.getName());
+					return mask;
+				}
+			}
+
+			logger.warn("마스크 파일을 찾을 수 없음: {}", maskPath);
+		} catch (Exception e) {
+			logger.error("마스크 로드 실패: {}", maskPath, e);
+		}
+
+		return null;
 	}
 
-	// 테마 이미지 로드 헬퍼
+	/**
+	 * 테마 이미지 로드 헬퍼
+	 */
 	private BufferedImage loadThemeImage(String imagePath) {
-	    if (imagePath == null || imagePath.isEmpty()) return null;
-	    
-	    try {
-	        // 경로 정규화
-	        String normalizedPath = imagePath;
-	        if (normalizedPath.startsWith("/theme/")) {
-	            normalizedPath = normalizedPath.substring(7);
-	        }
-	        
-	        // 여러 경로 조합 시도
-	        String[] pathVariants = {
-	            themePath + "/" + normalizedPath,
-	            themePath + normalizedPath,
-	            normalizedPath
-	        };
-	        
-	        for (String path : pathVariants) {
-	            File file = new File(InternalPathUtils.normalizePath(path));
-	            if (file.exists()) {
-	                BufferedImage image = ImageIO.read(file);
-	                logger.debug("프레임 이미지 로드 성공: {}", file.getName());
-	                return image;
-	            }
-	        }
-	        
-	        logger.warn("프레임 이미지를 찾을 수 없음: {}", imagePath);
-	    } catch (Exception e) {
-	        logger.error("프레임 이미지 로드 실패: {}", imagePath, e);
-	    }
-	    
-	    return null;
+		if (imagePath == null || imagePath.isEmpty())
+			return null;
+
+		try {
+			String normalizedPath = imagePath;
+			if (normalizedPath.startsWith("/theme/")) {
+				normalizedPath = normalizedPath.substring(7);
+			}
+
+			String[] pathVariants = { themePath + "/" + normalizedPath, themePath + normalizedPath, normalizedPath };
+
+			for (String path : pathVariants) {
+				File file = new File(PathUtils.normalizePath(path));
+				if (file.exists()) {
+					BufferedImage image = ImageIO.read(file);
+					logger.debug("프레임 이미지 로드 성공: {}", file.getName());
+					return image;
+				}
+			}
+
+			logger.warn("프레임 이미지를 찾을 수 없음: {}", imagePath);
+		} catch (Exception e) {
+			logger.error("프레임 이미지 로드 실패: {}", imagePath, e);
+		}
+
+		return null;
 	}
 
+	/**
+	 * HTML을 평문 텍스트로 변환
+	 */
+	private String parseHtmlToPlainText(String html) {
+		if (html == null || html.isEmpty()) {
+			return "";
+		}
+
+		try {
+			// HTML 디코딩
+			html = html.replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+					.replace("&quot;", "\"").replace("&#39;", "'");
+
+			// <br> 태그를 줄바꿈으로 변환
+			html = html.replaceAll("(?i)<br\\s*/?>", "\n");
+
+			// <p>, <div> 태그 처리
+			html = html.replaceAll("(?i)</p>", "\n").replaceAll("(?i)</div>", "\n").replaceAll("(?i)<p[^>]*>", "")
+					.replaceAll("(?i)<div[^>]*>", "");
+
+			// 모든 HTML 태그 제거
+			html = html.replaceAll("<[^>]*>", "");
+
+			// 연속된 공백 정리
+			html = html.replaceAll("\\s+", " ");
+
+			// 연속된 줄바꿈 정리
+			html = html.replaceAll("\n\\s*\n", "\n");
+
+			// 앞뒤 공백 제거
+			html = html.trim();
+
+			logger.debug("HTML 변환 결과: '{}'", html);
+
+			return html;
+
+		} catch (Exception e) {
+			logger.error("HTML 파싱 중 오류", e);
+			return html; // 오류 시 원본 반환
+		}
+	}
+
+	/**
+	 * 텍스트 줄바꿈 처리
+	 */
+	private List<String> wrapText(String text, FontMetrics fm, int maxWidth) {
+		List<String> lines = new java.util.ArrayList<>();
+		String[] words = text.split(" ");
+		StringBuilder currentLine = new StringBuilder();
+
+		for (String word : words) {
+			String testLine = currentLine.length() > 0 ? currentLine + " " + word : word;
+
+			if (fm.stringWidth(testLine) <= maxWidth) {
+				if (currentLine.length() > 0)
+					currentLine.append(" ");
+				currentLine.append(word);
+			} else {
+				if (currentLine.length() > 0) {
+					lines.add(currentLine.toString());
+					currentLine = new StringBuilder(word);
+				} else {
+					// 단어가 너무 긴 경우 강제 분할
+					lines.add(word);
+				}
+			}
+		}
+
+		if (currentLine.length() > 0) {
+			lines.add(currentLine.toString());
+		}
+
+		return lines.isEmpty() ? Arrays.asList(text) : lines;
+	}
 }
