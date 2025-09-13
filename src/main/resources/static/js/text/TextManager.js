@@ -226,14 +226,29 @@ class TextManager {
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 
 		if (hasLineBreaks) {
-			
-			const currentTransformOrigin = textBox.css('transform-origin') || '50% 50%';
-			
+			// 변경 전 상태 저장
+			const oldWidth = textBox.outerWidth();
+			const oldHeight = textBox.outerHeight();
+			const currentTransform = textBox.css('transform');
+			const hasRotation = currentTransform &&
+				currentTransform !== 'none' &&
+				currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
+
+			// 회전된 경우 현재 중심점 저장
+			let oldCenterX, oldCenterY;
+			if (hasRotation) {
+				const rect = textBox[0].getBoundingClientRect();
+				oldCenterX = rect.left + rect.width / 2;
+				oldCenterY = rect.top + rect.height / 2;
+
+				// 기존 transform-origin을 픽셀로 고정 (이전 크기 기준)
+				textBox.css('transform-origin', `${oldWidth / 2}px ${oldHeight / 2}px`);
+			}
+
 			// 각 줄을 개별적으로 추출
 			let lines = [];
 			const tempDiv = $('<div>').html(htmlContent);
 
-			// Chrome 스타일 처리 (<div> 태그)
 			if (htmlContent.includes('<div>')) {
 				const firstLineText = tempDiv.contents().filter(function() {
 					return this.nodeType === 3;
@@ -244,7 +259,6 @@ class TextManager {
 					lines.push($(this).text() || '\u00A0');
 				});
 			}
-			// Firefox 스타일 처리 (<br> 태그)
 			else if (htmlContent.includes('<br>')) {
 				const parts = htmlContent.split('<br>');
 				parts.forEach(part => {
@@ -273,13 +287,13 @@ class TextManager {
 				$temp.remove();
 			});
 
-			// 정확한 높이 측정을 위한 임시 요소
+			// 정확한 높이 측정
 			const $heightTemp = $('<div>')
 				.html(htmlContent)
 				.css({
 					'position': 'absolute',
 					'visibility': 'hidden',
-					'width': (maxWidth + 20) + 'px', // 패딩 포함
+					'width': (maxWidth + 20) + 'px',
 					'white-space': 'pre-wrap',
 					'word-break': 'keep-all',
 					'font-size': textBox.css('font-size'),
@@ -294,19 +308,45 @@ class TextManager {
 			const measuredHeight = $heightTemp.outerHeight();
 			$heightTemp.remove();
 
-			// 패딩 고려
 			const padding = parseInt(textBox.css('padding')) || 10;
+			const newWidth = maxWidth + padding * 2 + 5;
+			const newHeight = measuredHeight;
 
+			// 크기 적용
 			textBox.css({
-				'width': (maxWidth + padding * 2 + 5) + 'px',
-				'height': measuredHeight + 'px', // 실제 측정된 높이 사용
+				'width': newWidth + 'px',
+				'height': newHeight + 'px',
 				'white-space': 'pre-wrap',
 				'word-break': 'keep-all',
-				'overflow-wrap': 'normal',
-				'transform-origin': currentTransformOrigin  // 추가
+				'overflow-wrap': 'normal'
 			});
+
+			// 회전된 경우 위치 보정
+			if (hasRotation) {
+				// 크기 변경 후 새 중심점 계산
+				const newRect = textBox[0].getBoundingClientRect();
+				const newCenterX = newRect.left + newRect.width / 2;
+				const newCenterY = newRect.top + newRect.height / 2;
+
+				// 중심점 차이만큼 위치 조정
+				const offsetX = oldCenterX - newCenterX;
+				const offsetY = oldCenterY - newCenterY;
+
+				const currentLeft = parseFloat(textBox.css('left'));
+				const currentTop = parseFloat(textBox.css('top'));
+
+				textBox.css({
+					'left': (currentLeft + offsetX) + 'px',
+					'top': (currentTop + offsetY) + 'px'
+				});
+
+				// transform-origin을 새 크기 기준 픽셀값으로 업데이트
+				textBox.css('transform-origin', `${newWidth / 2}px ${newHeight / 2}px`);
+			} else {
+				// 회전 없으면 퍼센트 유지
+				textBox.css('transform-origin', '50% 50%');
+			}
 		} else {
-			// 줄바꿈이 없는 경우
 			this.resizeTextBox(textBox, textBox.css('font-size'));
 		}
 	}

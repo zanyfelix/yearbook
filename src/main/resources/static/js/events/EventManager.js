@@ -203,38 +203,39 @@ class EventManager {
 			e.stopPropagation();
 
 			if (!textBox.hasClass('selected')) {
-
 				// 먼저 크기 재조정
 				this.autoResizeTextBox(textBox);
-				
-				textBox.css('transform-origin', '50% 50%');
 
-				// 🔴 선택 전 현재 위치 저장
+				// 회전 여부 확인
 				const currentTransform = textBox.css('transform');
-				textBox.css('transform', 'none');
-				const currentPos = textBox.position();
-				textBox.css('transform', currentTransform);
+				const hasRotation = currentTransform &&
+					currentTransform !== 'none' &&
+					currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
 
 				// 선택 처리
 				window.selectionManager.selectTextBox(textBox);
 
-				// 🔴 위치가 변경되었는지 확인하고 복원
-				setTimeout(() => {
-					const newTransform = textBox.css('transform');
+				// 회전이 없을 때만 위치 보정 로직 실행
+				if (!hasRotation) {
 					textBox.css('transform', 'none');
-					const newPos = textBox.position();
+					const currentPos = textBox.position();
+					textBox.css('transform', currentTransform);
 
-					// 위치가 변경되었다면 원래 위치로 복원
-					if (Math.abs(newPos.left - currentPos.left) > 1 ||
-						Math.abs(newPos.top - currentPos.top) > 1) {
-						textBox.css({
-							left: currentPos.left + 'px',
-							top: currentPos.top + 'px'
-						});
-					}
+					setTimeout(() => {
+						const newTransform = textBox.css('transform');
+						textBox.css('transform', 'none');
+						const newPos = textBox.position();
 
-					textBox.css('transform', newTransform || currentTransform);
-				}, 10);
+						if (Math.abs(newPos.left - currentPos.left) > 1 ||
+							Math.abs(newPos.top - currentPos.top) > 1) {
+							textBox.css({
+								left: currentPos.left + 'px',
+								top: currentPos.top + 'px'
+							});
+						}
+						textBox.css('transform', newTransform || currentTransform);
+					}, 10);
+				}
 			}
 		});
 
@@ -646,39 +647,57 @@ class EventManager {
 
 		if (!actualBgRect) return null;
 
-		// 현재 transform 백업
+		// 현재 transform 상태 확인
 		const currentTransform = element.css('transform');
 		const currentTransformOrigin = element.css('transform-origin');
 
-		// transform 일시 제거하여 순수 위치 얻기
-		element.css('transform', 'none');
-		const elementPos = element.position();
-		const elementWidth = element.outerWidth();
-		const elementHeight = element.outerHeight();
+		// 회전 여부 판단
+		const hasRotation = currentTransform &&
+			currentTransform !== 'none' &&
+			currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
 
-		// transform 즉시 복원
-		element.css('transform', currentTransform);
+		let elementPos, elementWidth, elementHeight;
 
-		const currentState = element.data('relativeState') || {};
+		if (hasRotation) {
+			// 회전된 경우: transform을 유지한 채로 위치 계산
+			elementPos = element.position();
+			elementWidth = element.outerWidth();
+			elementHeight = element.outerHeight();
+		} else {
+			// 회전 없는 경우: transform 제거 후 계산
+			element.css('transform', 'none');
+			elementPos = element.position();
+			elementWidth = element.outerWidth();
+			elementHeight = element.outerHeight();
+			element.css('transform', currentTransform);
+		}
 
-		// transform이 제거된 상태의 순수 위치를 저장
-		currentState.position = {
-			left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
-			top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
+		// 상대 위치/크기 계산
+		const relativeState = {
+			position: {
+				left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
+				top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
+			},
+			size: {
+				width: (elementWidth / actualBgRect.width) * 100,
+				height: (elementHeight / actualBgRect.height) * 100
+			},
+			transform: currentTransform || 'none',
+			transformOrigin: currentTransformOrigin || '50% 50%'
 		};
 
-		currentState.size = {
-			width: (elementWidth / actualBgRect.width) * 100,
-			height: (elementHeight / actualBgRect.height) * 100
-		};
+		// 텍스트박스인 경우 추가 정보 저장
+		if (element.hasClass('text-box')) {
+			relativeState.hasRotation = hasRotation;
+			relativeState.absolutePosition = {
+				left: elementPos.left,
+				top: elementPos.top
+			};
+		}
 
-		// transform 정보는 별도 저장
-		currentState.transform = currentTransform || 'none';
-		currentState.transformOrigin = currentTransformOrigin || '50% 50%';
+		element.data('relativeState', relativeState);
 
-		element.data('relativeState', currentState);
-
-		return currentState;
+		return relativeState;
 	}
 
 	static saveFramePosition(frameGroup, position) {
