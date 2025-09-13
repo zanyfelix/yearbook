@@ -75,7 +75,7 @@ class EventManager {
 		handle.off('mousedown.rotator').on('mousedown.rotator', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			element.css('transform-origin', '50% 50%');
 
 			const rect = element[0].getBoundingClientRect();
@@ -649,30 +649,19 @@ class EventManager {
 
 		if (!actualBgRect) return null;
 
-		// 현재 transform 상태 확인
+		// 현재 transform 상태를 미리 저장합니다.
 		const currentTransform = element.css('transform');
 		const currentTransformOrigin = element.css('transform-origin');
 
-		// 회전 여부 판단
-		const hasRotation = currentTransform &&
-			currentTransform !== 'none' &&
-			currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
+		// ✅ [핵심 수정] 회전 여부와 관계없이 항상 transform을 일시적으로 제거하여
+		// CSS의 left, top 값을 정확하게 읽어옵니다.
+		element.css('transform', 'none');
+		const elementPos = element.position();
+		const elementWidth = element.outerWidth();
+		const elementHeight = element.outerHeight();
+		// 측정이 끝난 후, 원래 transform 상태로 즉시 복구합니다.
+		element.css('transform', currentTransform);
 
-		let elementPos, elementWidth, elementHeight;
-
-		if (hasRotation) {
-			// 회전된 경우: transform을 유지한 채로 위치 계산
-			elementPos = element.position();
-			elementWidth = element.outerWidth();
-			elementHeight = element.outerHeight();
-		} else {
-			// 회전 없는 경우: transform 제거 후 계산
-			element.css('transform', 'none');
-			elementPos = element.position();
-			elementWidth = element.outerWidth();
-			elementHeight = element.outerHeight();
-			element.css('transform', currentTransform);
-		}
 
 		// 상대 위치/크기 계산
 		const relativeState = {
@@ -684,12 +673,17 @@ class EventManager {
 				width: (elementWidth / actualBgRect.width) * 100,
 				height: (elementHeight / actualBgRect.height) * 100
 			},
+			// 저장 시점의 transform 값을 그대로 저장합니다.
 			transform: currentTransform || 'none',
 			transformOrigin: currentTransformOrigin || '50% 50%'
 		};
 
-		// 텍스트박스인 경우 추가 정보 저장
+		// 텍스트박스인 경우의 추가 정보 저장은 기존 로직을 유지해도 괜찮습니다.
 		if (element.hasClass('text-box')) {
+			const hasRotation = currentTransform &&
+				currentTransform !== 'none' &&
+				currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
+
 			relativeState.hasRotation = hasRotation;
 			relativeState.absolutePosition = {
 				left: elementPos.left,
