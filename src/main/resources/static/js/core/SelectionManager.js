@@ -53,37 +53,11 @@ class SelectionManager {
 
 		window.selectedBox = textBox;
 
-		// autoResize를 먼저 실행
-		if (typeof EventManager !== 'undefined' && EventManager.autoResizeTextBox) {
-			EventManager.autoResizeTextBox(textBox);
-		}
-
 		textBox.addClass('selected');
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 
-		// ✅ 핵심 수정: 텍스트 타입 기반 고정 크기 표시
-		const textType = textBox.data('text-type');
-		const baseFontSize = textType && TextManager.TEXT_TYPE_SIZES[textType]
-			? TextManager.TEXT_TYPE_SIZES[textType]  // 타입별 고정 크기 사용
-			: (textBox.data('base-font-size') || 12); // fallback
-
-		// 다른 스타일 속성들 가져오기
-		const currentFontFamily = textBox.data('savedFontFamily') ||
-			textBox.css('font-family').split(',')[0].replace(/['"]/g, '').trim();
-		const currentTextAlign = textBox.css('text-align');
-		const currentColor = textBox.css('color');
-
-		// ✅ 툴팁에 고정 크기 설정
-		setTimeout(() => {
-			$('#tooltip-size').val(baseFontSize); // 항상 고정 크기 표시
-			$('#tooltip-font').val(currentFontFamily);
-			$('#tooltip-align').val(currentTextAlign || 'left');
-
-			if (typeof rgbToHex === "function") {
-				$('#tooltip-color').val(rgbToHex(currentColor));
-			}
-		}, 50);
+		TextManager.updateUIFromSelectedTextBox(textBox);
 
 		// 리사이즈 이벤트 바인딩
 		textBox.on('resize.selection', () => {

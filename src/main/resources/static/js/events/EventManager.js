@@ -75,6 +75,8 @@ class EventManager {
 		handle.off('mousedown.rotator').on('mousedown.rotator', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			
+			element.css('transform-origin', '50% 50%');
 
 			const rect = element[0].getBoundingClientRect();
 			const elementCenter = {

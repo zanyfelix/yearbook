@@ -141,6 +141,36 @@ class TextManager {
 		}, 150);
 	}
 
+	/**
+		 * [신규 추가] 선택된 텍스트박스의 현재 상태에 맞춰 UI 컨트롤(툴팁)을 업데이트합니다.
+		 * @param {jQuery} $textBox - 선택된 텍스트박스 요소
+		 */
+	static updateUIFromSelectedTextBox($textBox) {
+		if (!$textBox || $textBox.length === 0) return;
+
+		setTimeout(() => {
+			// 저장된 폰트 패밀리 설정
+			const fontFamily = $textBox.data('savedFontFamily');
+			if (fontFamily) {
+				$('#tooltip-font').val(fontFamily);
+			}
+
+			// ✅ [버그 수정] 'text-type'이 아닌 'base-font-size' 데이터에서 현재 폰트 크기를 가져옵니다.
+			const baseFontSize = $textBox.data('base-font-size');
+			if (baseFontSize) {
+				$('#tooltip-size').val(baseFontSize);
+			}
+
+			// 텍스트 정렬 설정
+			const textAlign = $textBox.css('text-align');
+			$('#tooltip-align').val(textAlign);
+
+			// 텍스트 색상 설정 (rgb를 hex로 변환하는 헬퍼 함수가 필요할 수 있습니다)
+			const color = $textBox.css('color');
+			// $('#tooltip-color').val(rgbToHex(color)); // 필요시 활성화
+		}, 150); // UI가 표시된 후 값을 설정하기 위해 약간의 지연을 줍니다.
+	}
+
 	// 상대 위치 계산
 	static calculateRelativeState(textBox, actualBgRect) {
 		const currentTransform = textBox.css('transform');
