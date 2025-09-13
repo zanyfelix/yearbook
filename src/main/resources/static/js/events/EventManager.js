@@ -788,8 +788,10 @@ class EventManager {
 		const measuredHeight = $temp.outerHeight();
 		$temp.remove();
 
+		const widthBuffer = 2;
+
 		$box.css({
-			'width': measuredWidth + 'px',
+			'width': (measuredWidth + widthBuffer) + 'px', // 너비에 버퍼 추가
 			'height': measuredHeight + 'px',
 			'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
 		});
