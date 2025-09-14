@@ -725,7 +725,13 @@ $(document).ready(function() {
 					originalWidth: boxW,
 					originalHeight: boxH,  // ⭐ 실제 높이 저장
 					editorBgWidth: actualBgRect.width,
-					editorBgHeight: actualBgRect.height
+					editorBgHeight: actualBgRect.height,
+					absolutePixels: {
+						x: boxPos.left - actualBgRect.left,
+						y: boxPos.top - actualBgRect.top,
+						w: boxW,
+						h: boxH
+					}
 				},
 				isModified: true
 			};

@@ -2177,126 +2177,76 @@ public class JpgRenderingService {
 
 	private void renderTextBoxAsImage(Graphics2D g2d, JsonNode textBox, String imagePath) {
 		try {
-			// 이미지 파일 로드
-			String fullPath;
-			if (imagePath.startsWith("/photo/text-images/")) {
-				String fileName = imagePath.substring("/photo/text-images/".length());
-				fullPath = userPhotosPath + "/text-images/" + fileName;
-			} else {
-				fullPath = userPhotosPath + imagePath;
-			}
-
-			File imageFile = new File(fullPath);
-			if (!imageFile.exists()) {
-				logger.warn("텍스트 이미지 파일을 찾을 수 없음: {}", fullPath);
-				renderSingleTextBoxImproved(g2d, textBox);
-				return;
-			}
-
-			BufferedImage textImage = ImageIO.read(imageFile);
+			BufferedImage textImage = loadTextImage(imagePath);
 			if (textImage == null) {
-				logger.error("텍스트 이미지 로드 실패: {}", fullPath);
 				renderSingleTextBoxImproved(g2d, textBox);
 				return;
 			}
 
-			logger.info("========================================");
-			logger.info("텍스트 이미지 렌더링 시작");
-			logger.info("이미지 실제 크기: {}x{}", textImage.getWidth(), textImage.getHeight());
+			// 이미지는 이미 RENDER_SCALE로 캡처되었음
+			// 따라서 1:1로 그려야 함
 
-			// ⭐ 위치와 크기를 퍼센트로 직접 계산 (편집기와 동일한 방식)
-			JsonNode position = textBox.path("position");
-			JsonNode size = textBox.path("size");
+			JsonNode captureInfo = textBox.path("captureInfo");
+			JsonNode absolutePixels = captureInfo.path("absolutePixels");
 
-			double boxX = RENDER_WIDTH * (position.path("left").asDouble() / 100.0);
-			double boxY = RENDER_HEIGHT * (position.path("top").asDouble() / 100.0);
-			double boxWidth = RENDER_WIDTH * (size.path("width").asDouble() / 100.0);
-			double boxHeight = RENDER_HEIGHT * (size.path("height").asDouble() / 100.0);
+			// 편집기에서의 원본 위치 (픽셀)
+			double originalX = absolutePixels.path("x").asDouble();
+			double originalY = absolutePixels.path("y").asDouble();
 
-			// height가 0인 경우 처리
-			if (boxHeight <= 0) {
-				// captureInfo에서 원본 크기 정보 가져오기
-				JsonNode captureInfo = textBox.path("captureInfo");
-				double originalWidth = captureInfo.path("originalWidth").asDouble();
-				double originalHeight = captureInfo.path("originalHeight").asDouble();
+			// 편집기 배경 크기
+			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
 
-				if (originalHeight > 0 && originalWidth > 0) {
-					// 원본 비율 유지
-					double aspectRatio = originalHeight / originalWidth;
-					boxHeight = boxWidth * aspectRatio;
-					logger.info("원본 비율로 높이 계산: {} (비율: {})", boxHeight, aspectRatio);
-				} else {
-					// 이미지 비율 사용
-					double imageAspectRatio = (double) textImage.getHeight() / textImage.getWidth();
-					boxHeight = boxWidth * imageAspectRatio;
-					logger.info("이미지 비율로 높이 계산: {}", boxHeight);
-				}
-			}
+			// 스케일 계산
+			double scale = RENDER_WIDTH / editorBgWidth; // 3.33
 
-			logger.info("최종 위치: ({}, {})", boxX, boxY);
-			logger.info("최종 크기: {}x{}", boxWidth, boxHeight);
+			// 최종 위치만 계산 (크기는 이미지 그대로 사용)
+			int drawX = (int) Math.round(originalX * scale);
+			int drawY = (int) Math.round(originalY * scale);
 
-			// Transform 적용
-			Graphics2D g2dImage = (Graphics2D) g2d.create();
-			setHighQualityRenderingHints(g2dImage);
-
+			// Transform 처리
 			String transform = textBox.path("transform").asText("none");
-			String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
+			Graphics2D g2dImage = (Graphics2D) g2d.create();
 
 			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-				// transformOrigin을 픽셀 단위로 정확히 파싱
-				double originX = 0, originY = 0;
-				String[] originParts = transformOrigin.split(" ");
-
-				for (String part : originParts) {
-					if (part.endsWith("px")) {
-						double value = Double.parseDouble(part.replace("px", ""));
-						if (originX == 0) {
-							// 편집기 크기를 렌더링 크기로 스케일
-							originX = value * SCALE_RATIO;
-						} else {
-							originY = value * SCALE_RATIO;
-						}
-					} else if (part.endsWith("%")) {
-						double percent = Double.parseDouble(part.replace("%", ""));
-						if (originX == 0) {
-							originX = boxWidth * (percent / 100.0);
-						} else {
-							originY = boxHeight * (percent / 100.0);
-						}
-					}
-				}
-
 				TransformParser parser = TransformParser.parse(transform);
 				if (Math.abs(parser.rotation) > 0.001) {
-					// 회전 중심점을 절대 좌표로 계산
-					double pivotX = boxX + originX;
-					double pivotY = boxY + originY;
-
-					// 회전 적용
-					AffineTransform at = new AffineTransform();
-					at.translate(pivotX, pivotY);
-					at.rotate(parser.rotation);
-					at.translate(-pivotX, -pivotY);
-					g2dImage.setTransform(at);
-
-					logger.info("회전 적용: {} rad, 중심: ({}, {})", parser.rotation, pivotX, pivotY);
+					// 이미지 중심점 계산
+					double centerX = drawX + textImage.getWidth() / 2.0;
+					double centerY = drawY + textImage.getHeight() / 2.0;
+					g2dImage.rotate(parser.rotation, centerX, centerY);
 				}
 			}
 
-			// 텍스트 이미지 그리기
-			g2dImage.setComposite(AlphaComposite.SrcOver);
-			g2dImage.drawImage(textImage, (int) Math.round(boxX), (int) Math.round(boxY), (int) Math.round(boxWidth),
-					(int) Math.round(boxHeight), null);
+			// 이미지를 원본 크기 그대로 그리기 (스케일링 없음!)
+			g2dImage.drawImage(textImage, drawX, drawY, null);
 
 			g2dImage.dispose();
-			logger.info("텍스트 이미지 렌더링 완료");
-			logger.info("========================================");
+
+			logger.info("텍스트 이미지 렌더링: 위치({}, {}), 이미지크기({}x{})", drawX, drawY, textImage.getWidth(),
+					textImage.getHeight());
 
 		} catch (Exception e) {
-			logger.error("텍스트 이미지 렌더링 중 오류: {}", imagePath, e);
-			e.printStackTrace();
+			logger.error("텍스트 이미지 렌더링 실패: {}", e.getMessage());
 			renderSingleTextBoxImproved(g2d, textBox);
 		}
+	}
+
+	// 헬퍼 메서드 수정
+	private BufferedImage loadTextImage(String imagePath) throws IOException {
+		String fullPath;
+		if (imagePath.startsWith("/photo/text-images/")) {
+			String fileName = imagePath.substring("/photo/text-images/".length());
+			fullPath = userPhotosPath + "/text-images/" + fileName;
+		} else {
+			fullPath = userPhotosPath + imagePath;
+		}
+
+		File imageFile = new File(fullPath);
+		if (!imageFile.exists()) {
+			logger.warn("텍스트 이미지 파일을 찾을 수 없음: {}", fullPath);
+			return null;
+		}
+
+		return ImageIO.read(imageFile);
 	}
 }
