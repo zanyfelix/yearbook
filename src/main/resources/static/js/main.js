@@ -601,7 +601,7 @@ $(document).ready(function() {
 	});
 
 	// Save 버튼 클릭 이벤트
-	$('#btn-save').on('click', function() {
+	$('#btn-save').on('click', async function() {
 		showLoader();
 		window.selectionManager.clearSelection();
 
@@ -612,6 +612,10 @@ $(document).ready(function() {
 		};
 		const bgImg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
+
+		// RENDER_SCALE을 여기서 정의
+		const RENDER_SCALE = 2621 / 786;
+
 		if (!actualBgRect) {
 			alert("Could not save because background information could not be found.");
 			hideLoader();
@@ -659,48 +663,53 @@ $(document).ready(function() {
 			designData.frames.push(frameData);
 		});
 
-		// ✅ [핵심 수정] 텍스트박스 저장 로직 개선
-		$('#frame-container .text-box').each(function() {
-			const $box = $(this);
-			if (!$box.text().trim() || $box.outerWidth() <= 0) return;
+		// 텍스트박스 이미지 캡처를 위한 준비
+		const textBoxImages = [];
+		const $textBoxes = $('#frame-container .text-box');
 
+		// 각 텍스트박스 처리
+		for (let i = 0; i < $textBoxes.length; i++) {
+			const $box = $($textBoxes[i]);
+			if (!$box.text().trim() || $box.outerWidth() <= 0) continue;
+
+			// 텍스트박스 정보 저장 (기존 로직)
 			const boxTransform = $box.css('transform');
 			const boxTransformOrigin = $box.css('transform-origin');
 			$box.css({ 'transform': 'none' });
-			const boxPos = $box.position();
-			const boxW = $box.width();
-			const boxH = $box.height();
 
-			// base-font-size를 우선 사용하고, 없으면 CSS에서 역계산
+			const boxPos = $box.position();
+
+			// ⭐ 핵심 수정: 실제 렌더링된 크기를 정확히 측정
+			let boxW = $box.outerWidth();  // padding 포함
+			let boxH = $box.outerHeight(); // padding 포함
+
+			// height가 여전히 0이면 scrollHeight 사용
+			if (boxH <= 0) {
+				boxH = $box[0].scrollHeight;
+				console.warn('텍스트박스 높이가 0, scrollHeight 사용:', boxH);
+			}
+
+			// 그래도 0이면 콘텐츠 기반으로 계산
+			if (boxH <= 0) {
+				const lineHeight = parseInt($box.css('line-height')) || parseInt($box.css('font-size')) * 1.2;
+				const lines = $box.html().split(/<br>|<div>/).length;
+				boxH = lineHeight * lines + 20; // padding 추가
+				console.warn('높이 계산 실패, 예상값 사용:', boxH);
+			}
+
 			const baseFontSize = $box.data('base-font-size') || 12;
 			const textType = $box.data('text-type') || 'text';
 
-			if (!baseFontSize) {
-				// fallback: CSS에서 역계산하되, 저장된 배경 너비 활용
-				const currentCssSize = parseInt($box.css('font-size'));
-				const savedBgWidth = $box.data('saved-bg-width');
-
-				if (savedBgWidth) {
-					// 저장 시점의 배경 너비 기준으로 역계산
-					const scaleRatio = savedBgWidth / 786;
-					baseFontSize = Math.round(currentCssSize / scaleRatio);
-				} else {
-					// 현재 배경 기준으로 역계산 (fallback)
-					const scaleRatio = actualBgRect.width / 786;
-					baseFontSize = Math.round(currentCssSize / scaleRatio);
-				}
-			}
-
-			designData.textBoxes.push({
+			const textBoxData = {
 				html: $box.html(),
-				textType: textType, // ✅ 타입 정보 저장
+				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 					top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
 				},
 				size: {
 					width: (boxW / actualBgRect.width) * 100,
-					height: (boxH / actualBgRect.height) * 100
+					height: (boxH / actualBgRect.height) * 100  // ⭐ 실제 높이 저장
 				},
 				transform: boxTransform || 'none',
 				transformOrigin: boxTransformOrigin || '50% 50%',
@@ -710,73 +719,166 @@ $(document).ready(function() {
 					fontWeight: $box.css('font-weight'),
 					textAlign: $box.css('text-align'),
 					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
-				}
-			});
-			// --- ⬇️ 원상 복구 ⬇️ ---
-			// 계산이 끝난 후 원래 transform 속성으로 복구
-			$box.css({ 'transform': boxTransform, 'transform-origin': boxTransformOrigin });
-		});
+				},
+				captureInfo: {
+					scale: RENDER_SCALE,
+					originalWidth: boxW,
+					originalHeight: boxH,  // ⭐ 실제 높이 저장
+					editorBgWidth: actualBgRect.width,
+					editorBgHeight: actualBgRect.height
+				},
+				isModified: true
+			};
 
-		// 썸네일 캡처 및 서버 전송
+			// 높이 확인 로그
+			console.log(`텍스트박스 ${i} - 너비: ${boxW}px, 높이: ${boxH}px`);
+			console.log(`저장된 크기: width=${textBoxData.size.width}%, height=${textBoxData.size.height}%`);
+
+			designData.textBoxes.push(textBoxData);
+
+			// 원상 복구
+			$box.css({
+				'transform': boxTransform,
+				'transform-origin': boxTransformOrigin
+			});
+
+			// 텍스트박스를 이미지로 캡처 (고해상도로)
+			try {
+				// 캡처 전 준비
+				const originalStyles = {
+					overflow: $box.css('overflow'),
+					height: $box.css('height'),
+					width: $box.css('width'),
+					minHeight: $box.css('min-height'),
+					maxHeight: $box.css('max-height'),
+					transform: $box.css('transform')  // transform도 저장
+				};
+
+				// Transform 임시 제거 (정확한 크기 측정을 위해)
+				$box.css('transform', 'none');
+
+				// 실제 콘텐츠 크기 측정
+				const actualHeight = $box[0].scrollHeight;
+				const actualWidth = $box[0].scrollWidth;
+
+				// 캡처를 위한 크기 설정
+				$box.css({
+					'overflow': 'visible',
+					'height': actualHeight + 'px',
+					'width': actualWidth + 'px',
+					'min-height': 'auto',
+					'max-height': 'none'
+				});
+
+				// DOM 업데이트 대기
+				await new Promise(resolve => setTimeout(resolve, 100));
+
+				// 렌더링과 동일한 스케일로 캡처 (SCALE_RATIO = 3.33)
+				const RENDER_SCALE = 2621 / 786;  // 약 3.33
+
+				const canvas = await html2canvas($box[0], {
+					scale: RENDER_SCALE,
+					backgroundColor: null,
+					logging: false,
+					useCORS: true,
+					letterRendering: true
+				});
+
+				// 원본 스타일 복원
+				$box.css(originalStyles);
+
+				const blob = await new Promise(resolve => {
+					canvas.toBlob(resolve, 'image/png', 1.0);  // 최고 품질
+				});
+
+				textBoxImages.push({
+					index: designData.textBoxes.length - 1,
+					blob: blob
+				});
+
+			} catch (error) {
+				console.error('텍스트박스 캡처 실패:', error);
+				if (originalStyles) {
+					$box.css(originalStyles);
+				}
+			}
+		}
+
+		// 전체 페이지 썸네일 캡처
 		const captureTarget = document.getElementById('page-preview');
-		html2canvas(captureTarget, { 
+		const thumbnailCanvas = await html2canvas(captureTarget, {
 			useCORS: true,
 			backgroundColor: null,
 			scale: 1,
-			// 백그라운드 이미지 영역만 크롭
 			x: actualBgRect.left,
 			y: actualBgRect.top,
 			width: actualBgRect.width,
 			height: actualBgRect.height,
-			// 스크롤 무시
 			scrollX: 0,
 			scrollY: 0
-		}).then(canvas => {
-			canvas.toBlob(blob => {
-				const payload = {
-					userId: $('#id').val(),
-					yearbookId: activePageThumb?.attr('data-yearbook-id'),
-					contentsId: activePageThumb?.attr('data-contents-id'),
-					pageNo: activePageThumb?.attr('data-page-no'),
-					designData: JSON.stringify(designData)
-				};
-				const formData = new FormData();
-				formData.append('payload', JSON.stringify(payload));
-				formData.append('thumbnailFile', blob, 'thumbnail.png');
+		});
 
-				$.ajax({
-					url: `${ctx}/edit/savePageWithThumbnail`,
-					method: 'POST',
-					data: formData,
-					processData: false,
-					contentType: false,
-					success: function(response) {
-						if (response?.newImagePath) {
-							alert("This page has been saved.");
-							hasSaved = true;
-							activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
-							if (response.newYearbookId) {
-								activePageThumb.attr('data-yearbook-id', response.newYearbookId);
-								activePageThumb.closest('.page-card').attr('id', `card-${response.newYearbookId}`);
-							}
-						} else {
-							alert("Save succeeded, but thumbnail update failed.");
-						}
-					},
-					error: function(err) {
-						console.error("Save failed:", err);
-						alert("Save failed.");
-					},
-					complete: function() {
-						hideLoader();
-						$(document).trigger('saveComplete');
+		const thumbnailBlob = await new Promise(resolve => {
+			thumbnailCanvas.toBlob(resolve, 'image/png');
+		});
+
+		// FormData 생성
+		const formData = new FormData();
+		const payload = {
+			userId: $('#id').val(),
+			yearbookId: activePageThumb?.attr('data-yearbook-id'),
+			contentsId: activePageThumb?.attr('data-contents-id'),
+			pageNo: activePageThumb?.attr('data-page-no'),
+			designData: JSON.stringify(designData)
+		};
+
+		formData.append('payload', JSON.stringify(payload));
+		formData.append('thumbnailFile', thumbnailBlob, 'thumbnail.png');
+
+		// 텍스트박스 이미지들 추가
+		textBoxImages.forEach(item => {
+			formData.append(`textImage_${item.index}`, item.blob, `text_${item.index}.png`);
+		});
+
+		// 서버로 전송
+		$.ajax({
+			url: `${ctx}/edit/savePageWithTextImages`,
+			method: 'POST',
+			data: formData,
+			processData: false,
+			contentType: false,
+			success: function(response) {
+				if (response.success) {
+					alert("This page has been saved.");
+					hasSaved = true;
+
+					// 썸네일 업데이트
+					if (response.newImagePath) {
+						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 					}
-				});
-			}, 'image/png');
-		}).catch(err => {
-			console.error("Thumbnail capture failed:", err);
-			alert("Thumbnail capture failed.");
-			hideLoader();
+
+					// ID 업데이트
+					if (response.newYearbookId) {
+						activePageThumb.attr('data-yearbook-id', response.newYearbookId);
+						activePageThumb.closest('.page-card').attr('id', `card-${response.newYearbookId}`);
+					}
+
+					// 텍스트 이미지 경로 저장 (디버깅용)
+					if (response.textImagePaths) {
+						console.log('텍스트 이미지 저장됨:', response.textImagePaths);
+					}
+				} else {
+					alert("Save failed: " + (response.message || "Unknown error"));
+				}
+			},
+			error: function(err) {
+				console.error("Save failed:", err);
+				alert("Save failed.");
+			},
+			complete: function() {
+				hideLoader();
+				$(document).trigger('saveComplete');
+			}
 		});
 	});
 

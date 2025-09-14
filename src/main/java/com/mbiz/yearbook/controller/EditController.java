@@ -1,8 +1,5 @@
 package com.mbiz.yearbook.controller;
 
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,10 +50,8 @@ import com.mbiz.yearbook.service.ThumbnailRenderingService;
 import com.mbiz.yearbook.service.YearbookService;
 
 import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
 
 @Controller
-@RequiredArgsConstructor
 public class EditController {
 
 	// --- 서비스 및 레포지토리 (기존과 동일) ---
@@ -392,6 +385,70 @@ public class EditController {
 			Map<String, Object> errorResponse = new HashMap<>();
 			errorResponse.put("success", false);
 			errorResponse.put("message", "Error processing request: " + e.getMessage());
+			return errorResponse;
+		}
+	}
+
+	@PostMapping("/edit/savePageWithTextImages")
+	@ResponseBody
+	public Map<String, Object> savePageWithTextImages(@RequestParam("payload") String payloadJson,
+			@RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
+			@RequestParam Map<String, MultipartFile> files) {
+
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
+
+			// JSON 파싱
+			Map<String, Object> designData = mapper.readValue(payload.getDesignData(), Map.class);
+			List<Map<String, Object>> textBoxes = (List<Map<String, Object>>) designData.get("textBoxes");
+
+			// 텍스트 이미지 저장 디렉토리
+			Path textImagesDir = Paths.get(userPhotosPath, "text-images");
+			Files.createDirectories(textImagesDir);
+
+			List<String> savedTextImagePaths = new ArrayList<>();
+
+			// 각 텍스트 이미지 처리
+			for (Map.Entry<String, MultipartFile> entry : files.entrySet()) {
+				if (entry.getKey().startsWith("textImage_")) {
+					String indexStr = entry.getKey().substring("textImage_".length());
+					int index = Integer.parseInt(indexStr);
+
+					if (index < textBoxes.size()) {
+						MultipartFile imageFile = entry.getValue();
+
+						// 고유 파일명 생성
+						String fileName = UUID.randomUUID().toString() + ".png";
+						Path filePath = textImagesDir.resolve(fileName);
+						imageFile.transferTo(filePath.toFile());
+
+						String webPath = "/photo/text-images/" + fileName;
+
+						// textBox 데이터에 이미지 경로 추가
+						Map<String, Object> textBox = textBoxes.get(index);
+						textBox.put("renderImage", webPath);
+						textBox.put("isModified", false);
+
+						savedTextImagePaths.add(webPath);
+					}
+				}
+			}
+
+			// 업데이트된 designData를 다시 JSON으로 변환
+			payload.setDesignData(mapper.writeValueAsString(designData));
+
+			// 기존 저장 로직 활용
+			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile);
+			result.put("textImagePaths", savedTextImagePaths);
+
+			return result;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			Map<String, Object> errorResponse = new HashMap<>();
+			errorResponse.put("success", false);
+			errorResponse.put("message", "Error: " + e.getMessage());
 			return errorResponse;
 		}
 	}
