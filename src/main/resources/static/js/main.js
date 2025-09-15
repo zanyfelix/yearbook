@@ -516,6 +516,10 @@ $(document).ready(function() {
 			$(document).one('saveComplete', function() {
 				hasSaved = true;
 				$('#editModal').modal('hide');
+				// 모달이 완전히 닫힌 후 새로고침
+				setTimeout(function() {
+					location.reload();
+				}, 500); // 모달 애니메이션이 끝날 때까지 잠시 대기
 			});
 			$('#btn-save').trigger('click');
 		} else {
