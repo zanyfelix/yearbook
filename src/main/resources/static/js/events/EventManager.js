@@ -123,6 +123,7 @@ class EventManager {
 				// 선택 상태 유지
 				if (element.hasClass('uploaded-photo')) {
 					const frameGroup = element.closest('.frame-group');
+					PhotoManager.updateResizeCursors(element);
 					PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
 					// 이미 있는 코드지만 작동하지 않으면 setTimeout 추가
 					setTimeout(() => {

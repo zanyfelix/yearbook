@@ -29,6 +29,9 @@ class PhotoManager {
 		selectionBox.append(rotateHandle, rotateLine, ...resizeHandles);
 		frameGroup.append(selectionBox);
 
+		// 커서 업데이트 추가
+		this.updateResizeCursors(photo);
+
 		setTimeout(() => {
 			this.updateSelectionUI(photo);
 		}, 0);
@@ -76,6 +79,9 @@ class PhotoManager {
 			transform: photoTransform,
 			'transform-origin': photoTransformOrigin
 		});
+
+		// 커서도 함께 업데이트
+		this.updateResizeCursors(photo);
 	}
 
 	static removeSelectionUI() {
@@ -210,15 +216,24 @@ class PhotoManager {
 			e.preventDefault();
 			e.stopPropagation();
 			const frameGroup = photo.closest('.frame-group');
-
 			frameGroup.data('isResizingPhoto', true);
+
+			// 현재 transform에서 회전 각도 추출
+			const currentTransform = photo.css('transform');
+			let rotation = 0;
+			if (currentTransform && currentTransform !== 'none') {
+				const matrix = currentTransform.match(/matrix\((.+)\)/);
+				if (matrix) {
+					const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+					rotation = Math.atan2(values[1], values[0]); // 라디안 단위
+				}
+			}
 
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
 			const startLeft = parseFloat(photo.css('left')) || 0;
 			const startTop = parseFloat(photo.css('top')) || 0;
 			const aspectRatio = startWidth / startHeight;
-			const handleClass = handle.attr('class');
 
 			const resizeData = {
 				startX: e.clientX,
@@ -228,46 +243,70 @@ class PhotoManager {
 				startLeft: startLeft,
 				startTop: startTop,
 				aspectRatio: aspectRatio,
+				rotation: rotation, // 회전 각도 저장
 				handlePosition: this.getHandlePosition(handle)
 			};
 
 			$(document).on('mousemove.photoResize', (ev) => {
-				const deltaX = ev.clientX - resizeData.startX;
-				const deltaY = ev.clientY - resizeData.startY;
+				const screenDeltaX = ev.clientX - resizeData.startX;
+				const screenDeltaY = ev.clientY - resizeData.startY;
+
+				// 화면 좌표계의 이동량을 요소의 로컬 좌표계로 변환
+				const cos = Math.cos(-resizeData.rotation);
+				const sin = Math.sin(-resizeData.rotation);
+				const deltaX = screenDeltaX * cos - screenDeltaY * sin;
+				const deltaY = screenDeltaX * sin + screenDeltaY * cos;
 
 				let newWidth = resizeData.startWidth;
 				let newHeight = resizeData.startHeight;
 				let newLeft = resizeData.startLeft;
 				let newTop = resizeData.startTop;
 
-				// 핸들 위치에 따른 크기 조절 (방향 수정)
+				// 각 핸들 위치에 따라 적절한 delta 사용
 				switch (resizeData.handlePosition) {
-					case 'se': // 우하단
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaX);
+					case 'se': // 우하단 - 대각선 이동 고려
+						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaX > 0 ? 1 : -1);
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSE);
 						newHeight = newWidth / resizeData.aspectRatio;
 						break;
 
-					case 'sw': // 좌하단
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth - deltaX);
+					case 'sw': // 좌하단 - X축 주도
+						const deltaSW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaX < 0 ? 1 : -1);
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						newLeft = resizeData.startLeft + (resizeData.startWidth - newWidth);
+						const offsetX_sw = (resizeData.startWidth - newWidth);
+						newLeft = resizeData.startLeft + offsetX_sw * Math.cos(resizeData.rotation);
+						newTop = resizeData.startTop + offsetX_sw * Math.sin(resizeData.rotation);
 						break;
 
-					case 'ne': // 우상단
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaX);
-						newHeight = newWidth / resizeData.aspectRatio;
-						newTop = resizeData.startTop + (resizeData.startHeight - newHeight);
+					case 'ne': // 우상단 - Y축 주도
+						const deltaNE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaY < 0 ? 1 : -1);
+						newHeight = Math.max(this.config.minSize / resizeData.aspectRatio,
+							resizeData.startHeight + deltaNE);
+						newWidth = newHeight * resizeData.aspectRatio;
+						const offsetY_ne = (resizeData.startHeight - newHeight);
+						newLeft = resizeData.startLeft - offsetY_ne * Math.sin(resizeData.rotation);
+						newTop = resizeData.startTop + offsetY_ne * Math.cos(resizeData.rotation);
 						break;
 
-					case 'nw': // 좌상단
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth - deltaX);
+					case 'nw': // 좌상단 - 대각선 이동
+						const deltaNW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							((deltaX < 0 && deltaY < 0) ? 1 : -1);
+						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaNW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						newLeft = resizeData.startLeft + (resizeData.startWidth - newWidth);
-						newTop = resizeData.startTop + (resizeData.startHeight - newHeight);
+						const offsetX_nw = (resizeData.startWidth - newWidth);
+						const offsetY_nw = (resizeData.startHeight - newHeight);
+						newLeft = resizeData.startLeft + offsetX_nw * Math.cos(resizeData.rotation) -
+							offsetY_nw * Math.sin(resizeData.rotation);
+						newTop = resizeData.startTop + offsetX_nw * Math.sin(resizeData.rotation) +
+							offsetY_nw * Math.cos(resizeData.rotation);
 						break;
 				}
 
-				// width/height 직접 변경 (transform scale 사용 안함)
+				// 크기와 위치 적용
 				photo.css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
@@ -275,10 +314,8 @@ class PhotoManager {
 					top: newTop + 'px'
 				});
 
-				// Selection UI 업데이트
+				// UI 업데이트
 				this.updateSelectionUI(photo);
-
-				// Silhouette 업데이트
 				$('.photo-silhouette').css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
@@ -447,5 +484,41 @@ class PhotoManager {
 		const current = Helpers.getPhotoRotation(photo);
 		const newAngle = (current + angle + 360) % 360;
 		photo.css('transform', `rotate(${newAngle}deg)`);
+	}
+
+	static updateResizeCursors(photo) {
+		const handles = photo.closest('.frame-group').find('.resize-handle');
+		const transform = photo.css('transform');
+		let rotation = 0;
+
+		if (transform && transform !== 'none') {
+			const matrix = transform.match(/matrix\((.+)\)/);
+			if (matrix) {
+				const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+				rotation = Math.atan2(values[1], values[0]) * (180 / Math.PI);
+			}
+		}
+
+		// 회전 각도를 0-360 범위로 정규화
+		rotation = ((rotation % 360) + 360) % 360;
+
+		handles.each(function() {
+			const $handle = $(this);
+			const basePosition = $handle.attr('class').match(/handle-(\w+)/)[1];
+
+			// 회전 각도에 따라 커서 방향 재매핑
+			const cursorMap = {
+				'nw': ['nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize'],
+				'ne': ['ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize', 'nw-resize', 'n-resize'],
+				'se': ['se-resize', 's-resize', 'sw-resize', 'w-resize', 'nw-resize', 'n-resize', 'ne-resize', 'e-resize'],
+				'sw': ['sw-resize', 'w-resize', 'nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize']
+			};
+
+			// 45도 단위로 커서 방향 결정
+			const index = Math.round(rotation / 45) % 8;
+			const newCursor = cursorMap[basePosition][index];
+
+			$handle.css('cursor', newCursor);
+		});
 	}
 }
