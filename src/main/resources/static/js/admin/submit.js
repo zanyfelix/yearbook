@@ -77,6 +77,60 @@ function showPreviousImage() {
 	}
 }
 
+function toggleNoteEditMode() {
+	const $noteTextarea = $('#noteTextarea');
+	const $editBtn = $('.note-controls .btn-edit');  // 클래스 변경
+	const $saveBtn = $('.note-controls .btn-save');  // 클래스 변경
+
+	// 편집 모드로 전환
+	$editBtn.hide();
+	$saveBtn.show();
+
+	$noteTextarea.prop('readonly', false)
+		.removeClass('readonly-mode')
+		.addClass('edit-mode');
+}
+
+// Note 저장
+function saveNote() {
+	const $noteTextarea = $('#noteTextarea');
+	const $editBtn = $('.note-controls .btn-edit');  // 클래스 변경
+	const $saveBtn = $('.note-controls .btn-save');  // 클래스 변경
+
+	// 읽기 모드로 전환
+	$saveBtn.hide();
+	$editBtn.show();
+
+	$noteTextarea.prop('readonly', true)
+		.removeClass('edit-mode')
+		.addClass('readonly-mode');
+
+	// AJAX로 Note만 저장
+	const noteData = {
+		sectionId: 'note',
+		type: 'note',
+		content: $noteTextarea.val(),
+		userId: $('input[name="userId"]').val()
+	};
+
+	$.ajax({
+		url: ctx + '/admin/submit/section/saveNote',
+		type: 'POST',
+		contentType: 'application/json',
+		data: JSON.stringify(noteData),
+		success: function(response) {
+			if (response.success) {
+				console.log('Note saved successfully');
+			} else {
+				alert('Error: ' + response.message);
+			}
+		},
+		error: function(xhr, status, error) {
+			alert('Error saving note: ' + error);
+		}
+	});
+}
+
 // 편집 모드 토글
 function toggleEditMode(sectionId) {
 	const $section = $(`[data-section-id="${sectionId}"]`);
@@ -113,7 +167,7 @@ function saveSection(sectionId) {
 	const $section = $(`[data-section-id="${sectionId}"]`);
 	const $editBtn = $section.find('.btn-edit');
 	const $saveBtn = $section.find('.btn-save');
-	const $textareas = $section.find('textarea');
+	const $textareas = $section.find('textarea').not('.note-textarea'); // Note textarea 제외
 	const $titleInput = $section.find('.section-title-input');
 	const $checkboxes = $section.find('.preview-confirm-check, .submission-check');
 	const $activeToggle = $section.find('.toggle-switch input[type="checkbox"]');
@@ -161,7 +215,7 @@ function saveSection(sectionId) {
 				description: $item.find('textarea').val()
 			});
 		});
-		sectionData.submissions = submissions;  // 복수형으로 변경
+		sectionData.submissions = submissions;
 	}
 
 	$.ajax({

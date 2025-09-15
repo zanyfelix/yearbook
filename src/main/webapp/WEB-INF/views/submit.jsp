@@ -84,8 +84,12 @@
 				</table>
     		</div>
     		<div class="col">
-				<strong>Note</strong>
-				<p>*Categories with incomplete pages are displayed in red for preview purposes, while those with fully completed pages are shown in blue.</p>
+    			<div class="section-header">
+	    			<strong>Note</strong>
+	    		</div>
+	        	<div class="section-content">
+	        		<textarea class="form-control auto-resize" rows="1" readonly>${noteSection.description}</textarea>
+	        	</div>
 			</div>	
 		</div>
     </div>

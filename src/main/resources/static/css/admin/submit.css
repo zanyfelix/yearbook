@@ -544,3 +544,13 @@ html, body {
 	background: white;
 	border-radius: 4px;
 }
+
+.note-section {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 15px;
+}
+
+.note-controls {
+    display: flex;
+    gap: 10px;
+}

@@ -117,7 +117,7 @@ $(function() {
 		const checkedPageConfirmCount = $pageConfirmChecks.filter(':checked').length;
 
 		if (checkedPageConfirmCount < totalPageConfirmChecks) {
-			alert("Please confirm all previews in the list. (Page Confirm)");
+			alert("Please confirm all previews in the list.");
 			return; // 모든 프리뷰가 확인되지 않았으면 함수 종료
 		}
 

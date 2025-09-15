@@ -131,11 +131,15 @@ public class SubmitController {
 		Submit overviewSection = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
 				.orElse(createDefaultSubmit("Overview", "Submit to MBIZ - Overview", 0));
 		
+		Submit noteSection = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
+				.orElse(createDefaultSubmit("Note", "Note", 2));
+		
 		List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
 		
 
 		// 모델에 개별 섹션 추가
 		model.addAttribute("overviewSection", overviewSection);
+		model.addAttribute("noteSection", noteSection);
 		model.addAttribute("submissionItems", submissionItems);
 
 		model.addAttribute("currentMenu", "submit");

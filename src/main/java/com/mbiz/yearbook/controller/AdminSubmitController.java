@@ -129,50 +129,50 @@ public class AdminSubmitController {
 		}
 
 		// 개별 섹션들을 명확하게 조회
-	    Submit overviewSection = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
-	        .orElse(createDefaultSubmit("Overview", "Submit to MBIZ - Overview", 0));
-	    
-	    Submit previewsSection = submitRepository.findFirstByTypeAndUserIdIsNull("Previews")
-	        .orElse(createDefaultSubmit("Previews", "Previews", 1));
-	    
-	    Submit noteSection = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
-	        .orElse(createDefaultSubmit("Note", "Note", 2));
-	    
-	    List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
-	    
-	    // 모델에 개별 섹션 추가
-	    model.addAttribute("overviewSection", overviewSection);
-	    model.addAttribute("previewsSection", previewsSection);
-	    model.addAttribute("noteSection", noteSection);
-	    model.addAttribute("submissionItems", submissionItems);
-	    
-	    // 커스텀 섹션들 (사용자별)
-	    List<Submit> customSections = new ArrayList<>();
-	    if (userId != null) {
-	        customSections = submitRepository.findByUserIdAndType(userId, "Custom");
-	    }
-	    model.addAttribute("customSections", customSections);
-	    
-	    // 전체 리스트 (하위 호환성을 위해 유지)
-	    List<Submit> submitList = new ArrayList<>();
-	    submitList.add(overviewSection);
-	    submitList.add(previewsSection);
-	    submitList.add(noteSection);
-	    submitList.addAll(customSections);
-	    model.addAttribute("submitList", submitList);
+		Submit overviewSection = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
+				.orElse(createDefaultSubmit("Overview", "Submit to MBIZ - Overview", 0));
+
+		Submit previewsSection = submitRepository.findFirstByTypeAndUserIdIsNull("Previews")
+				.orElse(createDefaultSubmit("Previews", "Previews", 1));
+
+		Submit noteSection = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
+				.orElse(createDefaultSubmit("Note", "Note", 2));
+
+		List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
+
+		// 모델에 개별 섹션 추가
+		model.addAttribute("overviewSection", overviewSection);
+		model.addAttribute("previewsSection", previewsSection);
+		model.addAttribute("noteSection", noteSection);
+		model.addAttribute("submissionItems", submissionItems);
+
+		// 커스텀 섹션들 (사용자별)
+		List<Submit> customSections = new ArrayList<>();
+		if (userId != null) {
+			customSections = submitRepository.findByUserIdAndType(userId, "Custom");
+		}
+		model.addAttribute("customSections", customSections);
+
+		// 전체 리스트 (하위 호환성을 위해 유지)
+		List<Submit> submitList = new ArrayList<>();
+		submitList.add(overviewSection);
+		submitList.add(previewsSection);
+		submitList.add(noteSection);
+		submitList.addAll(customSections);
+		model.addAttribute("submitList", submitList);
 		model.addAttribute("currentMenu", "submission");
 
 		return "admin/submit";
 	}
-	
+
 	private Submit createDefaultSubmit(String type, String title, Integer displayOrder) {
-	    Submit submit = new Submit();
-	    submit.setType(type);
-	    submit.setTitle(title);
-	    submit.setDisplayOrder(displayOrder);
-	    submit.setIsActive(true);
-	    submit.setUserId(null);
-	    return submit;
+		Submit submit = new Submit();
+		submit.setType(type);
+		submit.setTitle(title);
+		submit.setDisplayOrder(displayOrder);
+		submit.setIsActive(true);
+		submit.setUserId(null);
+		return submit;
 	}
 
 	@PostMapping("/submit/save")
@@ -193,122 +193,118 @@ public class AdminSubmitController {
 	@PostMapping("/submit/section/save")
 	@ResponseBody
 	public Map<String, Object> saveSingleSection(@RequestBody Map<String, Object> sectionData) {
-	    Map<String, Object> response = new HashMap<>();
-	    
-	    try {
-	        String sectionId = (String) sectionData.get("sectionId");
-	        String sectionType = (String) sectionData.get("type");
-	        String content = (String) sectionData.get("content");
-	        String title = (String) sectionData.get("title");
-	        Long userId = sectionData.get("userId") != null ? 
-	            Long.parseLong(sectionData.get("userId").toString()) : null;
-	        Boolean isActive = (Boolean) sectionData.getOrDefault("isActive", true);
-	        
-	        Submit submit = null;
-	        
-	        if ("overview".equals(sectionType)) {
-	            submit = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
-	                    .orElse(new Submit());
-	            submit.setType("Overview");
-	            submit.setTitle("Submit to MBIZ - Overview");
-	            submit.setDescription(content);
-	            submit.setUserId(null);
-	            submit.setDisplayOrder(0);
-	            
-	        } else if ("previews".equals(sectionType)) {
-	            submit = submitRepository.findFirstByTypeAndUserIdIsNull("Previews")
-	                    .orElse(new Submit());
-	            submit.setType("Previews");
-	            submit.setTitle("Previews");
-	            submit.setDescription(content);
-	            submit.setUserId(null);
-	            submit.setDisplayOrder(1);
-	            
-	            // Note 처리
-	            if (sectionData.get("note") != null) {
-	                Submit noteSubmit = submitRepository.findFirstByTypeAndUserIdIsNull("Note")
-	                        .orElse(new Submit());
-	                noteSubmit.setType("Note");
-	                noteSubmit.setTitle("Note");
-	                noteSubmit.setDescription((String) sectionData.get("note"));
-	                noteSubmit.setIsActive(true);
-	                noteSubmit.setUserId(null);
-	                noteSubmit.setDisplayOrder(2);
-	                submitRepository.save(noteSubmit);
-	            }
-	            
-	        } else if ("submission".equals(sectionType)) {
-	        	if (sectionData.get("submissions") != null) {  // ← 복수형으로 변경
-	                List<Map<String, Object>> submissions = 
-	                    (List<Map<String, Object>>) sectionData.get("submissions");
-	                
-	                // 기존 Submission 타입 모두 삭제
-	                List<Submit> existingSubmissions = submitRepository.findByTypeAndUserIdIsNull("Submission");
-	                submitRepository.deleteAll(existingSubmissions);
-	                
-	                for (int i = 0; i < submissions.size(); i++) {
-	                    Map<String, Object> item = submissions.get(i);
-	                    Submit submissionItem = new Submit();
-	                    submissionItem.setType("Submission");
-	                    submissionItem.setTitle("Page Submission");
-	                    submissionItem.setDescription((String) item.get("description"));
-	                    submissionItem.setIsActive(true);  // 기본값 true
-	                    submissionItem.setUserId(null);
-	                    submissionItem.setDisplayOrder(3 + i);
-	                    submitRepository.save(submissionItem);
-	                }
-	                
-	                response.put("success", true);
-	                response.put("message", "All submission items saved");
-	            } else {
-	                response.put("success", false);
-	                response.put("message", "No submission items to save");
-	            }
-	            return response; // 여기서 리턴
-	            
-	        } else if ("custom".equals(sectionType)) {
-	            // 커스텀 섹션 처리
-	            String idStr = (String) sectionData.get("id");
-	            if (idStr != null && !idStr.isEmpty()) {
-	                try {
-	                    Long id = Long.parseLong(idStr);
-	                    submit = submitRepository.findById(id).orElse(null);
-	                } catch (NumberFormatException e) {
-	                    // 새로운 커스텀 섹션
-	                }
-	            }
-	            
-	            if (submit == null) {
-	                submit = new Submit();
-	                submit.setUserId(userId);
-	                Integer maxOrder = submitRepository.findMaxDisplayOrderByUserId(userId);
-	                submit.setDisplayOrder(maxOrder != null ? maxOrder + 1 : 100);
-	            }
-	            
-	            submit.setType("Custom");
-	            submit.setTitle(title != null ? title : "Custom Section");
-	            submit.setDescription(content);
-	        }
-	        
-	        if (submit != null) {
-	            submit.setIsActive(isActive);
-	            submitRepository.save(submit);
-	            
-	            response.put("success", true);
-	            response.put("message", "Section saved successfully");
-	            response.put("sectionId", submit.getId());
-	        } else {
-	            response.put("success", false);
-	            response.put("message", "Failed to save section");
-	        }
-	        
-	    } catch (Exception e) {
-	        response.put("success", false);
-	        response.put("message", "Error saving section: " + e.getMessage());
-	        e.printStackTrace();
-	    }
-	    
-	    return response;
+		Map<String, Object> response = new HashMap<>();
+
+		try {
+			String sectionId = (String) sectionData.get("sectionId");
+			String sectionType = (String) sectionData.get("type");
+			String content = (String) sectionData.get("content");
+			String title = (String) sectionData.get("title");
+			Long userId = sectionData.get("userId") != null ? Long.parseLong(sectionData.get("userId").toString())
+					: null;
+			Boolean isActive = (Boolean) sectionData.getOrDefault("isActive", true);
+
+			Submit submit = null;
+
+			if ("overview".equals(sectionType)) {
+				submit = submitRepository.findFirstByTypeAndUserIdIsNull("Overview").orElse(new Submit());
+				submit.setType("Overview");
+				submit.setTitle("Submit to MBIZ - Overview");
+				submit.setDescription(content);
+				submit.setUserId(null);
+				submit.setDisplayOrder(0);
+
+			} else if ("previews".equals(sectionType)) {
+				submit = submitRepository.findFirstByTypeAndUserIdIsNull("Previews").orElse(new Submit());
+				submit.setType("Previews");
+				submit.setTitle("Previews");
+				submit.setDescription(content);
+				submit.setUserId(null);
+				submit.setDisplayOrder(1);
+
+				// Note 처리
+				if (sectionData.get("note") != null) {
+					Submit noteSubmit = submitRepository.findFirstByTypeAndUserIdIsNull("Note").orElse(new Submit());
+					noteSubmit.setType("Note");
+					noteSubmit.setTitle("Note");
+					noteSubmit.setDescription((String) sectionData.get("note"));
+					noteSubmit.setIsActive(true);
+					noteSubmit.setUserId(null);
+					noteSubmit.setDisplayOrder(2);
+					submitRepository.save(noteSubmit);
+				}
+
+			} else if ("submission".equals(sectionType)) {
+				if (sectionData.get("submissions") != null) { // ← 복수형으로 변경
+					List<Map<String, Object>> submissions = (List<Map<String, Object>>) sectionData.get("submissions");
+
+					// 기존 Submission 타입 모두 삭제
+					List<Submit> existingSubmissions = submitRepository.findByTypeAndUserIdIsNull("Submission");
+					submitRepository.deleteAll(existingSubmissions);
+
+					for (int i = 0; i < submissions.size(); i++) {
+						Map<String, Object> item = submissions.get(i);
+						Submit submissionItem = new Submit();
+						submissionItem.setType("Submission");
+						submissionItem.setTitle("Page Submission");
+						submissionItem.setDescription((String) item.get("description"));
+						submissionItem.setIsActive(true); // 기본값 true
+						submissionItem.setUserId(null);
+						submissionItem.setDisplayOrder(3 + i);
+						submitRepository.save(submissionItem);
+					}
+
+					response.put("success", true);
+					response.put("message", "All submission items saved");
+				} else {
+					response.put("success", false);
+					response.put("message", "No submission items to save");
+				}
+				return response; // 여기서 리턴
+
+			} else if ("custom".equals(sectionType)) {
+				// 커스텀 섹션 처리
+				String idStr = (String) sectionData.get("id");
+				if (idStr != null && !idStr.isEmpty()) {
+					try {
+						Long id = Long.parseLong(idStr);
+						submit = submitRepository.findById(id).orElse(null);
+					} catch (NumberFormatException e) {
+						// 새로운 커스텀 섹션
+					}
+				}
+
+				if (submit == null) {
+					submit = new Submit();
+					submit.setUserId(userId);
+					Integer maxOrder = submitRepository.findMaxDisplayOrderByUserId(userId);
+					submit.setDisplayOrder(maxOrder != null ? maxOrder + 1 : 100);
+				}
+
+				submit.setType("Custom");
+				submit.setTitle(title != null ? title : "Custom Section");
+				submit.setDescription(content);
+			}
+
+			if (submit != null) {
+				submit.setIsActive(isActive);
+				submitRepository.save(submit);
+
+				response.put("success", true);
+				response.put("message", "Section saved successfully");
+				response.put("sectionId", submit.getId());
+			} else {
+				response.put("success", false);
+				response.put("message", "Failed to save section");
+			}
+
+		} catch (Exception e) {
+			response.put("success", false);
+			response.put("message", "Error saving section: " + e.getMessage());
+			e.printStackTrace();
+		}
+
+		return response;
 	}
 
 	// 체크박스 상태 저장을 위한 별도 메서드
@@ -407,6 +403,37 @@ public class AdminSubmitController {
 		} catch (Exception e) {
 			response.put("success", false);
 			response.put("message", "Error applying settings: " + e.getMessage());
+		}
+
+		return response;
+	}
+
+	@PostMapping("/submit/section/saveNote")
+	@ResponseBody
+	public Map<String, Object> saveNote(@RequestBody Map<String, Object> noteData) {
+		Map<String, Object> response = new HashMap<>();
+
+		try {
+			String content = (String) noteData.get("content");
+
+			Submit noteSubmit = submitRepository.findFirstByTypeAndUserIdIsNull("Note").orElse(new Submit());
+
+			noteSubmit.setType("Note");
+			noteSubmit.setTitle("Note");
+			noteSubmit.setDescription(content);
+			noteSubmit.setIsActive(true);
+			noteSubmit.setUserId(null);
+			noteSubmit.setDisplayOrder(2);
+
+			submitRepository.save(noteSubmit);
+
+			response.put("success", true);
+			response.put("message", "Note saved successfully");
+
+		} catch (Exception e) {
+			response.put("success", false);
+			response.put("message", "Error saving note: " + e.getMessage());
+			e.printStackTrace();
 		}
 
 		return response;
