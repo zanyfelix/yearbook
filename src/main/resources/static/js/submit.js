@@ -4,6 +4,23 @@
 var currentImageIndex = 0;
 var imageList = [];
 
+document.querySelectorAll('.auto-resize').forEach(textarea => {
+    function adjustHeight() {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+    
+    // 초기 설정
+    adjustHeight();
+    
+    // 값이 변경될 때 (프로그래밍적으로 변경될 경우)
+    const observer = new MutationObserver(adjustHeight);
+    observer.observe(textarea, { 
+        attributes: true, 
+        attributeFilter: ['value'] 
+    });
+});
+
 // 썸네일 로딩을 위한 AJAX 함수 (전역 함수로 변경)
 function loadPreviewData(contentsId) {
     $.ajax({

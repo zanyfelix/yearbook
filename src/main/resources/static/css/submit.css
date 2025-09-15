@@ -278,3 +278,33 @@ html, body {
 .custom-close-btn:hover {
     background-color: #34495e;
 }
+
+.section-content textarea.form-control[readonly] {
+    border-color: white;
+}
+
+.section-content textarea.form-control[readonly]:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: white;
+}
+
+.auto-resize {
+    resize: none;
+    overflow: hidden;
+    min-height: 100px;
+}
+
+.submission-item {
+    display: flex;
+    align-items: flex-start; /* 체크박스를 상단에 정렬 */
+}
+
+.submission-item .submission-check {
+    margin-top: 10px; /* textarea와 높이 맞추기 */
+    flex-shrink: 0; /* 체크박스 크기 고정 */
+}
+
+.submission-item textarea {
+    flex: 1; /* 남은 공간 모두 사용 */
+}
