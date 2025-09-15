@@ -94,24 +94,26 @@ class PhotoManager {
 		frameGroup.data('isDraggingPhoto', true);
 
 		const initialTransform = photo.css('transform');
-		// ✨ TransformHelper를 사용하여 초기 행렬을 정확히 파싱합니다.
 		const initialMatrix = TransformHelper.parseMatrix(initialTransform);
 
 		const dragData = {
 			startX: e.clientX,
 			startY: e.clientY,
-			initialMatrix: initialMatrix, // ✨ 초기 행렬 전체를 저장합니다.
-			ticking: false
+			initialMatrix: initialMatrix
 		};
 
 		const $selectionBox = $('.photo-selection-box');
 		const $silhouette = $('.photo-silhouette');
 
-		const updatePositions = (latestEvent) => {
+		let animationId = null;
+		let latestEvent = null;
+
+		const updatePosition = () => {
+			if (!latestEvent) return;
+
 			const deltaX = latestEvent.clientX - dragData.startX;
 			const deltaY = latestEvent.clientY - dragData.startY;
 
-			// ✨ TransformHelper를 사용해 초기 행렬에 이동 변화량을 정확히 더합니다.
 			const newMatrix = { ...dragData.initialMatrix };
 			newMatrix.tx += deltaX;
 			newMatrix.ty += deltaY;
@@ -134,20 +136,30 @@ class PhotoManager {
 			$selectionBox.css('transform', newTransform);
 			$silhouette.css('transform', newTransform);
 
-			dragData.ticking = false;
+			latestEvent = null;
+			animationId = null;
 		};
 
 		const onMouseMove = (ev) => {
 			ev.preventDefault();
-			if (!dragData.ticking) {
-				requestAnimationFrame(() => updatePositions(ev));
-				dragData.ticking = true;
+			latestEvent = ev;
+
+			if (!animationId) {
+				animationId = requestAnimationFrame(updatePosition);
 			}
 		};
 
 		const onMouseUp = (ev) => {
+			if (animationId) {
+				cancelAnimationFrame(animationId);
+			}
+
+			if (latestEvent) {
+				latestEvent = ev;
+				updatePosition();
+			}
+
 			$(document).off('.photoDrag');
-			updatePositions(ev);
 			this.savePhotoState(photo, frameGroup, { isManual: true });
 			window.selectionManager.selectPhoto(photo, frameGroup);
 			setTimeout(() => {
@@ -155,7 +167,8 @@ class PhotoManager {
 			}, 0);
 		};
 
-		$(document).on('mousemove.photoDrag', onMouseMove).on('mouseup.photoDrag', onMouseUp);
+		$(document).on('mousemove.photoDrag', onMouseMove)
+			.on('mouseup.photoDrag', onMouseUp);
 	}
 
 	static getContainerBounds(maskContainer, photo) {
@@ -243,11 +256,22 @@ class PhotoManager {
 				startLeft: startLeft,
 				startTop: startTop,
 				aspectRatio: aspectRatio,
-				rotation: rotation, // 회전 각도 저장
+				rotation: rotation,
 				handlePosition: this.getHandlePosition(handle)
 			};
 
-			$(document).on('mousemove.photoResize', (ev) => {
+			let animationId = null;
+			let latestMouseEvent = null;
+			let isResizing = true;  // 리사이징 상태 플래그
+
+			// 실제 리사이즈 업데이트 함수
+			const performResize = () => {
+				if (!latestMouseEvent || !isResizing) {
+					animationId = null;
+					return;
+				}
+
+				const ev = latestMouseEvent;
 				const screenDeltaX = ev.clientX - resizeData.startX;
 				const screenDeltaY = ev.clientY - resizeData.startY;
 
@@ -264,14 +288,14 @@ class PhotoManager {
 
 				// 각 핸들 위치에 따라 적절한 delta 사용
 				switch (resizeData.handlePosition) {
-					case 'se': // 우하단 - 대각선 이동 고려
+					case 'se': // 우하단 - 대각선 이동
 						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							(deltaX > 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSE);
 						newHeight = newWidth / resizeData.aspectRatio;
 						break;
 
-					case 'sw': // 좌하단 - X축 주도
+					case 'sw': // 좌하단
 						const deltaSW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							(deltaX < 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSW);
@@ -281,7 +305,7 @@ class PhotoManager {
 						newTop = resizeData.startTop + offsetX_sw * Math.sin(resizeData.rotation);
 						break;
 
-					case 'ne': // 우상단 - Y축 주도
+					case 'ne': // 우상단
 						const deltaNE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							(deltaY < 0 ? 1 : -1);
 						newHeight = Math.max(this.config.minSize / resizeData.aspectRatio,
@@ -292,21 +316,23 @@ class PhotoManager {
 						newTop = resizeData.startTop + offsetY_ne * Math.cos(resizeData.rotation);
 						break;
 
-					case 'nw': // 좌상단 - 대각선 이동
+					case 'nw': // 좌상단
 						const deltaNW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							((deltaX < 0 && deltaY < 0) ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaNW);
 						newHeight = newWidth / resizeData.aspectRatio;
 						const offsetX_nw = (resizeData.startWidth - newWidth);
 						const offsetY_nw = (resizeData.startHeight - newHeight);
-						newLeft = resizeData.startLeft + offsetX_nw * Math.cos(resizeData.rotation) -
+						newLeft = resizeData.startLeft +
+							offsetX_nw * Math.cos(resizeData.rotation) -
 							offsetY_nw * Math.sin(resizeData.rotation);
-						newTop = resizeData.startTop + offsetX_nw * Math.sin(resizeData.rotation) +
+						newTop = resizeData.startTop +
+							offsetX_nw * Math.sin(resizeData.rotation) +
 							offsetY_nw * Math.cos(resizeData.rotation);
 						break;
 				}
 
-				// 크기와 위치 적용
+				// DOM 업데이트 (프레임당 1번만 실행)
 				photo.css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
@@ -314,20 +340,57 @@ class PhotoManager {
 					top: newTop + 'px'
 				});
 
-				// UI 업데이트
+				// Selection UI 업데이트
 				this.updateSelectionUI(photo);
+
+				// Silhouette 업데이트
 				$('.photo-silhouette').css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
 					left: newLeft + 'px',
 					top: newTop + 'px'
 				});
+
+				// 처리 완료 후 플래그 리셋
+				latestMouseEvent = null;
+				animationId = null;
+			};
+
+			// mousemove 이벤트 핸들러
+			$(document).on('mousemove.photoResize', (ev) => {
+				if (!isResizing) return;
+				latestMouseEvent = ev; // 최신 이벤트만 저장
+
+				// 이미 예약된 애니메이션이 없으면 새로 요청
+				if (!animationId) {
+					animationId = requestAnimationFrame(performResize);
+				}
 			});
 
+			// mouseup 이벤트 핸들러
 			$(document).on('mouseup.photoResize', (ev) => {
+				isResizing = false;  // 리사이징 종료
+
+				// 진행 중인 애니메이션 취소
+				if (animationId) {
+					cancelAnimationFrame(animationId);
+					animationId = null;
+				}
+
+				// 마지막 위치 업데이트 (최종 보정)
+				if (latestMouseEvent) {
+					latestMouseEvent = ev;
+					performResize();
+				}
+
+				// 메모리 정리
+				latestMouseEvent = null;
+
 				$(document).off('.photoResize');
 				ev.stopPropagation();
+
 				this.savePhotoState(photo, frameGroup, { isManual: true });
+
 				setTimeout(() => {
 					window.selectionManager.selectPhoto(photo, frameGroup);
 					frameGroup.removeData('isResizingPhoto');
