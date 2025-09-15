@@ -1284,7 +1284,6 @@ function updateAllPhotosPosition() {
 		const $frame = $(this);
 		const $photo = $frame.find('.uploaded-photo');
 		const $placeholder = $frame.find('.place-image-here-link');
-
 		const photoSrc = $photo.attr('src');
 
 		if (photoSrc && photoSrc !== '#') {
@@ -1293,38 +1292,47 @@ function updateAllPhotosPosition() {
 			const photoData = $photo.data('relativeState');
 			if (!photoData) return;
 
-			// 1. 저장된 깨끗한 픽셀 데이터를 읽어옵니다.
+			// 저장된 픽셀 데이터 읽기
 			const translateX = photoData.position.leftPx || 0;
 			const translateY = photoData.position.topPx || 0;
 			const photoWidth = photoData.size.widthPx || 100;
 			const photoHeight = photoData.size.heightPx || 100;
-			// 이 값은 'matrix(a, b, c, d, 0, 0)' 형태의 순수한 회전/크기 정보입니다.
+
+			// 회전 transform (translate 없이)
 			const rotationTransform = photoData.transform || 'none';
 
-			// 2. 회전 정보와 위치 정보를 하나의 최종 transform 값으로 완벽하게 조합합니다.
+			// 회전과 위치를 결합한 최종 transform
 			let finalTransform;
 			if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
-				// 회전이 없는 경우, 위치 정보만으로 transform을 생성합니다.
+				// 회전이 없는 경우, 위치만
 				finalTransform = `translate(${translateX}px, ${translateY}px)`;
 			} else {
-				// 회전 정보가 있는 경우(matrix), 마지막 두 값(tx, ty)을 저장된 위치 값으로 교체합니다.
-				// "matrix(a,b,c,d,0,0)" -> "matrix(a,b,c,d,tx,ty)"
-				finalTransform = rotationTransform.replace(/, 0, 0\)$/, `, ${translateX}, ${translateY})`);
+				// 회전이 있는 경우, matrix의 translate 값 업데이트
+				finalTransform = rotationTransform.replace(
+					/, 0, 0\)$/,
+					`, ${translateX}, ${translateY})`
+				);
 			}
 
-			// 3. left/top은 0으로 고정하고, 오직 transform으로만 모든 것을 제어합니다.
+			// CSS 적용 - left/top은 항상 0
 			const photoCss = {
 				display: 'block',
 				visibility: 'visible',
-				width: photoWidth,
-				height: photoHeight,
-				left: 0, // ✨ left/top을 사용하지 않는 것이 핵심입니다.
-				top: 0,  // ✨
-				transform: finalTransform, // ✨ 위치와 회전이 통합된 하나의 값
+				width: photoWidth + 'px',
+				height: photoHeight + 'px',
+				left: '0px',  // 항상 0
+				top: '0px',   // 항상 0
+				transform: finalTransform,
 				transformOrigin: photoData.transformOrigin || '50% 50%'
 			};
 
 			$photo.css(photoCss);
+
+			console.log('Photo restored:', {
+				size: { width: photoWidth, height: photoHeight },
+				position: { x: translateX, y: translateY },
+				transform: finalTransform
+			});
 
 		} else {
 			$placeholder.show();

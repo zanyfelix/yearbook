@@ -231,21 +231,17 @@ class PhotoManager {
 			const frameGroup = photo.closest('.frame-group');
 			frameGroup.data('isResizingPhoto', true);
 
-			// 현재 transform에서 회전 각도 추출
+			// 현재 transform 매트릭스 파싱
 			const currentTransform = photo.css('transform');
-			let rotation = 0;
-			if (currentTransform && currentTransform !== 'none') {
-				const matrix = currentTransform.match(/matrix\((.+)\)/);
-				if (matrix) {
-					const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
-					rotation = Math.atan2(values[1], values[0]); // 라디안 단위
-				}
-			}
+			const currentMatrix = TransformHelper.parseMatrix(currentTransform);
+
+			// 현재 위치(translate) 및 회전 정보 추출
+			const currentTranslateX = currentMatrix.tx;
+			const currentTranslateY = currentMatrix.ty;
+			const rotation = Math.atan2(currentMatrix.b, currentMatrix.a);
 
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
-			const startLeft = parseFloat(photo.css('left')) || 0;
-			const startTop = parseFloat(photo.css('top')) || 0;
 			const aspectRatio = startWidth / startHeight;
 
 			const resizeData = {
@@ -253,8 +249,9 @@ class PhotoManager {
 				startY: e.clientY,
 				startWidth: startWidth,
 				startHeight: startHeight,
-				startLeft: startLeft,
-				startTop: startTop,
+				currentTranslateX: currentTranslateX,
+				currentTranslateY: currentTranslateY,
+				currentMatrix: currentMatrix,
 				aspectRatio: aspectRatio,
 				rotation: rotation,
 				handlePosition: this.getHandlePosition(handle)
@@ -262,9 +259,8 @@ class PhotoManager {
 
 			let animationId = null;
 			let latestMouseEvent = null;
-			let isResizing = true;  // 리사이징 상태 플래그
+			let isResizing = true;
 
-			// 실제 리사이즈 업데이트 함수
 			const performResize = () => {
 				if (!latestMouseEvent || !isResizing) {
 					animationId = null;
@@ -275,7 +271,7 @@ class PhotoManager {
 				const screenDeltaX = ev.clientX - resizeData.startX;
 				const screenDeltaY = ev.clientY - resizeData.startY;
 
-				// 화면 좌표계의 이동량을 요소의 로컬 좌표계로 변환
+				// 화면 좌표계를 로컬 좌표계로 변환
 				const cos = Math.cos(-resizeData.rotation);
 				const sin = Math.sin(-resizeData.rotation);
 				const deltaX = screenDeltaX * cos - screenDeltaY * sin;
@@ -283,16 +279,17 @@ class PhotoManager {
 
 				let newWidth = resizeData.startWidth;
 				let newHeight = resizeData.startHeight;
-				let newLeft = resizeData.startLeft;
-				let newTop = resizeData.startTop;
+				let newTranslateX = resizeData.currentTranslateX;
+				let newTranslateY = resizeData.currentTranslateY;
 
-				// 각 핸들 위치에 따라 적절한 delta 사용
+				// 각 핸들에 따른 크기 및 위치 계산
 				switch (resizeData.handlePosition) {
-					case 'se': // 우하단 - 대각선 이동
+					case 'se': // 우하단
 						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							(deltaX > 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSE);
 						newHeight = newWidth / resizeData.aspectRatio;
+						// 우하단은 위치 변경 없음
 						break;
 
 					case 'sw': // 좌하단
@@ -300,9 +297,12 @@ class PhotoManager {
 							(deltaX < 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						const offsetX_sw = (resizeData.startWidth - newWidth);
-						newLeft = resizeData.startLeft + offsetX_sw * Math.cos(resizeData.rotation);
-						newTop = resizeData.startTop + offsetX_sw * Math.sin(resizeData.rotation);
+						// 좌측 이동 필요
+						const offsetX_sw = resizeData.startWidth - newWidth;
+						newTranslateX = resizeData.currentTranslateX +
+							offsetX_sw * Math.cos(resizeData.rotation);
+						newTranslateY = resizeData.currentTranslateY +
+							offsetX_sw * Math.sin(resizeData.rotation);
 						break;
 
 					case 'ne': // 우상단
@@ -311,9 +311,12 @@ class PhotoManager {
 						newHeight = Math.max(this.config.minSize / resizeData.aspectRatio,
 							resizeData.startHeight + deltaNE);
 						newWidth = newHeight * resizeData.aspectRatio;
-						const offsetY_ne = (resizeData.startHeight - newHeight);
-						newLeft = resizeData.startLeft - offsetY_ne * Math.sin(resizeData.rotation);
-						newTop = resizeData.startTop + offsetY_ne * Math.cos(resizeData.rotation);
+						// 상단 이동 필요
+						const offsetY_ne = resizeData.startHeight - newHeight;
+						newTranslateX = resizeData.currentTranslateX -
+							offsetY_ne * Math.sin(resizeData.rotation);
+						newTranslateY = resizeData.currentTranslateY +
+							offsetY_ne * Math.cos(resizeData.rotation);
 						break;
 
 					case 'nw': // 좌상단
@@ -321,71 +324,72 @@ class PhotoManager {
 							((deltaX < 0 && deltaY < 0) ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaNW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						const offsetX_nw = (resizeData.startWidth - newWidth);
-						const offsetY_nw = (resizeData.startHeight - newHeight);
-						newLeft = resizeData.startLeft +
+						// 좌상단 이동 필요
+						const offsetX_nw = resizeData.startWidth - newWidth;
+						const offsetY_nw = resizeData.startHeight - newHeight;
+						newTranslateX = resizeData.currentTranslateX +
 							offsetX_nw * Math.cos(resizeData.rotation) -
 							offsetY_nw * Math.sin(resizeData.rotation);
-						newTop = resizeData.startTop +
+						newTranslateY = resizeData.currentTranslateY +
 							offsetX_nw * Math.sin(resizeData.rotation) +
 							offsetY_nw * Math.cos(resizeData.rotation);
 						break;
 				}
 
-				// DOM 업데이트 (프레임당 1번만 실행)
+				// CSS는 left/top을 0으로, 크기만 변경
 				photo.css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
-					left: newLeft + 'px',
-					top: newTop + 'px'
+					left: '0px',
+					top: '0px'
 				});
 
-				// Selection UI 업데이트
+				// 위치와 회전을 transform으로 적용
+				const newMatrix = {
+					...resizeData.currentMatrix,
+					tx: newTranslateX,
+					ty: newTranslateY
+				};
+				photo.css('transform', TransformHelper.composeMatrix(newMatrix));
+
+				// UI 업데이트
 				this.updateSelectionUI(photo);
 
-				// Silhouette 업데이트
 				$('.photo-silhouette').css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
-					left: newLeft + 'px',
-					top: newTop + 'px'
+					left: '0px',
+					top: '0px',
+					transform: photo.css('transform')
 				});
 
-				// 처리 완료 후 플래그 리셋
 				latestMouseEvent = null;
 				animationId = null;
 			};
 
-			// mousemove 이벤트 핸들러
 			$(document).on('mousemove.photoResize', (ev) => {
 				if (!isResizing) return;
-				latestMouseEvent = ev; // 최신 이벤트만 저장
+				latestMouseEvent = ev;
 
-				// 이미 예약된 애니메이션이 없으면 새로 요청
 				if (!animationId) {
 					animationId = requestAnimationFrame(performResize);
 				}
 			});
 
-			// mouseup 이벤트 핸들러
 			$(document).on('mouseup.photoResize', (ev) => {
-				isResizing = false;  // 리사이징 종료
+				isResizing = false;
 
-				// 진행 중인 애니메이션 취소
 				if (animationId) {
 					cancelAnimationFrame(animationId);
 					animationId = null;
 				}
 
-				// 마지막 위치 업데이트 (최종 보정)
 				if (latestMouseEvent) {
 					latestMouseEvent = ev;
 					performResize();
 				}
 
-				// 메모리 정리
 				latestMouseEvent = null;
-
 				$(document).off('.photoResize');
 				ev.stopPropagation();
 
@@ -513,25 +517,29 @@ class PhotoManager {
 
 	static savePhotoState(photo, frameGroup, options = {}) {
 		const currentTransform = photo.css('transform');
-		// transform에서 이동(translate) 픽셀 값을 가져옵니다.
-		const translateValues = window.getTranslateValues(currentTransform);
+		const matrix = TransformHelper.parseMatrix(currentTransform);
 
 		const currentState = photo.data('relativeState') || {};
 
-		// ✨ 위치를 %가 아닌 픽셀(px)로 저장합니다.
+		// transform matrix에서 위치 추출 (픽셀 단위)
 		currentState.position = {
-			leftPx: translateValues.x,
-			topPx: translateValues.y
+			leftPx: matrix.tx,
+			topPx: matrix.ty
 		};
 
-		// ✨ 크기도 %가 아닌 픽셀(px)로 저장합니다.
+		// 실제 크기 저장 (픽셀 단위)
 		currentState.size = {
 			widthPx: photo.outerWidth(),
 			heightPx: photo.outerHeight()
 		};
 
-		// ✨ 회전/크기 정보(translate 제외)를 저장합니다.
-		currentState.transform = window.getRotationMatrix(photo);
+		// 회전만 저장 (translate 제외)
+		const rotationMatrix = {
+			...matrix,
+			tx: 0,
+			ty: 0
+		};
+		currentState.transform = TransformHelper.composeMatrix(rotationMatrix);
 		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
 
 		if (typeof options.isManual === 'boolean') {
@@ -539,6 +547,12 @@ class PhotoManager {
 		}
 
 		photo.data('relativeState', currentState);
+
+		console.log('Photo state saved:', {
+			position: currentState.position,
+			size: currentState.size,
+			rotation: currentState.transform
+		});
 	}
 
 	// === 유틸리티 메서드 ===
