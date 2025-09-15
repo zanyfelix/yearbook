@@ -11,7 +11,7 @@ var impersonatePopup = null;
 function loadPreviewData(contentsId) {
 	$.ajax({
 		// url: `${ctx}/submit/previewData`, // JSP에서 ctx 변수를 선언했으므로 그대로 사용
-		url: ctx + '/submit/previewData', // ES6 템플릿 리터럴을 지원하지 않는 환경을 고려하여 수정
+		url: ctx + '/admin/submit/previewData', // ES6 템플릿 리터럴을 지원하지 않는 환경을 고려하여 수정
 		type: 'POST', // GET이 아닌 POST로 수정 (서버 컨트롤러와 일치 필요)
 		contentType: 'application/json',
 		data: JSON.stringify({ contentsId: contentsId }),

@@ -145,17 +145,14 @@
 								style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
 								<strong>Note</strong>
 								<div class="note-controls">
-									<button type="button"
-										class="btn-edit"
+									<button type="button" class="btn-edit"
 										onclick="toggleNoteEditMode()">EDIT</button>
-									<button type="button"
-										class="btn-save"
-										onclick="saveNote()" style="display: none;">SAVE</button>
+									<button type="button" class="btn-save" onclick="saveNote()"
+										style="display: none;">SAVE</button>
 								</div>
 							</div>
 							<textarea id="noteTextarea" name="sections[1].note"
-								class="form-control readonly-mode" rows="2"
-								readonly>${noteSection.description}</textarea>
+								class="form-control readonly-mode" rows="2" readonly>${noteSection.description}</textarea>
 						</div>
 					</div>
 				</div>
@@ -207,6 +204,30 @@
 				style="text-align: center; margin-top: 30px;">
 				<button type="button" class="btn btn-primary btn-lg"
 					onclick="applyAllSettings()">APPLY</button>
+			</div>
+		</div>
+
+		<!-- 프레임 선택용 모달 -->
+		<div class="modal fade" id="previewModal" tabindex="-1"
+			aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-body" style="padding: 20px;">
+
+						<div class="preview-container">
+							<img id="previewImage" src="" alt="Preview Image">
+							<button onclick="showPreviousImage()" class="arrow-btn prev-btn">&lt;</button>
+							<button onclick="showNextImage()" class="arrow-btn next-btn">&gt;</button>
+						</div>
+
+						<div class="close-btn-container">
+							<%-- 버튼 텍스트와 클래스 변경 --%>
+							<button type="button" class="custom-close-btn"
+								data-bs-dismiss="modal">CLOSE</button>
+						</div>
+
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

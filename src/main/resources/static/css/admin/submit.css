@@ -295,7 +295,7 @@ html, body {
 /* 모달 대화 상자 스타일 */
 .modal-dialog {
 	/* 세로가 긴 이미지에 맞게 너비 조정 (필요시 값 변경) */
-	max-width: 600px;
+	max-width: 500px;
 }
 
 /* 모달 내용 전체 스타일 */

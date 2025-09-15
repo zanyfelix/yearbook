@@ -90,7 +90,7 @@
 	        	<div class="section-content">
 	        		<textarea class="form-control auto-resize" rows="1" readonly>${noteSection.description}</textarea>
 	        	</div>
-			</div>	
+			</div>
 		</div>
     </div>
     
