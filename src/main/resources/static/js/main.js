@@ -638,15 +638,17 @@ $(document).ready(function() {
 			let photoData = null;
 			const $photo = $frame.find('.uploaded-photo');
 			if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
+				const photoTransform = $photo.css('transform') || 'none';
 				const photoRelativeState = $photo.data('relativeState');
+
 				if (photoRelativeState) {
 					photoData = {
-						src: $photo.data('originalPath') || $photo.data('filePath'), // 원본 경로 우선
+						src: $photo.data('originalPath') || $photo.data('filePath'),
 						editSrc: $photo.data('editPath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
-						transform: photoRelativeState.transform,
-						transformOrigin: photoRelativeState.transformOrigin
+						transform: photoTransform,  // 실제 CSS transform 값 저장
+						transformOrigin: photoRelativeState.transformOrigin || '50% 50%'
 					};
 				}
 			}

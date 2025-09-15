@@ -89,7 +89,10 @@ public class JpgRenderingService {
 	private static final double EDIT_HEIGHT = 1011.0; // 편집기 기준 높이
 
 	// 스케일 비율 (편집기 -> 렌더링)
-	private static final double SCALE_RATIO = RENDER_WIDTH / EDIT_WIDTH; // 약 3.33
+	private static final double PRECISE_SCALE_RATIO = 2621.0 / 786.0;
+	private static final double SCALE_RATIO = PRECISE_SCALE_RATIO;
+	// private static final double SCALE_RATIO = RENDER_WIDTH / EDIT_WIDTH; // 약
+	// 3.33
 
 	// 파일 경로 관련 상수
 	private static final String SUFFIX_ORIGINAL = "_B.png";
@@ -707,24 +710,22 @@ public class JpgRenderingService {
 			double frameWidth = RENDER_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0);
 			double frameHeight = RENDER_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0);
 
-			// 프레임 컴포지트 생성
 			BufferedImage frameComposite = new BufferedImage((int) Math.ceil(frameWidth), (int) Math.ceil(frameHeight),
 					BufferedImage.TYPE_INT_ARGB);
 			Graphics2D g2dFrame = frameComposite.createGraphics();
 			setHighQualityRenderingHints(g2dFrame);
 
-			// 투명 배경으로 초기화
+			// 투명 배경
 			g2dFrame.setComposite(AlphaComposite.Clear);
 			g2dFrame.fillRect(0, 0, frameComposite.getWidth(), frameComposite.getHeight());
 			g2dFrame.setComposite(AlphaComposite.SrcOver);
 
-			// 1. 사진 처리
+			// 사진 처리
 			JsonNode photoNode = frameNode.path("photo");
 			if (photoNode.has("src")) {
 				String src = photoNode.path("src").asText();
 				if (!src.isEmpty() && !"null".equals(src)) {
 					try {
-						// 사진 로드
 						String originalSrc = convertToOriginalPath(src);
 						byte[] imageBytes = loadImageBytes(originalSrc);
 						if (imageBytes == null) {
@@ -735,64 +736,81 @@ public class JpgRenderingService {
 							BufferedImage photoImage = readAndCorrectImageOrientation(imageBytes);
 							if (photoImage != null) {
 
-								// 사진 위치와 크기 계산
-								JsonNode position = photoNode.path("position");
-								JsonNode size = photoNode.path("size");
+								// ★ 핵심 수정: Transform에서 직접 위치 추출
+								String photoTransform = photoNode.path("transform").asText("none");
+								double photoX = 0, photoY = 0;
+								double photoWidth, photoHeight;
 
-								double photoX, photoY, photoWidth, photoHeight;
+								// Transform matrix에서 translate 값 추출
+								if (photoTransform.contains("matrix")) {
+									Pattern pattern = Pattern.compile(
+											"matrix\\(([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^)]+)\\)");
+									Matcher matcher = pattern.matcher(photoTransform);
 
-								if (position.has("leftPx")) {
-									// 픽셀 단위 변환 - 간단하게
-									photoX = position.path("leftPx").asDouble() * SCALE_RATIO;
-									photoY = position.path("topPx").asDouble() * SCALE_RATIO;
-									photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
-									photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
-								} else {
-									// 퍼센트 단위
-									photoX = frameWidth * (position.path("left").asDouble() / 100.0);
-									photoY = frameHeight * (position.path("top").asDouble() / 100.0);
-									photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
-									photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
+									if (matcher.find()) {
+										// JavaScript에서 저장된 translate 값
+										double txEdit = Double.parseDouble(matcher.group(5).trim());
+										double tyEdit = Double.parseDouble(matcher.group(6).trim());
+
+										// 편집기 좌표를 렌더링 좌표로 변환
+										photoX = txEdit * SCALE_RATIO;
+										photoY = tyEdit * SCALE_RATIO;
+									}
+								} else if (photoNode.path("position").has("leftPx")) {
+									// Fallback: 픽셀 단위 위치 사용
+									photoX = photoNode.path("position").path("leftPx").asDouble() * SCALE_RATIO;
+									photoY = photoNode.path("position").path("topPx").asDouble() * SCALE_RATIO;
 								}
 
-								// 마스크 확인
+								// 크기는 저장된 값 사용
+								JsonNode size = photoNode.path("size");
+								photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
+								photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
+
+								// 마스크 처리
 								BufferedImage maskImage = null;
 								if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
 									maskImage = loadMaskImage(theme.getOriginalMaskPath());
 								}
 
 								if (maskImage != null) {
-									// === 마스크가 있는 경우: 별도 레이어에서 마스킹 ===
+									// 마스크가 있는 경우
 									BufferedImage maskedPhoto = new BufferedImage(frameComposite.getWidth(),
 											frameComposite.getHeight(), BufferedImage.TYPE_INT_ARGB);
 									Graphics2D g2dMasked = maskedPhoto.createGraphics();
 									setHighQualityRenderingHints(g2dMasked);
 
-									// 사진 그리기
-									drawPhoto(g2dMasked, photoImage, photoNode, photoX, photoY, photoWidth,
-											photoHeight);
+									// Transform 적용하여 사진 그리기
+									g2dMasked.setTransform(new AffineTransform());
+
+									// 회전이 있는 경우 처리
+									TransformParser parser = TransformParser.parse(photoTransform);
+									if (Math.abs(parser.rotation) > 0.001) {
+										AffineTransform at = new AffineTransform();
+										at.translate(photoX + photoWidth / 2, photoY + photoHeight / 2);
+										at.rotate(parser.rotation);
+										at.translate(-photoWidth / 2, -photoHeight / 2);
+										g2dMasked.setTransform(at);
+										g2dMasked.drawImage(photoImage, 0, 0, (int) photoWidth, (int) photoHeight,
+												null);
+									} else {
+										// 회전 없으면 단순 위치
+										g2dMasked.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth,
+												(int) photoHeight, null);
+									}
 
 									// 마스크 적용
 									g2dMasked.setComposite(AlphaComposite.DstIn);
+									g2dMasked.setTransform(new AffineTransform());
 									g2dMasked.drawImage(maskImage, 0, 0, frameComposite.getWidth(),
 											frameComposite.getHeight(), null);
 									g2dMasked.dispose();
 
-									// 마스킹된 사진을 프레임에 그리기
 									g2dFrame.drawImage(maskedPhoto, 0, 0, null);
-
 								} else {
-									// === 마스크가 없는 경우: 클리핑으로 프레임 영역 제한 ===
-									Graphics2D g2dClipped = (Graphics2D) g2dFrame.create();
-
-									// 중요: 프레임 영역으로 클리핑
-									g2dClipped.setClip(0, 0, frameComposite.getWidth(), frameComposite.getHeight());
-
-									// 사진 그리기
-									drawPhoto(g2dClipped, photoImage, photoNode, photoX, photoY, photoWidth,
-											photoHeight);
-
-									g2dClipped.dispose();
+									// 마스크 없는 경우
+									drawPhotoDirectly(g2dFrame, photoImage, photoNode, (int) photoX, (int) photoY,
+											(int) photoWidth, (int) photoHeight);
 								}
 							}
 						}
@@ -802,7 +820,7 @@ public class JpgRenderingService {
 				}
 			}
 
-			// 2. 프레임 장식 이미지 오버레이
+			// 프레임 장식 이미지 오버레이
 			if (theme.getOriginalPath() != null && !theme.getOriginalPath().isEmpty()) {
 				BufferedImage frameImage = loadThemeImage(theme.getOriginalPath());
 				if (frameImage != null) {
@@ -813,8 +831,80 @@ public class JpgRenderingService {
 
 			g2dFrame.dispose();
 
-			// 3. 완성된 프레임을 메인 캔버스에 배치
+			// 완성된 프레임을 메인 캔버스에 배치
 			drawFrameToCanvas(g2d, frameComposite, frameNode, frameX, frameY, frameWidth, frameHeight);
+		}
+	}
+
+	// 헬퍼 메서드 추가
+	private void drawPhotoDirectly(Graphics2D g2d, BufferedImage photo, JsonNode photoNode, int x, int y, int width,
+			int height) {
+		String transform = photoNode.path("transform").asText("none");
+		TransformParser parser = TransformParser.parse(transform);
+
+		if (Math.abs(parser.rotation) > 0.001) {
+			Graphics2D g2dTemp = (Graphics2D) g2d.create();
+			g2dTemp.rotate(parser.rotation, x + width / 2.0, y + height / 2.0);
+			g2dTemp.drawImage(photo, x, y, width, height, null);
+			g2dTemp.dispose();
+		} else {
+			g2d.drawImage(photo, x, y, width, height, null);
+		}
+	}
+
+	private Rectangle2D getMaskContentBounds(BufferedImage maskImage) {
+		if (maskImage == null)
+			return null;
+
+		int minX = maskImage.getWidth();
+		int minY = maskImage.getHeight();
+		int maxX = 0;
+		int maxY = 0;
+
+		// 투명하지 않은 픽셀 영역 찾기
+		for (int y = 0; y < maskImage.getHeight(); y++) {
+			for (int x = 0; x < maskImage.getWidth(); x++) {
+				int alpha = (maskImage.getRGB(x, y) >> 24) & 0xff;
+				if (alpha > 10) { // 거의 투명하지 않은 픽셀
+					minX = Math.min(minX, x);
+					minY = Math.min(minY, y);
+					maxX = Math.max(maxX, x);
+					maxY = Math.max(maxY, y);
+				}
+			}
+		}
+
+		if (minX > maxX || minY > maxY) {
+			// 마스크가 완전히 투명한 경우
+			return new Rectangle2D.Double(0, 0, maskImage.getWidth(), maskImage.getHeight());
+		}
+
+		return new Rectangle2D.Double(minX, minY, maxX - minX + 1, maxY - minY + 1);
+	}
+
+	/**
+	 * 정밀한 사진 그리기 메서드
+	 */
+	private void drawPhotoWithPrecision(Graphics2D g2d, BufferedImage photoImage, JsonNode photoNode, int x, int y,
+			int width, int height) {
+
+		String photoTransform = photoNode.path("transform").asText("none");
+
+		if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+			Graphics2D g2dPhoto = (Graphics2D) g2d.create();
+			TransformParser parser = TransformParser.parse(photoTransform);
+
+			if (Math.abs(parser.rotation) > 0.001) {
+				// 회전 중심점 (정수 연산)
+				double centerX = x + width / 2.0;
+				double centerY = y + height / 2.0;
+				g2dPhoto.rotate(parser.rotation, centerX, centerY);
+			}
+
+			g2dPhoto.drawImage(photoImage, x, y, width, height, null);
+			g2dPhoto.dispose();
+		} else {
+			g2d.drawImage(photoImage, x, y, width, height, null);
 		}
 	}
 
@@ -2026,6 +2116,11 @@ public class JpgRenderingService {
 	private void drawPhoto(Graphics2D g2d, BufferedImage photoImage, JsonNode photoNode, double photoX, double photoY,
 			double photoWidth, double photoHeight) {
 
+		int finalX = (int) Math.round(photoX);
+		int finalY = (int) Math.round(photoY);
+		int finalWidth = (int) Math.round(photoWidth);
+		int finalHeight = (int) Math.round(photoHeight);
+
 		String photoTransform = photoNode.path("transform").asText("none");
 
 		if (!"none".equals(photoTransform) && !photoTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
@@ -2033,19 +2128,17 @@ public class JpgRenderingService {
 
 			if (Math.abs(parser.rotation) > 0.001) {
 				Graphics2D g2dRotated = (Graphics2D) g2d.create();
-				double centerX = photoX + photoWidth / 2;
-				double centerY = photoY + photoHeight / 2;
+				// 회전 중심점도 반올림 처리
+				double centerX = finalX + finalWidth / 2.0;
+				double centerY = finalY + finalHeight / 2.0;
 				g2dRotated.rotate(parser.rotation, centerX, centerY);
-				g2dRotated.drawImage(photoImage, (int) Math.round(photoX), (int) Math.round(photoY),
-						(int) Math.round(photoWidth), (int) Math.round(photoHeight), null);
+				g2dRotated.drawImage(photoImage, finalX, finalY, finalWidth, finalHeight, null);
 				g2dRotated.dispose();
 			} else {
-				g2d.drawImage(photoImage, (int) Math.round(photoX), (int) Math.round(photoY),
-						(int) Math.round(photoWidth), (int) Math.round(photoHeight), null);
+				g2d.drawImage(photoImage, finalX, finalY, finalWidth, finalHeight, null);
 			}
 		} else {
-			g2d.drawImage(photoImage, (int) Math.round(photoX), (int) Math.round(photoY), (int) Math.round(photoWidth),
-					(int) Math.round(photoHeight), null);
+			g2d.drawImage(photoImage, finalX, finalY, finalWidth, finalHeight, null);
 		}
 	}
 
