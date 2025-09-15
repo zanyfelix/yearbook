@@ -39,6 +39,14 @@
 				</select>
 			</form>
 		</div>
+		
+		<button type="button"
+	        id="impersonateBtn" 
+	        class="btn btn-primary w-100" 
+	        style="position: absolute; width: 90% !important; bottom: 4rem; left: 50%; transform: translateX(-50%);"
+	        onclick="openImpersonateWindow()">
+	    	view as client
+		</button>
 
 		<a href="/admin/home?userId=${userId}"
 			class="${currentMenu eq 'home' ? 'active' : ''}">Home</a> <a

@@ -4,6 +4,9 @@
 var currentImageIndex = 0;
 var imageList = [];
 
+// ★★★ 전역 변수로 팝업 참조 저장 ★★★
+var impersonatePopup = null;
+
 // 썸네일 로딩을 위한 AJAX 함수 (전역 함수로 변경)
 function loadPreviewData(contentsId) {
 	$.ajax({
@@ -107,79 +110,79 @@ function toggleEditMode(sectionId) {
 
 // 섹션 저장
 function saveSection(sectionId) {
-    const $section = $(`[data-section-id="${sectionId}"]`);
-    const $editBtn = $section.find('.btn-edit');
-    const $saveBtn = $section.find('.btn-save');
-    const $textareas = $section.find('textarea');
-    const $titleInput = $section.find('.section-title-input');
-    const $checkboxes = $section.find('.preview-confirm-check, .submission-check');
-    const $activeToggle = $section.find('.toggle-switch input[type="checkbox"]');
-    
-    // 읽기 모드로 전환
-    $saveBtn.hide();
-    $editBtn.show();
-    
-    $textareas.prop('readonly', true)
-               .removeClass('edit-mode')
-               .addClass('readonly-mode');
-    
-    if ($titleInput.length) {
-        $titleInput.prop('readonly', true)
-                   .removeClass('edit-mode')
-                   .addClass('readonly-mode');
-    }
-    
-    $checkboxes.prop('disabled', true);
-    
-    // Page Submission 섹션인 경우 추가 버튼 숨김
-    if (sectionId === 'submission') {
-        $('#addSubmissionBtn').hide();
-    }
-    
-    // AJAX로 개별 섹션 저장
-    const sectionType = $section.data('section-type');
-    
-    const sectionData = {
-        sectionId: sectionId,
-        type: sectionType === 'default' ? sectionId : 'custom',
-        content: $textareas.first().val(),
-        title: $titleInput.val() || '',
-        userId: $('input[name="userId"]').val(),
-        isActive: $activeToggle.is(':checked'),
-        id: $section.find('input[type="hidden"][name*=".id"]').val()
-    };
-    
-    // submission 섹션의 경우 추가 데이터 수집
-    if (sectionId === 'submission') {
-        const submissions = [];
-        $section.find('.submission-item').each(function() {
-            const $item = $(this);
-            submissions.push({
-                description: $item.find('textarea').val()
-            });
-        });
-        sectionData.submissions = submissions;  // 복수형으로 변경
-    }
-    
-    $.ajax({
-        url: ctx + '/admin/submit/section/save',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(sectionData),
-        success: function(response) {
-            if (response.success) {
-                console.log('Section saved successfully');
-                if (response.sectionId) {
-                    $section.find('input[type="hidden"][name*=".id"]').val(response.sectionId);
-                }
-            } else {
-                alert('Error: ' + response.message);
-            }
-        },
-        error: function(xhr, status, error) {
-            alert('Error saving section: ' + error);
-        }
-    });
+	const $section = $(`[data-section-id="${sectionId}"]`);
+	const $editBtn = $section.find('.btn-edit');
+	const $saveBtn = $section.find('.btn-save');
+	const $textareas = $section.find('textarea');
+	const $titleInput = $section.find('.section-title-input');
+	const $checkboxes = $section.find('.preview-confirm-check, .submission-check');
+	const $activeToggle = $section.find('.toggle-switch input[type="checkbox"]');
+
+	// 읽기 모드로 전환
+	$saveBtn.hide();
+	$editBtn.show();
+
+	$textareas.prop('readonly', true)
+		.removeClass('edit-mode')
+		.addClass('readonly-mode');
+
+	if ($titleInput.length) {
+		$titleInput.prop('readonly', true)
+			.removeClass('edit-mode')
+			.addClass('readonly-mode');
+	}
+
+	$checkboxes.prop('disabled', true);
+
+	// Page Submission 섹션인 경우 추가 버튼 숨김
+	if (sectionId === 'submission') {
+		$('#addSubmissionBtn').hide();
+	}
+
+	// AJAX로 개별 섹션 저장
+	const sectionType = $section.data('section-type');
+
+	const sectionData = {
+		sectionId: sectionId,
+		type: sectionType === 'default' ? sectionId : 'custom',
+		content: $textareas.first().val(),
+		title: $titleInput.val() || '',
+		userId: $('input[name="userId"]').val(),
+		isActive: $activeToggle.is(':checked'),
+		id: $section.find('input[type="hidden"][name*=".id"]').val()
+	};
+
+	// submission 섹션의 경우 추가 데이터 수집
+	if (sectionId === 'submission') {
+		const submissions = [];
+		$section.find('.submission-item').each(function() {
+			const $item = $(this);
+			submissions.push({
+				description: $item.find('textarea').val()
+			});
+		});
+		sectionData.submissions = submissions;  // 복수형으로 변경
+	}
+
+	$.ajax({
+		url: ctx + '/admin/submit/section/save',
+		type: 'POST',
+		contentType: 'application/json',
+		data: JSON.stringify(sectionData),
+		success: function(response) {
+			if (response.success) {
+				console.log('Section saved successfully');
+				if (response.sectionId) {
+					$section.find('input[type="hidden"][name*=".id"]').val(response.sectionId);
+				}
+			} else {
+				alert('Error: ' + response.message);
+			}
+		},
+		error: function(xhr, status, error) {
+			alert('Error saving section: ' + error);
+		}
+	});
 }
 
 $(function() {
@@ -340,4 +343,82 @@ $(function() {
 			}
 		});
 	});
+
+	// 초기 로드 시 실행
+	updateImpersonateButtonText();
+
+	// select 변경 시 실행
+	$('select[name="userId"]').on('change', updateImpersonateButtonText);
+
+	function updateImpersonateButtonText() {
+		var select = $('select[name="userId"]');
+		var button = $('#impersonateBtn');
+
+		if (select.length > 0 && button.length > 0) {
+			var selectedText = select.find('option:selected').text();
+
+			// 텍스트가 있을 때만 업데이트
+			if (selectedText && selectedText.trim() !== '') {
+				// 줄바꿈 추가
+				var newText = '<small>view as </small>' + '<b>' + selectedText + '</b>';
+
+				// button의 HTML을 변경 (text() 대신 html() 사용)
+				button.html(newText);
+
+				// 디버깅용 로그
+				console.log('Impersonate button updated:', newText);
+			}
+		} else {
+			console.error('Could not find select or button element');
+		}
+	}
 });
+
+// ★★★ 수정된 openImpersonateWindow 함수 ★★★
+function openImpersonateWindow() {
+	const selectElement = jQuery('select[name="userId"]')[0];
+	const selectedUserId = selectElement ? selectElement.value : null;
+
+	if (!selectedUserId) {
+		alert('Please select a user first');
+		return;
+	}
+
+	// 이미 열린 팝업이 있으면 닫기
+	if (impersonatePopup && !impersonatePopup.closed) {
+		impersonatePopup.close();
+	}
+
+	const selectedOption = selectElement.options[selectElement.selectedIndex];
+	const userName = selectedOption ? selectedOption.text : 'User';
+
+	if (!confirm('Open ' + userName + ' in new window?')) {
+		return;
+	}
+
+	const width = 1920;
+	const height = 1080;
+	const left = (screen.width - width) / 2;
+	const top = (screen.height - height) / 2;
+
+	impersonatePopup = window.open(
+		ctx + '/admin/impersonate?userId=' + selectedUserId,
+		'user_' + selectedUserId + '_' + Date.now(),
+		'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top +
+		',scrollbars=yes,resizable=yes'
+	);
+
+	if (impersonatePopup) {
+		impersonatePopup.focus();
+
+		var checkInterval = setInterval(function() {
+			if (impersonatePopup.closed) {
+				clearInterval(checkInterval);
+				console.log('Popup closed, restoring admin session...');
+
+				// 로그아웃 대신 restoreSession=true로 리다이렉트
+				window.location.href = ctx + '/logout';
+			}
+		}, 500);
+	}
+}
