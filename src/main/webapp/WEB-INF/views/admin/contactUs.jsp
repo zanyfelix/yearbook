@@ -90,6 +90,13 @@
 	    </tr>
       </thead>
       <tbody>
+      	<c:if test="${empty contacts}">
+	      	<tr>
+	      <td colspan="10" style="text-align: center; padding: 20px; color: #666;">
+	        no data
+	      </td>
+	    </tr>
+	  </c:if>
        <c:forEach var="item" items="${contacts}" varStatus="st">
           <tr>
           	<td>

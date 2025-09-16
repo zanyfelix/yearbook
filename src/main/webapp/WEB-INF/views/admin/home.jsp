@@ -98,6 +98,11 @@
 		    </tr>
 	      </thead>
 	      <tbody>
+			<c:if test="${empty homeList}">
+				<tr>
+					<td colspan="10" style="text-align: center; padding: 20px; color: #666;">no data</td>
+				</tr>
+			</c:if>
 	       <c:forEach var="item" items="${homeList}" varStatus="st">
 	       	  <c:if test="${item.type eq 'content'}">
 	          <tr>
