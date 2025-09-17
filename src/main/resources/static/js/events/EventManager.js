@@ -564,6 +564,18 @@ class EventManager {
 			}
 		});
 
+		$('#page-preview').on('mousedown', '.photo-silhouette', function(e) {
+			if (e.button !== 0) return;
+
+			const frameGroup = $(this).closest('.frame-group');
+			const photo = frameGroup.find('.uploaded-photo');
+
+			if (photo.hasClass('selected-photo')) {
+				// 실제 사진의 mousedown 이벤트를 트리거
+				photo.trigger(e);
+			}
+		});
+
 		// 텍스트 추가 버튼들
 		$('#add-title-btn').on('click', () => TextManager.addTextBox('Title'));
 		$('#add-subtitle-btn').on('click', () => TextManager.addTextBox('Sub-Title'));

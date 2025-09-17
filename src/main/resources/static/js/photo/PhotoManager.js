@@ -500,7 +500,9 @@ class PhotoManager {
 			height: photo.css('height'),
 			opacity: this.config.silhouetteOpacity,
 			border: '1px dashed #ff0000',
-			zIndex: 1
+			zIndex: 1,
+			pointerEvents: 'auto',  // 명시적으로 auto 추가
+			cursor: 'move'  // 드래그 가능 표시
 		}).removeClass('selected-photo uploaded-photo')
 			.addClass('photo-silhouette');
 	}
