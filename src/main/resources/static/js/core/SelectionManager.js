@@ -8,6 +8,10 @@ class SelectionManager {
 		this.currentPhoto = null;
 		this.currentElement = null;
 		this.currentTextBox = null;
+
+		this.originalZIndex = null; // 원래 z-index 저장용
+		this.SELECTED_Z_INDEX = 9999; // 선택 시 적용할 최상위 z-index
+
 	}
 
 	// --- Public Selection Methods ---
@@ -19,8 +23,12 @@ class SelectionManager {
 		this.selectedMode = 'frame';
 		this.currentFrame = frameGroup;
 
-		window.selectedFrame = frameGroup;
+		// 원래 z-index 저장 후 최상위로 올리기
+		this.originalZIndex = frameGroup.css('z-index');
+		frameGroup.data('original-z-index', this.originalZIndex);
+		frameGroup.css('z-index', this.SELECTED_Z_INDEX);
 
+		window.selectedFrame = frameGroup;
 		frameGroup.addClass('selected-frame');
 		FrameManager.addRotationHandle(frameGroup);
 		UIManager.showFrameTooltip(frameGroup);
@@ -33,6 +41,11 @@ class SelectionManager {
 		this.selectedMode = 'photo';
 		this.currentFrame = frameGroup;
 		this.currentPhoto = photo;
+
+		// 프레임 그룹 전체를 최상위로
+		this.originalZIndex = frameGroup.css('z-index');
+		frameGroup.data('original-z-index', this.originalZIndex);
+		frameGroup.css('z-index', this.SELECTED_Z_INDEX);
 
 		// 전역 변수 동기화
 		window.selectedPhotoWrapper = photo;
@@ -50,6 +63,11 @@ class SelectionManager {
 
 		this.selectedMode = 'text';
 		this.currentTextBox = textBox;
+
+		// 텍스트박스 최상위로
+		this.originalZIndex = textBox.css('z-index');
+		textBox.data('original-z-index', this.originalZIndex);
+		textBox.css('z-index', this.SELECTED_Z_INDEX);
 
 		window.selectedBox = textBox;
 
@@ -75,6 +93,11 @@ class SelectionManager {
 		this.currentElement = elementGroup;
 		this.currentFrame = elementGroup;
 
+		// 요소 최상위로
+		this.originalZIndex = elementGroup.css('z-index');
+		elementGroup.data('original-z-index', this.originalZIndex);
+		elementGroup.css('z-index', this.SELECTED_Z_INDEX);
+
 		// 전역 변수 동기화
 		window.selectedFrame = elementGroup;
 
@@ -86,12 +109,24 @@ class SelectionManager {
 	clearSelection() {
 		// 프레임/요소 선택 해제
 		if (this.currentFrame) {
+			const originalZ = this.currentFrame.data('original-z-index');
+			if (originalZ !== undefined) {
+				this.currentFrame.css('z-index', originalZ);
+				this.currentFrame.removeData('original-z-index');
+			}
 			this.currentFrame.removeClass('selected-frame selected-element');
 			this.currentFrame.find('.rotate-handle, .rotate-line').remove();
 		}
 
 		// 사진 선택 해제
 		if (this.currentPhoto) {
+			// 사진의 부모 프레임 z-index 복원
+			const frameGroup = this.currentPhoto.closest('.frame-group');
+			const originalZ = frameGroup.data('original-z-index');
+			if (originalZ !== undefined) {
+				frameGroup.css('z-index', originalZ);
+				frameGroup.removeData('original-z-index');
+			}
 			this.currentPhoto.removeClass('selected-photo');
 			PhotoManager.removeSelectionUI();
 			PhotoManager.hideOverlay();
@@ -99,6 +134,11 @@ class SelectionManager {
 
 		// 텍스트박스 선택 해제
 		if (this.currentTextBox) {
+			const originalZ = this.currentTextBox.data('original-z-index');
+			if (originalZ !== undefined) {
+				this.currentTextBox.css('z-index', originalZ);
+				this.currentTextBox.removeData('original-z-index');
+			}
 			this.currentTextBox.removeClass('selected editing');
 			this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
 		}
@@ -111,6 +151,7 @@ class SelectionManager {
 		this.currentPhoto = null;
 		this.currentElement = null;
 		this.currentTextBox = null;
+		this.originalZIndex = null;
 
 		// 전역 변수도 초기화
 		window.selectedFrame = null;
