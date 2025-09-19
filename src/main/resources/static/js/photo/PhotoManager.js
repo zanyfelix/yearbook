@@ -544,6 +544,14 @@ class PhotoManager {
 		currentState.transform = TransformHelper.composeMatrix(rotationMatrix);
 		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
 
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+		if (actualBgRect) {
+			currentState.rotation = Math.atan2(matrix.b, matrix.a);
+			currentState.translateX = (matrix.tx / actualBgRect.width) * 100;
+			currentState.translateY = (matrix.ty / actualBgRect.height) * 100;
+		}
+
 		if (typeof options.isManual === 'boolean') {
 			currentState.isManuallyAdjusted = options.isManual;
 		}

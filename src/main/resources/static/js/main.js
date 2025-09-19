@@ -1321,26 +1321,45 @@ function updateAllPhotosPosition() {
 			const photoData = $photo.data('relativeState');
 			if (!photoData) return;
 
-			// 저장된 픽셀 데이터 읽기
-			const translateX = photoData.position.leftPx || 0;
-			const translateY = photoData.position.topPx || 0;
+			// 브라우저 크기 정보
+			const bg = $('#page-preview-img');
+			const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+
+			let translateX, translateY;
+
+			// 새로운 백분율 기반 데이터가 있으면 우선 사용
+			if (photoData.translateX !== undefined && actualBgRect) {
+				translateX = (photoData.translateX / 100) * actualBgRect.width;
+				translateY = (photoData.translateY / 100) * actualBgRect.height;
+			} else {
+				// 기존 픽셀 데이터 사용 (이전 버전 호환)
+				translateX = photoData.position.leftPx || 0;
+				translateY = photoData.position.topPx || 0;
+			}
+
 			const photoWidth = photoData.size.widthPx || 100;
 			const photoHeight = photoData.size.heightPx || 100;
 
-			// 회전 transform (translate 없이)
-			const rotationTransform = photoData.transform || 'none';
-
-			// 회전과 위치를 결합한 최종 transform
+			// 회전 처리
 			let finalTransform;
-			if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
-				// 회전이 없는 경우, 위치만
-				finalTransform = `translate(${translateX}px, ${translateY}px)`;
+
+			// 새로운 rotation 데이터가 있으면 우선 사용
+			if (photoData.rotation !== undefined) {
+				const cos = Math.cos(photoData.rotation);
+				const sin = Math.sin(photoData.rotation);
+				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
 			} else {
-				// 회전이 있는 경우, matrix의 translate 값 업데이트
-				finalTransform = rotationTransform.replace(
-					/, 0, 0\)$/,
-					`, ${translateX}, ${translateY})`
-				);
+				// 기존 방식 유지 (이전 버전 호환)
+				const rotationTransform = photoData.transform || 'none';
+
+				if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
+					finalTransform = `translate(${translateX}px, ${translateY}px)`;
+				} else {
+					finalTransform = rotationTransform.replace(
+						/, 0, 0\)$/,
+						`, ${translateX}, ${translateY})`
+					);
+				}
 			}
 
 			// CSS 적용 - left/top은 항상 0

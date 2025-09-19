@@ -269,10 +269,14 @@ class FrameManager {
 
 		// 1. relativeState 데이터 저장 (핵심)
 		const photoRelativeState = {
-			position: photoState.position || { left: 0, top: 0 },
-			size: photoState.size || { width: 100, height: 100 },
+			position: photoState.position || { leftPx: 0, topPx: 0 },  // leftPx, topPx로 수정
+			size: photoState.size || { widthPx: 100, heightPx: 100 },  // widthPx, heightPx로 수정
 			transform: photoState.transform || 'none',
-			transformOrigin: photoState.transformOrigin || '50% 50%'
+			transformOrigin: photoState.transformOrigin || '50% 50%',
+			// 새로운 필드 추가 (중요!)
+			rotation: photoState.rotation,
+			translateX: photoState.translateX,
+			translateY: photoState.translateY
 		};
 		uploadedPhoto.data('relativeState', photoRelativeState);
 
