@@ -381,9 +381,25 @@ class EventManager {
 				if (dragData.isDragging) {
 					// 드래그 종료 시점에 transform 제거한 상태로 저장
 					const currentTransform = element.css('transform');
-					element.css('transform', 'none');
+					
+					// 회전이 있는 경우에만 특별 처리
+					if (currentTransform && currentTransform !== 'none' && currentTransform.includes('matrix')) {
+						const matrix = currentTransform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+						if (matrix) {
+							const a = parseFloat(matrix[1]);
+							const b = parseFloat(matrix[2]);
+							const c = parseFloat(matrix[3]);
+							const d = parseFloat(matrix[4]);
+
+							// 회전이 있는지 확인 (a≠1 또는 b≠0)
+							if (Math.abs(a - 1) > 0.001 || Math.abs(b) > 0.001) {
+								// 회전만 남기고 translate 제거
+								const rotationOnlyTransform = `matrix(${a}, ${b}, ${c}, ${d}, 0, 0)`;
+								element.css('transform', rotationOnlyTransform);
+							}
+						}
+					}
 					this.saveElementPosition(element);
-					element.css('transform', currentTransform);
 				}
 
 				dragData = null;
