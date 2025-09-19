@@ -658,7 +658,6 @@ $(document).ready(function() {
 			let photoData = null;
 			const $photo = $frame.find('.uploaded-photo');
 			if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
-				const photoTransform = $photo.css('transform') || 'none';
 				const photoRelativeState = $photo.data('relativeState');
 
 				if (photoRelativeState) {
@@ -667,8 +666,12 @@ $(document).ready(function() {
 						editSrc: $photo.data('editPath'),
 						position: photoRelativeState.position,
 						size: photoRelativeState.size,
-						transform: photoTransform,  // 실제 CSS transform 값 저장
-						transformOrigin: photoRelativeState.transformOrigin || '50% 50%'
+						// 새로운 구조로 저장
+						rotation: photoRelativeState.rotation || 0,
+						translateX: photoRelativeState.translateX || 0,
+						translateY: photoRelativeState.translateY || 0,
+						transformOriginX: photoRelativeState.transformOriginX || 50,
+						transformOriginY: photoRelativeState.transformOriginY || 50
 					};
 				}
 			}
@@ -677,8 +680,12 @@ $(document).ready(function() {
 				theme: $frame.data('frameTheme'),
 				position: relativeState.position,
 				size: relativeState.size,
-				transform: $frame.css('transform') || 'none',  // 현재 transform 값 직접 읽기
-				transformOrigin: $frame.css('transform-origin') || '50% 50%',
+				// 새로운 구조로 저장
+				rotation: relativeState.rotation || 0,
+				translateX: relativeState.translateX || 0,
+				translateY: relativeState.translateY || 0,
+				transformOriginX: relativeState.transformOriginX || 50,
+				transformOriginY: relativeState.transformOriginY || 50,
 				photo: photoData
 			};
 

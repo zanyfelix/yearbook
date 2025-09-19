@@ -215,8 +215,11 @@ class FrameManager {
 		const frameRelativeState = {
 			position: savedState.position,
 			size: savedState.size,
-			transform: savedState.transform || 'none',
-			transformOrigin: savedState.transformOrigin || '50% 50%'
+			rotation: savedState.rotation || 0,
+			translateX: savedState.translateX || 0,
+			translateY: savedState.translateY || 0,
+			transformOriginX: savedState.transformOriginX || 50,
+			transformOriginY: savedState.transformOriginY || 50
 		};
 
 		frameGroup.data('relativeState', frameRelativeState);
@@ -230,6 +233,17 @@ class FrameManager {
 			const frameWidth = (frameRelativeState.size.width / 100) * actualBgRect.width;
 			const frameHeight = (frameRelativeState.size.height / 100) * actualBgRect.height;
 
+			// Transform 재구성
+			let finalTransform = 'none';
+			if (frameRelativeState.rotation !== 0) {
+				const cos = Math.cos(frameRelativeState.rotation);
+				const sin = Math.sin(frameRelativeState.rotation);
+				const translateX = (frameRelativeState.translateX / 100) * actualBgRect.width;
+				const translateY = (frameRelativeState.translateY / 100) * actualBgRect.height;
+
+				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+			}
+
 			// 중요: transform을 none으로 먼저 설정
 			frameGroup.css({
 				position: 'absolute',
@@ -237,14 +251,9 @@ class FrameManager {
 				top: frameTop + 'px',
 				width: frameWidth + 'px',
 				height: frameHeight + 'px',
-				'transform': 'none',
-				'transform-origin': frameRelativeState.transformOrigin
+				transform: finalTransform,
+				'transform-origin': `${frameRelativeState.transformOriginX}% ${frameRelativeState.transformOriginY}%`
 			});
-
-			// DOM 업데이트 후 transform 적용
-			setTimeout(() => {
-				frameGroup.css('transform', frameRelativeState.transform);
-			}, 0);
 
 			// 사진이 있으면 복원
 			if (!frameType.isSimple && savedState.photo?.src) {
