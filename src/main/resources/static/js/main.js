@@ -37,35 +37,51 @@ $(document).ready(function() {
 			height: (relativeState.size.height / 100) * actualBgRect.height
 		};
 
+		// Transform 재구성 (더 정밀한 계산)
+		let finalTransform = 'none';
+
+		if (relativeState.rotation !== undefined && relativeState.rotation !== 0) {
+			// 회전 행렬 재구성
+			const cos = Math.cos(relativeState.rotation);
+			const sin = Math.sin(relativeState.rotation);
+
+			// 백분율로 저장된 translate를 픽셀로 변환
+			const translateX = (relativeState.translateX || 0) / 100 * actualBgRect.width;
+			const translateY = (relativeState.translateY || 0) / 100 * actualBgRect.height;
+
+			// 고정밀 matrix 생성 (소수점 6자리까지)
+			finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+		} else if (relativeState.translateX || relativeState.translateY) {
+			// 회전 없이 이동만 있는 경우
+			const translateX = (relativeState.translateX || 0) / 100 * actualBgRect.width;
+			const translateY = (relativeState.translateY || 0) / 100 * actualBgRect.height;
+			finalTransform = `translate(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px)`;
+		}
+
+		// Transform origin 재구성
+		const transformOrigin = `${relativeState.transformOriginX || 50}% ${relativeState.transformOriginY || 50}%`;
+
 		const finalCss = {
-			left: newPixelPos.left,
-			top: newPixelPos.top,
-			width: newPixelSize.width,
-			height: newPixelSize.height,
-			transform: relativeState.transform || 'none', // data에 저장된 transform 값을 사용
-			transformOrigin: relativeState.transformOrigin || '50% 50%' // data에 저장된 origin 값 사용
+			left: newPixelPos.left.toFixed(2) + 'px',
+			top: newPixelPos.top.toFixed(2) + 'px',
+			width: newPixelSize.width.toFixed(2) + 'px',
+			height: newPixelSize.height.toFixed(2) + 'px',
+			transform: finalTransform,
+			transformOrigin: transformOrigin,
+			visibility: 'visible'
 		};
 
-		// 텍스트 박스 관련 로직은 그대로 유지
+		// 텍스트박스 처리
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-			const adjustedFontSize = Math.round(baseFontSize * scaleRatio);
-			finalCss['font-size'] = adjustedFontSize + 'px';
+			finalCss['font-size'] = Math.round(baseFontSize * scaleRatio) + 'px';
 			if ($element.data('savedFontFamily')) {
 				finalCss['font-family'] = $element.data('savedFontFamily');
 			}
 		}
 
-		// transform-origin 이 relativeState에 있으면 finalCss에 추가
-		if (relativeState.transformOrigin) {
-			finalCss['transform-origin'] = relativeState.transformOrigin;
-		}
-
-		finalCss['visibility'] = 'visible';
-
-		// 모든 계산이 끝난 후, CSS를 한 번에 적용합니다.
 		console.log(finalCss);
 		$element.css(finalCss);
 

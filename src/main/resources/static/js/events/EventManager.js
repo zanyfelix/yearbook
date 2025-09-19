@@ -662,21 +662,55 @@ class EventManager {
 
 		if (!actualBgRect) return null;
 
-		// 현재 transform 상태를 미리 저장합니다.
 		const currentTransform = element.css('transform');
 		const currentTransformOrigin = element.css('transform-origin');
 
-		// ✅ [핵심 수정] 회전 여부와 관계없이 항상 transform을 일시적으로 제거하여
-		// CSS의 left, top 값을 정확하게 읽어옵니다.
+		// 회전 각도와 translate 분리 (더 정밀한 계산)
+		let rotation = 0;
+		let translateX = 0;
+		let translateY = 0;
+
+		if (currentTransform && currentTransform !== 'none') {
+			const matrix = currentTransform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+			if (matrix) {
+				const a = parseFloat(matrix[1]);
+				const b = parseFloat(matrix[2]);
+				const c = parseFloat(matrix[3]);
+				const d = parseFloat(matrix[4]);
+				translateX = parseFloat(matrix[5]);
+				translateY = parseFloat(matrix[6]);
+
+				// 회전 각도를 라디안으로 정확히 계산
+				rotation = Math.atan2(b, a);
+			}
+		}
+
+		// transform을 일시적으로 제거하여 정확한 위치 측정
 		element.css('transform', 'none');
 		const elementPos = element.position();
 		const elementWidth = element.outerWidth();
 		const elementHeight = element.outerHeight();
-		// 측정이 끝난 후, 원래 transform 상태로 즉시 복구합니다.
 		element.css('transform', currentTransform);
 
+		// transform-origin을 백분율로 변환
+		let originX = 50;
+		let originY = 50;
+		if (currentTransformOrigin && currentTransformOrigin !== '50% 50%') {
+			const originMatch = currentTransformOrigin.match(/([0-9.]+)(%|px)?\s+([0-9.]+)(%|px)?/);
+			if (originMatch) {
+				if (originMatch[2] === 'px') {
+					originX = (parseFloat(originMatch[1]) / elementWidth) * 100;
+				} else {
+					originX = parseFloat(originMatch[1]);
+				}
+				if (originMatch[4] === 'px') {
+					originY = (parseFloat(originMatch[3]) / elementHeight) * 100;
+				} else {
+					originY = parseFloat(originMatch[3]);
+				}
+			}
+		}
 
-		// 상대 위치/크기 계산
 		const relativeState = {
 			position: {
 				left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
@@ -686,18 +720,16 @@ class EventManager {
 				width: (elementWidth / actualBgRect.width) * 100,
 				height: (elementHeight / actualBgRect.height) * 100
 			},
-			// 저장 시점의 transform 값을 그대로 저장합니다.
-			transform: currentTransform || 'none',
-			transformOrigin: currentTransformOrigin || '50% 50%'
+			rotation: rotation,  // 라디안 값으로 저장
+			translateX: (translateX / actualBgRect.width) * 100,  // 백분율로 저장
+			translateY: (translateY / actualBgRect.height) * 100,  // 백분율로 저장
+			transformOriginX: originX,  // 백분율
+			transformOriginY: originY   // 백분율
 		};
 
-		// 텍스트박스인 경우의 추가 정보 저장은 기존 로직을 유지해도 괜찮습니다.
+		// 텍스트박스 추가 정보
 		if (element.hasClass('text-box')) {
-			const hasRotation = currentTransform &&
-				currentTransform !== 'none' &&
-				currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
-
-			relativeState.hasRotation = hasRotation;
+			relativeState.hasRotation = rotation !== 0;
 			relativeState.absolutePosition = {
 				left: elementPos.left,
 				top: elementPos.top
@@ -705,7 +737,6 @@ class EventManager {
 		}
 
 		element.data('relativeState', relativeState);
-
 		return relativeState;
 	}
 
