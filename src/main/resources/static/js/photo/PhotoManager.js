@@ -587,25 +587,43 @@ class PhotoManager {
 
 	static updateResizeCursors(photo) {
 		const handles = photo.closest('.frame-group').find('.resize-handle');
-		const transform = photo.css('transform');
-		let rotation = 0;
+		const frameGroup = photo.closest('.frame-group');
 
-		if (transform && transform !== 'none') {
-			const matrix = transform.match(/matrix\((.+)\)/);
+		// 사진의 회전
+		const photoTransform = photo.css('transform');
+		let photoRotation = 0;
+
+		if (photoTransform && photoTransform !== 'none') {
+			const matrix = photoTransform.match(/matrix\((.+)\)/);
 			if (matrix) {
 				const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
-				rotation = Math.atan2(values[1], values[0]) * (180 / Math.PI);
+				photoRotation = Math.atan2(values[1], values[0]) * (180 / Math.PI);
 			}
 		}
 
+		// 프레임의 회전도 고려
+		const frameTransform = frameGroup.css('transform');
+		let frameRotation = 0;
+
+		if (frameTransform && frameTransform !== 'none') {
+			const matrix = frameTransform.match(/matrix\((.+)\)/);
+			if (matrix) {
+				const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+				frameRotation = Math.atan2(values[1], values[0]) * (180 / Math.PI);
+			}
+		}
+
+		// 전체 회전 = 사진 회전 + 프레임 회전
+		let totalRotation = photoRotation + frameRotation;
+
 		// 회전 각도를 0-360 범위로 정규화
-		rotation = ((rotation % 360) + 360) % 360;
+		totalRotation = ((totalRotation % 360) + 360) % 360;
 
 		handles.each(function() {
 			const $handle = $(this);
 			const basePosition = $handle.attr('class').match(/handle-(\w+)/)[1];
 
-			// 회전 각도에 따라 커서 방향 재매핑
+			// 커서 매핑 테이블 (45도 단위)
 			const cursorMap = {
 				'nw': ['nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize'],
 				'ne': ['ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize', 'nw-resize', 'n-resize'],
@@ -614,7 +632,7 @@ class PhotoManager {
 			};
 
 			// 45도 단위로 커서 방향 결정
-			const index = Math.round(rotation / 45) % 8;
+			const index = Math.round(totalRotation / 45) % 8;
 			const newCursor = cursorMap[basePosition][index];
 
 			$handle.css('cursor', newCursor);
