@@ -357,6 +357,10 @@ $(document).ready(function() {
 						$box.data('relativeState', {
 							position: boxData.position || { left: 10, top: 10 },
 							size: boxData.size || { width: 20, height: 10 },
+							// ⭐ 중요: rotation 관련 값들도 relativeState에 포함
+							rotation: boxData.rotation || 0,  // 추가
+							translateX: boxData.translateX || 0,  // 추가
+							translateY: boxData.translateY || 0,  // 추가
 							transform: boxData.transform || 'none',
 							transformOrigin: boxData.transformOrigin || '50% 50%'
 						});
@@ -704,8 +708,24 @@ $(document).ready(function() {
 			// 텍스트박스 정보 저장 (기존 로직)
 			const boxTransform = $box.css('transform');
 			const boxTransformOrigin = $box.css('transform-origin');
-			$box.css({ 'transform': 'none' });
 
+			// ⭐ 중요: rotation 값 추출
+			let rotation = 0;
+			let translateX = 0;
+			let translateY = 0;
+
+			if (boxTransform && boxTransform !== 'none') {
+				const matrix = boxTransform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+				if (matrix) {
+					const a = parseFloat(matrix[1]);
+					const b = parseFloat(matrix[2]);
+					translateX = parseFloat(matrix[5]);
+					translateY = parseFloat(matrix[6]);
+					rotation = Math.atan2(b, a); // 라디안 단위
+				}
+			}
+
+			$box.css({ 'transform': 'none' });
 			const boxPos = $box.position();
 
 			// ⭐ 핵심 수정: 실제 렌더링된 크기를 정확히 측정
@@ -740,6 +760,9 @@ $(document).ready(function() {
 					width: (boxW / actualBgRect.width) * 100,
 					height: (boxH / actualBgRect.height) * 100  // ⭐ 실제 높이 저장
 				},
+				rotation: rotation,  // 추가
+				translateX: (translateX / actualBgRect.width) * 100,  // 추가
+				translateY: (translateY / actualBgRect.height) * 100,  // 추가
 				transform: boxTransform || 'none',
 				transformOrigin: boxTransformOrigin || '50% 50%',
 				styles: {
