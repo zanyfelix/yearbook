@@ -96,10 +96,16 @@ class PhotoManager {
 		const initialTransform = photo.css('transform');
 		const initialMatrix = TransformHelper.parseMatrix(initialTransform);
 
+		// 프레임의 회전 확인
+		const frameTransform = frameGroup.css('transform');
+		const frameMatrix = TransformHelper.parseMatrix(frameTransform);
+		const frameRotation = Math.atan2(frameMatrix.b, frameMatrix.a);
+
 		const dragData = {
 			startX: e.clientX,
 			startY: e.clientY,
-			initialMatrix: initialMatrix
+			initialMatrix: initialMatrix,
+			frameRotation: frameRotation  // 프레임 회전 저장
 		};
 
 		const $selectionBox = $('.photo-selection-box');
@@ -111,12 +117,18 @@ class PhotoManager {
 		const updatePosition = () => {
 			if (!latestEvent) return;
 
-			const deltaX = latestEvent.clientX - dragData.startX;
-			const deltaY = latestEvent.clientY - dragData.startY;
+			const screenDeltaX = latestEvent.clientX - dragData.startX;
+			const screenDeltaY = latestEvent.clientY - dragData.startY;
+
+			// 프레임 회전의 역변환을 적용하여 프레임 로컬 좌표계에서의 이동량 계산
+			const cos = Math.cos(-dragData.frameRotation);
+			const sin = Math.sin(-dragData.frameRotation);
+			const localDeltaX = screenDeltaX * cos - screenDeltaY * sin;
+			const localDeltaY = screenDeltaX * sin + screenDeltaY * cos;
 
 			const newMatrix = { ...dragData.initialMatrix };
-			newMatrix.tx += deltaX;
-			newMatrix.ty += deltaY;
+			newMatrix.tx += localDeltaX;
+			newMatrix.ty += localDeltaY;
 
 			let newTransform = TransformHelper.composeMatrix(newMatrix);
 
