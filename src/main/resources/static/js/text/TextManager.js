@@ -174,11 +174,20 @@ class TextManager {
 	// 상대 위치 계산
 	static calculateRelativeState(textBox, actualBgRect) {
 		const currentTransform = textBox.css('transform');
+		const currentTransformOrigin = textBox.css('transform-origin');
+
+		// transform 임시 제거
 		textBox.css('transform', 'none');
 
 		const position = textBox.position();
 		const boxWidth = textBox.outerWidth();
 		const boxHeight = textBox.outerHeight();
+
+		// ⭐ 즉시 복원 (조건문 없이)
+		textBox.css({
+			'transform': currentTransform,
+			'transform-origin': currentTransformOrigin
+		});
 
 		const relativeState = {
 			position: {
@@ -190,12 +199,8 @@ class TextManager {
 				height: (boxHeight / actualBgRect.height) * 100
 			},
 			transform: currentTransform || 'none',
-			transformOrigin: textBox.css('transform-origin') || '50% 50%'
+			transformOrigin: currentTransformOrigin || '50% 50%'
 		};
-
-		if (currentTransform && currentTransform !== 'none') {
-			textBox.css('transform', currentTransform);
-		}
 
 		return relativeState;
 	}
@@ -222,6 +227,11 @@ class TextManager {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (!selectedBox || selectedBox.length === 0) return;
 
+		// ⭐ transform과 관련 데이터 모두 저장
+		const savedTransform = selectedBox.css('transform');
+		const savedTransformOrigin = selectedBox.css('transform-origin');
+		const savedRelativeState = selectedBox.data('relativeState');
+
 		const numericSize = parseInt(fontSize);
 		selectedBox.data('base-font-size', numericSize);
 
@@ -240,14 +250,43 @@ class TextManager {
 		// 폰트 크기 적용
 		selectedBox.css('font-size', scaledFontSize + 'px');
 
-		// 줄바꿈 구조를 유지하면서 크기 조정
+		// ⭐ resize 이벤트 임시 비활성화
+		selectedBox.off('resize.selection');
+
+		// 크기 조정
 		this.adjustBoxSizeForLineBreaks(selectedBox);
 
-		if (selectedBox.hasClass('selected')) {
-			selectedBox.trigger('resize');
+		// ⭐ transform 확실히 복원
+		selectedBox.css({
+			'transform': savedTransform,
+			'transform-origin': savedTransformOrigin
+		});
+
+		// ⭐ relativeState도 회전 정보를 유지하도록 업데이트
+		if (savedRelativeState && savedRelativeState.rotation !== undefined) {
+			const newRelativeState = this.calculateRelativeState(selectedBox, actualBgRect);
+			newRelativeState.rotation = savedRelativeState.rotation;
+			newRelativeState.translateX = savedRelativeState.translateX;
+			newRelativeState.translateY = savedRelativeState.translateY;
+			selectedBox.data('relativeState', newRelativeState);
+		} else {
+			this.updateTextBoxState(selectedBox);
 		}
 
-		setTimeout(() => this.updateTextBoxState(selectedBox), 50);
+		// ⭐ transform 한번 더 복원 (안전장치)
+		selectedBox.css({
+			'transform': savedTransform,
+			'transform-origin': savedTransformOrigin
+		});
+
+		// ⭐ resize 이벤트 재활성화
+		if (selectedBox.hasClass('selected')) {
+			selectedBox.on('resize.selection', () => {
+				if (selectedBox.hasClass('selected')) {
+					window.selectionManager.addTextRotationHandle(selectedBox);
+				}
+			});
+		}
 	}
 
 	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
@@ -256,26 +295,7 @@ class TextManager {
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 
 		if (hasLineBreaks) {
-			// 변경 전 상태 저장
-			const oldWidth = textBox.outerWidth();
-			const oldHeight = textBox.outerHeight();
-			const currentTransform = textBox.css('transform');
-			const hasRotation = currentTransform &&
-				currentTransform !== 'none' &&
-				currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
-
-			// 회전된 경우 현재 중심점 저장
-			let oldCenterX, oldCenterY;
-			if (hasRotation) {
-				const rect = textBox[0].getBoundingClientRect();
-				oldCenterX = rect.left + rect.width / 2;
-				oldCenterY = rect.top + rect.height / 2;
-
-				// 기존 transform-origin을 픽셀로 고정 (이전 크기 기준)
-				textBox.css('transform-origin', `${oldWidth / 2}px ${oldHeight / 2}px`);
-			}
-
-			// 각 줄을 개별적으로 추출
+			// 줄바꿈이 있는 경우 크기 측정
 			let lines = [];
 			const tempDiv = $('<div>').html(htmlContent);
 
@@ -342,7 +362,7 @@ class TextManager {
 			const newWidth = maxWidth + padding * 2 + 5;
 			const newHeight = measuredHeight;
 
-			// 크기 적용
+			// 크기만 적용 (transform 관련 처리 완전 제거)
 			textBox.css({
 				'width': newWidth + 'px',
 				'height': newHeight + 'px',
@@ -351,31 +371,8 @@ class TextManager {
 				'overflow-wrap': 'normal'
 			});
 
-			// 회전된 경우 위치 보정
-			if (hasRotation) {
-				// 크기 변경 후 새 중심점 계산
-				const newRect = textBox[0].getBoundingClientRect();
-				const newCenterX = newRect.left + newRect.width / 2;
-				const newCenterY = newRect.top + newRect.height / 2;
+			// ⭐ transform-origin은 건드리지 않음!
 
-				// 중심점 차이만큼 위치 조정
-				const offsetX = oldCenterX - newCenterX;
-				const offsetY = oldCenterY - newCenterY;
-
-				const currentLeft = parseFloat(textBox.css('left'));
-				const currentTop = parseFloat(textBox.css('top'));
-
-				textBox.css({
-					'left': (currentLeft + offsetX) + 'px',
-					'top': (currentTop + offsetY) + 'px'
-				});
-
-				// transform-origin을 새 크기 기준 픽셀값으로 업데이트
-				textBox.css('transform-origin', `${newWidth / 2}px ${newHeight / 2}px`);
-			} else {
-				// 회전 없으면 퍼센트 유지
-				textBox.css('transform-origin', '50% 50%');
-			}
 		} else {
 			this.resizeTextBox(textBox, textBox.css('font-size'));
 		}
@@ -384,6 +381,10 @@ class TextManager {
 	// resizeTextBox는 줄바꿈 없는 경우에만 사용
 	static resizeTextBox(textBox, fontSize) {
 		const htmlContent = textBox.html();
+
+		// 현재 transform 저장
+		const currentTransform = textBox.css('transform');
+		const currentTransformOrigin = textBox.css('transform-origin');
 
 		const $temp = $('<div>')
 			.html(htmlContent || ' ')
@@ -405,7 +406,10 @@ class TextManager {
 		textBox.css({
 			'width': newWidth + 'px',
 			'height': newHeight + 'px',
-			'white-space': 'nowrap'
+			'white-space': 'nowrap',
+			// ⭐ 중요: transform 유지
+			'transform': currentTransform,
+			'transform-origin': currentTransformOrigin
 		});
 	}
 
