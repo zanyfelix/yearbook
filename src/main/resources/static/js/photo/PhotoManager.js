@@ -247,10 +247,17 @@ class PhotoManager {
 			const currentTransform = photo.css('transform');
 			const currentMatrix = TransformHelper.parseMatrix(currentTransform);
 
-			// 현재 위치(translate) 및 회전 정보 추출
-			const currentTranslateX = currentMatrix.tx;
-			const currentTranslateY = currentMatrix.ty;
-			const rotation = Math.atan2(currentMatrix.b, currentMatrix.a);
+			// 사진 자체의 회전 (라디안)
+			const photoRotation = Math.atan2(currentMatrix.b, currentMatrix.a);
+
+			// ✨ [수정] 프레임의 회전도 가져오기 (라디안)
+			const frameTransform = frameGroup.css('transform');
+			const frameMatrix = TransformHelper.parseMatrix(frameTransform);
+			const frameRotation = Math.atan2(frameMatrix.b, frameMatrix.a);
+
+			// ✨ [수정] 화면상에서의 사진의 최종 회전 각도 = 사진 회전 + 프레임 회전
+			const totalRotation = photoRotation + frameRotation;
+
 
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
@@ -261,11 +268,12 @@ class PhotoManager {
 				startY: e.clientY,
 				startWidth: startWidth,
 				startHeight: startHeight,
-				currentTranslateX: currentTranslateX,
-				currentTranslateY: currentTranslateY,
+				currentTranslateX: currentMatrix.tx,
+				currentTranslateY: currentMatrix.ty,
 				currentMatrix: currentMatrix,
 				aspectRatio: aspectRatio,
-				rotation: rotation,
+				rotation: photoRotation, // 사진 자체의 회전은 위치 보정에 계속 사용됩니다.
+				totalRotation: totalRotation, // ✨ [추가] 화면 기준 전체 회전은 마우스 이동량 변환에 사용됩니다.
 				handlePosition: this.getHandlePosition(handle)
 			};
 
@@ -284,8 +292,9 @@ class PhotoManager {
 				const screenDeltaY = ev.clientY - resizeData.startY;
 
 				// 화면 좌표계를 로컬 좌표계로 변환
-				const cos = Math.cos(-resizeData.rotation);
-				const sin = Math.sin(-resizeData.rotation);
+				// ✨ [수정] 이때 화면 기준의 '전체 회전 각도'를 사용해야 합니다.
+				const cos = Math.cos(-resizeData.totalRotation);
+				const sin = Math.sin(-resizeData.totalRotation);
 				const deltaX = screenDeltaX * cos - screenDeltaY * sin;
 				const deltaY = screenDeltaX * sin + screenDeltaY * cos;
 
@@ -294,14 +303,13 @@ class PhotoManager {
 				let newTranslateX = resizeData.currentTranslateX;
 				let newTranslateY = resizeData.currentTranslateY;
 
-				// 각 핸들에 따른 크기 및 위치 계산
+				// 각 핸들에 따른 크기 및 위치 계산 (이 부분은 기존 로직 유지)
 				switch (resizeData.handlePosition) {
 					case 'se': // 우하단
 						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
 							(deltaX > 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSE);
 						newHeight = newWidth / resizeData.aspectRatio;
-						// 우하단은 위치 변경 없음
 						break;
 
 					case 'sw': // 좌하단
@@ -309,8 +317,8 @@ class PhotoManager {
 							(deltaX < 0 ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						// 좌측 이동 필요
 						const offsetX_sw = resizeData.startWidth - newWidth;
+						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
 						newTranslateX = resizeData.currentTranslateX +
 							offsetX_sw * Math.cos(resizeData.rotation);
 						newTranslateY = resizeData.currentTranslateY +
@@ -323,8 +331,8 @@ class PhotoManager {
 						newHeight = Math.max(this.config.minSize / resizeData.aspectRatio,
 							resizeData.startHeight + deltaNE);
 						newWidth = newHeight * resizeData.aspectRatio;
-						// 상단 이동 필요
 						const offsetY_ne = resizeData.startHeight - newHeight;
+						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
 						newTranslateX = resizeData.currentTranslateX -
 							offsetY_ne * Math.sin(resizeData.rotation);
 						newTranslateY = resizeData.currentTranslateY +
@@ -336,9 +344,9 @@ class PhotoManager {
 							((deltaX < 0 && deltaY < 0) ? 1 : -1);
 						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaNW);
 						newHeight = newWidth / resizeData.aspectRatio;
-						// 좌상단 이동 필요
 						const offsetX_nw = resizeData.startWidth - newWidth;
 						const offsetY_nw = resizeData.startHeight - newHeight;
+						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
 						newTranslateX = resizeData.currentTranslateX +
 							offsetX_nw * Math.cos(resizeData.rotation) -
 							offsetY_nw * Math.sin(resizeData.rotation);
