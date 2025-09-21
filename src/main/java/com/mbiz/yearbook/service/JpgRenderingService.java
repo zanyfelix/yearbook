@@ -762,39 +762,51 @@ public class JpgRenderingService {
 		double rotation = 0;
 
 		if (hasNewStructure) {
-// 새로운 구조 사용
+			// 새로운 구조 사용
 			rotation = photoNode.path("rotation").asDouble(0);
 
-// translateX/Y는 백분율로 저장되어 있음
+			// ⭐ 중요: translateX/Y는 배경 이미지 전체 크기 기준 백분율
 			double translateXPercent = photoNode.path("translateX").asDouble(0);
 			double translateYPercent = photoNode.path("translateY").asDouble(0);
 
-// 백분율을 픽셀로 변환 (프레임 크기 기준)
-			photoX = (translateXPercent / 100.0) * frameWidth;
-			photoY = (translateYPercent / 100.0) * frameHeight;
+			// 배경 이미지 크기 기준으로 픽셀 변환
+			// (프레임 크기가 아닌 RENDER_WIDTH/HEIGHT 사용!)
+			double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
+			double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
 
-// 크기 정보
+			// 이미 절대 좌표이므로 그대로 사용
+			// (프레임 내 상대 좌표로 변환 불필요)
+			photoX = translateXPixel;
+			photoY = translateYPixel;
+
+			// 크기 정보 - widthPx/heightPx는 편집기 픽셀이므로 SCALE_RATIO 적용
 			JsonNode size = photoNode.path("size");
 			photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
 			photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
+
+			logger.info("새 구조 사진 위치: translate({}, {})%, 절대픽셀({}, {}), 크기({}, {})", translateXPercent,
+					translateYPercent, photoX, photoY, photoWidth, photoHeight);
+
 		} else {
-// 기존 구조 폴백
+			// 기존 구조 폴백
 			JsonNode position = photoNode.path("position");
 			JsonNode size = photoNode.path("size");
 
 			if (position.has("leftPx")) {
+				// leftPx/topPx는 편집기 픽셀 단위이므로 SCALE_RATIO 적용
 				photoX = position.path("leftPx").asDouble() * SCALE_RATIO;
 				photoY = position.path("topPx").asDouble() * SCALE_RATIO;
 				photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
 				photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
 			} else {
+				// 백분율 기반
 				photoX = frameWidth * (position.path("left").asDouble() / 100.0);
 				photoY = frameHeight * (position.path("top").asDouble() / 100.0);
 				photoWidth = frameWidth * (size.path("width").asDouble() / 100.0);
 				photoHeight = frameHeight * (size.path("height").asDouble() / 100.0);
 			}
 
-// 기존 transform에서 rotation 추출
+			// 기존 transform에서 rotation 추출
 			String transform = photoNode.path("transform").asText("none");
 			if (!transform.equals("none")) {
 				TransformParser parser = TransformParser.parse(transform);
@@ -809,29 +821,31 @@ public class JpgRenderingService {
 		}
 
 		if (maskImage != null) {
-// 마스크가 있는 경우
+			// 마스크 적용을 위해 프레임 내 상대 좌표로 변환
 			BufferedImage maskedPhoto = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
 			Graphics2D g2dMasked = maskedPhoto.createGraphics();
 			setHighQualityRenderingHints(g2dMasked);
 
-// 회전 적용
+			// 회전 적용 (절대 좌표 기준)
 			if (Math.abs(rotation) > 0.001) {
 				double centerX = photoX + photoWidth / 2;
 				double centerY = photoY + photoHeight / 2;
 				g2dMasked.rotate(rotation, centerX, centerY);
 			}
 
+			// 사진을 절대 좌표에 그리기
 			g2dMasked.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
 
-// 회전 리셋 후 마스크 적용
+			// 회전 리셋 후 마스크 적용
 			g2dMasked.setTransform(new AffineTransform());
 			g2dMasked.setComposite(AlphaComposite.DstIn);
 			g2dMasked.drawImage(maskImage, 0, 0, frameWidth, frameHeight, null);
 			g2dMasked.dispose();
 
 			g2d.drawImage(maskedPhoto, 0, 0, null);
+
 		} else {
-// 마스크 없는 경우
+			// 마스크 없는 경우 - 절대 좌표에 직접 그리기
 			if (Math.abs(rotation) > 0.001) {
 				Graphics2D g2dTemp = (Graphics2D) g2d.create();
 				double centerX = photoX + photoWidth / 2;
@@ -1137,7 +1151,6 @@ public class JpgRenderingService {
 		logger.info("✓ 사진 렌더링 완료");
 		logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 	}
-
 
 	// 더 정확한 X 위치 계산
 	private int calculateTextXPrecise(String text, String align, int boxWidth, Rectangle2D bounds) {
