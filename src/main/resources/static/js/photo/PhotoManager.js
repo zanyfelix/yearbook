@@ -566,10 +566,17 @@ class PhotoManager {
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+
 		if (actualBgRect) {
 			currentState.rotation = Math.atan2(matrix.b, matrix.a);
 			currentState.translateX = (matrix.tx / actualBgRect.width) * 100;
 			currentState.translateY = (matrix.ty / actualBgRect.height) * 100;
+
+			// 크기도 백분율로 추가 저장
+			currentState.sizePercent = {
+				width: (photo.outerWidth() / actualBgRect.width) * 100,
+				height: (photo.outerHeight() / actualBgRect.height) * 100
+			};
 		}
 
 		if (typeof options.isManual === 'boolean') {
@@ -581,6 +588,7 @@ class PhotoManager {
 		console.log('Photo state saved:', {
 			position: currentState.position,
 			size: currentState.size,
+			sizePercent: currentState.sizePercent,
 			rotation: currentState.transform
 		});
 	}
@@ -645,5 +653,16 @@ class PhotoManager {
 
 			$handle.css('cursor', newCursor);
 		});
+	}
+
+	static updateSilhouetteSize(photo) {
+		const $silhouette = $('.photo-silhouette');
+		if ($silhouette.length) {
+			$silhouette.css({
+				width: photo.css('width'),
+				height: photo.css('height'),
+				transform: photo.css('transform')
+			});
+		}
 	}
 }

@@ -1138,6 +1138,7 @@ $(document).ready(function() {
 		if ($('#editModal').is(':visible')) {
 			window.safeLineManager.update();
 			window.updateAllPositions();
+			updateAllPhotosPosition();
 		}
 	}, 250));
 
@@ -1348,30 +1349,53 @@ function updateAllPhotosPosition() {
 			const bg = $('#page-preview-img');
 			const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
 
-			let photoX, photoY;
-
-			// 백분율 데이터가 있고 현재 화면 크기를 알 수 있으면 사용
-			if (photoData.translateX !== undefined && photoData.translateY !== undefined && actualBgRect) {
-				// 백분율을 현재 화면 픽셀로 변환
-				photoX = (photoData.translateX / 100) * actualBgRect.width;
-				photoY = (photoData.translateY / 100) * actualBgRect.height;
-			} else {
-				// 백분율 데이터가 없으면 픽셀 데이터 사용
-				photoX = photoData.position.leftPx || 0;
-				photoY = photoData.position.topPx || 0;
+			if (!photoData.sizePercent && actualBgRect && photoData.size) {
+				photoData.sizePercent = {
+					width: (photoData.size.widthPx / actualBgRect.width) * 100,
+					height: (photoData.size.heightPx / actualBgRect.height) * 100
+				};
+				// 계산된 값을 저장
+				$photo.data('relativeState', photoData);
 			}
 
-			const photoWidth = photoData.size.widthPx || 100;
-			const photoHeight = photoData.size.heightPx || 100;
+			let translateX, translateY;
+
+			// 위치 계산 (기존 코드 그대로)
+			if (photoData.translateX !== undefined && actualBgRect) {
+				translateX = (photoData.translateX / 100) * actualBgRect.width;
+				translateY = (photoData.translateY / 100) * actualBgRect.height;
+			} else {
+				translateX = photoData.position.leftPx || 0;
+				translateY = photoData.position.topPx || 0;
+			}
+
+			let photoWidth, photoHeight;
+			if (photoData.sizePercent && actualBgRect) {
+				// 백분율을 픽셀로 변환
+				photoWidth = (photoData.sizePercent.width / 100) * actualBgRect.width;
+				photoHeight = (photoData.sizePercent.height / 100) * actualBgRect.height;
+			} else {
+				// 기존 픽셀 데이터 사용
+				photoWidth = photoData.size.widthPx || 100;
+				photoHeight = photoData.size.heightPx || 100;
+			}
 
 			// 회전 처리
 			let finalTransform;
 			if (photoData.rotation !== undefined && photoData.rotation !== 0) {
 				const cos = Math.cos(photoData.rotation);
 				const sin = Math.sin(photoData.rotation);
-				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${photoX.toFixed(2)}, ${photoY.toFixed(2)})`;
+				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
 			} else {
-				finalTransform = `translate(${photoX}px, ${photoY}px)`;
+				const rotationTransform = photoData.transform || 'none';
+				if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
+					finalTransform = `translate(${translateX}px, ${translateY}px)`;
+				} else {
+					finalTransform = rotationTransform.replace(
+						/, 0, 0\)$/,
+						`, ${translateX}, ${translateY})`
+					);
+				}
 			}
 
 			// CSS 적용
@@ -1387,6 +1411,12 @@ function updateAllPhotosPosition() {
 			};
 
 			$photo.css(photoCss);
+
+			if ($photo.hasClass('selected-photo')) {
+				PhotoManager.updateSilhouetteSize($photo);
+				PhotoManager.updateSelectionUI($photo);
+			}
+
 		} else {
 			$placeholder.show();
 			$photo.hide();
