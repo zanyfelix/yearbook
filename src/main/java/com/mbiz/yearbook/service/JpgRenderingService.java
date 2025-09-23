@@ -9,7 +9,6 @@ import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.Shape;
-import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.AffineTransformOp;
@@ -741,7 +740,7 @@ public class JpgRenderingService {
 		if (src == null || src.isEmpty())
 			return;
 
-// 이미지 로드
+		// 이미지 로드
 		String originalSrc = convertToOriginalPath(src);
 		byte[] imageBytes = loadImageBytes(originalSrc);
 		if (imageBytes == null) {
@@ -754,7 +753,7 @@ public class JpgRenderingService {
 		if (photoImage == null)
 			return;
 
-// 새로운 구조 확인 (rotation, translateX, translateY)
+		// 새로운 구조 확인 (rotation, translateX, translateY)
 		boolean hasNewStructure = photoNode.has("rotation");
 
 		double photoX = 0, photoY = 0;
@@ -765,28 +764,25 @@ public class JpgRenderingService {
 			// 새로운 구조 사용
 			rotation = photoNode.path("rotation").asDouble(0);
 
-			// ⭐ 중요: translateX/Y는 배경 이미지 전체 크기 기준 백분율
 			double translateXPercent = photoNode.path("translateX").asDouble(0);
-			double translateYPercent = photoNode.path("translateY").asDouble(0);
-
-			// 배경 이미지 크기 기준으로 픽셀 변환
-			// (프레임 크기가 아닌 RENDER_WIDTH/HEIGHT 사용!)
-			double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
-			double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
-
-			// 이미 절대 좌표이므로 그대로 사용
-			// (프레임 내 상대 좌표로 변환 불필요)
-			photoX = translateXPixel;
-			photoY = translateYPixel;
-
-			// 크기 정보 - widthPx/heightPx는 편집기 픽셀이므로 SCALE_RATIO 적용
-			JsonNode size = photoNode.path("size");
-			photoWidth = size.path("widthPx").asDouble() * SCALE_RATIO;
-			photoHeight = size.path("heightPx").asDouble() * SCALE_RATIO;
-
-			logger.info("새 구조 사진 위치: translate({}, {})%, 절대픽셀({}, {}), 크기({}, {})", translateXPercent,
-					translateYPercent, photoX, photoY, photoWidth, photoHeight);
-
+		    double translateYPercent = photoNode.path("translateY").asDouble(0);
+		    double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
+		    double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
+		    
+		    photoX = translateXPixel;
+		    photoY = translateYPixel;
+		    
+		    // 크기 정보 - 수정된 부분
+		    JsonNode size = photoNode.path("size");
+		    double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH);  // ← 추가
+		    double scaleRatio = RENDER_WIDTH / screenWidth;  // ← 추가
+		    
+		    photoWidth = size.path("widthPx").asDouble() * scaleRatio;  // ← 수정
+		    photoHeight = size.path("heightPx").asDouble() * scaleRatio;  // ← 수정
+		    
+		    logger.info("새 구조 사진: screenWidth={}, scaleRatio={}, 크기({}, {})", 
+		                screenWidth, scaleRatio, photoWidth, photoHeight);
+		    
 		} else {
 			// 기존 구조 폴백
 			JsonNode position = photoNode.path("position");

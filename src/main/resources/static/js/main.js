@@ -665,17 +665,18 @@ $(document).ready(function() {
 				const photoRelativeState = $photo.data('relativeState');
 
 				if (photoRelativeState) {
+
 					photoData = {
 						src: $photo.data('originalPath') || $photo.data('filePath'),
 						editSrc: $photo.data('editPath'),
 						position: photoRelativeState.position,
-						size: photoRelativeState.size,
-						// 새로운 구조로 저장
+						size: photoRelativeState.size,  // 그대로
 						rotation: photoRelativeState.rotation || 0,
 						translateX: photoRelativeState.translateX || 0,
 						translateY: photoRelativeState.translateY || 0,
 						transformOriginX: photoRelativeState.transformOriginX || 50,
-						transformOriginY: photoRelativeState.transformOriginY || 50
+						transformOriginY: photoRelativeState.transformOriginY || 50,
+						screenWidth: actualBgRect.width  // 이것만 추가
 					};
 				}
 			}
