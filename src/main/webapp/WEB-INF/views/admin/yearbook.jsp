@@ -8,7 +8,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme</title>
+    <title>CAPTURECORD YB</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="<c:url value='/images/favicon_32.png'/>">
+    <link rel="icon" type="image/png" sizes="196x196" href="<c:url value='/images/favicon_196.png'/>">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/admin/yearbook.css"/>
 </head>

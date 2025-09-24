@@ -3,11 +3,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login</title>
-    <!-- Bootstrap 5 CDN -->
-    <link href="<c:url value='/css/bootstrap.min.css'/>" rel="stylesheet">
+    <title>CAPTURECORD YB</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CAPTURECORD YB" />
+    <meta property="og:url" content="http://capturecordyb.com" />
+    <meta property="og:description" content="International School Photography Yearbook" />
+    <meta property="og:image" content="<c:url value='/images/og_image.jpg'/>" />
     <link rel="icon" type="image/png" sizes="32x32" href="<c:url value='/images/favicon_32.png'/>">
     <link rel="icon" type="image/png" sizes="196x196" href="<c:url value='/images/favicon_196.png'/>">
+    <link href="<c:url value='/css/bootstrap.min.css'/>" rel="stylesheet">
     <style>
         body {
             background-color: #f0f4f8;
@@ -31,7 +35,7 @@
 
 <div class="container">
     <div class="login-container">
-        <h3 class="text-center form-title">Capturecord Yearbook</h3>
+        <h3 class="text-center form-title">CAPTURECORD YB</h3>
 
         <form method="post" action="/login">
             <div class="mb-3">

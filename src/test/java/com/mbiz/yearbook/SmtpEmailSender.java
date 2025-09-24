@@ -17,8 +17,8 @@ public class SmtpEmailSender {
 
         // --- Email Information Setup ---
         // 📧 Sender's Information
-        final String senderEmail = "support@capturecord.com"; // Your email address
-        final String senderPassword = "3IaExjFQjH9T";   // Your email app password
+        final String senderEmail = "noreply@capturecord.com"; // Your email address
+        final String senderPassword = "fGVJvFh6si10";   // Your email app password
 
         // 📧 Receiver's Information
         final String receiverEmail = "brainy_smurf@naver.com"; // Receiver's email address
