@@ -3,9 +3,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Yearbook 로그인</title>
+    <title>Login</title>
     <!-- Bootstrap 5 CDN -->
     <link href="<c:url value='/css/bootstrap.min.css'/>" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="<c:url value='/images/favicon_32.png'/>">
+    <link rel="icon" type="image/png" sizes="196x196" href="<c:url value='/images/favicon_196.png'/>">
     <style>
         body {
             background-color: #f0f4f8;
@@ -29,7 +31,7 @@
 
 <div class="container">
     <div class="login-container">
-        <h3 class="text-center form-title">MBIZ Yearbook</h3>
+        <h3 class="text-center form-title">Capturecord Yearbook</h3>
 
         <form method="post" action="/login">
             <div class="mb-3">
