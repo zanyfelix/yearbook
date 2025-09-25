@@ -1360,13 +1360,18 @@ function updateAllPhotosPosition() {
 
 			let translateX, translateY;
 
-			// 위치 계산 (기존 코드 그대로)
-			if (photoData.translateX !== undefined && actualBgRect) {
+			// ⭐ 수정: translateX가 정의되어 있는지 확인 (0도 유효한 값)
+			if (photoData.hasOwnProperty('translateX') && actualBgRect) {
+				// translateX/translateY는 이미 백분율로 저장되어 있음
 				translateX = (photoData.translateX / 100) * actualBgRect.width;
 				translateY = (photoData.translateY / 100) * actualBgRect.height;
+			} else if (photoData.position && photoData.position.leftPx !== undefined) {
+				// 픽셀값만 있는 경우 (이전 버전 호환)
+				translateX = photoData.position.leftPx;
+				translateY = photoData.position.topPx;
 			} else {
-				translateX = photoData.position.leftPx || 0;
-				translateY = photoData.position.topPx || 0;
+				translateX = 0;
+				translateY = 0;
 			}
 
 			let photoWidth, photoHeight;
@@ -1374,13 +1379,16 @@ function updateAllPhotosPosition() {
 				// 백분율을 픽셀로 변환
 				photoWidth = (photoData.sizePercent.width / 100) * actualBgRect.width;
 				photoHeight = (photoData.sizePercent.height / 100) * actualBgRect.height;
+			} else if (photoData.size && photoData.size.widthPx !== undefined) {
+				// 픽셀 크기 그대로 사용 (스케일 적용 안함)
+				photoWidth = photoData.size.widthPx;
+				photoHeight = photoData.size.heightPx;
 			} else {
-				// 기존 픽셀 데이터 사용
-				photoWidth = photoData.size.widthPx || 100;
-				photoHeight = photoData.size.heightPx || 100;
+				photoWidth = 100;
+				photoHeight = 100;
 			}
 
-			// 회전 처리
+			// 회전 처리 (기존 코드 그대로)
 			let finalTransform;
 			if (photoData.rotation !== undefined && photoData.rotation !== 0) {
 				const cos = Math.cos(photoData.rotation);
