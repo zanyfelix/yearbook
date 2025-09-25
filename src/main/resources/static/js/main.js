@@ -1615,6 +1615,10 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 function saveImageState(photo, state) {
 	const currentState = photo.data('relativeState') || {};
 
+	// 백그라운드 정보 가져오기
+	const bg = $('#page-preview-img');
+	const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+
 	const updatedState = {
 		...currentState,
 		...state,
@@ -1622,6 +1626,24 @@ function saveImageState(photo, state) {
 		originalPath: photo.data('originalPath'),
 		lastModified: new Date().toISOString()
 	};
+
+	// 백분율 기반 위치 정보 추가
+	if (actualBgRect && state.position) {
+		// leftPx, topPx가 실제 translate 값이므로 백분율로 변환
+		updatedState.translateX = (state.position.leftPx / actualBgRect.width) * 100;
+		updatedState.translateY = (state.position.topPx / actualBgRect.height) * 100;
+
+		// 크기도 백분율로 추가 저장
+		if (state.size) {
+			updatedState.sizePercent = {
+				width: (state.size.widthPx / actualBgRect.width) * 100,
+				height: (state.size.heightPx / actualBgRect.height) * 100
+			};
+		}
+
+		// rotation은 0으로 초기화 (아직 회전하지 않았으므로)
+		updatedState.rotation = 0;
+	}
 
 	photo.data('relativeState', updatedState);
 
