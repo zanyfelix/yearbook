@@ -89,6 +89,11 @@ class EventManager {
 			const initialElementAngleRad = Math.atan2(initialMatrix.b, initialMatrix.a);
 			const startAngleRad = Math.atan2(e.clientY - elementCenter.y, e.clientX - elementCenter.x);
 
+			// 회전 중임을 표시 (중요!)
+			if (element.hasClass('uploaded-photo')) {
+				element.closest('.frame-group').data('isRotatingPhoto', true);
+			}
+
 			$(document).on('mousemove.rotator', (ev) => {
 				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
 				const deltaAngleRad = currentAngleRad - startAngleRad;
@@ -113,7 +118,11 @@ class EventManager {
 				}
 			});
 
-			$(document).on('mouseup.rotator', () => {
+			$(document).on('mouseup.rotator', (ev) => {
+				// 이벤트 전파 차단
+				ev.stopPropagation();
+				ev.stopImmediatePropagation();
+
 				$(document).off('.rotator');
 
 				if (!element.hasClass('uploaded-photo')) {
@@ -125,11 +134,15 @@ class EventManager {
 					const frameGroup = element.closest('.frame-group');
 					PhotoManager.updateResizeCursors(element);
 					PhotoManager.savePhotoState(element, frameGroup, { isManual: true });
-					// 이미 있는 코드지만 작동하지 않으면 setTimeout 추가
+
+					// 선택 상태 확실히 유지 - setTimeout 시간 조정
 					setTimeout(() => {
-						window.selectionManager.selectPhoto(element, frameGroup);
-					}, 10);
-					setTimeout(() => { frameGroup.removeData('isRotatingPhoto'); }, 0);
+						// 여전히 회전 중이 아닐 때만 선택
+						if (!frameGroup.data('isDraggingPhoto') && !frameGroup.data('isResizingPhoto')) {
+							window.selectionManager.selectPhoto(element, frameGroup);
+						}
+						frameGroup.removeData('isRotatingPhoto');
+					}, 50); // 10ms -> 50ms로 증가
 				}
 			});
 		});
@@ -381,7 +394,7 @@ class EventManager {
 				if (dragData.isDragging) {
 					// 드래그 종료 시점에 transform 제거한 상태로 저장
 					const currentTransform = element.css('transform');
-					
+
 					// 회전이 있는 경우에만 특별 처리
 					if (currentTransform && currentTransform !== 'none' && currentTransform.includes('matrix')) {
 						const matrix = currentTransform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
@@ -548,6 +561,17 @@ class EventManager {
 	static setupGlobalEvents() {
 		// 클릭 영역 외부 클릭 시 선택 해제
 		document.getElementById('page-preview').addEventListener('click', (e) => {
+			// 회전, 드래그, 리사이즈 중이면 선택 해제하지 않음
+			const rotatingFrame = $('.frame-group').filter(function() {
+				return $(this).data('isRotatingPhoto') ||
+					$(this).data('isDraggingPhoto') ||
+					$(this).data('isResizingPhoto');
+			});
+
+			if (rotatingFrame.length > 0) {
+				return; // 작업 중이면 아무것도 하지 않음
+			}
+
 			if (!this.isSelectableElement(e.target)) {
 				window.selectionManager.clearSelection();
 			}
