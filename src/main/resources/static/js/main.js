@@ -1343,88 +1343,64 @@ function updateAllPhotosPosition() {
 		if (photoSrc && photoSrc !== '#') {
 			$placeholder.hide();
 
-			const photoData = $photo.data('relativeState');
-			if (!photoData) return;
+			// 현재 상태를 백분율로 저장 (최초 1회)
+			if (!$photo.data('percentState')) {
+				const bg = $('#page-preview-img');
+				const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+				if (!actualBgRect) return;
 
+				const currentTransform = $photo.css('transform');
+				const matrix = TransformHelper.parseMatrix(currentTransform);
+
+				// 현재 상태를 백분율로 저장
+				$photo.data('percentState', {
+					widthPercent: ($photo.outerWidth() / actualBgRect.width) * 100,
+					heightPercent: ($photo.outerHeight() / actualBgRect.height) * 100,
+					translateXPercent: (matrix.tx / actualBgRect.width) * 100,
+					translateYPercent: (matrix.ty / actualBgRect.height) * 100,
+					rotation: Math.atan2(matrix.b, matrix.a)
+				});
+			}
+
+			// 저장된 백분율 기준으로 새로운 크기 계산
+			const percentState = $photo.data('percentState');
 			const bg = $('#page-preview-img');
 			const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
 
-			if (!photoData.sizePercent && actualBgRect && photoData.size) {
-				photoData.sizePercent = {
-					width: (photoData.size.widthPx / actualBgRect.width) * 100,
-					height: (photoData.size.heightPx / actualBgRect.height) * 100
-				};
-				// 계산된 값을 저장
-				$photo.data('relativeState', photoData);
-			}
+			if (actualBgRect && percentState) {
+				// 백분율을 현재 화면 크기에 맞게 픽셀로 변환
+				const newWidth = (percentState.widthPercent / 100) * actualBgRect.width;
+				const newHeight = (percentState.heightPercent / 100) * actualBgRect.height;
+				const newTranslateX = (percentState.translateXPercent / 100) * actualBgRect.width;
+				const newTranslateY = (percentState.translateYPercent / 100) * actualBgRect.height;
 
-			let translateX, translateY;
-
-			// ⭐ 수정: translateX가 정의되어 있는지 확인 (0도 유효한 값)
-			if (photoData.hasOwnProperty('translateX') && actualBgRect) {
-				// translateX/translateY는 이미 백분율로 저장되어 있음
-				translateX = (photoData.translateX / 100) * actualBgRect.width;
-				translateY = (photoData.translateY / 100) * actualBgRect.height;
-			} else if (photoData.position && photoData.position.leftPx !== undefined) {
-				// 픽셀값만 있는 경우 (이전 버전 호환)
-				translateX = photoData.position.leftPx;
-				translateY = photoData.position.topPx;
-			} else {
-				translateX = 0;
-				translateY = 0;
-			}
-
-			let photoWidth, photoHeight;
-			if (photoData.sizePercent && actualBgRect) {
-				// 백분율을 픽셀로 변환
-				photoWidth = (photoData.sizePercent.width / 100) * actualBgRect.width;
-				photoHeight = (photoData.sizePercent.height / 100) * actualBgRect.height;
-			} else if (photoData.size && photoData.size.widthPx !== undefined) {
-				// 픽셀 크기 그대로 사용 (스케일 적용 안함)
-				photoWidth = photoData.size.widthPx;
-				photoHeight = photoData.size.heightPx;
-			} else {
-				photoWidth = 100;
-				photoHeight = 100;
-			}
-
-			// 회전 처리 (기존 코드 그대로)
-			let finalTransform;
-			if (photoData.rotation !== undefined && photoData.rotation !== 0) {
-				const cos = Math.cos(photoData.rotation);
-				const sin = Math.sin(photoData.rotation);
-				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
-			} else {
-				const rotationTransform = photoData.transform || 'none';
-				if (rotationTransform === 'none' || !rotationTransform.startsWith('matrix')) {
-					finalTransform = `translate(${translateX}px, ${translateY}px)`;
+				// Transform 매트릭스 생성
+				let finalTransform;
+				if (percentState.rotation !== 0) {
+					const cos = Math.cos(percentState.rotation);
+					const sin = Math.sin(percentState.rotation);
+					finalTransform = `matrix(${cos}, ${sin}, ${-sin}, ${cos}, ${newTranslateX}, ${newTranslateY})`;
 				} else {
-					finalTransform = rotationTransform.replace(
-						/, 0, 0\)$/,
-						`, ${translateX}, ${translateY})`
-					);
+					finalTransform = `translate(${newTranslateX}px, ${newTranslateY}px)`;
+				}
+
+				// CSS 적용
+				$photo.css({
+					display: 'block',
+					visibility: 'visible',
+					width: newWidth + 'px',
+					height: newHeight + 'px',
+					left: '0px',
+					top: '0px',
+					transform: finalTransform,
+					transformOrigin: '50% 50%'
+				});
+
+				if ($photo.hasClass('selected-photo')) {
+					PhotoManager.updateSilhouetteSize($photo);
+					PhotoManager.updateSelectionUI($photo);
 				}
 			}
-
-			// CSS 적용
-			const photoCss = {
-				display: 'block',
-				visibility: 'visible',
-				width: photoWidth + 'px',
-				height: photoHeight + 'px',
-				left: '0px',
-				top: '0px',
-				transform: finalTransform,
-				transformOrigin: photoData.transformOrigin || '50% 50%'
-			};
-
-			$photo.css(photoCss);
-
-			if ($photo.hasClass('selected-photo')) {
-				PhotoManager.updateSilhouetteSize($photo);
-				PhotoManager.updateSelectionUI($photo);
-			}
-
 		} else {
 			$placeholder.show();
 			$photo.hide();

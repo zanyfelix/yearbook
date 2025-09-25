@@ -568,6 +568,16 @@ class PhotoManager {
 		const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
 
 		if (actualBgRect) {
+			photo.data('percentState', {
+				widthPercent: (photo.outerWidth() / actualBgRect.width) * 100,
+				heightPercent: (photo.outerHeight() / actualBgRect.height) * 100,
+				translateXPercent: (matrix.tx / actualBgRect.width) * 100,
+				translateYPercent: (matrix.ty / actualBgRect.height) * 100,
+				rotation: Math.atan2(matrix.b, matrix.a)
+			});
+		}
+
+		if (actualBgRect) {
 			currentState.rotation = Math.atan2(matrix.b, matrix.a);
 			currentState.translateX = (matrix.tx / actualBgRect.width) * 100;
 			currentState.translateY = (matrix.ty / actualBgRect.height) * 100;
