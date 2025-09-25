@@ -1343,38 +1343,62 @@ function updateAllPhotosPosition() {
 		if (photoSrc && photoSrc !== '#') {
 			$placeholder.hide();
 
-			// 현재 상태를 백분율로 저장 (최초 1회)
-			if (!$photo.data('percentState')) {
-				const bg = $('#page-preview-img');
-				const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
-				if (!actualBgRect) return;
-
-				const currentTransform = $photo.css('transform');
-				const matrix = TransformHelper.parseMatrix(currentTransform);
-
-				// 현재 상태를 백분율로 저장
-				$photo.data('percentState', {
-					widthPercent: ($photo.outerWidth() / actualBgRect.width) * 100,
-					heightPercent: ($photo.outerHeight() / actualBgRect.height) * 100,
-					translateXPercent: (matrix.tx / actualBgRect.width) * 100,
-					translateYPercent: (matrix.ty / actualBgRect.height) * 100,
-					rotation: Math.atan2(matrix.b, matrix.a)
-				});
-			}
-
-			// 저장된 백분율 기준으로 새로운 크기 계산
-			const percentState = $photo.data('percentState');
 			const bg = $('#page-preview-img');
 			const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+			if (!actualBgRect) return;
 
-			if (actualBgRect && percentState) {
-				// 백분율을 현재 화면 크기에 맞게 픽셀로 변환
+			// percentState가 없고 relativeState가 있으면 변환
+			if (!$photo.data('percentState')) {
+				const photoRelativeState = $photo.data('relativeState');
+
+				if (photoRelativeState && photoRelativeState.size) {
+					// relativeState를 백분율로 변환해서 percentState 생성
+					let widthPercent, heightPercent;
+
+					// screenWidth가 있으면 그것으로 계산 (저장 시 화면 크기)
+					if (photoRelativeState.screenWidth) {
+						const savedScreenWidth = photoRelativeState.screenWidth;
+						widthPercent = (photoRelativeState.size.widthPx / savedScreenWidth) * 100;
+						heightPercent = (photoRelativeState.size.heightPx / savedScreenWidth) * 100;
+					} else {
+						// 백분율이 이미 있으면 사용
+						widthPercent = photoRelativeState.size.width ||
+							(photoRelativeState.size.widthPx / actualBgRect.width) * 100;
+						heightPercent = photoRelativeState.size.height ||
+							(photoRelativeState.size.heightPx / actualBgRect.height) * 100;
+					}
+
+					$photo.data('percentState', {
+						widthPercent: widthPercent,
+						heightPercent: heightPercent,
+						translateXPercent: photoRelativeState.translateX || 0,
+						translateYPercent: photoRelativeState.translateY || 0,
+						rotation: photoRelativeState.rotation || 0
+					});
+
+				} else {
+					// relativeState가 없으면 현재 크기 사용 (원래 로직)
+					const currentTransform = $photo.css('transform');
+					const matrix = TransformHelper.parseMatrix(currentTransform);
+
+					$photo.data('percentState', {
+						widthPercent: ($photo.outerWidth() / actualBgRect.width) * 100,
+						heightPercent: ($photo.outerHeight() / actualBgRect.height) * 100,
+						translateXPercent: (matrix.tx / actualBgRect.width) * 100,
+						translateYPercent: (matrix.ty / actualBgRect.height) * 100,
+						rotation: Math.atan2(matrix.b, matrix.a)
+					});
+				}
+			}
+
+			// percentState 기반으로 크기 계산 (반응형)
+			const percentState = $photo.data('percentState');
+			if (percentState) {
 				const newWidth = (percentState.widthPercent / 100) * actualBgRect.width;
 				const newHeight = (percentState.heightPercent / 100) * actualBgRect.height;
 				const newTranslateX = (percentState.translateXPercent / 100) * actualBgRect.width;
 				const newTranslateY = (percentState.translateYPercent / 100) * actualBgRect.height;
 
-				// Transform 매트릭스 생성
 				let finalTransform;
 				if (percentState.rotation !== 0) {
 					const cos = Math.cos(percentState.rotation);
@@ -1384,7 +1408,6 @@ function updateAllPhotosPosition() {
 					finalTransform = `translate(${newTranslateX}px, ${newTranslateY}px)`;
 				}
 
-				// CSS 적용
 				$photo.css({
 					display: 'block',
 					visibility: 'visible',
@@ -1395,11 +1418,11 @@ function updateAllPhotosPosition() {
 					transform: finalTransform,
 					transformOrigin: '50% 50%'
 				});
+			}
 
-				if ($photo.hasClass('selected-photo')) {
-					PhotoManager.updateSilhouetteSize($photo);
-					PhotoManager.updateSelectionUI($photo);
-				}
+			if ($photo.hasClass('selected-photo')) {
+				PhotoManager.updateSilhouetteSize($photo);
+				PhotoManager.updateSelectionUI($photo);
 			}
 		} else {
 			$placeholder.show();
