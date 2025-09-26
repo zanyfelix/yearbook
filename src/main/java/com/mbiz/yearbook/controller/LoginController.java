@@ -51,7 +51,7 @@ public class LoginController {
 			model.addAttribute("error", "Please check the password");
 			return "login";
 		} catch (Exception e) { // 그 외 모든 예외 처리
-			model.addAttribute("error", "An unexpected error occurred.");
+			model.addAttribute("error", "Access to the system has been restricted by an administrator.");
 			return "login";
 		}
 	}
