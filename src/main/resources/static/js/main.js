@@ -815,20 +815,20 @@ $(document).ready(function() {
 				$box.css('transform', 'none');
 
 				// 실제 콘텐츠 크기 측정
-				const actualHeight = $box[0].scrollHeight;
-				const actualWidth = $box[0].scrollWidth;
+				const actualHeight = Math.max($box[0].scrollHeight, boxH);
+				const actualWidth = Math.max($box[0].scrollWidth, boxW);
 
 				// 캡처를 위한 크기 설정
 				$box.css({
 					'overflow': 'visible',
-					'height': actualHeight + 'px',
-					'width': actualWidth + 'px',
+					'height': (actualHeight + 25) + 'px',
+					'width': (actualWidth + 15) + 'px',
 					'min-height': 'auto',
 					'max-height': 'none'
 				});
 
 				// DOM 업데이트 대기
-				await new Promise(resolve => setTimeout(resolve, 100));
+				await new Promise(resolve => setTimeout(resolve, 200));
 
 				// 렌더링과 동일한 스케일로 캡처 (SCALE_RATIO = 3.33)
 				const RENDER_SCALE = 2621 / 786;  // 약 3.33
@@ -838,7 +838,10 @@ $(document).ready(function() {
 					backgroundColor: null,
 					logging: false,
 					useCORS: true,
-					letterRendering: true
+					letterRendering: true,
+					allowTaint: true,  // 추가
+					height: actualHeight + 25,  // 명시적 높이 지정
+					width: actualWidth + 15     // 명시적 너비 지정
 				});
 
 				// 원본 스타일 복원

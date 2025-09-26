@@ -2276,8 +2276,8 @@ public class JpgRenderingService {
 			// 최종 렌더링 위치와 크기 계산
 			double renderX = editorX * scaleX;
 			double renderY = editorY * scaleY;
-			double renderWidth = editorWidth * scaleX;
-			double renderHeight = editorHeight * scaleY;
+			double renderWidth = editorWidth * scaleX + 15; // 너비 여유분
+			double renderHeight = editorHeight * scaleY + 25; // 높이 여유분
 
 			// 기존 transform 정보가 있으면 처리 (구버전 호환)
 			String transform = textBox.path("transform").asText("none");
@@ -2311,7 +2311,9 @@ public class JpgRenderingService {
 			if (textImage != null) {
 				// 이미지가 이미 캡처된 크기를 가지고 있으므로 스케일링 적용
 				g2dImage.drawImage(textImage, (int) Math.round(renderX), (int) Math.round(renderY),
-						(int) Math.round(renderWidth), (int) Math.round(renderHeight), null);
+						(int) Math.round(renderWidth), // 여유분 포함된 크기
+						(int) Math.round(renderHeight), // 여유분 포함된 크기
+						null);
 
 				logger.debug("텍스트 이미지 렌더링 완료: 위치({}, {}), 크기({}, {})", renderX, renderY, renderWidth, renderHeight);
 			} else {
