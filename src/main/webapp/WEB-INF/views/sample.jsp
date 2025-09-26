@@ -94,7 +94,7 @@
     <a href="/home" class="${currentMenu eq 'home' ? 'active' : ''}">Home</a>
     <a href="/edit?username=${sessionScope.loginUser.username}" class="${currentMenu eq 'edit' ? 'active' : ''}">Yearbook Edit</a>
     <a href="/progress" class="${currentMenu eq 'progress' ? 'active' : ''}">Progress Report</a>
-    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit to MBIZ</a>
+    <a href="/submit" class="${currentMenu eq 'submit' ? 'active' : ''}">Submit</a>
     <a href="/contact" class="${currentMenu eq 'contact' ? 'active' : ''}">Contact Us</a>
 </div>
 

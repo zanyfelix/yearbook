@@ -69,11 +69,10 @@
 				method="post" id="submitForm">
 				<input type="hidden" name="userId" value="${userId}">
 
-				<%-- Submit to MBIZ - Overview 섹션 --%>
 				<div class="section-box" data-section-id="overview"
 					data-section-type="default">
 					<div class="section-header">
-						<h5>Submit to MBIZ</h5>
+						<h5>Submit</h5>
 						<div class="section-controls">
 							<button type="button" class="btn-edit"
 								onclick="toggleEditMode('overview')">EDIT</button>

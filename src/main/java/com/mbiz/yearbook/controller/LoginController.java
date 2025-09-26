@@ -32,7 +32,7 @@ public class LoginController {
 	public String loginForm() {
 		return "login"; // login.jsp
 	}
-
+	
 	@PostMapping("/login")
 	public String login(@RequestParam String userId, @RequestParam String password, HttpSession session, Model model) {
 

@@ -56,6 +56,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")  // 모든 경로에 적용
                 .excludePathPatterns(
+                    "/main",
                     "/login",           // 로그인 페이지
                     "/",               // 루트 경로
                     "/admin/impersonate/**", // Impersonate 관련 경로 추가
