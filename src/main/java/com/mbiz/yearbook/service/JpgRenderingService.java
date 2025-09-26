@@ -2190,53 +2190,12 @@ public class JpgRenderingService {
 				return;
 			}
 
-			// 새로운 구조 확인
+			// main.js의 updateElementPosition과 동일한 로직 적용
 			boolean hasNewStructure = textBox.has("rotation");
 
 			if (hasNewStructure) {
-				// main.js와 동일한 방식으로 처리
-				double rotation = textBox.path("rotation").asDouble(0);
-				double translateXPercent = textBox.path("translateX").asDouble(0);
-				double translateYPercent = textBox.path("translateY").asDouble(0);
-
-				// 백분율을 픽셀로 변환 (main.js의 updateElementPosition과 동일)
-				double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
-				double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
-
-				// position 기본 위치
-				double baseX = RENDER_WIDTH * (textBox.path("position").path("left").asDouble() / 100.0);
-				double baseY = RENDER_HEIGHT * (textBox.path("position").path("top").asDouble() / 100.0);
-
-				// 최종 위치 (translate 적용)
-				double finalX = baseX + translateXPixel;
-				double finalY = baseY + translateYPixel;
-
-				// 크기 계산
-				double boxWidth = RENDER_WIDTH * (textBox.path("size").path("width").asDouble() / 100.0);
-				double boxHeight = RENDER_HEIGHT * (textBox.path("size").path("height").asDouble() / 100.0);
-
-				Graphics2D g2dImage = (Graphics2D) g2d.create();
-				setHighQualityRenderingHints(g2dImage);
-
-				// 회전 적용 (main.js와 동일한 transform origin)
-				if (Math.abs(rotation) > 0.001) {
-					double transformOriginX = textBox.path("transformOriginX").asDouble(50);
-					double transformOriginY = textBox.path("transformOriginY").asDouble(50);
-
-					double pivotX = baseX + (boxWidth * transformOriginX / 100);
-					double pivotY = baseY + (boxHeight * transformOriginY / 100);
-
-					g2dImage.rotate(rotation, pivotX, pivotY);
-				}
-
-				// 이미지 그리기
-				g2dImage.drawImage(textImage, (int) Math.round(baseX), // translate는 rotation에 포함
-						(int) Math.round(baseY), (int) Math.round(boxWidth), (int) Math.round(boxHeight), null);
-
-				g2dImage.dispose();
-
+				renderTextBoxWithNewStructure(g2d, textBox, textImage);
 			} else {
-				// 기존 방식 (captureInfo 사용)
 				renderTextBoxWithCaptureInfo(g2d, textBox, textImage);
 			}
 
@@ -2246,85 +2205,114 @@ public class JpgRenderingService {
 		}
 	}
 
-	void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
+	private void renderTextBoxWithNewStructure(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
+		// 1. 위치 및 크기 정보 계산 (기존과 동일)
+		double leftPercent = textBox.path("position").path("left").asDouble();
+		double topPercent = textBox.path("position").path("top").asDouble();
+		double widthPercent = textBox.path("size").path("width").asDouble();
+		double heightPercent = textBox.path("size").path("height").asDouble();
+
+		double baseLeft = (leftPercent / 100.0) * RENDER_WIDTH;
+		double baseTop = (topPercent / 100.0) * RENDER_HEIGHT;
+		double boxWidth = (widthPercent / 100.0) * RENDER_WIDTH;
+		double boxHeight = (heightPercent / 100.0) * RENDER_HEIGHT;
+
+		// 2. Transform 정보 계산 (기존과 동일)
+		double rotation = textBox.path("rotation").asDouble(0);
+		double translateXPercent = textBox.path("translateX").asDouble(0);
+		double translateYPercent = textBox.path("translateY").asDouble(0);
+		double translateX = (translateXPercent / 100.0) * RENDER_WIDTH;
+		double translateY = (translateYPercent / 100.0) * RENDER_HEIGHT;
+		double transformOriginX = textBox.path("transformOriginX").asDouble(50);
+		double transformOriginY = textBox.path("transformOriginY").asDouble(50);
+
+		// --- 💡핵심 수정 부분 시작 ---
+		Graphics2D g2dText = (Graphics2D) g2d.create();
+		setHighQualityRenderingHints(g2dText);
+
+		// 3. 요소의 기본 위치(left, top)로 먼저 이동합니다.
+		g2dText.translate(baseLeft, baseTop);
+
+		// 4. CSS Transform과 동일한 변환을 생성합니다.
+		AffineTransform transform = new AffineTransform();
+
+		// 4-1. 최종 이동(translateX, translateY)을 먼저 적용합니다.
+		transform.translate(translateX, translateY);
+
+		// 4-2. 요소 내부의 transform-origin을 기준으로 회전합니다.
+		double pivotInBoxX = boxWidth * transformOriginX / 100.0;
+		double pivotInBoxY = boxHeight * transformOriginY / 100.0;
+		transform.rotate(rotation, pivotInBoxX, pivotInBoxY);
+
+		// 4-3. 생성된 변환을 그래픽 컨텍스트에 적용합니다.
+		g2dText.transform(transform);
+
+		// 5. 변환된 좌표계의 원점(0,0)에 이미지를 그립니다.
+		g2dText.drawImage(textImage, 0, 0, (int) Math.round(boxWidth), (int) Math.round(boxHeight), null);
+
+		g2dText.dispose();
+		// --- 💡핵심 수정 부분 끝 ---
+
+		logger.info("새 구조 텍스트박스 렌더링: position({}, {}), size({}, {}), rotation={}, translate({}, {})", baseLeft, baseTop,
+				boxWidth, boxHeight, rotation, translateX, translateY);
+	}
+
+	private void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
 		try {
-			// captureInfo에서 정보 추출
 			JsonNode captureInfo = textBox.path("captureInfo");
 			JsonNode absolutePixels = captureInfo.path("absolutePixels");
 
 			if (captureInfo.isMissingNode() || absolutePixels.isMissingNode()) {
-				// captureInfo가 없으면 직접 렌더링으로 폴백
-				logger.warn("captureInfo가 없어서 직접 렌더링으로 전환");
 				renderSingleTextBoxImproved(g2d, textBox);
 				return;
 			}
 
-			// 편집기에서의 절대 픽셀 위치
+			// captureInfo의 absolutePixels는 이미 정확한 위치이므로 스케일만 적용
 			double editorX = absolutePixels.path("x").asDouble();
 			double editorY = absolutePixels.path("y").asDouble();
 			double editorWidth = absolutePixels.path("w").asDouble();
 			double editorHeight = absolutePixels.path("h").asDouble();
 
-			// 편집기 배경 너비 (스케일 계산용)
+			// 편집기 배경 크기
 			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
-			double editorBgHeight = captureInfo.path("editorBgHeight").asDouble(1011.0);
 
-			// 스케일 계산 (편집기 -> 렌더링)
-			double scaleX = RENDER_WIDTH / editorBgWidth;
-			double scaleY = RENDER_HEIGHT / editorBgHeight;
+			// 스케일 적용 (편집기 → 렌더링)
+			double scale = RENDER_WIDTH / editorBgWidth;
+			double finalX = editorX * scale;
+			double finalY = editorY * scale;
+			double finalWidth = editorWidth * scale;
+			double finalHeight = editorHeight * scale;
 
-			// 최종 렌더링 위치와 크기 계산
-			double renderX = editorX * scaleX;
-			double renderY = editorY * scaleY;
-			double renderWidth = editorWidth * scaleX + 15; // 너비 여유분
-			double renderHeight = editorHeight * scaleY + 25; // 높이 여유분
-
-			// 기존 transform 정보가 있으면 처리 (구버전 호환)
+			// 기존 transform 처리 (구버전 호환)
 			String transform = textBox.path("transform").asText("none");
 
 			Graphics2D g2dImage = (Graphics2D) g2d.create();
 			setHighQualityRenderingHints(g2dImage);
 
-			// transform이 있으면 파싱해서 적용
 			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
 				TransformParser parser = TransformParser.parse(transform);
 
 				if (Math.abs(parser.rotation) > 0.001) {
-					// transform origin 처리
 					String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
-					double[] origin = parseTransformOrigin(transformOrigin, renderWidth, renderHeight);
+					double[] origin = parseTransformOrigin(transformOrigin, finalWidth, finalHeight);
 
-					double pivotX = renderX + origin[0];
-					double pivotY = renderY + origin[1];
+					double pivotX = finalX + origin[0];
+					double pivotY = finalY + origin[1];
 
 					g2dImage.rotate(parser.rotation, pivotX, pivotY);
 				}
-
-				// translate 값이 있으면 적용
-				if (parser.tx != 0 || parser.ty != 0) {
-					renderX += parser.tx * scaleX;
-					renderY += parser.ty * scaleY;
-				}
 			}
 
-			// 텍스트 이미지 그리기
-			if (textImage != null) {
-				// 이미지가 이미 캡처된 크기를 가지고 있으므로 스케일링 적용
-				g2dImage.drawImage(textImage, (int) Math.round(renderX), (int) Math.round(renderY),
-						(int) Math.round(renderWidth), // 여유분 포함된 크기
-						(int) Math.round(renderHeight), // 여유분 포함된 크기
-						null);
-
-				logger.debug("텍스트 이미지 렌더링 완료: 위치({}, {}), 크기({}, {})", renderX, renderY, renderWidth, renderHeight);
-			} else {
-				logger.error("텍스트 이미지가 null입니다");
-			}
+			// 이미지 그리기
+			g2dImage.drawImage(textImage, (int) Math.round(finalX), (int) Math.round(finalY),
+					(int) Math.round(finalWidth), (int) Math.round(finalHeight), null);
 
 			g2dImage.dispose();
 
+			logger.info("captureInfo 텍스트박스 렌더링: 위치({}, {}), 크기({}, {})", finalX, finalY, finalWidth, finalHeight);
+
 		} catch (Exception e) {
-			logger.error("captureInfo를 사용한 텍스트박스 렌더링 실패: {}", e.getMessage(), e);
-			// 실패 시 직접 렌더링으로 폴백
+			logger.error("captureInfo 텍스트박스 렌더링 실패: {}", e.getMessage());
 			renderSingleTextBoxImproved(g2d, textBox);
 		}
 	}

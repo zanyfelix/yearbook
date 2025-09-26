@@ -821,8 +821,8 @@ $(document).ready(function() {
 				// 캡처를 위한 크기 설정
 				$box.css({
 					'overflow': 'visible',
-					'height': (actualHeight + 25) + 'px',
-					'width': (actualWidth + 15) + 'px',
+					'height': (actualHeight) + 'px',
+					'width': (actualWidth) + 'px',
 					'min-height': 'auto',
 					'max-height': 'none'
 				});
@@ -840,8 +840,8 @@ $(document).ready(function() {
 					useCORS: true,
 					letterRendering: true,
 					allowTaint: true,  // 추가
-					height: actualHeight + 25,  // 명시적 높이 지정
-					width: actualWidth + 15     // 명시적 너비 지정
+					height: actualHeight + 5,  // 명시적 높이 지정
+					width: actualWidth + 5     // 명시적 너비 지정
 				});
 
 				// 원본 스타일 복원
