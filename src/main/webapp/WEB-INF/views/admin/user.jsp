@@ -69,9 +69,7 @@
 		      <th>No</th>
 		      <th>USER_ID</th>
 		      <th>PASSWORD</th>
-		      <th>NAME</th>
 		      <th>SCHOOL_NAME</th>
-		      <th>MAIL</th>
 		      <th>DEADLINE</th>
 		      <th>ROLE</th>
 		      <th>ACTIVE</th>
@@ -86,9 +84,7 @@
 	            <td>${st.index + 1}</td>
 	            <td>${item.userId}</td>
 	            <td>${item.password}</td>
-	            <td>${item.name}</td>
 	            <td>${item.schoolName}</td>
-	            <td>${item.mail}</td>
 	            <td><fmt:formatDate value="${item.deadline}" pattern="yyyy-MM-dd"/></td>
 	            <td>${item.role}</td>
 	            <td>
@@ -143,16 +139,8 @@
 		            <input type="text" class="form-control" id="passwordInput" name="password" required />
 		          </div>
 		          <div class="mb-3">
-		            <label for="nameInput" class="form-label">NAME</label>
-		            <input type="text" class="form-control" id="nameInput" name="name" required />
-		          </div>
-		          <div class="mb-3">
 		            <label for="schoolInput" class="form-label">SCHOOL_NAME</label>
 		            <input type="text" class="form-control" id="schoolInput" name="schoolName" required />
-		          </div>
-		          <div class="mb-3">
-		            <label for="mailInput" class="form-label">MAIL</label>
-		            <input type="email" class="form-control" id="mailInput" name="mail" required />
 		          </div>
 		          <%
 					  String today = new java.text.SimpleDateFormat("yyyy-MM-dd")
