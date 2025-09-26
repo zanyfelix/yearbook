@@ -19,7 +19,6 @@ $(document).ready(function() {
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
 
 	window.updateElementPosition = function($element, state) {
-		console.log("update");
 		const relativeState = $element.data('relativeState');
 		if (!relativeState) return;
 
@@ -37,11 +36,10 @@ $(document).ready(function() {
 			height: (relativeState.size.height / 100) * actualBgRect.height
 		};
 
-		// Transform 재구성 (더 정밀한 계산)
 		let finalTransform = 'none';
 
 		if (relativeState.rotation !== undefined && relativeState.rotation !== 0) {
-			// 회전 행렬 재구성
+
 			const cos = Math.cos(relativeState.rotation);
 			const sin = Math.sin(relativeState.rotation);
 
@@ -283,6 +281,7 @@ $(document).ready(function() {
 			}
 
 			if (design.textBoxes) {
+				console.log('텍스트박스 복원 시작, 개수:', design.textBoxes.length);
 
 				design.textBoxes.forEach((boxData, index) => {
 					try {
@@ -360,8 +359,6 @@ $(document).ready(function() {
 							rotation: boxData.rotation || 0,  // 추가
 							translateX: boxData.translateX || 0,  // 추가
 							translateY: boxData.translateY || 0,  // 추가
-							transformOriginX: boxData.transformOriginX || 50,  // 추가
-							transformOriginY: boxData.transformOriginY || 50,  // 추가
 							transform: boxData.transform || 'none',
 							transformOrigin: boxData.transformOrigin || '50% 50%'
 						});
@@ -751,17 +748,6 @@ $(document).ready(function() {
 			const baseFontSize = $box.data('base-font-size') || 12;
 			const textType = $box.data('text-type') || 'text';
 
-			let transformOriginX = 50;
-			let transformOriginY = 50;
-
-			if (boxTransformOrigin && boxTransformOrigin !== '50% 50%') {
-				const originMatch = boxTransformOrigin.match(/([0-9.]+)(%|px)?\s+([0-9.]+)(%|px)?/);
-				if (originMatch) {
-					transformOriginX = parseFloat(originMatch[1]);
-					transformOriginY = parseFloat(originMatch[3]);
-				}
-			}
-
 			const textBoxData = {
 				html: $box.html(),
 				textType: textType,
@@ -776,14 +762,11 @@ $(document).ready(function() {
 				rotation: rotation,  // 추가
 				translateX: (translateX / actualBgRect.width) * 100,  // 추가
 				translateY: (translateY / actualBgRect.height) * 100,  // 추가
-				transformOriginX: transformOriginX,  // 추가
-				transformOriginY: transformOriginY,  // 추가
 				transform: boxTransform || 'none',
 				transformOrigin: boxTransformOrigin || '50% 50%',
 				styles: {
 					color: $box.css('color'),
 					fontSize: baseFontSize,
-					renderFontSize: Math.round(baseFontSize * 3.333),
 					fontWeight: $box.css('font-weight'),
 					textAlign: $box.css('text-align'),
 					fontFamily: $box.data('savedFontFamily') || $box.css('font-family').split(',')[0].replace(/['"]/g, '').trim()
@@ -794,7 +777,6 @@ $(document).ready(function() {
 					originalHeight: boxH,  // ⭐ 실제 높이 저장
 					editorBgWidth: actualBgRect.width,
 					editorBgHeight: actualBgRect.height,
-					templateWidth: 786,
 					absolutePixels: {
 						x: boxPos.left - actualBgRect.left,
 						y: boxPos.top - actualBgRect.top,
@@ -804,6 +786,10 @@ $(document).ready(function() {
 				},
 				isModified: true
 			};
+
+			// 높이 확인 로그
+			console.log(`텍스트박스 ${i} - 너비: ${boxW}px, 높이: ${boxH}px`);
+			console.log(`저장된 크기: width=${textBoxData.size.width}%, height=${textBoxData.size.height}%`);
 
 			designData.textBoxes.push(textBoxData);
 
