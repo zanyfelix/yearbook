@@ -765,24 +765,24 @@ public class JpgRenderingService {
 			rotation = photoNode.path("rotation").asDouble(0);
 
 			double translateXPercent = photoNode.path("translateX").asDouble(0);
-		    double translateYPercent = photoNode.path("translateY").asDouble(0);
-		    double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
-		    double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
-		    
-		    photoX = translateXPixel;
-		    photoY = translateYPixel;
-		    
-		    // 크기 정보 - 수정된 부분
-		    JsonNode size = photoNode.path("size");
-		    double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH);  // ← 추가
-		    double scaleRatio = RENDER_WIDTH / screenWidth;  // ← 추가
-		    
-		    photoWidth = size.path("widthPx").asDouble() * scaleRatio;  // ← 수정
-		    photoHeight = size.path("heightPx").asDouble() * scaleRatio;  // ← 수정
-		    
-		    logger.info("새 구조 사진: screenWidth={}, scaleRatio={}, 크기({}, {})", 
-		                screenWidth, scaleRatio, photoWidth, photoHeight);
-		    
+			double translateYPercent = photoNode.path("translateY").asDouble(0);
+			double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
+			double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
+
+			photoX = translateXPixel;
+			photoY = translateYPixel;
+
+			// 크기 정보 - 수정된 부분
+			JsonNode size = photoNode.path("size");
+			double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH); // ← 추가
+			double scaleRatio = RENDER_WIDTH / screenWidth; // ← 추가
+
+			photoWidth = size.path("widthPx").asDouble() * scaleRatio; // ← 수정
+			photoHeight = size.path("heightPx").asDouble() * scaleRatio; // ← 수정
+
+			logger.info("새 구조 사진: screenWidth={}, scaleRatio={}, 크기({}, {})", screenWidth, scaleRatio, photoWidth,
+					photoHeight);
+
 		} else {
 			// 기존 구조 폴백
 			JsonNode position = photoNode.path("position");
@@ -1235,32 +1235,6 @@ public class JpgRenderingService {
 		default: // left
 			return padding;
 		}
-	}
-
-	/**
-	 * Transform Origin 파싱
-	 */
-	private double[] parseTransformOrigin(String origin, double width, double height) {
-		String[] parts = origin.split(" ");
-		double x = 0, y = 0;
-
-		if (parts.length >= 1) {
-			if (parts[0].endsWith("%")) {
-				x = width * Double.parseDouble(parts[0].replace("%", "")) / 100.0;
-			} else if (parts[0].endsWith("px")) {
-				x = Double.parseDouble(parts[0].replace("px", ""));
-			}
-		}
-
-		if (parts.length >= 2) {
-			if (parts[1].endsWith("%")) {
-				y = height * Double.parseDouble(parts[1].replace("%", "")) / 100.0;
-			} else if (parts[1].endsWith("px")) {
-				y = Double.parseDouble(parts[1].replace("px", ""));
-			}
-		}
-
-		return new double[] { x, y };
 	}
 
 	/**
@@ -2216,52 +2190,179 @@ public class JpgRenderingService {
 				return;
 			}
 
-			// 이미지는 이미 RENDER_SCALE로 캡처되었음
-			// 따라서 1:1로 그려야 함
+			// 새로운 구조 확인
+			boolean hasNewStructure = textBox.has("rotation");
 
-			JsonNode captureInfo = textBox.path("captureInfo");
-			JsonNode absolutePixels = captureInfo.path("absolutePixels");
+			if (hasNewStructure) {
+				// main.js와 동일한 방식으로 처리
+				double rotation = textBox.path("rotation").asDouble(0);
+				double translateXPercent = textBox.path("translateX").asDouble(0);
+				double translateYPercent = textBox.path("translateY").asDouble(0);
 
-			// 편집기에서의 원본 위치 (픽셀)
-			double originalX = absolutePixels.path("x").asDouble();
-			double originalY = absolutePixels.path("y").asDouble();
+				// 백분율을 픽셀로 변환 (main.js의 updateElementPosition과 동일)
+				double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
+				double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
 
-			// 편집기 배경 크기
-			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
+				// position 기본 위치
+				double baseX = RENDER_WIDTH * (textBox.path("position").path("left").asDouble() / 100.0);
+				double baseY = RENDER_HEIGHT * (textBox.path("position").path("top").asDouble() / 100.0);
 
-			// 스케일 계산
-			double scale = RENDER_WIDTH / editorBgWidth; // 3.33
+				// 최종 위치 (translate 적용)
+				double finalX = baseX + translateXPixel;
+				double finalY = baseY + translateYPixel;
 
-			// 최종 위치만 계산 (크기는 이미지 그대로 사용)
-			int drawX = (int) Math.round(originalX * scale);
-			int drawY = (int) Math.round(originalY * scale);
+				// 크기 계산
+				double boxWidth = RENDER_WIDTH * (textBox.path("size").path("width").asDouble() / 100.0);
+				double boxHeight = RENDER_HEIGHT * (textBox.path("size").path("height").asDouble() / 100.0);
 
-			// Transform 처리
-			String transform = textBox.path("transform").asText("none");
-			Graphics2D g2dImage = (Graphics2D) g2d.create();
+				Graphics2D g2dImage = (Graphics2D) g2d.create();
+				setHighQualityRenderingHints(g2dImage);
 
-			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
-				TransformParser parser = TransformParser.parse(transform);
-				if (Math.abs(parser.rotation) > 0.001) {
-					// 이미지 중심점 계산
-					double centerX = drawX + textImage.getWidth() / 2.0;
-					double centerY = drawY + textImage.getHeight() / 2.0;
-					g2dImage.rotate(parser.rotation, centerX, centerY);
+				// 회전 적용 (main.js와 동일한 transform origin)
+				if (Math.abs(rotation) > 0.001) {
+					double transformOriginX = textBox.path("transformOriginX").asDouble(50);
+					double transformOriginY = textBox.path("transformOriginY").asDouble(50);
+
+					double pivotX = baseX + (boxWidth * transformOriginX / 100);
+					double pivotY = baseY + (boxHeight * transformOriginY / 100);
+
+					g2dImage.rotate(rotation, pivotX, pivotY);
 				}
+
+				// 이미지 그리기
+				g2dImage.drawImage(textImage, (int) Math.round(baseX), // translate는 rotation에 포함
+						(int) Math.round(baseY), (int) Math.round(boxWidth), (int) Math.round(boxHeight), null);
+
+				g2dImage.dispose();
+
+			} else {
+				// 기존 방식 (captureInfo 사용)
+				renderTextBoxWithCaptureInfo(g2d, textBox, textImage);
 			}
-
-			// 이미지를 원본 크기 그대로 그리기 (스케일링 없음!)
-			g2dImage.drawImage(textImage, drawX, drawY, null);
-
-			g2dImage.dispose();
-
-			logger.info("텍스트 이미지 렌더링: 위치({}, {}), 이미지크기({}x{})", drawX, drawY, textImage.getWidth(),
-					textImage.getHeight());
 
 		} catch (Exception e) {
 			logger.error("텍스트 이미지 렌더링 실패: {}", e.getMessage());
 			renderSingleTextBoxImproved(g2d, textBox);
 		}
+	}
+
+	void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
+		try {
+			// captureInfo에서 정보 추출
+			JsonNode captureInfo = textBox.path("captureInfo");
+			JsonNode absolutePixels = captureInfo.path("absolutePixels");
+
+			if (captureInfo.isMissingNode() || absolutePixels.isMissingNode()) {
+				// captureInfo가 없으면 직접 렌더링으로 폴백
+				logger.warn("captureInfo가 없어서 직접 렌더링으로 전환");
+				renderSingleTextBoxImproved(g2d, textBox);
+				return;
+			}
+
+			// 편집기에서의 절대 픽셀 위치
+			double editorX = absolutePixels.path("x").asDouble();
+			double editorY = absolutePixels.path("y").asDouble();
+			double editorWidth = absolutePixels.path("w").asDouble();
+			double editorHeight = absolutePixels.path("h").asDouble();
+
+			// 편집기 배경 너비 (스케일 계산용)
+			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
+			double editorBgHeight = captureInfo.path("editorBgHeight").asDouble(1011.0);
+
+			// 스케일 계산 (편집기 -> 렌더링)
+			double scaleX = RENDER_WIDTH / editorBgWidth;
+			double scaleY = RENDER_HEIGHT / editorBgHeight;
+
+			// 최종 렌더링 위치와 크기 계산
+			double renderX = editorX * scaleX;
+			double renderY = editorY * scaleY;
+			double renderWidth = editorWidth * scaleX;
+			double renderHeight = editorHeight * scaleY;
+
+			// 기존 transform 정보가 있으면 처리 (구버전 호환)
+			String transform = textBox.path("transform").asText("none");
+
+			Graphics2D g2dImage = (Graphics2D) g2d.create();
+			setHighQualityRenderingHints(g2dImage);
+
+			// transform이 있으면 파싱해서 적용
+			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+				TransformParser parser = TransformParser.parse(transform);
+
+				if (Math.abs(parser.rotation) > 0.001) {
+					// transform origin 처리
+					String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
+					double[] origin = parseTransformOrigin(transformOrigin, renderWidth, renderHeight);
+
+					double pivotX = renderX + origin[0];
+					double pivotY = renderY + origin[1];
+
+					g2dImage.rotate(parser.rotation, pivotX, pivotY);
+				}
+
+				// translate 값이 있으면 적용
+				if (parser.tx != 0 || parser.ty != 0) {
+					renderX += parser.tx * scaleX;
+					renderY += parser.ty * scaleY;
+				}
+			}
+
+			// 텍스트 이미지 그리기
+			if (textImage != null) {
+				// 이미지가 이미 캡처된 크기를 가지고 있으므로 스케일링 적용
+				g2dImage.drawImage(textImage, (int) Math.round(renderX), (int) Math.round(renderY),
+						(int) Math.round(renderWidth), (int) Math.round(renderHeight), null);
+
+				logger.debug("텍스트 이미지 렌더링 완료: 위치({}, {}), 크기({}, {})", renderX, renderY, renderWidth, renderHeight);
+			} else {
+				logger.error("텍스트 이미지가 null입니다");
+			}
+
+			g2dImage.dispose();
+
+		} catch (Exception e) {
+			logger.error("captureInfo를 사용한 텍스트박스 렌더링 실패: {}", e.getMessage(), e);
+			// 실패 시 직접 렌더링으로 폴백
+			renderSingleTextBoxImproved(g2d, textBox);
+		}
+	}
+
+	// 헬퍼 메서드: transform origin 파싱 (기존 메서드가 없다면 추가)
+	private double[] parseTransformOrigin(String origin, double width, double height) {
+		double[] result = new double[2];
+		String[] parts = origin.split("\\s+");
+
+		// X 값 파싱
+		if (parts.length >= 1) {
+			if (parts[0].endsWith("%")) {
+				result[0] = width * Double.parseDouble(parts[0].replace("%", "")) / 100.0;
+			} else if (parts[0].endsWith("px")) {
+				result[0] = Double.parseDouble(parts[0].replace("px", ""));
+			} else if (parts[0].equals("center")) {
+				result[0] = width / 2.0;
+			} else if (parts[0].equals("left")) {
+				result[0] = 0;
+			} else if (parts[0].equals("right")) {
+				result[0] = width;
+			}
+		}
+
+		// Y 값 파싱
+		if (parts.length >= 2) {
+			if (parts[1].endsWith("%")) {
+				result[1] = height * Double.parseDouble(parts[1].replace("%", "")) / 100.0;
+			} else if (parts[1].endsWith("px")) {
+				result[1] = Double.parseDouble(parts[1].replace("px", ""));
+			} else if (parts[1].equals("center")) {
+				result[1] = height / 2.0;
+			} else if (parts[1].equals("top")) {
+				result[1] = 0;
+			} else if (parts[1].equals("bottom")) {
+				result[1] = height;
+			}
+		}
+
+		return result;
 	}
 
 	// 헬퍼 메서드 수정
