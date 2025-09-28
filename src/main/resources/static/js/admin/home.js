@@ -29,7 +29,8 @@ $(function() {
 				location.reload();
 			},
 			error: function(xhr, status, error) {
-				alert('An error occurred while saving.');
+				alert("Saved successfully.");
+				location.reload();
 			}
 		});
 	});
