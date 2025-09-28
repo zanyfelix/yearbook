@@ -146,7 +146,6 @@ $(document).ready(function() {
 
 	// 강력한 완전 초기화 함수
 	function forceCompleteReset() {
-		console.log('=== 강력한 완전 초기화 시작 ===');
 
 		// Step 1: 모든 DOM 요소 강제 제거
 		$('#frame-container').empty().html('');
@@ -529,20 +528,24 @@ $(document).ready(function() {
 		}
 	});
 
-	$('#btn-close-modal').on('click', function() {
-		if (confirm("Do you want to save?")) {
-			$(document).one('saveComplete', function() {
-				hasSaved = true;
-				$('#editModal').modal('hide');
-				// 모달이 완전히 닫힌 후 새로고침
-				setTimeout(function() {
-					location.reload();
-				}, 500); // 모달 애니메이션이 끝날 때까지 잠시 대기
-			});
-			$('#btn-save').trigger('click');
-		} else {
-			$('#editModal').modal('hide');
-		}
+	$('#btn-close-modal').on('click', function(e) {
+		e.preventDefault();
+
+		modalActionType = 'close';
+
+		// 모달 내용을 종료 확인용으로 변경
+		$('#clearConfirmModalLabel').text('Exit Editor');
+		$('#clearConfirmModal .modal-body').html(`
+	        <p>You have unsaved changes. Are you sure you want to exit without saving?</p>
+	    `);
+
+		// 버튼들을 종료용으로 변경
+		$('#clearConfirmModal .modal-footer').html(`
+	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+	        <button type="button" class="btn btn-danger" id="btn-exit-without-saving">Exit without Saving</button>
+	    `);
+
+		$('#clearConfirmModal').modal('show');
 	});
 
 	$('#editModal').on('hidden.bs.modal', function() {
@@ -622,8 +625,30 @@ $(document).ready(function() {
 		}
 	});
 
+	// Save 버튼 클릭 - 모달 표시
+	$('#btn-save').on('click', function(e) {
+		e.preventDefault();
+
+		modalActionType = 'save';
+
+		// 모달 내용을 저장용으로 변경
+		$('#clearConfirmModalLabel').text('Save Page');
+		$('#clearConfirmModal .modal-body').html(`
+	        <p>Select an option to proceed with saving.</p>
+	    `);
+
+		// 버튼들을 저장용으로 변경
+		$('#clearConfirmModal .modal-footer').html(`
+	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+	        <button type="button" class="btn btn-primary" id="btn-save-close">Save & Close</button>
+	        <button type="button" class="btn btn-success" id="btn-save-continue">Save & Continue</button>
+	    `);
+
+		$('#clearConfirmModal').modal('show');
+	});
+
 	// Save 버튼 클릭 이벤트
-	$('#btn-save').on('click', async function() {
+	async function executeSave(shouldClose) {
 		showLoader();
 		window.selectionManager.clearSelection();
 
@@ -927,6 +952,16 @@ $(document).ready(function() {
 					if (response.textImagePaths) {
 						console.log('텍스트 이미지 저장됨:', response.textImagePaths);
 					}
+
+					// shouldClose가 true이면 모달 닫기
+					if (shouldClose) {
+						setTimeout(function() {
+							$('#editModal').modal('hide');
+							setTimeout(function() {
+								location.reload();
+							}, 500);
+						}, 1000);
+					}
 				} else {
 					alert("Save failed: " + (response.message || "Unknown error"));
 				}
@@ -940,7 +975,7 @@ $(document).ready(function() {
 				$(document).trigger('saveComplete');
 			}
 		});
-	});
+	}
 
 	// 파일 업로드 처리 (기존과 동일하므로 생략 - 필요시 추가)
 	$('#image-upload-input').on('change', function(e) {
@@ -1113,13 +1148,25 @@ $(document).ready(function() {
 		});
 	}
 
-	// 클리어 버튼
+	// 전역 변수로 리셋 타입과 페이지 ID 저장
+	let modalActionType = null; // 'clear', 'page', 'save', 'close'
+	let pageIdToReset = null;
+
+	// 클리어 버튼 - 모달 표시 (편집 중인 페이지 리셋)
 	$('#btn-clear').on('click', function() {
-		if (confirm("All designs on this page will be reset. Please click Confirm to proceed.")) {
-			forceCompleteReset();
-			loadDefaultBackground();
-		}
+		modalActionType = 'clear';
+		pageIdToReset = null;
+
+		// 모달 내용 업데이트
+		$('#clearConfirmModalLabel').text('Reset Page Design');
+		$('#clearConfirmModal .modal-body').html(`
+	        <p>All designs on this page will be reset.</p>
+	        <p>This action cannot be undone. Are you sure you want to proceed?</p>
+	    `);
+
+		$('#clearConfirmModal').modal('show');
 	});
+
 
 	// 전역 이벤트 설정
 	EventManager.setupGlobalEvents();
@@ -1143,36 +1190,162 @@ $(document).ready(function() {
 		}
 	}, 250));
 
-	// Page Reset 기능
+	// Menu dots 버튼 클릭 - 페이지 리셋
 	$('.content').on('click', '.menu-dots-btn', function(e) {
 		e.stopPropagation();
 		const cardId = $(this).closest('.page-card').attr('id');
-		const yearbookIdToReset = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+		const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
 
-		if (!yearbookIdToReset) {
+		if (!yearbookId) {
 			alert("This page has not been saved yet and cannot be reset.");
 			return;
 		}
 
-		if (confirm("All designs on this page will be reset. Please click Confirm to proceed.")) {
+		modalActionType = 'page';
+		pageIdToReset = yearbookId;
+
+		// 모달 내용 업데이트
+		$('#clearConfirmModalLabel').text('Reset Page');
+		$('#clearConfirmModal .modal-body').html(`
+	        <p>All designs on this page will be permanently reset.</p>
+	        <p>This action cannot be undone. Are you sure you want to proceed?</p>
+	    `);
+
+		$('#clearConfirmModal').modal('show');
+	});
+
+	// Save & Close 버튼 클릭 이벤트
+	$(document).on('click', '#btn-save-close', function() {
+		$('#clearConfirmModal').modal('hide');
+		executeSave(true); // true = close after save
+	});
+
+	// Save & Continue 버튼 클릭 이벤트
+	$(document).on('click', '#btn-save-continue', function() {
+		$('#clearConfirmModal').modal('hide');
+		executeSave(false); // false = continue editing
+	});
+
+	// Exit without Saving 버튼 클릭 이벤트
+	$(document).on('click', '#btn-exit-without-saving', function() {
+		$('#clearConfirmModal').modal('hide');
+		$('#editModal').modal('hide');
+	});
+
+	// Reset 버튼 클릭 이벤트 - 통합 처리
+	$('#btn-confirm-clear').off('click').on('click', function() {
+		const $btn = $(this);
+		const originalText = $btn.text();
+
+		if (modalActionType === 'clear') {
+			// 편집 중인 페이지 클리어 (로컬)
+			$('#clearConfirmModal').modal('hide');
+
+			showLoader();
+
+			setTimeout(function() {
+				forceCompleteReset();
+				loadDefaultBackground();
+				hideLoader();
+
+				// 성공 메시지 표시
+				showSuccessMessage('Page has been reset successfully.');
+			}, 300);
+
+		} else if (modalActionType === 'page' && pageIdToReset) {
+			// 저장된 페이지 리셋 (서버)
+			$btn.prop('disabled', true)
+				.html('<span class="spinner-border spinner-border-sm"></span>Resetting...');
+
 			$.ajax({
 				url: `${ctx}/edit/resetPage`,
 				method: 'POST',
-				data: { id: yearbookIdToReset },
+				data: { id: pageIdToReset },
 				success: function(response) {
+					$('#clearConfirmModal').modal('hide');
+
 					if (response.success) {
-						alert("The page has been reset successfully.");
-						location.reload();
+						/*showSuccessMessage("The page has been reset successfully.");*/
+						setTimeout(function() {
+							location.reload();
+						}, 1000);
 					} else {
-						alert("Failed to reset the page. " + (response.message || ""));
+						console.log("Failed to reset the page.");
+						/*showErrorMessage("Failed to reset the page. " + (response.message || ""));*/
 					}
 				},
 				error: function() {
-					alert("An error occurred while communicating with the server.");
+					$('#clearConfirmModal').modal('hide');
+					console.log("An error occurred while communicating with the server.");
+					/*showErrorMessage("An error occurred while communicating with the server.");*/
+				},
+				complete: function() {
+					$btn.prop('disabled', false).text(originalText);
 				}
 			});
 		}
 	});
+
+	// 모달이 닫힐 때 초기화
+	$('#clearConfirmModal').on('hidden.bs.modal', function() {
+		modalActionType = null;
+		pageIdToReset = null;
+		$('#btn-confirm-clear').prop('disabled', false).text('Reset');
+	});
+
+	// 성공 메시지 표시 함수
+	function showSuccessMessage(message) {
+		const $alert = $(`
+	        <div class="alert alert-success alert-dismissible fade show" role="alert">
+	            ${message}
+	            <button type="button" class="close" data-dismiss="alert">
+	                <span>&times;</span>
+	            </button>
+	        </div>
+	    `);
+
+		$alert.css({
+			'position': 'fixed',
+			'top': '20px',
+			'right': '20px',
+			'z-index': '9999'
+		});
+
+		$('body').append($alert);
+
+		setTimeout(function() {
+			$alert.fadeOut(300, function() {
+				$(this).remove();
+			});
+		}, 3000);
+	}
+
+	// 에러 메시지 표시 함수
+	function showErrorMessage(message) {
+		const $alert = $(`
+	        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+	            ${message}
+	            <button type="button" class="close" data-dismiss="alert">
+	                <span>&times;</span>
+	            </button>
+	        </div>
+	    `);
+
+		$alert.css({
+			'position': 'fixed',
+			'top': '20px',
+			'right': '20px',
+			'z-index': '9999'
+		});
+
+		$('body').append($alert);
+
+		setTimeout(function() {
+			$alert.fadeOut(300, function() {
+				$(this).remove();
+			});
+		}, 5000);
+	}
 
 	// 'Move Pages' 토글 스위치 변경 이벤트
 	$('#toggle-page-move').on('change', function() {

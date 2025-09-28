@@ -69,7 +69,7 @@
 	<!-- 페이지 어디든, body 끝 직전에 위치시켜 주세요 -->
 	<div id="deadlineModalOverlay" class="modal-overlay">
 	  <div class="modal-box">
-	    <div class="modal-header">MBIZ Yearbook</div>
+	    <div class="modal-header">CAPTURECORD YB</div>
 	    <div class="modal-body">
 	      <p id="deadlineText"></p>
 	      <div class="form-check">

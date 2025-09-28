@@ -2063,3 +2063,67 @@ input:checked + .slider-text .off-text {
     border-radius: 8px;
     flex-shrink: 0;
 }
+
+/* Clear/Reset Confirmation Modal - Simple Style */
+#clearConfirmModal .modal-dialog {
+    max-width: 450px;
+}
+
+#clearConfirmModal .modal-content {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#clearConfirmModal .modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+}
+
+#clearConfirmModal .modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+#clearConfirmModal .modal-body {
+    padding: 20px;
+}
+
+#clearConfirmModal .modal-body p {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+#clearConfirmModal .modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 15px 20px;
+}
+
+#clearConfirmModal .btn {
+    min-width: 80px;
+}
+
+/* Loading spinner in button */
+#clearConfirmModal .spinner-border-sm {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* Success/Error Alert Messages - Simple */
+.alert.alert-success,
+.alert.alert-danger {
+    min-width: 300px;
+    border-radius: 4px;
+    padding: 12px 20px;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    #clearConfirmModal .modal-dialog {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+}

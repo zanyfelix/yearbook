@@ -220,8 +220,8 @@ button.btn-primary {
 .toggle-switch input:checked + .slider::before {
   transform: translateX(30px);
   content: "ON";
-  background-color: #28a745;
-  color: #fff;
+  background-color: #ffffff;
+  color: #000000;
 }
 /* ────────────────────────────── */
 /* 전체 선택 / 개별 선택 체크박스 공통 */
