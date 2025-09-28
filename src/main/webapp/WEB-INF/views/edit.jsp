@@ -238,6 +238,22 @@
 											<option value="24">24px</option>
 											<option value="28">28px</option>
 											<option value="32">32px</option>
+											<option value="36">36px</option>
+											<option value="40">40px</option>
+											<option value="44">44px</option>
+											<option value="48">48px</option>
+											<option value="52">52px</option>
+											<option value="56">56px</option>
+											<option value="60">60px</option>
+											<option value="64">64px</option>
+											<option value="68">68px</option>
+											<option value="72">72px</option>
+											<option value="76">76px</option>
+											<option value="80">80px</option>
+											<option value="84">84px</option>
+											<option value="88">88px</option>
+											<option value="92">92px</option>
+											<option value="96">96px</option>
 										</select> <select id="tooltip-align" class="form-select form-select-sm"><option
 												value="left">Left</option>
 											<option value="center">Center</option>
