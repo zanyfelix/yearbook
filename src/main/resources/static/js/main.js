@@ -670,7 +670,7 @@ $(document).ready(function() {
 		}
 
 		// Save 버튼 클릭 이벤트 내 프레임 저장 부분
-		$('#frame-container .frame-group').each(function() {
+		$('#frame-container .frame-group:not(.element-frame)').each(function() {
 			const $frame = $(this);
 
 			// relativeState가 없으면 현재 상태로 생성
