@@ -961,6 +961,229 @@ class EventManager {
 		}
 	}
 
+	// EventManager.js - bindElementResizeEvent 메서드 완전 교체
+
+	static bindElementResizeEvent(element, handle, position) {
+		handle.on('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			element.data('isResizingElement', true);
+
+			// 현재 transform 파싱
+			const currentTransform = element.css('transform');
+			const currentMatrix = TransformHelper.parseMatrix(currentTransform);
+
+			// 현재 위치 정확히 가져오기 (점프 방지의 핵심)
+			const currentLeft = parseFloat(element.css('left')) || 0;
+			const currentTop = parseFloat(element.css('top')) || 0;
+
+			const startWidth = element.outerWidth();
+			const startHeight = element.outerHeight();
+			const aspectRatio = startWidth / startHeight;
+			const rotation = Math.atan2(currentMatrix.b, currentMatrix.a);
+
+			const resizeData = {
+				startX: e.clientX,
+				startY: e.clientY,
+				startWidth: startWidth,
+				startHeight: startHeight,
+				startLeft: currentLeft,  // ✅ 초기 left 저장
+				startTop: currentTop,    // ✅ 초기 top 저장
+				currentTranslateX: currentMatrix.tx,
+				currentTranslateY: currentMatrix.ty,
+				currentMatrix: currentMatrix,
+				aspectRatio: aspectRatio,
+				rotation: rotation,
+				handlePosition: position
+			};
+
+			let animationId = null;
+			let latestMouseEvent = null;
+			let isResizing = true;
+
+			const performResize = () => {
+				if (!latestMouseEvent || !isResizing) {
+					animationId = null;
+					return;
+				}
+
+				const ev = latestMouseEvent;
+				const screenDeltaX = ev.clientX - resizeData.startX;
+				const screenDeltaY = ev.clientY - resizeData.startY;
+
+				// 화면 좌표를 로컬 좌표로 변환
+				const cos = Math.cos(-resizeData.rotation);
+				const sin = Math.sin(-resizeData.rotation);
+				const deltaX = screenDeltaX * cos - screenDeltaY * sin;
+				const deltaY = screenDeltaX * sin + screenDeltaY * cos;
+
+				let newWidth = resizeData.startWidth;
+				let newHeight = resizeData.startHeight;
+				let newTranslateX = resizeData.currentTranslateX;
+				let newTranslateY = resizeData.currentTranslateY;
+
+				// 각 핸들별 크기 계산 (PhotoManager와 동일한 로직)
+				switch (position) {
+					case 'se': // 우하단
+						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaX > 0 ? 1 : -1);
+						newWidth = Math.max(50, resizeData.startWidth + deltaSE);
+						newHeight = newWidth / resizeData.aspectRatio;
+						break;
+
+					case 'sw': // 좌하단
+						const deltaSW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaX < 0 ? 1 : -1);
+						newWidth = Math.max(50, resizeData.startWidth + deltaSW);
+						newHeight = newWidth / resizeData.aspectRatio;
+						const offsetX_sw = resizeData.startWidth - newWidth;
+						newTranslateX = resizeData.currentTranslateX +
+							offsetX_sw * Math.cos(resizeData.rotation);
+						newTranslateY = resizeData.currentTranslateY +
+							offsetX_sw * Math.sin(resizeData.rotation);
+						break;
+
+					case 'ne': // 우상단
+						const deltaNE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							(deltaY < 0 ? 1 : -1);
+						newHeight = Math.max(50 / resizeData.aspectRatio,
+							resizeData.startHeight + deltaNE);
+						newWidth = newHeight * resizeData.aspectRatio;
+						const offsetY_ne = resizeData.startHeight - newHeight;
+						newTranslateX = resizeData.currentTranslateX -
+							offsetY_ne * Math.sin(resizeData.rotation);
+						newTranslateY = resizeData.currentTranslateY +
+							offsetY_ne * Math.cos(resizeData.rotation);
+						break;
+
+					case 'nw': // 좌상단
+						const deltaNW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
+							((deltaX < 0 && deltaY < 0) ? 1 : -1);
+						newWidth = Math.max(50, resizeData.startWidth + deltaNW);
+						newHeight = newWidth / resizeData.aspectRatio;
+						const offsetX_nw = resizeData.startWidth - newWidth;
+						const offsetY_nw = resizeData.startHeight - newHeight;
+						newTranslateX = resizeData.currentTranslateX +
+							offsetX_nw * Math.cos(resizeData.rotation) -
+							offsetY_nw * Math.sin(resizeData.rotation);
+						newTranslateY = resizeData.currentTranslateY +
+							offsetX_nw * Math.sin(resizeData.rotation) +
+							offsetY_nw * Math.cos(resizeData.rotation);
+						break;
+				}
+
+				// ✅ 크기와 위치 적용 (left/top은 초기값 유지)
+				element.css({
+					width: newWidth + 'px',
+					height: newHeight + 'px',
+					left: resizeData.startLeft + 'px',  // 초기 위치 유지
+					top: resizeData.startTop + 'px'      // 초기 위치 유지
+				});
+
+				// Transform으로 회전과 이동 적용
+				const newMatrix = {
+					...resizeData.currentMatrix,
+					tx: newTranslateX,
+					ty: newTranslateY
+				};
+				element.css('transform', TransformHelper.composeMatrix(newMatrix));
+
+				// 핸들 위치와 커서 업데이트
+				EventManager.updateElementResizeCursors(element);
+
+				latestMouseEvent = null;
+				animationId = null;
+			};
+
+			$(document).on('mousemove.elementResize', (ev) => {
+				if (!isResizing) return;
+				latestMouseEvent = ev;
+
+				if (!animationId) {
+					animationId = requestAnimationFrame(performResize);
+				}
+			});
+
+			$(document).on('mouseup.elementResize', (ev) => {
+				isResizing = false;
+
+				if (animationId) {
+					cancelAnimationFrame(animationId);
+					animationId = null;
+				}
+
+				if (latestMouseEvent) {
+					latestMouseEvent = ev;
+					performResize();
+				}
+
+				latestMouseEvent = null;
+				$(document).off('.elementResize');
+				ev.stopPropagation();
+
+				// 상태 저장
+				EventManager.saveElementPosition(element);
+
+				setTimeout(() => {
+					window.selectionManager.selectElement(element);
+					element.removeData('isResizingElement');
+				}, 50);
+			});
+		});
+	}
+
+	// Element 핸들 위치 업데이트
+	static updateElementHandles(element) {
+		const width = element.outerWidth();
+		const height = element.outerHeight();
+
+		// 회전 핸들 위치는 CSS로 처리되므로 별도 처리 불필요
+
+		// 커서 업데이트
+		EventManager.updateElementResizeCursors(element);
+	}
+
+	// Element resize 커서 업데이트
+	static updateElementResizeCursors(element) {
+		const handles = element.find('.element-resize-handle');
+		const transform = element.css('transform');
+		let rotation = 0;
+
+		if (transform && transform !== 'none') {
+			const matrix = transform.match(/matrix\((.+)\)/);
+			if (matrix) {
+				const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+				rotation = Math.atan2(values[1], values[0]) * (180 / Math.PI);
+			}
+		}
+
+		// 회전 각도를 0-360 범위로 정규화
+		rotation = ((rotation % 360) + 360) % 360;
+
+		handles.each(function() {
+			const $handle = $(this);
+			const basePosition = $handle.attr('class').match(/handle-(\w+)/)[1];
+
+			// 커서 매핑 테이블 (45도 단위)
+			const cursorMap = {
+				'nw': ['nw-resize', 'n-resize', 'ne-resize', 'e-resize',
+					'se-resize', 's-resize', 'sw-resize', 'w-resize'],
+				'ne': ['ne-resize', 'e-resize', 'se-resize', 's-resize',
+					'sw-resize', 'w-resize', 'nw-resize', 'n-resize'],
+				'se': ['se-resize', 's-resize', 'sw-resize', 'w-resize',
+					'nw-resize', 'n-resize', 'ne-resize', 'e-resize'],
+				'sw': ['sw-resize', 'w-resize', 'nw-resize', 'n-resize',
+					'ne-resize', 'e-resize', 'se-resize', 's-resize']
+			};
+
+			const index = Math.round(rotation / 45) % 8;
+			const newCursor = cursorMap[basePosition][index];
+
+			$handle.css('cursor', newCursor);
+		});
+	}
+
 	static deletePhoto(photo, frameGroup) {
 		if (!photo || !frameGroup) return;
 		const placeholder = frameGroup.find('.place-image-here-link');

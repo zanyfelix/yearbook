@@ -2127,3 +2127,43 @@ input:checked + .slider-text .off-text {
         max-width: calc(100% - 20px);
     }
 }
+
+/* Element resize 핸들 스타일 - 사진과 동일한 스타일 적용 */
+.element-resize-handle {
+    position: absolute;
+    width: 8px !important;
+    height: 8px !important;
+    background-color: rgb(255 255 255);
+    border: 1px solid rgb(255, 0, 0);
+    pointer-events: auto;
+    z-index: 30;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 각 모서리 핸들 위치 및 커서 모양 */
+.element-resize-handle.handle-nw { 
+    top: -4px; 
+    left: -4px; 
+    cursor: nwse-resize; 
+}
+.element-resize-handle.handle-ne { 
+    top: -4px; 
+    right: -4px; 
+    cursor: nesw-resize; 
+}
+.element-resize-handle.handle-sw { 
+    bottom: -4px; 
+    left: -4px; 
+    cursor: nesw-resize; 
+}
+.element-resize-handle.handle-se { 
+    bottom: -4px; 
+    right: -4px; 
+    cursor: nwse-resize; 
+}
+
+/* Element 선택 시 테두리 - 사진과 동일한 빨간색 점선 스타일 적용 */
+.frame-group.element-frame.selected-element {
+    border: 1px dashed #ff0000;
+    outline: none;
+}

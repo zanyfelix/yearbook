@@ -720,6 +720,35 @@ $(document).ready(function() {
 			designData.frames.push(frameData);
 		});
 
+		// Element 저장 부분 추가 (frames 저장 후)
+		$('#frame-container .element-frame').each(function() {
+			const $element = $(this);
+
+			// relativeState가 없으면 현재 상태로 생성
+			let relativeState = $element.data('relativeState');
+			if (!relativeState) {
+				EventManager.saveElementPosition($element);
+				relativeState = $element.data('relativeState');
+			}
+
+			if (!relativeState) return;
+
+			const elementData = {
+				theme: $element.data('frameTheme'),
+				position: relativeState.position,
+				size: relativeState.size,
+				rotation: relativeState.rotation || 0,
+				translateX: relativeState.translateX || 0,
+				translateY: relativeState.translateY || 0,
+				transformOriginX: relativeState.transformOriginX || 50,
+				transformOriginY: relativeState.transformOriginY || 50,
+				type: 'element'
+			};
+
+			// frames 배열에 element도 포함
+			designData.frames.push(elementData);
+		});
+
 		// 텍스트박스 이미지 캡처를 위한 준비
 		const textBoxImages = [];
 		const $textBoxes = $('#frame-container .text-box');
