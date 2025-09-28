@@ -1257,7 +1257,7 @@ $(document).ready(function() {
 			}
 			$('#clearConfirmModal').modal('hide');
 			$('#editModal').modal('hide');
-			showSuccessMessage('Page has been reset to empty state.');
+			/*showSuccessMessage('Page has been reset to empty state.');*/
 			return;
 		}
 
@@ -1283,19 +1283,57 @@ $(document).ready(function() {
 		const originalText = $btn.text();
 
 		if (modalActionType === 'clear') {
-			// 편집 중인 페이지 클리어 (로컬)
-			$('#clearConfirmModal').modal('hide');
+			// 편집 중인 페이지도 서버의 데이터를 실제로 리셋
+			const yearbookId = activePageThumb?.attr('data-yearbook-id');
 
-			showLoader();
+			if (!yearbookId) {
+				// 저장된 적이 없는 새 페이지는 로컬 초기화만
+				$('#clearConfirmModal').modal('hide');
+				showLoader();
+				setTimeout(function() {
+					forceCompleteReset();
+					loadDefaultBackground();
+					hideLoader();
+				}, 300);
+				return;
+			}
 
-			setTimeout(function() {
-				forceCompleteReset();
-				loadDefaultBackground();
-				hideLoader();
+			// 저장된 페이지는 서버 데이터도 리셋
+			$btn.prop('disabled', true)
+				.html('<span class="spinner-border spinner-border-sm"></span>Resetting...');
 
-				// 성공 메시지 표시
-				/*showSuccessMessage('Page has been reset successfully.');*/
-			}, 300);
+			$.ajax({
+				url: `${ctx}/edit/resetPage`,
+				method: 'POST',
+				data: { id: yearbookId },
+				success: function(response) {
+					$('#clearConfirmModal').modal('hide');
+
+					if (response.success) {
+						// 로컬 초기화
+						forceCompleteReset();
+						loadDefaultBackground();
+
+						// 썸네일 업데이트
+						if (activePageThumb) {
+							activePageThumb.attr('src', '/images/placeholder.png');
+							activePageThumb.removeAttr('data-yearbook-id');
+						}
+
+						/*showSuccessMessage("The page has been reset successfully.");*/
+					} else {
+						/*showErrorMessage("Failed to reset the page. " + (response.message || ""));*/
+					}
+				},
+				error: function() {
+					$('#clearConfirmModal').modal('hide');
+					/*showErrorMessage("An error occurred while communicating with the server.");*/
+				},
+				complete: function() {
+					$btn.prop('disabled', false).text(originalText);
+					hideLoader();
+				}
+			});
 
 		} else if (modalActionType === 'page' && pageIdToReset) {
 			// 저장된 페이지 리셋 (서버)
