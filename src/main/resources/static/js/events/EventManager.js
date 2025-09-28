@@ -936,25 +936,25 @@ class EventManager {
 		// 현재 선택 모드에 따라 처리
 		switch (selectionManager.selectedMode) {
 			case 'photo':
-				if (selectionManager.currentPhoto && confirm("사진을 삭제하시겠습니까?")) {
+				if (selectionManager.currentPhoto && confirm("Are you sure you want to delete the photo?")) {
 					this.deletePhoto(selectionManager.currentPhoto, selectionManager.currentFrame);
 				}
 				break;
 
 			case 'frame':
-				if (selectionManager.currentFrame && confirm("프레임을 삭제하시겠습니까?")) {
+				if (selectionManager.currentFrame && confirm("Are you sure you want to delete the frame?")) {
 					this.deleteFrame(selectionManager.currentFrame);
 				}
 				break;
 
 			case 'text':
-				if (selectionManager.currentTextBox && confirm("텍스트를 삭제하시겠습니까?")) {
+				if (selectionManager.currentTextBox && confirm("Are you sure you want to delete the text?")) {
 					this.deleteText(selectionManager.currentTextBox);
 				}
 				break;
 
 			case 'element':
-				if (selectionManager.currentElement && confirm("요소를 삭제하시겠습니까?")) {
+				if (selectionManager.currentElement && confirm("Are you sure you want to delete the element?")) {
 					this.deleteElement(selectionManager.currentElement);
 				}
 				break;
