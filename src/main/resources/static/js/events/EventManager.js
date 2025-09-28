@@ -1111,20 +1111,30 @@ class EventManager {
 				let newTranslateX = resizeData.currentTranslateX;
 				let newTranslateY = resizeData.currentTranslateY;
 
-				// 각 핸들별 크기 계산 (PhotoManager와 동일한 로직)
+				// ✅ 개선된 핸들별 크기 계산 로직
 				switch (position) {
-					case 'se': // 우하단
-						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaX > 0 ? 1 : -1);
-						newWidth = Math.max(50, resizeData.startWidth + deltaSE);
-						newHeight = newWidth / resizeData.aspectRatio;
+					case 'se': // 우하단 - X와 Y 모두 양수여야 확대
+						if (deltaX > 0 || deltaY > 0) {
+							const delta = Math.max(deltaX, deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						} else {
+							const delta = Math.min(deltaX, deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						}
 						break;
 
-					case 'sw': // 좌하단
-						const deltaSW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaX < 0 ? 1 : -1);
-						newWidth = Math.max(50, resizeData.startWidth + deltaSW);
-						newHeight = newWidth / resizeData.aspectRatio;
+					case 'sw': // 좌하단 - X는 음수, Y는 양수여야 확대
+						if (deltaX < 0 || deltaY > 0) {
+							const delta = Math.max(-deltaX, deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						} else {
+							const delta = Math.min(-deltaX, deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						}
 						const offsetX_sw = resizeData.startWidth - newWidth;
 						newTranslateX = resizeData.currentTranslateX +
 							offsetX_sw * Math.cos(resizeData.rotation);
@@ -1132,12 +1142,16 @@ class EventManager {
 							offsetX_sw * Math.sin(resizeData.rotation);
 						break;
 
-					case 'ne': // 우상단
-						const deltaNE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaY < 0 ? 1 : -1);
-						newHeight = Math.max(50 / resizeData.aspectRatio,
-							resizeData.startHeight + deltaNE);
-						newWidth = newHeight * resizeData.aspectRatio;
+					case 'ne': // 우상단 - X는 양수, Y는 음수여야 확대
+						if (deltaX > 0 || deltaY < 0) {
+							const delta = Math.max(deltaX, -deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						} else {
+							const delta = Math.min(deltaX, -deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						}
 						const offsetY_ne = resizeData.startHeight - newHeight;
 						newTranslateX = resizeData.currentTranslateX -
 							offsetY_ne * Math.sin(resizeData.rotation);
@@ -1145,11 +1159,16 @@ class EventManager {
 							offsetY_ne * Math.cos(resizeData.rotation);
 						break;
 
-					case 'nw': // 좌상단
-						const deltaNW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							((deltaX < 0 && deltaY < 0) ? 1 : -1);
-						newWidth = Math.max(50, resizeData.startWidth + deltaNW);
-						newHeight = newWidth / resizeData.aspectRatio;
+					case 'nw': // 좌상단 - X와 Y 모두 음수여야 확대
+						if (deltaX < 0 || deltaY < 0) {
+							const delta = Math.max(-deltaX, -deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						} else {
+							const delta = Math.min(-deltaX, -deltaY * resizeData.aspectRatio);
+							newWidth = Math.max(50, resizeData.startWidth + delta);
+							newHeight = newWidth / resizeData.aspectRatio;
+						}
 						const offsetX_nw = resizeData.startWidth - newWidth;
 						const offsetY_nw = resizeData.startHeight - newHeight;
 						newTranslateX = resizeData.currentTranslateX +

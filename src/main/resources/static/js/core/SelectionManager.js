@@ -104,6 +104,9 @@ class SelectionManager {
 		elementGroup.addClass('selected-frame selected-element');
 		FrameManager.addRotationHandle(elementGroup);
 		this.addElementResizeHandles(elementGroup);
+		
+		EventManager.updateElementResizeCursors(elementGroup);
+		
 		UIManager.showElementTooltip(elementGroup);
 	}
 

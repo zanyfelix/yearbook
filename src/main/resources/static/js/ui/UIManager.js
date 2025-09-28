@@ -239,10 +239,14 @@ class UIManager {
 
 		$('#element-rotate-left').off('click').on('click', () => {
 			rotationHandler.rotateLeft();
+			// ✅ 추가: 회전 후 커서 업데이트
+			EventManager.updateElementResizeCursors(elementGroup);
 		});
 
 		$('#element-rotate-right').off('click').on('click', () => {
 			rotationHandler.rotateRight();
+			// ✅ 추가: 회전 후 커서 업데이트
+			EventManager.updateElementResizeCursors(elementGroup);
 		});
 
 		$('#btn-delete-element').off('click').on('click', () => {
