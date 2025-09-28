@@ -966,6 +966,9 @@ $(document).ready(function() {
 					alert("This page has been saved.");
 					hasSaved = true;
 
+					// 저장 시간 메시지 표시 추가
+					displayLastSaveTime(new Date().toISOString());
+
 					// 썸네일 업데이트
 					if (response.newImagePath) {
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
@@ -980,6 +983,11 @@ $(document).ready(function() {
 					// 텍스트 이미지 경로 저장 (디버깅용)
 					if (response.textImagePaths) {
 						console.log('텍스트 이미지 저장됨:', response.textImagePaths);
+					}
+
+					if (!shouldClose) {
+						// 메시지가 계속 표시되도록 함
+						$('#save-confirmation-message').show();
 					}
 
 					// shouldClose가 true이면 모달 닫기
