@@ -2184,3 +2184,25 @@ input:checked + .slider-text .off-text {
 #fileSizeWarningModal .text-muted {
     font-size: 0.9rem;
 }
+
+/* 삭제 확인 모달 스타일 */
+#deleteConfirmModal .modal-header {
+    border-bottom: 2px solid #ffc107;
+}
+
+#deleteConfirmModal .modal-title i {
+    margin-right: 8px;
+}
+
+#deleteConfirmModal .modal-body {
+    padding: 1.5rem;
+}
+
+#deleteConfirmModal .text-muted {
+    font-size: 0.9rem;
+}
+
+#deleteConfirmModal .btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}

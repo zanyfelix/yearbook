@@ -962,32 +962,91 @@ class EventManager {
 		const selectionManager = window.selectionManager;
 		if (!selectionManager) return;
 
+		// 삭제할 대상과 타입을 저장
+		let deleteTarget = null;
+		let deleteType = '';
+		let deleteMessage = '';
+
 		// 현재 선택 모드에 따라 처리
 		switch (selectionManager.selectedMode) {
 			case 'photo':
-				if (selectionManager.currentPhoto && confirm("Are you sure you want to delete the photo?")) {
-					this.deletePhoto(selectionManager.currentPhoto, selectionManager.currentFrame);
+				if (selectionManager.currentPhoto) {
+					deleteTarget = {
+						element: selectionManager.currentPhoto,
+						frame: selectionManager.currentFrame
+					};
+					deleteType = 'photo';
+					deleteMessage = 'Are you sure you want to delete the photo?';
 				}
 				break;
 
 			case 'frame':
-				if (selectionManager.currentFrame && confirm("Are you sure you want to delete the frame?")) {
-					this.deleteFrame(selectionManager.currentFrame);
+				if (selectionManager.currentFrame) {
+					deleteTarget = { element: selectionManager.currentFrame };
+					deleteType = 'frame';
+					deleteMessage = 'Are you sure you want to delete the frame?';
 				}
 				break;
 
 			case 'text':
-				if (selectionManager.currentTextBox && confirm("Are you sure you want to delete the text?")) {
-					this.deleteText(selectionManager.currentTextBox);
+				if (selectionManager.currentTextBox) {
+					deleteTarget = { element: selectionManager.currentTextBox };
+					deleteType = 'text';
+					deleteMessage = 'Are you sure you want to delete the text?';
 				}
 				break;
 
 			case 'element':
-				if (selectionManager.currentElement && confirm("Are you sure you want to delete the element?")) {
-					this.deleteElement(selectionManager.currentElement);
+				if (selectionManager.currentElement) {
+					deleteTarget = { element: selectionManager.currentElement };
+					deleteType = 'element';
+					deleteMessage = 'Are you sure you want to delete the element?';
 				}
 				break;
 		}
+
+		// 삭제할 대상이 있으면 모달 표시
+		if (deleteTarget) {
+			this.showDeleteConfirmModal(deleteMessage, deleteType, deleteTarget);
+		}
+	}
+
+	// 삭제 확인 모달 표시 메서드 추가
+	static showDeleteConfirmModal(message, type, target) {
+		// 모달 메시지 설정
+		$('#delete-confirm-message').text(message);
+
+		// Bootstrap 모달 객체 가져오기
+		const modalElement = document.getElementById('deleteConfirmModal');
+		const modal = new bootstrap.Modal(modalElement);
+
+		// 기존 이벤트 리스너 제거
+		$('#btn-delete-confirm').off('click');
+
+		// 삭제 확인 버튼 클릭 이벤트
+		$('#btn-delete-confirm').on('click', () => {
+			// 타입에 따라 실제 삭제 실행
+			switch (type) {
+				case 'photo':
+					this.deletePhoto(target.element, target.frame);
+					break;
+				case 'frame':
+					this.deleteFrame(target.element);
+					break;
+				case 'text':
+					this.deleteText(target.element);
+					break;
+				case 'element':
+					this.deleteElement(target.element);
+					break;
+			}
+
+			// 모달 닫기
+			modal.hide();
+		});
+
+		// 모달 표시
+		modal.show();
 	}
 
 	// EventManager.js - bindElementResizeEvent 메서드 완전 교체

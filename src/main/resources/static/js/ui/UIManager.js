@@ -35,6 +35,48 @@ class UIManager {
 		this.bindElementTooltipEvents(elementGroup);
 	}
 
+	// 삭제 확인 모달 표시 (공통 메서드)
+	static showDeleteConfirmModal(message, deleteCallback) {
+		// 모달 메시지 설정
+		$('#delete-confirm-message').text(message);
+
+		// Bootstrap 모달 객체 가져오기
+		const modalElement = document.getElementById('deleteConfirmModal');
+		const modal = new bootstrap.Modal(modalElement, {
+			backdrop: 'static',
+			keyboard: false
+		});
+
+		// 기존 이벤트 리스너 제거
+		$('#btn-delete-confirm').off('click');
+
+		// 삭제 확인 버튼 클릭 이벤트
+		$('#btn-delete-confirm').on('click', () => {
+			// 버튼 비활성화 (중복 클릭 방지)
+			$('#btn-delete-confirm').prop('disabled', true);
+
+			// 삭제 콜백 실행
+			deleteCallback();
+
+			// 모달 닫기
+			modal.hide();
+
+			// 버튼 재활성화
+			setTimeout(() => {
+				$('#btn-delete-confirm').prop('disabled', false);
+			}, 500);
+		});
+
+		// 모달이 완전히 숨겨진 후 이벤트 리스너 정리
+		modalElement.addEventListener('hidden.bs.modal', function cleanup() {
+			$('#btn-delete-confirm').off('click');
+			modalElement.removeEventListener('hidden.bs.modal', cleanup);
+		});
+
+		// 모달 표시
+		modal.show();
+	}
+
 	// 프레임 회전 이벤트 바인딩
 	static bindFrameRotationEvents(frameGroup) {
 		const rotationHandler = new RotationHandler(frameGroup);
@@ -48,10 +90,10 @@ class UIManager {
 		});
 
 		$('#btn-delete-frame').off('click').on('click', () => {
-			if (confirm("Do you want to delete the frame?")) {
+			this.showDeleteConfirmModal('Do you want to delete the frame?', () => {
 				frameGroup.remove();
 				window.selectionManager.clearSelection();
-			}
+			});
 		});
 	}
 
@@ -60,19 +102,18 @@ class UIManager {
 		this.bindPhotoRotationEvents(photo);
 
 		$('#btn-delete-photo').off('click').on('click', () => {
-			if (confirm("Are you sure you want to delete the photo?")) {
+			this.showDeleteConfirmModal('Are you sure you want to delete the photo?', () => {
 				const placeholderLink = frameGroup.find('.place-image-here-link');
 				photo.hide().attr('src', '');
 				placeholderLink.show();
 				window.selectionManager.clearSelection();
-			}
+			});
 		});
 	}
 
 	// 사진 회전 이벤트 바인딩
 	static bindPhotoRotationEvents(photo) {
 		const rotationHandler = new RotationHandler(photo);
-		// ✨ 테두리와 실루엣을 미리 찾아 변수에 저장합니다.
 		const $selectionBox = $('.photo-selection-box');
 		const $silhouette = $('.photo-silhouette');
 
@@ -139,7 +180,6 @@ class UIManager {
 			textBox.css('color', $(this).val());
 		});
 
-		// ✅ TextManager의 updateFontSize 사용
 		$('#tooltip-size').on('change', function() {
 			TextManager.updateFontSize($(this).val());
 		});
@@ -148,11 +188,11 @@ class UIManager {
 			TextManager.updateTextAlign($(this).val());
 		});
 
-		$('#tooltip-remove').on('click', function() {
-			if (confirm('Do you want to delete the text box?')) {
+		$('#tooltip-remove').on('click', () => {
+			this.showDeleteConfirmModal('Do you want to delete the text box?', () => {
 				textBox.remove();
 				window.selectionManager.clearSelection();
-			}
+			});
 		});
 	}
 
@@ -182,13 +222,21 @@ class UIManager {
 
 	// Element 툴팁 이벤트 바인딩
 	static bindElementTooltipEvents(elementGroup) {
-		this.bindFrameRotationEvents(elementGroup);
+		const rotationHandler = new RotationHandler(elementGroup);
 
-		$('#btn-delete-element').off('click').on('click', function() {
-			if (confirm("Do you want to delete the element?")) {
+		$('#element-rotate-left').off('click').on('click', () => {
+			rotationHandler.rotateLeft();
+		});
+
+		$('#element-rotate-right').off('click').on('click', () => {
+			rotationHandler.rotateRight();
+		});
+
+		$('#btn-delete-element').off('click').on('click', () => {
+			this.showDeleteConfirmModal('Do you want to delete the element?', () => {
 				elementGroup.remove();
 				window.selectionManager.clearSelection();
-			}
+			});
 		});
 	}
 
