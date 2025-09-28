@@ -1216,6 +1216,22 @@ $(document).ready(function() {
 
 	// Save & Close 버튼 클릭 이벤트
 	$(document).on('click', '#btn-save-close', function() {
+		// Clear 직후 빈 페이지인지 확인
+		const bgImg = $('#page-preview-img').attr('src');
+		const hasFrames = $('#frame-container .frame-group').length > 0;
+		const hasTextBoxes = $('#frame-container .text-box').length > 0;
+
+		if (!hasFrames && !hasTextBoxes && bgImg.includes('background.png')) {
+			// 빈 페이지인 경우 placeholder 설정 후 바로 닫기
+			if (activePageThumb) {
+				activePageThumb.attr('src', '/images/placeholder.png');
+			}
+			$('#clearConfirmModal').modal('hide');
+			$('#editModal').modal('hide');
+			showSuccessMessage('Page has been reset to empty state.');
+			return;
+		}
+
 		$('#clearConfirmModal').modal('hide');
 		executeSave(true); // true = close after save
 	});
@@ -1233,7 +1249,7 @@ $(document).ready(function() {
 	});
 
 	// Reset 버튼 클릭 이벤트 - 통합 처리
-	$('#btn-confirm-clear').off('click').on('click', function() {
+	$(document).on('click', '#btn-confirm-clear', function() {
 		const $btn = $(this);
 		const originalText = $btn.text();
 
@@ -1249,7 +1265,7 @@ $(document).ready(function() {
 				hideLoader();
 
 				// 성공 메시지 표시
-				showSuccessMessage('Page has been reset successfully.');
+				/*showSuccessMessage('Page has been reset successfully.');*/
 			}, 300);
 
 		} else if (modalActionType === 'page' && pageIdToReset) {
