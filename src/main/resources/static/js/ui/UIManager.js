@@ -138,7 +138,20 @@ class UIManager {
 		const currentAlign = this.normalizeTextAlign(textBox.css('text-align'));
 		const currentColor = this.rgbToHex(textBox.css('color'));
 
-		$('#tooltip-size').val(currentSize);
+		const sizeValue = parseInt(currentSize);
+		// Select에서 매칭되는 옵션 찾기
+		const selectOption = $('#tooltip-size-select option[value="' + sizeValue + '"]');
+
+		if (selectOption.length) {
+			// 정확한 값이 있으면 Select 표시, Input 숨김
+			$('#tooltip-size-select').val(sizeValue);
+			$('#tooltip-size').addClass('d-none');
+		} else {
+			// Custom 값이면 Select를 Custom으로 설정하고 Input 표시
+			$('#tooltip-size-select').val('');
+			$('#tooltip-size').removeClass('d-none').val(sizeValue || 12);
+		}
+
 		$('#tooltip-align').val(currentAlign);
 		$('#tooltip-color').val(currentColor);
 	}

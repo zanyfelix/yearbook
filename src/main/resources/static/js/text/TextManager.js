@@ -155,20 +155,31 @@ class TextManager {
 				$('#tooltip-font').val(fontFamily);
 			}
 
-			// ✅ [버그 수정] 'text-type'이 아닌 'base-font-size' 데이터에서 현재 폰트 크기를 가져옵니다.
+			// 폰트 크기 설정
 			const baseFontSize = $textBox.data('base-font-size');
 			if (baseFontSize) {
-				$('#tooltip-size').val(baseFontSize);
+				// Select 옵션에서 찾기
+				const selectOption = $('#tooltip-size-select option[value="' + baseFontSize + '"]');
+
+				if (selectOption.length) {
+					// 정확한 값이 있으면 Select만 표시
+					$('#tooltip-size-select').val(baseFontSize);
+					$('#tooltip-size').addClass('d-none');
+				} else {
+					// Custom 값이면 Input 표시
+					$('#tooltip-size-select').val('');
+					$('#tooltip-size').removeClass('d-none').val(baseFontSize);
+				}
 			}
 
 			// 텍스트 정렬 설정
 			const textAlign = $textBox.css('text-align');
 			$('#tooltip-align').val(textAlign);
 
-			// 텍스트 색상 설정 (rgb를 hex로 변환하는 헬퍼 함수가 필요할 수 있습니다)
+			// 텍스트 색상 설정
 			const color = $textBox.css('color');
-			// $('#tooltip-color').val(rgbToHex(color)); // 필요시 활성화
-		}, 150); // UI가 표시된 후 값을 설정하기 위해 약간의 지연을 줍니다.
+			// $('#tooltip-color').val(rgbToHex(color));
+		}, 150);
 	}
 
 	// 상대 위치 계산
@@ -227,12 +238,23 @@ class TextManager {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (!selectedBox || selectedBox.length === 0) return;
 
+		// ✨ 입력값 검증 및 정제
+		let numericSize = parseInt(fontSize);
+
+		// 유효성 검사: 숫자가 아니거나 범위를 벗어난 경우
+		if (isNaN(numericSize)) {
+			console.warn('유효하지 않은 폰트 크기:', fontSize);
+			return;
+		}
+
+		// 최소/최대값 제한
+		numericSize = Math.max(8, Math.min(200, numericSize)); // 8px ~ 200px 범위로 제한
+
 		// ⭐ transform과 관련 데이터 모두 저장
 		const savedTransform = selectedBox.css('transform');
 		const savedTransformOrigin = selectedBox.css('transform-origin');
 		const savedRelativeState = selectedBox.data('relativeState');
 
-		const numericSize = parseInt(fontSize);
 		selectedBox.data('base-font-size', numericSize);
 
 		const bg = $('#page-preview-img');
@@ -287,6 +309,8 @@ class TextManager {
 				}
 			});
 		}
+
+		$('#tooltip-size').val(numericSize);
 	}
 
 	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
@@ -457,9 +481,61 @@ $(document).ready(function() {
 		TextManager.onFontsLoaded();
 	};
 
-	// 텍스트 컨트롤 이벤트
-	$('#tooltip-size').on('change', function() {
-		TextManager.updateFontSize($(this).val());
+	// Select 변경 이벤트
+	$('#tooltip-size-select').on('change', function() {
+		const value = $(this).val();
+
+		if (value === '') {
+			// Custom 선택 시 Input 표시
+			$('#tooltip-size').removeClass('d-none').focus();
+
+			// 현재 텍스트박스의 폰트 크기를 Input에 설정
+			const selectedBox = DataLoader.getCurrentSelectedTextBox();
+			if (selectedBox && selectedBox.length > 0) {
+				const currentSize = selectedBox.data('base-font-size') || 12;
+				$('#tooltip-size').val(currentSize);
+			}
+		} else {
+			// 특정 크기 선택 시 Input 숨김
+			$('#tooltip-size').addClass('d-none');
+			TextManager.updateFontSize(value);
+		}
+	});
+
+	// Input 직접 입력
+	$('#tooltip-size').on('input', function() {
+		const value = $(this).val();
+
+		clearTimeout(window.fontSizeTimer);
+		window.fontSizeTimer = setTimeout(() => {
+			if (value && !isNaN(value)) {
+				TextManager.updateFontSize(value);
+			}
+		}, 300);
+	});
+
+	// Enter 키 입력 시 즉시 적용
+	$('#tooltip-size').on('keypress', function(e) {
+		if (e.which === 13) {
+			e.preventDefault();
+			const value = $(this).val();
+			if (value && !isNaN(value)) {
+				clearTimeout(window.fontSizeTimer);
+				TextManager.updateFontSize(value);
+			}
+		}
+	});
+
+	// 포커스 아웃 시 적용
+	$('#tooltip-size').on('blur', function() {
+		const value = $(this).val();
+		if (value && !isNaN(value)) {
+			clearTimeout(window.fontSizeTimer);
+			TextManager.updateFontSize(value);
+
+			// Input 숨기기 (옵션: 값 적용 후 자동으로 숨길지 여부)
+			// $(this).addClass('d-none');
+		}
 	});
 
 	$('#tooltip-align').on('change', function() {

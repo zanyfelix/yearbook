@@ -226,35 +226,36 @@
 									</div>
 									<div id="text-controls" class="d-none w-100">
 										<select id="tooltip-font" class="form-select form-select-sm"
-											title="Font Family" style="width: 180px;"></select> <select
-											id="tooltip-size" class="form-select form-select-sm">
-											<option value="10">10px</option>
-											<option value="11">11px</option>
-											<option value="12">12px</option>
-											<option value="14">14px</option>
-											<option value="16">16px</option>
-											<option value="18">18px</option>
-											<option value="20">20px</option>
-											<option value="24">24px</option>
-											<option value="28">28px</option>
-											<option value="32">32px</option>
-											<option value="36">36px</option>
-											<option value="40">40px</option>
-											<option value="44">44px</option>
-											<option value="48">48px</option>
-											<option value="52">52px</option>
-											<option value="56">56px</option>
-											<option value="60">60px</option>
-											<option value="64">64px</option>
-											<option value="68">68px</option>
-											<option value="72">72px</option>
-											<option value="76">76px</option>
-											<option value="80">80px</option>
-											<option value="84">84px</option>
-											<option value="88">88px</option>
-											<option value="92">92px</option>
-											<option value="96">96px</option>
-										</select> <select id="tooltip-align" class="form-select form-select-sm"><option
+											title="Font Family" style="width: 180px;"></select>
+
+
+										<div class="font-size-container" style="display: inline-flex; align-items: center; gap: 5px;">
+									        <select id="tooltip-size-select" class="form-select form-select-sm" style="width: 100px;">
+									            <option value="">Custom</option>
+									            <option value="10">10px</option>
+									            <option value="12">12px</option>
+									            <option value="14">14px</option>
+									            <option value="16">16px</option>
+									            <option value="18">18px</option>
+									            <option value="20">20px</option>
+									            <option value="24">24px</option>
+									            <option value="28">28px</option>
+									            <option value="32">32px</option>
+									            <option value="36">36px</option>
+									            <option value="40">40px</option>
+									            <option value="48">48px</option>
+									            <option value="56">56px</option>
+									            <option value="64">64px</option>
+									            <option value="72">72px</option>
+									            <option value="80">80px</option>
+									            <option value="96">96px</option>
+									        </select>
+									        
+									        <!-- Input은 기본적으로 숨김 -->
+									        <input type="number" id="tooltip-size" class="form-control form-control-sm d-none" 
+									               min="8" max="200" placeholder="px" style="width: 80px;">
+									    </div>
+										<select id="tooltip-align" class="form-select form-select-sm"><option
 												value="left">Left</option>
 											<option value="center">Center</option>
 											<option value="right">Right</option></select> <input type="color"
