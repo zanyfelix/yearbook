@@ -2167,3 +2167,20 @@ input:checked + .slider-text .off-text {
     border: 1px dashed #ff0000;
     outline: none;
 }
+
+/* 파일 크기 경고 모달 스타일 */
+#fileSizeWarningModal .modal-header {
+    border-bottom: 2px solid #ffc107;
+}
+
+#fileSizeWarningModal .modal-title i {
+    margin-right: 8px;
+}
+
+#fileSizeWarningModal .modal-body {
+    padding: 1.5rem;
+}
+
+#fileSizeWarningModal .text-muted {
+    font-size: 0.9rem;
+}

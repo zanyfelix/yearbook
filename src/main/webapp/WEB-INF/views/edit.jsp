@@ -393,6 +393,36 @@
 			</div>
 		</div>
 
+		<!-- 파일 크기 경고 모달 -->
+		<div class="modal fade" id="fileSizeWarningModal" tabindex="-1"
+			aria-labelledby="fileSizeWarningModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="fileSizeWarningModalLabel">
+							<i class="bi bi-exclamation-triangle-fill text-warning"></i>
+							Image Size Warning
+						</h5>
+					</div>
+					<div class="modal-body">
+						<p>The size of the uploaded image does not adhere to the
+							standard requirements.</p>
+						<p class="text-muted">
+							<small>Less than 400KB may result in reduced image
+								quality.</small>
+						</p>
+						<p class="mb-0">Do you want to proceed with this image?</p>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							id="btn-file-size-cancel">Cancel</button>
+						<button type="button" class="btn btn-primary"
+							id="btn-file-size-confirm">Confirm</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<!-- Bootstrap JS -->
 		<script
 			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

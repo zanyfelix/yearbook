@@ -1032,15 +1032,20 @@ $(document).ready(function() {
 		}
 
 		const fileSizeInKB = file.size / 1024;
+		const $input = $(this);
+
 		if (fileSizeInKB < 400) {
-			const confirmationMessage = "The size of the uploaded image does not adhere to the standard requirements. (Less than 400kb may result in reduced image quality). Please click confirm to proceed.";
-			if (!confirm(confirmationMessage)) {
-				$(this).val('');
-				return;
-			}
+			// 나중에 사용할 데이터 임시 저장
+			$input.data('pendingFile', file);
+			$input.data('pendingFrameGroup', $input.data('targetFrameGroup'));
+			$input.data('pendingPhoto', $input.data('targetUploadedPhoto'));
+			$input.data('pendingPlaceholder', $input.data('targetPlaceholderLink'));
+
+			// 모달 표시
+			$('#fileSizeWarningModal').modal('show');
+			return;
 		}
 
-		const $input = $(this);
 		const frameGroup = $input.data('targetFrameGroup');
 		const photo = $input.data('targetUploadedPhoto');
 		const placeholder = $input.data('targetPlaceholderLink');
@@ -1050,6 +1055,51 @@ $(document).ready(function() {
 
 		// HEIC 처리를 포함한 업로드
 		processAndUploadImage(file, frameGroup, photo, placeholder);
+	});
+
+	// 모달 Confirm 버튼 클릭 이벤트
+	$(document).on('click', '#btn-file-size-confirm', function() {
+		const $input = $('#image-upload-input');
+		const file = $input.data('pendingFile');
+		const frameGroup = $input.data('pendingFrameGroup');
+		const photo = $input.data('pendingPhoto');
+		const placeholder = $input.data('pendingPlaceholder');
+
+		// 모달 닫기
+		$('#fileSizeWarningModal').modal('hide');
+
+		// 파일 처리 진행
+		if (file && frameGroup && photo && placeholder) {
+			processAndUploadImage(file, frameGroup, photo, placeholder);
+		}
+
+		// 임시 데이터 삭제
+		$input.removeData('pendingFile pendingFrameGroup pendingPhoto pendingPlaceholder');
+	});
+
+	// 모달 Cancel 버튼 클릭 이벤트
+	$(document).on('click', '#btn-file-size-cancel', function() {
+		const $input = $('#image-upload-input');
+
+		// 입력 초기화
+		$input.val('');
+
+		// 임시 데이터 삭제
+		$input.removeData('pendingFile pendingFrameGroup pendingPhoto pendingPlaceholder');
+
+		// 모달 닫기
+		$('#fileSizeWarningModal').modal('hide');
+	});
+
+	// 모달이 닫힐 때 정리 작업
+	$('#fileSizeWarningModal').on('hidden.bs.modal', function() {
+		const $input = $('#image-upload-input');
+
+		// 임시 데이터가 남아있으면 입력 초기화
+		if ($input.data('pendingFile')) {
+			$input.val('');
+			$input.removeData('pendingFile pendingFrameGroup pendingPhoto pendingPlaceholder');
+		}
 	});
 
 	// 통합 처리 함수
