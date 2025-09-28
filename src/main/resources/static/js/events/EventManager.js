@@ -266,6 +266,35 @@ class EventManager {
 		textBox.on('input', () => this.handleTextInput(textBox));
 		textBox.on('blur', () => this.handleTextBlur(textBox));
 
+		textBox.on('paste', (e) => {
+			e.preventDefault();
+
+			// 클립보드에서 순수 텍스트만 가져오기
+			let text = '';
+			if (e.originalEvent.clipboardData) {
+				text = e.originalEvent.clipboardData.getData('text/plain');
+			} else if (window.clipboardData) {
+				text = window.clipboardData.getData('Text');
+			}
+
+			// 현재 선택 영역에 텍스트 삽입
+			if (document.queryCommandSupported('insertText')) {
+				document.execCommand('insertText', false, text);
+			} else {
+				// 폴백: 현재 위치에 텍스트 삽입
+				const selection = window.getSelection();
+				if (selection.rangeCount) {
+					const range = selection.getRangeAt(0);
+					range.deleteContents();
+					range.insertNode(document.createTextNode(text));
+					range.collapse(false);
+				}
+			}
+
+			// 텍스트박스 크기 자동 조정
+			this.autoResizeTextBox(textBox);
+		});
+
 		// 수정된 드래그 설정 적용
 		this.setupTextDrag(textBox);
 	}
