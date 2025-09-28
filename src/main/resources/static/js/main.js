@@ -1290,7 +1290,16 @@ $(document).ready(function() {
 	$('#clearConfirmModal').on('hidden.bs.modal', function() {
 		modalActionType = null;
 		pageIdToReset = null;
-		$('#btn-confirm-clear').prop('disabled', false).text('Reset');
+		// ⭐ 모달을 원본 상태로 복원
+		$('#clearConfirmModalLabel').text('Reset Page Design');
+		$('#clearConfirmModal .modal-body').html(`
+		        <p>All designs on this page will be reset.</p>
+		        <p>This action cannot be undone. Are you sure you want to proceed?</p>
+		    `);
+		$('#clearConfirmModal .modal-footer').html(`
+		        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+		        <button type="button" class="btn btn-danger" id="btn-confirm-clear">Reset</button>
+		    `);
 	});
 
 	// 성공 메시지 표시 함수
