@@ -902,8 +902,8 @@ $(document).ready(function() {
 					useCORS: true,
 					letterRendering: true,
 					allowTaint: true,  // 추가
-					height: actualHeight + 5,  // 명시적 높이 지정
-					width: actualWidth + 5     // 명시적 너비 지정
+					height: actualHeight + 5,
+					width: actualWidth + 5
 				});
 
 				// 원본 스타일 복원
@@ -976,7 +976,7 @@ $(document).ready(function() {
 					if (!isAutoSave) {
 						alert("This page has been saved.");
 					}
-					
+
 					hasSaved = true;
 
 					// 저장 시간 메시지 표시 추가

@@ -2260,12 +2260,19 @@ public class JpgRenderingService {
 	private void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
 		try {
 			JsonNode captureInfo = textBox.path("captureInfo");
-			JsonNode absolutePixels = captureInfo.path("absolutePixels");
-
-			if (captureInfo.isMissingNode() || absolutePixels.isMissingNode()) {
-				renderSingleTextBoxImproved(g2d, textBox);
-				return;
-			}
+	        JsonNode absolutePixels = captureInfo.path("absolutePixels");
+	        
+	        if (captureInfo.isMissingNode() || absolutePixels.isMissingNode()) {
+	            renderSingleTextBoxImproved(g2d, textBox);
+	            return;
+	        }
+	        
+	        boolean hasNewStructure = textBox.has("rotation");
+	        
+	        if (hasNewStructure) {
+	            renderTextBoxWithNewStructure(g2d, textBox, textImage);
+	            return;
+	        }
 
 			// captureInfo의 absolutePixels는 이미 정확한 위치이므로 스케일만 적용
 			double editorX = absolutePixels.path("x").asDouble();
