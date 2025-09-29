@@ -93,6 +93,10 @@ class EventManager {
 			if (element.hasClass('uploaded-photo')) {
 				element.closest('.frame-group').data('isRotatingPhoto', true);
 			}
+			// ✅ element 회전 중임을 표시
+			else if (element.hasClass('element-frame') || element.hasClass('selected-element')) {
+				element.data('isRotatingElement', true);
+			}
 
 			$(document).on('mousemove.rotator', (ev) => {
 				const currentAngleRad = Math.atan2(ev.clientY - elementCenter.y, ev.clientX - elementCenter.x);
@@ -115,6 +119,11 @@ class EventManager {
 
 				if (element.hasClass('uploaded-photo')) {
 					$('.photo-selection-box, .photo-silhouette').css('transform', newTransform);
+				}
+
+				// ✅ Element 회전 중 커서 실시간 업데이트 추가
+				else if (element.hasClass('element-frame') || element.hasClass('selected-element')) {
+					EventManager.updateElementResizeCursors(element);
 				}
 			});
 
@@ -143,6 +152,19 @@ class EventManager {
 						}
 						frameGroup.removeData('isRotatingPhoto');
 					}, 50); // 10ms -> 50ms로 증가
+				}
+				// ✅ Element 회전 종료 처리 추가
+				else if (element.hasClass('element-frame') || element.hasClass('selected-element')) {
+					// 최종 커서 업데이트
+					EventManager.updateElementResizeCursors(element);
+					element.removeData('isRotatingElement');
+
+					// 선택 상태 유지
+					setTimeout(() => {
+						if (!element.data('isDraggingElement') && !element.data('isResizingElement')) {
+							window.selectionManager.selectElement(element);
+						}
+					}, 50);
 				}
 			});
 		});
@@ -342,6 +364,23 @@ class EventManager {
 			const currentTransform = element.css('transform');
 			const matrix = TransformHelper.parseMatrix(currentTransform);
 
+			// ✅ 추가: transform에 translate가 있으면 left/top으로 병합
+			let initialLeft = parseFloat(element.css('left')) || 0;
+			let initialTop = parseFloat(element.css('top')) || 0;
+
+			// element인 경우에만 translate 병합 처리
+			if (type === 'element' && (matrix.tx !== 0 || matrix.ty !== 0)) {
+				initialLeft += matrix.tx;
+				initialTop += matrix.ty;
+
+				// 즉시 적용하여 점프 방지
+				element.css({
+					left: initialLeft + 'px',
+					top: initialTop + 'px',
+					transform: `matrix(${matrix.a}, ${matrix.b}, ${matrix.c}, ${matrix.d}, 0, 0)`
+				});
+			}
+
 			// transform이 적용된 실제 위치 가져오기
 			const computedStyle = window.getComputedStyle(element[0]);
 			const transformMatrix = new DOMMatrix(computedStyle.transform);
@@ -373,8 +412,8 @@ class EventManager {
 				startX: e.clientX,
 				startY: e.clientY,
 				// CSS의 left/top 값 직접 사용
-				initialLeft: parseFloat(element.css('left')) || 0,
-				initialTop: parseFloat(element.css('top')) || 0,
+				initialLeft: initialLeft,  // ✅ 병합된 값 사용
+				initialTop: initialTop,    // ✅ 병합된 값 사용
 				isDragging: false,
 				// 회전 정보 저장
 				transform: currentTransform,
