@@ -418,13 +418,21 @@ $(document).ready(function() {
 				return;
 			}
 
-			$('#btn-save').trigger('click');
+			// executeSave 함수를 직접 호출 (window에 등록 필요)
+			if (window.executeSave) {
+				window.executeSave(true); // true = 저장 후 닫기
 
-			$(document).one('saveComplete', () => {
-				setTimeout(() => {
-					this.logout();
-				}, 1000);
-			});
+				// 저장 완료 후 로그아웃
+				$(document).one('saveComplete', () => {
+					setTimeout(() => {
+						this.logout();
+					}, 1000);
+				});
+			} else {
+				// executeSave가 없는 경우 fallback
+				console.error("executeSave 함수를 찾을 수 없습니다.");
+				this.logout();
+			}
 		},
 
 		logout: function() {
@@ -648,7 +656,7 @@ $(document).ready(function() {
 	});
 
 	// Save 버튼 클릭 이벤트
-	async function executeSave(shouldClose) {
+	window.executeSave = async function executeSave(shouldClose) {
 		showLoader();
 		window.selectionManager.clearSelection();
 
@@ -963,7 +971,12 @@ $(document).ready(function() {
 			contentType: false,
 			success: function(response) {
 				if (response.success) {
-					alert("This page has been saved.");
+					// 자동 저장 시에는 alert 표시하지 않음
+					const isAutoSave = SessionManager.timer === null;
+					if (!isAutoSave) {
+						alert("This page has been saved.");
+					}
+					
 					hasSaved = true;
 
 					// 저장 시간 메시지 표시 추가
