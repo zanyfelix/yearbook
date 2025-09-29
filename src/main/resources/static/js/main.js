@@ -890,7 +890,7 @@ $(document).ready(function() {
 				});
 
 				// DOM 업데이트 대기
-				await new Promise(resolve => setTimeout(resolve, 200));
+				await new Promise(resolve => setTimeout(resolve, 100));
 
 				// 렌더링과 동일한 스케일로 캡처 (SCALE_RATIO = 3.33)
 				const RENDER_SCALE = 2621 / 786;  // 약 3.33
