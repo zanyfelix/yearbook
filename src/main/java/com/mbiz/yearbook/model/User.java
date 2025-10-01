@@ -35,25 +35,25 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = true, unique = true, length = 50)
     private String userId;  // ex: daegu_es
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = true, unique = true, length = 50)
     private String name;  // ex: daegu_es
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = true, length = 100)
     private String schoolName;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private boolean active = true;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String role;
     
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String mail;
     
     @CreationTimestamp
