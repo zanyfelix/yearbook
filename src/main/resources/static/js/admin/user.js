@@ -86,7 +86,7 @@ $(document).ready(function() {
 		// 활성화 시 마감일 체크
 		if (this.checked) {
 			const $row = $this.closest('tr');
-			const deadlineText = $row.children().eq(7).text().trim();
+			const deadlineText = $row.children().eq(5).text().trim();
 			if (deadlineText) {
 				const deadlineDate = new Date(`${deadlineText}T00:00:00`);
 				const today = new Date();
