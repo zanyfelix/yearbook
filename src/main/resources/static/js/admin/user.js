@@ -39,12 +39,10 @@ $(document).ready(function() {
 		$('#userIdHidden').val(id);
 		$('#userIdInput').val($row.children().eq(2).text().trim());
 		$('#passwordInput').val($row.children().eq(3).text().trim());
-		$('#nameInput').val($row.children().eq(4).text().trim());
-		$('#schoolInput').val($row.children().eq(5).text().trim());
-		$('#mailInput').val($row.children().eq(6).text().trim());
+		$('#schoolInput').val($row.children().eq(4).text().trim());
 
 		// 날짜 처리
-		const dateText = $row.children().eq(7).text().trim();
+		const dateText = $row.children().eq(5).text().trim();
 		const date = new Date(dateText.replace(' ', 'T'));
 		const $deadlineInput = $('#deadlineInput');
 
@@ -59,7 +57,7 @@ $(document).ready(function() {
 		}
 
 		// 역할(Role) 처리
-		let roleText = $row.children().eq(8).text().trim().toLowerCase();
+		let roleText = $row.children().eq(6).text().trim().toLowerCase();
 		$('#roleSelect').val(roleText);
 
 		// 3) 모달 설정 변경
