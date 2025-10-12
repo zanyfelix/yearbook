@@ -104,9 +104,9 @@ class SelectionManager {
 		elementGroup.addClass('selected-frame selected-element');
 		FrameManager.addRotationHandle(elementGroup);
 		this.addElementResizeHandles(elementGroup);
-		
+
 		EventManager.updateElementResizeCursors(elementGroup);
-		
+
 		UIManager.showElementTooltip(elementGroup);
 	}
 
@@ -219,6 +219,109 @@ class SelectionManager {
 		const line = $('<div class="text-rotate-line"></div>');
 		textBox.append(handle).append(line);
 		EventManager.makeRotatable(textBox, handle);
+	}
+
+	/**
+	 * 선택된 요소를 수평 중앙으로 정렬
+	 */
+	alignHorizontalCenter() {
+		const element = this.getCurrentElement();
+		if (!element) return;
+
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
+
+		// Transform 임시 제거하여 정확한 크기 측정
+		const currentTransform = element.css('transform');
+		element.css('transform', 'none');
+
+		const elementWidth = element.outerWidth();
+		const newLeft = actualBgRect.left + (actualBgRect.width - elementWidth) / 2;
+
+		element.css('transform', currentTransform);
+
+		// 위치 적용
+		element.css('left', newLeft + 'px');
+
+		// 상태 저장
+		EventManager.saveElementPosition(element);
+	}
+
+	/**
+	 * 선택된 요소를 수직 중앙으로 정렬
+	 */
+	alignVerticalCenter() {
+		const element = this.getCurrentElement();
+		if (!element) return;
+
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
+
+		// Transform 임시 제거하여 정확한 크기 측정
+		const currentTransform = element.css('transform');
+		element.css('transform', 'none');
+
+		const elementHeight = element.outerHeight();
+		const newTop = actualBgRect.top + (actualBgRect.height - elementHeight) / 2;
+
+		element.css('transform', currentTransform);
+
+		// 위치 적용
+		element.css('top', newTop + 'px');
+
+		// 상태 저장
+		EventManager.saveElementPosition(element);
+	}
+
+	/**
+	 * 선택된 요소를 수평/수직 중앙으로 정렬
+	 */
+	alignCenter() {
+		const element = this.getCurrentElement();
+		if (!element) return;
+
+		const bg = $('#page-preview-img');
+		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
+		if (!actualBgRect) return;
+
+		// Transform 임시 제거하여 정확한 크기 측정
+		const currentTransform = element.css('transform');
+		element.css('transform', 'none');
+
+		const elementWidth = element.outerWidth();
+		const elementHeight = element.outerHeight();
+
+		const newLeft = actualBgRect.left + (actualBgRect.width - elementWidth) / 2;
+		const newTop = actualBgRect.top + (actualBgRect.height - elementHeight) / 2;
+
+		element.css('transform', currentTransform);
+
+		// 위치 적용
+		element.css({
+			left: newLeft + 'px',
+			top: newTop + 'px'
+		});
+
+		// 상태 저장
+		EventManager.saveElementPosition(element);
+	}
+
+	/**
+	 * 현재 선택된 요소 가져오기 (헬퍼 메서드)
+	 */
+	getCurrentElement() {
+		switch (this.selectedMode) {
+			case 'frame':
+				return this.currentFrame;
+			case 'text':
+				return this.currentTextBox;
+			case 'element':
+				return this.currentElement;
+			default:
+				return null;
+		}
 	}
 }
 

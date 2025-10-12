@@ -89,6 +89,19 @@ class UIManager {
 			rotationHandler.rotateRight();
 		});
 
+		// ✨ 정렬 버튼 추가
+		$('#frame-align-h').off('click').on('click', () => {
+			window.selectionManager.alignHorizontalCenter();
+		});
+
+		$('#frame-align-v').off('click').on('click', () => {
+			window.selectionManager.alignVerticalCenter();
+		});
+
+		$('#frame-align-center').off('click').on('click', () => {
+			window.selectionManager.alignCenter();
+		});
+
 		$('#btn-delete-frame').off('click').on('click', () => {
 			this.showDeleteConfirmModal('Do you want to delete the frame?', () => {
 				frameGroup.remove();
@@ -201,6 +214,19 @@ class UIManager {
 			TextManager.updateTextAlign($(this).val());
 		});
 
+		// ✨ 정렬 버튼 추가
+		$('#text-align-h').off('click').on('click', () => {
+			window.selectionManager.alignHorizontalCenter();
+		});
+
+		$('#text-align-v').off('click').on('click', () => {
+			window.selectionManager.alignVerticalCenter();
+		});
+
+		$('#text-align-center').off('click').on('click', () => {
+			window.selectionManager.alignCenter();
+		});
+
 		$('#tooltip-remove').on('click', () => {
 			this.showDeleteConfirmModal('Do you want to delete the text box?', () => {
 				textBox.remove();
@@ -247,6 +273,19 @@ class UIManager {
 			rotationHandler.rotateRight();
 			// ✅ 추가: 회전 후 커서 업데이트
 			EventManager.updateElementResizeCursors(elementGroup);
+		});
+
+		// ✨ 정렬 버튼 추가
+		$('#element-align-h').off('click').on('click', () => {
+			window.selectionManager.alignHorizontalCenter();
+		});
+
+		$('#element-align-v').off('click').on('click', () => {
+			window.selectionManager.alignVerticalCenter();
+		});
+
+		$('#element-align-center').off('click').on('click', () => {
+			window.selectionManager.alignCenter();
 		});
 
 		$('#btn-delete-element').off('click').on('click', () => {

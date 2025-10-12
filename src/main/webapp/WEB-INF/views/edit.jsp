@@ -200,6 +200,22 @@
 												class="control-btn rotate-btn" title="오른쪽 회전">
 												<img src="/images/icon/transform.png" alt="Rotate Right">
 											</button>
+
+											<!-- ✨ 정렬 버튼 추가 -->
+											<button id="frame-align-h" class="control-btn align-btn"
+												title="수평 중앙" style="padding-bottom: 8px;">
+												<span class="align-icon">⬌</span>
+											</button>
+											<button id="frame-align-v" class="control-btn align-btn"
+												title="수직 중앙" style="padding-left: 7px;">
+												<span class="align-icon"
+													style="display: inline-block; transform: rotate(90deg);">⬌</span>
+											</button>
+											<button id="frame-align-center" class="control-btn align-btn"
+												title="중앙" style="padding-top: 2px;">
+												<span class="align-icon">⊕</span>
+											</button>
+
 											<button id="btn-delete-frame" class="control-btn delete-btn"
 												title="프레임 삭제">
 												<img src="/images/icon/trash.png" alt="trash"
@@ -229,32 +245,35 @@
 											title="Font Family" style="width: 180px;"></select>
 
 
-										<div class="font-size-container" style="display: inline-flex; align-items: center; gap: 5px;">
-									        <select id="tooltip-size-select" class="form-select form-select-sm" style="width: 100px;">
-									            <option value="">Custom</option>
-									            <option value="10">10px</option>
-									            <option value="12">12px</option>
-									            <option value="14">14px</option>
-									            <option value="16">16px</option>
-									            <option value="18">18px</option>
-									            <option value="20">20px</option>
-									            <option value="24">24px</option>
-									            <option value="28">28px</option>
-									            <option value="32">32px</option>
-									            <option value="36">36px</option>
-									            <option value="40">40px</option>
-									            <option value="48">48px</option>
-									            <option value="56">56px</option>
-									            <option value="64">64px</option>
-									            <option value="72">72px</option>
-									            <option value="80">80px</option>
-									            <option value="96">96px</option>
-									        </select>
-									        
-									        <!-- Input은 기본적으로 숨김 -->
-									        <input type="number" id="tooltip-size" class="form-control form-control-sm d-none" 
-									               min="8" max="200" placeholder="px" style="width: 80px;">
-									    </div>
+										<div class="font-size-container"
+											style="display: inline-flex; align-items: center; gap: 5px;">
+											<select id="tooltip-size-select"
+												class="form-select form-select-sm" style="width: 100px;">
+												<option value="">Custom</option>
+												<option value="10">10px</option>
+												<option value="12">12px</option>
+												<option value="14">14px</option>
+												<option value="16">16px</option>
+												<option value="18">18px</option>
+												<option value="20">20px</option>
+												<option value="24">24px</option>
+												<option value="28">28px</option>
+												<option value="32">32px</option>
+												<option value="36">36px</option>
+												<option value="40">40px</option>
+												<option value="48">48px</option>
+												<option value="56">56px</option>
+												<option value="64">64px</option>
+												<option value="72">72px</option>
+												<option value="80">80px</option>
+												<option value="96">96px</option>
+											</select>
+
+											<!-- Input은 기본적으로 숨김 -->
+											<input type="number" id="tooltip-size"
+												class="form-control form-control-sm d-none" min="8"
+												max="200" placeholder="px" style="width: 80px;">
+										</div>
 										<select id="tooltip-align" class="form-select form-select-sm"><option
 												value="left">Left</option>
 											<option value="center">Center</option>
@@ -268,6 +287,20 @@
 										<button id="text-rotate-right" class="control-btn rotate-btn"
 											title="오른쪽 회전">
 											<img src="/images/icon/transform.png" alt="Rotate Right">
+										</button>
+										<!-- ✨ 정렬 버튼 추가 -->
+										<button id="text-align-h" class="control-btn align-btn"
+											title="수평 중앙" style="padding-bottom: 8px;">
+											<span class="align-icon">⬌</span>
+										</button>
+										<button id="text-align-v" class="control-btn align-btn"
+											title="수직 중앙" style="padding-left: 7px;">
+											<span class="align-icon"
+												style="display: inline-block; transform: rotate(90deg);">⬌</span>
+										</button>
+										<button id="text-align-center" class="control-btn align-btn"
+											title="중앙" style="padding-top: 2px;">
+											<span class="align-icon">⊕</span>
 										</button>
 										<button type="button" id="tooltip-remove"
 											class="control-btn delete-btn" title="텍스트 삭제">
@@ -284,6 +317,20 @@
 											<button id="element-rotate-right"
 												class="control-btn rotate-btn" title="오른쪽 회전">
 												<img src="/images/icon/transform.png" alt="Rotate Right">
+											</button>
+											<!-- ✨ 정렬 버튼 추가 -->
+											<button id="element-align-h" class="control-btn align-btn"
+												title="수평 중앙" style="padding-bottom: 8px;">
+												<span class="align-icon">⬌</span>
+											</button>
+											<button id="element-align-v" class="control-btn align-btn"
+												title="수직 중앙" style="padding-left: 7px;">
+												<span class="align-icon"
+													style="display: inline-block; transform: rotate(90deg);">⬌</span>
+											</button>
+											<button id="element-align-center"
+												class="control-btn align-btn" title="중앙" style="padding-top: 2px;">
+												<span class="align-icon">⊕</span>
 											</button>
 											<button id="btn-delete-element"
 												class="control-btn delete-btn" title="Element 삭제">
