@@ -203,19 +203,13 @@
 
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="frame-align-h" class="control-btn align-btn"
-												title="수평 중앙" style="padding-bottom: 8px;">
-												<span class="align-icon">⬌</span>
+												title="수평 중앙">
+												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="frame-align-v" class="control-btn align-btn"
-												title="수직 중앙" style="padding-left: 7px;">
-												<span class="align-icon"
-													style="display: inline-block; transform: rotate(90deg);">⬌</span>
+												title="수직 중앙">
+												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
-											<button id="frame-align-center" class="control-btn align-btn"
-												title="중앙" style="padding-top: 2px;">
-												<span class="align-icon">⊕</span>
-											</button>
-
 											<button id="btn-delete-frame" class="control-btn delete-btn"
 												title="프레임 삭제">
 												<img src="/images/icon/trash.png" alt="trash"
@@ -290,17 +284,12 @@
 										</button>
 										<!-- ✨ 정렬 버튼 추가 -->
 										<button id="text-align-h" class="control-btn align-btn"
-											title="수평 중앙" style="padding-bottom: 8px;">
-											<span class="align-icon">⬌</span>
+											title="수평 중앙">
+											<img src="/images/icon/hor_center.png" alt="horCenter">
 										</button>
 										<button id="text-align-v" class="control-btn align-btn"
-											title="수직 중앙" style="padding-left: 7px;">
-											<span class="align-icon"
-												style="display: inline-block; transform: rotate(90deg);">⬌</span>
-										</button>
-										<button id="text-align-center" class="control-btn align-btn"
-											title="중앙" style="padding-top: 2px;">
-											<span class="align-icon">⊕</span>
+											title="수직 중앙">
+											<img src="/images/icon/ver_center.png" alt="verCenter">
 										</button>
 										<button type="button" id="tooltip-remove"
 											class="control-btn delete-btn" title="텍스트 삭제">
@@ -320,17 +309,12 @@
 											</button>
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="element-align-h" class="control-btn align-btn"
-												title="수평 중앙" style="padding-bottom: 8px;">
-												<span class="align-icon">⬌</span>
+												title="수평 중앙">
+												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="element-align-v" class="control-btn align-btn"
-												title="수직 중앙" style="padding-left: 7px;">
-												<span class="align-icon"
-													style="display: inline-block; transform: rotate(90deg);">⬌</span>
-											</button>
-											<button id="element-align-center"
-												class="control-btn align-btn" title="중앙" style="padding-top: 2px;">
-												<span class="align-icon">⊕</span>
+												title="수직 중앙">
+												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
 											<button id="btn-delete-element"
 												class="control-btn delete-btn" title="Element 삭제">
