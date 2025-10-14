@@ -204,11 +204,11 @@
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="frame-align-h" class="control-btn align-btn"
 												title="수평 중앙">
-												<img src="/images/icon/hor_center.png" alt="horCenter">
+												<img src="/images/icon/hor_center.png" alt="horCenter" style="width: 25px; height: 25px;">
 											</button>
 											<button id="frame-align-v" class="control-btn align-btn"
 												title="수직 중앙">
-												<img src="/images/icon/ver_center.png" alt="verCenter">
+												<img src="/images/icon/ver_center.png" alt="verCenter" style="width: 25px; height: 25px;">
 											</button>
 											<button id="btn-delete-frame" class="control-btn delete-btn"
 												title="프레임 삭제">
@@ -284,11 +284,11 @@
 										</button>
 										<!-- ✨ 정렬 버튼 추가 -->
 										<button id="text-align-h" class="control-btn align-btn"
-											title="수평 중앙">
+											title="수평 중앙" style="width: 25px; height: 25px;">
 											<img src="/images/icon/hor_center.png" alt="horCenter">
 										</button>
 										<button id="text-align-v" class="control-btn align-btn"
-											title="수직 중앙">
+											title="수직 중앙" style="width: 25px; height: 25px;">
 											<img src="/images/icon/ver_center.png" alt="verCenter">
 										</button>
 										<button type="button" id="tooltip-remove"
@@ -309,11 +309,11 @@
 											</button>
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="element-align-h" class="control-btn align-btn"
-												title="수평 중앙">
+												title="수평 중앙" style="width: 25px; height: 25px;">
 												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="element-align-v" class="control-btn align-btn"
-												title="수직 중앙">
+												title="수직 중앙" style="width: 25px; height: 25px;"> 
 												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
 											<button id="btn-delete-element"
