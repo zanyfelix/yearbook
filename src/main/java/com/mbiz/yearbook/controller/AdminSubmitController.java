@@ -1,5 +1,6 @@
 package com.mbiz.yearbook.controller;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,9 +8,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +24,7 @@ import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
 import com.mbiz.yearbook.model.Submit;
 import com.mbiz.yearbook.model.SubmitForm;
+import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
@@ -159,6 +163,9 @@ public class AdminSubmitController {
 		submitList.add(previewsSection);
 		submitList.add(noteSection);
 		submitList.addAll(customSections);
+		if (userId != null) {
+			submitList = submitRepository.findByUserIdAndType(userId, "content");
+		}
 		model.addAttribute("submitList", submitList);
 		model.addAttribute("currentMenu", "submission");
 
@@ -437,5 +444,120 @@ public class AdminSubmitController {
 		}
 
 		return response;
+	}
+
+	// REGISTER(등록) 및 MODIFY(수정) 처리
+	@PostMapping("/submit/register")
+	public String registerOrModifySubmit(@ModelAttribute Submit submit, @RequestParam("userId") Long userId,
+			RedirectAttributes redirectAttributes) {
+		// type을 "content"로 설정하여 섹션과 구분
+		submit.setType("content");
+		submit.setUserId(userId);
+
+		// displayOrder 설정
+		if (submit.getId() == null) {
+			Integer maxOrder = submitRepository.findMaxDisplayOrderByUserId(userId);
+			submit.setDisplayOrder(maxOrder != null ? maxOrder + 1 : 1000);
+		}
+
+		submitRepository.save(submit);
+
+		redirectAttributes.addFlashAttribute("successMessage", "saved successfully.");
+		return "redirect:/admin/submit?userId=" + userId;
+	}
+
+	// DELETE(삭제) 처리
+	@PostMapping("/submit/delete")
+	public ResponseEntity<String> deleteSubmit(@RequestParam("ids") List<Long> ids) {
+		try {
+			ids.forEach(id -> submitRepository.deleteById(id));
+			return ResponseEntity.ok("Selected items have been deleted.");
+		} catch (Exception e) {
+			return ResponseEntity.status(500).body("An error occurred while deleting.");
+		}
+	}
+
+	// APPLY(적용) 처리 - isActive 상태를 true로 변경
+	@PostMapping("/submit/apply")
+	public ResponseEntity<String> applySubmit(@RequestParam("ids") List<Long> ids) {
+		try {
+			List<Submit> submitsToUpdate = submitRepository.findAllById(ids);
+			for (Submit submit : submitsToUpdate) {
+				submit.setIsActive(true);
+			}
+			submitRepository.saveAll(submitsToUpdate);
+			return ResponseEntity.ok("Selected items have been applied.");
+		} catch (Exception e) {
+			return ResponseEntity.status(500).body("An error occurred while applying.");
+		}
+	}
+
+	// Toggle Active 처리
+	@PostMapping("/submit/toggle-active")
+	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
+		try {
+			Optional<Submit> submitOpt = submitRepository.findById(dto.getId());
+			if (submitOpt.isPresent()) {
+				Submit submit = submitOpt.get();
+				submit.setIsActive(dto.isActive());
+				submitRepository.save(submit);
+			}
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			return ResponseEntity.status(500).build();
+		}
+	}
+
+	// 모든 사용자에게 content 타입 데이터 복사
+	@PostMapping("/submit/copyToAllUsers")
+	@ResponseBody
+	public Map<String, Object> copySubmitToAllUsers(@RequestParam("sourceUserId") Long userId) {
+		Map<String, Object> result = new HashMap<>();
+
+		try {
+			// 소스 사용자의 content 타입 데이터만 조회
+			List<Submit> sourceSubmits = submitRepository.findByUserIdAndType(userId, "content");
+
+			List<User> allUsers = userRepository.findAll();
+
+			long affectedUsers = 0;
+			for (User targetUser : allUsers) {
+				// 소스 사용자 자신과 admin은 제외
+				if (targetUser.getId().equals(userId) || "admin".equals(targetUser.getRole())) {
+					continue;
+				}
+
+				// 대상 사용자의 기존 content 타입 데이터 삭제
+				List<Submit> existingSubmits = submitRepository.findByUserIdAndType(targetUser.getId(), "content");
+				submitRepository.deleteAll(existingSubmits);
+
+				// 소스 데이터를 대상 사용자에게 복사
+				for (Submit sourceSubmit : sourceSubmits) {
+					Submit newSubmit = new Submit();
+					newSubmit.setUserId(targetUser.getId());
+					newSubmit.setType("content");
+					newSubmit.setTitle(sourceSubmit.getTitle());
+					newSubmit.setDescription(sourceSubmit.getDescription());
+					newSubmit.setIsActive(sourceSubmit.getIsActive());
+					newSubmit.setDisplayOrder(sourceSubmit.getDisplayOrder());
+					newSubmit.setCreatedAt(LocalDateTime.now());
+					newSubmit.setUpdatedAt(LocalDateTime.now());
+					submitRepository.save(newSubmit);
+				}
+
+				affectedUsers++;
+			}
+
+			result.put("success", true);
+			result.put("affectedUsers", affectedUsers);
+			result.put("message", "Successfully copied to " + affectedUsers + " users");
+
+		} catch (Exception e) {
+			result.put("success", false);
+			result.put("message", e.getMessage());
+			e.printStackTrace();
+		}
+
+		return result;
 	}
 }

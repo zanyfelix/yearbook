@@ -212,12 +212,12 @@
 		    </tr>
 	      </thead>
 	      <tbody>
-			<c:if test="${empty homeList}">
+			<c:if test="${empty submitList}">
 				<tr>
 					<td colspan="10" style="text-align: center; padding: 20px; color: #666;">no data</td>
 				</tr>
 			</c:if>
-	       <c:forEach var="item" items="${homeList}" varStatus="st">
+	       <c:forEach var="item" items="${submitList}" varStatus="st">
 	       	  <c:if test="${item.type eq 'content'}">
 	          <tr>
 	          	<td>
@@ -258,9 +258,40 @@
 		    </button>
 	    </div>
 	    
-		</div>
+		<!-- Registration/Modify Modal -->
+			<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+						<form id="registerForm"
+							action="${pageContext.request.contextPath}/admin/submit/register"
+							method="post">
+							<input type="hidden" id="userId" name="userId" value="${userId}"/>
+							<input type="hidden" id="submitId" name="id" value=""/>
+							<input type="hidden" id="isActive" name="isActive" value=""/>
+							<div class="modal-header">
+								<h5 class="modal-title" id="registerModalLabel">REGISTRATION</h5>
+								<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+							</div>
+							<div class="modal-body">
+								<div class="mb-3">
+									<label for="title" class="form-label">TITLE</label>
+									<input type="text" class="form-control" id="title" name="title" required />
+								</div>
+								<div class="mb-3">
+									<label for="description" class="form-label">DESCRIPTION</label>
+									<textarea class="form-control" id="description" name="description" rows="3" cols="110"></textarea>
+								</div>
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+								<button type="submit" class="btn btn-primary" id="registerSubmitBtn">Save</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
 
-		<!-- 프레임 선택용 모달 -->
+		<!-- Preview Modal -->
 		<div class="modal fade" id="previewModal" tabindex="-1"
 			aria-hidden="true">
 			<div class="modal-dialog modal-dialog-centered">
@@ -312,14 +343,14 @@
 		  </div>
 		</div>
 	</div>
-	<script>
-		const ctx = '${pageContext.request.contextPath}';
-		const currentUserId = '${userId}';
-		const currentUserName = '${userId}';
-	</script>
-	<script
-		src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
-	<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
-	<script src="<c:url value='/js/admin/submit.js'/>"></script>
+</div>
+<script>
+	const ctx = '${pageContext.request.contextPath}';
+	const currentUserId = '${userId}';
+	const currentUserName = '${userId}';
+</script>
+<script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
+<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/submit.js'/>"></script>
 </body>
 </html>
