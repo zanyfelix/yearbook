@@ -476,3 +476,65 @@ function openImpersonateWindow() {
 		}, 500);
 	}
 }
+
+/**
+ * 모든 사용자에게 Submission 복사 모달 표시
+ */
+function showSubmitCopyToAllModal() {
+
+	const dataRows = $('.selectBox').length;
+
+	if (dataRows === 0) {
+		alert('No data to copy. Please register content first.');
+		return;
+	}
+
+	// 현재 사용자 이름 표시
+	$('#currentSubmitUserName').text($('select[name="userId"]').find('option:selected').text());
+
+	// 모달 표시
+	const modal = new bootstrap.Modal(document.getElementById('submitCopyToAllModal'));
+	modal.show();
+}
+
+/**
+ * 모든 사용자에게 Submission 복사 실행
+ */
+function executeSubmitCopyToAll() {
+	// 로딩 표시
+	const button = event.target;
+	const originalText = button.innerHTML;
+	button.disabled = true;
+	button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Copying...';
+
+	$.ajax({
+		url: ctx + '/admin/submit/copyToAllUsers',
+		method: 'POST',
+		data: {
+			sourceUserId: currentUserId
+		},
+		success: function(response) {
+			if (response.success) {
+				// 모달 닫기
+				bootstrap.Modal.getInstance(document.getElementById('submitCopyToAllModal')).hide();
+
+				// 성공 메시지
+				alert(`✅ Successfully copied submission to ${response.affectedUsers || 'all'} users!`);
+
+				// 페이지 새로고침 (선택사항)
+				// location.reload();
+			} else {
+				alert('❌ Failed to copy: ' + (response.message || 'Unknown error'));
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Copy failed:', error);
+			alert('❌ Server error occurred while copying.');
+		},
+		complete: function() {
+			// 버튼 복원
+			button.disabled = false;
+			button.innerHTML = originalText;
+		}
+	});
+}

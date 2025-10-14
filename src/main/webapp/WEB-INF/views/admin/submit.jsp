@@ -200,12 +200,64 @@
 
 			</form>
 
-			<%-- 하단 버튼들 --%>
-			<div class="btn-wrapper"
-				style="text-align: center; margin-top: 30px;">
-				<button type="button" class="btn btn-primary btn-lg"
-					onclick="applyAllSettings()">APPLY</button>
-			</div>
+			<table>
+	      <thead>
+	      	<tr>
+		      <th>
+		         <input type="checkbox" id="selectAll" onclick="toggleAll(this)"/>
+		      </th>
+		      <th>TITLE</th>
+		      <th>DESCRIPTION</th>
+		      <th>APPLY</th>
+		    </tr>
+	      </thead>
+	      <tbody>
+			<c:if test="${empty homeList}">
+				<tr>
+					<td colspan="10" style="text-align: center; padding: 20px; color: #666;">no data</td>
+				</tr>
+			</c:if>
+	       <c:forEach var="item" items="${homeList}" varStatus="st">
+	       	  <c:if test="${item.type eq 'content'}">
+	          <tr>
+	          	<td>
+		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
+		        </td>
+	            <td>${item.title}</td>
+	            <td>
+	            	<textarea rows="3" cols="110" disabled>${item.description}</textarea>
+	            </td>
+	            <td>
+				  <label class="toggle-switch">
+				    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->
+				    <input type="hidden" name="active" value="0"/>
+				    <!-- 체크된 경우에만 value="1" 이 넘어갑니다 -->
+				    <input
+				      type="checkbox"
+				      name="active"
+				      value="1"
+				      data-id="${item.id}"
+				      ${item.isActive == true ? "checked" : ""}
+				    />
+				    <span class="slider"></span>
+				  </label>
+				</td>
+	          </tr>
+	          </c:if>
+	        </c:forEach>
+	      </tbody>
+	    </table>
+	    
+		<div class="btn-wrapper">
+		    <button id="btn-register" type="button" data-bs-toggle="modal" data-bs-target="#registerModal">REGISTER</button>
+		    <button id="btn-modify" type="button">MODIFY</button>
+		    <button id="btn-delete" type="button">DELETE</button>
+		    <button id="btn-apply-status" type="button">APPLY</button>
+		    <button id="btn-copy-to-all" type="button" class="btn-copy-all" onclick="showSubmitCopyToAllModal()">
+		        COPY TO ALL USERS
+		    </button>
+	    </div>
+	    
 		</div>
 
 		<!-- 프레임 선택용 모달 -->
@@ -214,7 +266,6 @@
 			<div class="modal-dialog modal-dialog-centered">
 				<div class="modal-content">
 					<div class="modal-body" style="padding: 20px;">
-
 						<div class="preview-container">
 							<img id="previewImage" src="" alt="Preview Image">
 							<button onclick="showPreviousImage()" class="arrow-btn prev-btn">&lt;</button>
@@ -226,14 +277,45 @@
 							<button type="button" class="custom-close-btn"
 								data-bs-dismiss="modal">CLOSE</button>
 						</div>
-
 					</div>
 				</div>
 			</div>
 		</div>
+		<!-- ✨ Submission 복사 확인 모달 추가 -->
+		<div class="modal fade" id="submitCopyToAllModal" tabindex="-1" aria-hidden="true">
+		  <div class="modal-dialog modal-dialog-centered">
+		    <div class="modal-content">
+		      <div class="modal-header bg-warning">
+		        <h5 class="modal-title">⚠️ Copy Submission to All Users</h5>
+		        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+		      </div>
+		      <div class="modal-body">
+		        <div class="alert alert-warning mb-3">
+		          <strong>Warning:</strong> This action will overwrite Submission settings for ALL users!
+		        </div>
+		        <p><strong>Current User:</strong> <span id="currentSubmitUserName" class="text-primary"></span></p>
+		        <p>The following data will be copied to all users:</p>
+		        <ul>
+		          <li><strong>Overview:</strong> Submit overview content</li>
+		          <li><strong>Note:</strong> Preview note content</li>
+		          <li><strong>Page Submission:</strong> All submission items</li>
+		        </ul>
+		        <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+		      </div>
+		      <div class="modal-footer">
+		        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+		        <button type="button" class="btn btn-danger" onclick="executeSubmitCopyToAll()">
+		          <i class="bi bi-check-circle"></i> Confirm & Copy
+		        </button>
+		      </div>
+		    </div>
+		  </div>
+		</div>
 	</div>
 	<script>
 		const ctx = '${pageContext.request.contextPath}';
+		const currentUserId = '${userId}';
+		const currentUserName = '${userId}';
 	</script>
 	<script
 		src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>

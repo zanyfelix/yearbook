@@ -554,3 +554,43 @@ html, body {
     display: flex;
     gap: 10px;
 }
+
+.btn-copy-all {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    float: right;
+}
+
+/* 복사 확인 모달 스타일 */
+#copyToAllModal .modal-header,
+#submitCopyToAllModal .modal-header {
+    border-bottom: 2px solid #ffc107;
+}
+
+#copyToAllModal .modal-body ul,
+#submitCopyToAllModal .modal-body ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#copyToAllModal .modal-body ul li,
+#submitCopyToAllModal .modal-body ul li {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#copyToAllModal .modal-body ul li:before,
+#submitCopyToAllModal .modal-body ul li:before {
+    content: "✓ ";
+    color: #28a745;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .btn-copy-all {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
