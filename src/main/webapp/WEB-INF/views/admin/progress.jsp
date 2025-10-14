@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAPTURECORD YB - Admin Progress</title>
+    <title>CAPTURECORD YB</title>
     <link rel="icon" type="image/png" sizes="32x32" href="<c:url value='/images/favicon_32.png'/>">
     <link rel="icon" type="image/png" sizes="196x196" href="<c:url value='/images/favicon_196.png'/>">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/bootstrap.min.css"/>
@@ -39,99 +39,103 @@
 
 <div class="content">
 	<div class="container-fluid">
-		<h3 class="page-title">All Users Progress Report</h3>
 		
 		<!-- 검색 바 -->
-	    <form method="get" action="${pageContext.request.contextPath}/admin/progress" class="search-form">
-	      <select name="type" class="form-select search-type">
+	    <form method="get" action="${pageContext.request.contextPath}/admin/progress">
+	      <select name="type">
 	        <option value="userId" ${type=='userId'? 'selected':''}>USER_ID</option>
 	        <option value="schoolName" ${type=='schoolName'? 'selected':''}>SCHOOL_NAME</option>
 	      </select>
-	      <input type="text" name="keyword" value="${keyword != null ? keyword : ''}" class="form-control search-input" placeholder="Search..." />
-	      <button type="submit" class="btn btn-primary search-btn">SEARCH</button>
+	      <input type="text" name="keyword" value="${keyword != null ? keyword : ''}" />
+	      <button type="submit">SEARCH</button>
 	    </form>
     
-	    <div class="table-responsive">
-		    <table class="progress-table">
-		      <thead>
-		      	<tr>
-			      <th>No</th>
-			      <th>USER_ID</th>
-			      <th>SCHOOL_NAME</th>
-			      <th>DEADLINE</th>
-			      <th>D-DAY</th>
-			      <th>Overall Progress</th>
-			      <th>Group Photo</th>
-			      <th>Event Photo</th>
-			      <th>Status</th>
-			    </tr>
-		      </thead>
-		      <tbody>
-		       <c:forEach var="item" items="${userProgressList}" varStatus="st">
-		          <tr>
-		            <td>${st.index + 1}</td>
-		            <td>${item.user.userId}</td>
-		            <td>${item.user.schoolName}</td>
-		            <td><fmt:formatDate value="${item.user.deadline}" pattern="yyyy-MM-dd"/></td>
-		            <td class="${item.remainDays <= 7 ? 'text-danger' : (item.remainDays <= 14 ? 'text-warning' : '')}">
-		            	D-${item.remainDays}
-		            </td>
-		            <td>
-		            	<div class="progress-info">
-		            		<span class="progress-text">${item.overallCompleted} / ${item.overallTotal}</span>
-		            		<div class="progress-container">
-				            	<div class="progress-bar" style="width: ${item.overallProgress}%">
-				            		<span class="percentage-text">${item.overallProgress}%</span>
-				            	</div>
-				            </div>
-		            	</div>
-		            </td>
-		            <td>
-		            	<div class="progress-info">
-		            		<span class="progress-text">${item.groupCompleted} / ${item.groupTotal}</span>
-		            		<div class="progress-container">
-				            	<div class="progress-bar" style="width: ${item.groupProgress}%">
-				            		<span class="percentage-text">${item.groupProgress}%</span>
-				            	</div>
-				            </div>
-		            	</div>
-		            </td>
-		            <td>
-		            	<div class="progress-info">
-		            		<span class="progress-text">${item.eventCompleted} / ${item.eventTotal}</span>
-		            		<div class="progress-container">
-				            	<div class="progress-bar" style="width: ${item.eventProgress}%">
-				            		<span class="percentage-text">${item.eventProgress}%</span>
-				            	</div>
-				            </div>
-		            	</div>
-		            </td>
-		            <td>
-		            	<c:choose>
-		            		<c:when test="${item.overallProgress >= 100}">
-		            			<span class="badge bg-success">Completed</span>
-		            		</c:when>
-		            		<c:when test="${item.overallProgress >= 70}">
-		            			<span class="badge bg-info">In Progress</span>
-		            		</c:when>
-		            		<c:when test="${item.overallProgress >= 30}">
-		            			<span class="badge bg-warning">Getting Started</span>
-		            		</c:when>
-		            		<c:otherwise>
-		            			<span class="badge bg-secondary">Not Started</span>
-		            		</c:otherwise>
-		            	</c:choose>
-		            </td>
-		          </tr>
-		        </c:forEach>
-		        <c:if test="${empty userProgressList}">
-		        	<tr>
-		        		<td colspan="9" class="text-center">No users found.</td>
-		        	</tr>
-		        </c:if>
-		      </tbody>
-		    </table>
-	    </div>
+	    <table class="progress-table">
+	      <thead>
+	      	<tr>
+		      <th>No</th>
+		      <th>USER_ID</th>
+		      <th>SCHOOL_NAME</th>
+		      <th>DEADLINE</th>
+		      <th>D-DAY</th>
+		      <th>Overall Progress</th>
+		      <th>Group Photo</th>
+		      <th>Event Photo</th>
+		      <th>Status</th>
+		    </tr>
+	      </thead>
+	      <tbody>
+	       <c:forEach var="item" items="${userProgressList}" varStatus="st">
+	          <tr>
+	            <td>${st.index + 1}</td>
+	            <td>${item.user.userId}</td>
+	            <td>${item.user.schoolName}</td>
+	            <td><fmt:formatDate value="${item.user.deadline}" pattern="yyyy-MM-dd"/></td>
+	            <td class="${item.remainDays <= 7 ? 'text-danger' : (item.remainDays <= 14 ? 'text-warning' : '')}">
+	            	<c:choose>
+	            		<c:when test="${item.remainDays < 0}">
+	            			D+${item.remainDays * -1}
+	            		</c:when>
+	            		<c:otherwise>
+	            			D-${item.remainDays}
+	            		</c:otherwise>
+	            	</c:choose>
+	            </td>
+	            <td>
+	            	<div class="progress-info">
+	            		<span class="progress-text">${item.overallCompleted} / ${item.overallTotal}</span>
+	            		<div class="progress-container">
+			            	<div class="progress-bar" style="width: ${item.overallProgress}%">
+			            		<span class="percentage-text">${item.overallProgress}%</span>
+			            	</div>
+			            </div>
+	            	</div>
+	            </td>
+	            <td>
+	            	<div class="progress-info">
+	            		<span class="progress-text">${item.groupCompleted} / ${item.groupTotal}</span>
+	            		<div class="progress-container">
+			            	<div class="progress-bar" style="width: ${item.groupProgress}%">
+			            		<span class="percentage-text">${item.groupProgress}%</span>
+			            	</div>
+			            </div>
+	            	</div>
+	            </td>
+	            <td>
+	            	<div class="progress-info">
+	            		<span class="progress-text">${item.eventCompleted} / ${item.eventTotal}</span>
+	            		<div class="progress-container">
+			            	<div class="progress-bar" style="width: ${item.eventProgress}%">
+			            		<span class="percentage-text">${item.eventProgress}%</span>
+			            	</div>
+			            </div>
+	            	</div>
+	            </td>
+	            <td>
+	            	<c:choose>
+	            		<c:when test="${item.overallProgress >= 100}">
+	            			<span class="badge bg-success">Completed</span>
+	            		</c:when>
+	            		<c:when test="${item.overallProgress >= 70}">
+	            			<span class="badge bg-info">In Progress</span>
+	            		</c:when>
+	            		<c:when test="${item.overallProgress >= 30}">
+	            			<span class="badge bg-warning">Getting Started</span>
+	            		</c:when>
+	            		<c:otherwise>
+	            			<span class="badge bg-secondary">Not Started</span>
+	            		</c:otherwise>
+	            	</c:choose>
+	            </td>
+	          </tr>
+	        </c:forEach>
+	        <c:if test="${empty userProgressList}">
+	        	<tr>
+	        		<td colspan="9" class="text-center">No users found.</td>
+	        	</tr>
+	        </c:if>
+	      </tbody>
+	    </table>
 	    
 	    <!-- Summary Statistics -->
 	    <div class="summary-section">
@@ -182,7 +186,11 @@
 	</div>
 </div>
 
-<script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
+<script>
+window.contextPath = '${pageContext.request.contextPath}';
+</script>
+<script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
+<script src="<c:url value='/js/admin/progress.js'/>"></script>
 </body>
 </html>

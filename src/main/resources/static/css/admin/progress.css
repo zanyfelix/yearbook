@@ -1,140 +1,134 @@
-/* Admin Progress CSS */
-body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f5f5f5;
+@charset "UTF-8";
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
 }
 
-/* Sidebar */
 .sidebar {
-    width: 250px;
-    background-color: #2c3e50;
-    position: fixed;
-    height: 100vh;
-    padding: 20px 0;
-    overflow-y: auto;
+	width: 300px;
+	background-color: #333;
+	color: white;
+	position: fixed;
+	height: 100%;
+	padding-top: 20px;
 }
 
 .sidebar h5 {
-    color: white;
-    text-align: center;
-    padding: 10px 20px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #34495e;
-}
-
-.sidebar .userList {
-    padding: 0 15px;
-    margin-bottom: 20px;
-}
-
-.sidebar .userList .form-select {
-    background-color: #34495e;
-    color: white;
-    border: none;
-    font-size: 14px;
-}
-
-.sidebar .userList .form-select:focus {
-    background-color: #4a5f7f;
-    color: white;
+	text-align: center;
+	margin-bottom: 30px;
+	font-size: 1.1rem;
 }
 
 .sidebar a {
-    display: block;
-    color: #ecf0f1;
-    padding: 15px 25px;
-    text-decoration: none;
-    transition: all 0.3s;
-    font-size: 15px;
+	display: block;
+	padding: 12px 20px;
+	color: white;
+	text-decoration: none;
+	background: #555;
+	margin-bottom: 1px;
 }
 
 .sidebar a:hover {
-    background-color: #34495e;
-    padding-left: 30px;
+    background-color: #777;
 }
 
 .sidebar a.active {
-    background-color: #3498db;
-    border-left: 4px solid #2980b9;
+    background-color: #1f973a;
+	font-weight: bold;
 }
 
-/* Content Area */
+.sidebar .userList {
+	position: relative;
+	margin-bottom : 25px;
+	width: 90% !important;
+	left: 50%; 
+	transform: translateX(-50%);
+}
+
 .content {
-    margin-left: 250px;
-    padding: 30px;
+  margin-left: 300px;
+  padding: 20px 30px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
 }
 
+button.btn-secondary {
+  background-color: #5a6268 !important;
+}
+
+button.btn-primary {
+  background-color: #c82333 !important;
+}
+
+/* 검색 바 */
+.container-fluid > form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+.container-fluid form select,
+.container-fluid form input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.95rem;
+}
+.container-fluid form button {
+  padding: 8px 16px;
+  border: none;
+  background-color: #007bff;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.container-fluid form button:hover {
+  background-color: #0056b3;
+}
+
+/* 페이지 제목 */
 .page-title {
-    color: #2c3e50;
-    margin-bottom: 25px;
-    font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
 }
 
-/* Search Form */
-.search-form {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 25px;
-    align-items: center;
+/* Progress 테이블 */
+.container-fluid table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
-
-.search-type {
-    width: 180px;
+.container-fluid th,
+.container-fluid td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #dee2e6;
+  text-align: left;
+  font-size: 0.95rem;
 }
-
-.search-input {
-    flex: 1;
-    max-width: 400px;
+.container-fluid thead {
+  background-color: #f8f9fa;
 }
-
-.search-btn {
-    padding: 8px 25px;
+.container-fluid tbody tr:hover {
+  background-color: #f1f3f5;
 }
-
-/* Progress Table */
-.table-responsive {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    overflow-x: auto;
-    margin-bottom: 30px;
+.container-fluid td a {
+  color: #007bff;
+  text-decoration: none;
 }
-
-.progress-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1200px;
-}
-
-.progress-table thead {
-    background-color: #34495e;
-    color: white;
-}
-
-.progress-table th {
-    padding: 15px 12px;
-    text-align: left;
-    font-weight: 600;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.progress-table tbody tr {
-    border-bottom: 1px solid #ecf0f1;
-    transition: background-color 0.2s;
-}
-
-.progress-table tbody tr:hover {
-    background-color: #f8f9fa;
-}
-
-.progress-table td {
-    padding: 15px 12px;
-    font-size: 14px;
-    color: #2c3e50;
-    vertical-align: middle;
+.container-fluid td a:hover {
+  text-decoration: underline;
 }
 
 /* Progress Info */
@@ -147,7 +141,7 @@ body {
 
 .progress-text {
     font-size: 12px;
-    color: #7f8c8d;
+    color: #6c757d;
     font-weight: 500;
 }
 
@@ -162,7 +156,7 @@ body {
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
     border-radius: 12px;
     transition: width 0.3s ease;
     display: flex;
@@ -180,12 +174,12 @@ body {
 
 /* D-Day Colors */
 .text-danger {
-    color: #e74c3c !important;
+    color: #dc3545 !important;
     font-weight: 600;
 }
 
 .text-warning {
-    color: #f39c12 !important;
+    color: #ffc107 !important;
     font-weight: 600;
 }
 
@@ -196,22 +190,27 @@ body {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    display: inline-block;
 }
 
 .badge.bg-success {
-    background-color: #27ae60 !important;
+    background-color: #28a745 !important;
+    color: white;
 }
 
 .badge.bg-info {
-    background-color: #3498db !important;
+    background-color: #17a2b8 !important;
+    color: white;
 }
 
 .badge.bg-warning {
-    background-color: #f39c12 !important;
+    background-color: #ffc107 !important;
+    color: #212529;
 }
 
 .badge.bg-secondary {
-    background-color: #95a5a6 !important;
+    background-color: #6c757d !important;
+    color: white;
 }
 
 /* Summary Section */
@@ -219,13 +218,15 @@ body {
     background: white;
     padding: 25px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    margin-top: 20px;
 }
 
 .summary-section h5 {
-    color: #2c3e50;
+    color: #333;
     margin-bottom: 20px;
     font-weight: 600;
+    font-size: 1.2rem;
 }
 
 .stats-grid {
@@ -240,18 +241,19 @@ body {
     border-radius: 8px;
     color: white;
     text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .stat-card:nth-child(2) {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
 }
 
 .stat-card:nth-child(3) {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: linear-gradient(135deg, #007bff 0%, #17a2b8 100%);
 }
 
 .stat-card:nth-child(4) {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
 }
 
 .stat-label {
@@ -269,46 +271,49 @@ body {
 /* No Data */
 .text-center {
     text-align: center;
-    color: #95a5a6;
+    color: #6c757d;
     padding: 40px 20px;
 }
 
-/* Responsive */
+/* 반응형 */
 @media (max-width: 768px) {
-    .sidebar {
-        width: 200px;
-    }
-    
-    .content {
-        margin-left: 200px;
-        padding: 20px;
-    }
-    
-    .search-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .search-type,
-    .search-input {
-        width: 100%;
-        max-width: 100%;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
+  .sidebar {
+    display: none;
+  }
+  .content {
+    margin-left: 0;
+    padding: 20px;
+  }
+  .container-fluid > form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-@media (max-width: 576px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-    }
-    
-    .content {
-        margin-left: 0;
-        padding: 15px;
-    }
+/* Progress 테이블 레이아웃 */
+.progress-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
 }
+
+.progress-table th, .progress-table td {
+  padding: 12px 15px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 각 열의 너비 조정 */
+.progress-table th:nth-child(1) { width: 5%; }   /* No */
+.progress-table th:nth-child(2) { width: 10%; }  /* USER_ID */
+.progress-table th:nth-child(3) { width: 12%; }  /* SCHOOL_NAME */
+.progress-table th:nth-child(4) { width: 10%; }  /* DEADLINE */
+.progress-table th:nth-child(5) { width: 8%; }   /* D-DAY */
+.progress-table th:nth-child(6) { width: 15%; }  /* Overall Progress */
+.progress-table th:nth-child(7) { width: 15%; }  /* Group Photo */
+.progress-table th:nth-child(8) { width: 15%; }  /* Event Photo */
+.progress-table th:nth-child(9) { width: 10%; }  /* Status */
