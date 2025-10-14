@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -223,5 +227,30 @@ public class AdminHomeController {
 	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
 		homeService.updateActive(dto.getId(), dto.isActive());
 		return ResponseEntity.ok().build();
+	}
+
+	@PostMapping("/admin/home/copyToAllUsers")
+	@ResponseBody
+	public Map<String, Object> copyHomeToAllUsers(@RequestParam("sourceUserId") Long userId) {
+		Map<String, Object> result = new HashMap<>();
+
+		try {
+			List<User> allUsers = userRepository.findAll();
+			homeService.copyHomeToAllUsers(userId, allUsers);
+
+			// affectedUsers 계산
+			long affectedUsers = allUsers.stream()
+					.filter(user -> !user.getId().equals(userId) && "user".equals(user.getRole())).count();
+
+			result.put("success", true);
+			result.put("affectedUsers", affectedUsers);
+			result.put("message", "Successfully copied to " + affectedUsers + " users");
+
+		} catch (Exception e) {
+			result.put("success", false);
+			result.put("message", e.getMessage());
+		}
+
+		return result;
 	}
 }

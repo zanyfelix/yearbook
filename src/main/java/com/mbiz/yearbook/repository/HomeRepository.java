@@ -13,4 +13,6 @@ public interface HomeRepository extends JpaRepository<Home, Long> {
 	
 	List<Home> findByUserId(Long userId);
 	List<Home> findByType(String type);
+	
+	void deleteByUserId(Long userId);
 }

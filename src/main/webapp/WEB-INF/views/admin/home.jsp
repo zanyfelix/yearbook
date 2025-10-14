@@ -141,10 +141,13 @@
 		    <button id="btn-modify" type="button">MODIFY</button>
 		    <button id="btn-delete" type="button">DELETE</button>
 		    <button id="btn-apply-status" type="button">APPLY</button>
+		    <button id="btn-copy-to-all" type="button" class="btn-copy-all" onclick="showCopyToAllModal()">
+		        COPY TO ALL USERS
+		    </button>
 	    </div>
 	    
 	    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-		  <div class="modal-dialog">
+		  <div class="modal-dialog modal-dialog-centered">
 		    <div class="modal-content">
 		      <form id="registerForm"
 			      action="${pageContext.request.contextPath}/admin/home/register"
@@ -174,10 +177,43 @@
 		    </div>
 		  </div>
 		</div>
+		
+		<!-- ✨ 복사 확인 모달 추가 -->
+		<div class="modal fade" id="copyToAllModal" tabindex="-1" aria-hidden="true">
+		  <div class="modal-dialog modal-dialog-centered">
+		    <div class="modal-content">
+		      <div class="modal-header bg-warning">
+		        <h5 class="modal-title">⚠️ Copy to All Users</h5>
+		        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+		      </div>
+		      <div class="modal-body">
+		        <div class="alert alert-warning mb-3">
+		          <strong>Warning:</strong> This action will overwrite Home settings for ALL users!
+		        </div>
+		        <p><strong>Current User:</strong> <span id="currentUserName" class="text-primary"></span></p>
+		        <p>The following data will be copied to all users:</p>
+		        <ul>
+		          <li>All content titles and descriptions</li>
+		          <li>Apply status (Active/Inactive)</li>
+		        </ul>
+		        <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+		      </div>
+		      <div class="modal-footer">
+		        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+		        <button type="button" class="btn btn-danger" onclick="executeCopyToAll()">
+		          <i class="bi bi-check-circle"></i> Confirm & Copy
+		        </button>
+		      </div>
+		    </div>
+		  </div>
+		</div>
+		
 	</div>
 </div>
 <script>
 const ctx  = '${pageContext.request.contextPath}';
+const currentUserId = '${userId}';
+const currentUserName = '${userId}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
