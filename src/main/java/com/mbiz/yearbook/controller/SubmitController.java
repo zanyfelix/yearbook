@@ -136,11 +136,20 @@ public class SubmitController {
 		
 		List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
 		
+		List<Submit> contentItems = submitRepository.findByUserIdAndType(loginUser.getId(), "content");
+		// isActive가 true인 항목만 필터링 (선택사항)
+		List<Submit> activeContentItems = new ArrayList<>();
+		for (Submit item : contentItems) {
+			if (item.getIsActive() != null && item.getIsActive()) {
+				activeContentItems.add(item);
+			}
+		}
 
 		// 모델에 개별 섹션 추가
 		model.addAttribute("overviewSection", overviewSection);
 		model.addAttribute("noteSection", noteSection);
 		model.addAttribute("submissionItems", submissionItems);
+		model.addAttribute("contentItems", activeContentItems);
 
 		model.addAttribute("currentMenu", "submit");
 

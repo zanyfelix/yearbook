@@ -5,54 +5,54 @@ var currentImageIndex = 0;
 var imageList = [];
 
 document.querySelectorAll('.auto-resize').forEach(textarea => {
-    function adjustHeight() {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    }
-    
-    // 초기 설정
-    adjustHeight();
-    
-    // 값이 변경될 때 (프로그래밍적으로 변경될 경우)
-    const observer = new MutationObserver(adjustHeight);
-    observer.observe(textarea, { 
-        attributes: true, 
-        attributeFilter: ['value'] 
-    });
+	function adjustHeight() {
+		textarea.style.height = 'auto';
+		textarea.style.height = textarea.scrollHeight + 'px';
+	}
+
+	// 초기 설정
+	adjustHeight();
+
+	// 값이 변경될 때 (프로그래밍적으로 변경될 경우)
+	const observer = new MutationObserver(adjustHeight);
+	observer.observe(textarea, {
+		attributes: true,
+		attributeFilter: ['value']
+	});
 });
 
 // 썸네일 로딩을 위한 AJAX 함수 (전역 함수로 변경)
 function loadPreviewData(contentsId) {
-    $.ajax({
-        // url: `${ctx}/submit/previewData`, // JSP에서 ctx 변수를 선언했으므로 그대로 사용
-        url: ctx + '/submit/previewData', // ES6 템플릿 리터럴을 지원하지 않는 환경을 고려하여 수정
-        type: 'POST', // GET이 아닌 POST로 수정 (서버 컨트롤러와 일치 필요)
-        contentType: 'application/json',
-        data: JSON.stringify({ contentsId: contentsId }),
-        success: function(response) {
-			
+	$.ajax({
+		// url: `${ctx}/submit/previewData`, // JSP에서 ctx 변수를 선언했으므로 그대로 사용
+		url: ctx + '/submit/previewData', // ES6 템플릿 리터럴을 지원하지 않는 환경을 고려하여 수정
+		type: 'POST', // GET이 아닌 POST로 수정 (서버 컨트롤러와 일치 필요)
+		contentType: 'application/json',
+		data: JSON.stringify({ contentsId: contentsId }),
+		success: function(response) {
+
 			if (!response || response.length === 0) {
 				alert('There is no data saved.');
 				return; // 데이터가 없으면 함수 종료
 			}
-            // 서버로부터 받은 썸네일 이미지 리스트
+			// 서버로부터 받은 썸네일 이미지 리스트
 			imageList = response.map(function(item) {
 				return {
 					url: item.thumbnailPath // thumbnailPath 값을 url 속성에 할당
 				};
 			});
-            currentImageIndex = 0;  // 초기화
+			currentImageIndex = 0;  // 초기화
 
-            // 첫 번째 이미지로 갱신
-            updatePreviewModal();
-			
+			// 첫 번째 이미지로 갱신
+			updatePreviewModal();
+
 			var previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
 			previewModal.show();
-        },
-        error: function() {
-            alert('썸네일을 로드하는 데 실패했습니다.');
-        }
-    });
+		},
+		error: function() {
+			alert('썸네일을 로드하는 데 실패했습니다.');
+		}
+	});
 }
 
 // 모달에 이미지 표시 (전역 함수로 변경)
@@ -93,7 +93,7 @@ function showPreviousImage() {
 
 // DOM이 로드된 후 실행되어야 하는 코드가 있다면 이 안에 유지합니다.
 $(function() {
-	
+
 	$('input[name="pageConfirmCheck"]').on('click', function() {
 		const $checkbox = $(this);
 		// 체크박스가 속한 행(tr)을 찾음
@@ -108,7 +108,7 @@ $(function() {
 			$checkbox.prop('checked', false);
 		}
 	});
-	
+
 	$('#btn-page-submit').on('click', function() {
 
 		// 1. 'Page Confirm' 테이블의 모든 체크박스 확인
@@ -124,10 +124,7 @@ $(function() {
 		// 2. 'Page Submission' 섹션의 모든 체크박스 확인
 		const $submissionChecks = $('.submission-check');
 		const totalSubmissionChecks = $submissionChecks.length;
-
-		// ▼▼▼ 이 부분이 수정되었습니다 ▼▼▼
 		const checkedSubmissionCount = $submissionChecks.filter(':checked').length;
-		// ▲▲▲ 수정 완료 ▲▲▲
 
 		if (checkedSubmissionCount < totalSubmissionChecks) {
 			alert("Please acknowledge all terms before submitting. (Page Submission)");

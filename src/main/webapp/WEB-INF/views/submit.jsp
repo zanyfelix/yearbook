@@ -117,6 +117,19 @@
 		</c:if>
     </div>
     
+     <c:forEach var="contentItem" items="${contentItems}" varStatus="status">
+	    <div class="section-box">
+	    	<div class="section-header">
+	    		<h5>${contentItem.title}</h5>
+	    	</div>
+		    <div class="section-content">
+		    	<c:if test="${not empty contentItem.description}">
+					<textarea class="form-control auto-resize" rows="2" readonly>${contentItem.description}</textarea>
+				</c:if>
+		    </div>
+	    </div>
+    </c:forEach>
+    
     <!-- 프레임 선택용 모달 -->
 	<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
 	    <div class="modal-dialog modal-dialog-centered"> 
