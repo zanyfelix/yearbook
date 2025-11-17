@@ -116,10 +116,10 @@
 	            		<c:when test="${item.overallProgress >= 100}">
 	            			<span class="badge bg-success">Completed</span>
 	            		</c:when>
-	            		<c:when test="${item.overallProgress >= 70}">
+	            		<c:when test="${item.overallProgress >= 50}">
 	            			<span class="badge bg-info">In Progress</span>
 	            		</c:when>
-	            		<c:when test="${item.overallProgress >= 30}">
+	            		<c:when test="${item.overallProgress >= 1}">
 	            			<span class="badge bg-warning">Getting Started</span>
 	            		</c:when>
 	            		<c:otherwise>
