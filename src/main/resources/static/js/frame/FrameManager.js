@@ -387,6 +387,7 @@ class FrameManager {
 	        // CSS 적용
 	        uploadedPhoto.css({
 	            display: 'block',
+				visibility: 'visible',
 	            position: 'absolute',
 	            left: '0px',
 	            top: '0px',
