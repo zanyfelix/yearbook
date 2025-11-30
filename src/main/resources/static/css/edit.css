@@ -178,18 +178,16 @@ html, body {
     /* ✨ 핵심 수정: 컨테이너가 유연하게 크기 조절되도록 변경 */
     max-width: 100%;           /* 부모 컨테이너를 넘지 않도록 */
     width: 100%;               /* 가용 공간을 최대한 활용 */
-    height: auto;              /* 높이는 비율에 따라 자동 계산 */
+    height: 100%;             /* 높이는 비율에 따라 자동 계산 */
     min-height: 400px;         /* 최소 높이 보장 */
     margin: auto;              /* 컨테이너 내에서 자동 중앙 정렬 */
-
-    /* 기존 스타일 유지 */
     position: relative;
     background-color: #ffffff;
-    
-    /* 내부 요소들이 컨테이너에 맞게 조절되도록 */
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 1;
+    overflow: hidden;        
 }
 
 .page-preview-container {
@@ -198,22 +196,17 @@ html, body {
     height: 100%;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     overflow: hidden;
 }
 
 #page-preview-img {
-    /* ✨ 핵심 수정: 배경 이미지가 비율을 유지하면서 컨테이너에 맞게 조절 */
     max-width: 100%;
     max-height: 100%;
-    width: auto;               /* 가로는 자동 조절 */
-    height: auto;              /* 세로는 자동 조절 */
-    object-fit: contain;       /* 비율 유지하면서 컨테이너 안에 맞춤 */
-
-    /* 기존 스타일 유지 */
+    width: auto;
+    height: auto;
+    object-fit: contain;
     display: block;
-    
-    /* 부드러운 전환 효과 */
     transition: all 0.3s ease;
 }
 
@@ -263,9 +256,9 @@ html, body {
 }
 
 #editModal #page-preview {
-    /* 모달 내에서는 더 유연하게 크기 조절 */
-    max-height: calc(100vh - 60px);  /* 화면 높이에서 여백 제외 */
-    height: auto;
+    height: calc(100vh - 60px);  /* ✅ 명시적 높이 */
+    max-height: calc(100vh - 60px);
+    flex: 1;
 }
 
 /* 고해상도 디스플레이 대응 */
@@ -851,11 +844,6 @@ html, body {
 .control-btn:active::before {
     width: 100px;
     height: 100px;
-}
-
-/* 툴팁이 프리뷰 영역 내에서만 표시되도록 */
-#page-preview {
-    position: relative;
 }
 
 /* 반응형 디자인 */
