@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
 import com.mbiz.yearbook.model.Submit;
@@ -44,6 +46,8 @@ public class SubmitController {
 
 	@Autowired
 	private SubmitRepository submitRepository;
+	
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@GetMapping("/submit")
 	public String submit(HttpSession session, @RequestParam Long id, Model model) {
@@ -74,16 +78,14 @@ public class SubmitController {
 
 		for (Contents content : allGroupContents) {
 			groupTotal += content.getPages();
-			List<YearbookSummary> existingPages = yearbookRepository
-					.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
-			groupCompleted += existingPages.size();
+			List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+			groupCompleted += countCompletedPages(existingPages);
 		}
 
 		for (Contents content : allEventContents) {
 			eventTotal += content.getPages();
-			List<YearbookSummary> existingPages = yearbookRepository
-					.findSummariesByContentsIdOrderByPageNoAsc(content.getId());
-			eventCompleted += existingPages.size();
+			List<Yearbook> existingPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+			eventCompleted += countCompletedPages(existingPages);
 		}
 
 		int groupProgress = (groupTotal != 0) ? (groupCompleted * 100) / groupTotal : 0;
@@ -105,7 +107,7 @@ public class SubmitController {
 				final int currentPageNo = i;
 
 				YearbookSummary pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo)
-						.findFirst().orElse(null); // 없으면 null
+						.findFirst().orElse(null);
 
 				if (pageToAdd != null) {
 					fullPageList.add(pageToAdd);
@@ -119,15 +121,16 @@ public class SubmitController {
 
 			ContentsData data = new ContentsData();
 			data.setContentsInfo(content);
-			data.setYearbookPages(fullPageList); // 완성된 리스트를 DTO에 담습니다.
+			data.setYearbookPages(fullPageList);
 
-			data.setSavedPagesCount(existingPages.size());
+			// 완료된 페이지 수 계산 (photoframe에 photo가 있는 페이지만)
+			List<Yearbook> yearbookPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+			data.setSavedPagesCount(countCompletedPages(yearbookPages));
 
 			contentsListForView.add(data);
 		}
 		model.addAttribute("contentsList", contentsListForView);
 
-		// 개별 섹션들을 명확하게 조회
 		Submit overviewSection = submitRepository.findFirstByTypeAndUserIdIsNull("Overview")
 				.orElse(createDefaultSubmit("Overview", "Submit to MBIZ - Overview", 0));
 		
@@ -137,7 +140,6 @@ public class SubmitController {
 		List<Submit> submissionItems = submitRepository.findByTypeAndUserIdIsNullOrderByDisplayOrder("Submission");
 		
 		List<Submit> contentItems = submitRepository.findByUserIdAndType(loginUser.getId(), "content");
-		// isActive가 true인 항목만 필터링 (선택사항)
 		List<Submit> activeContentItems = new ArrayList<>();
 		for (Submit item : contentItems) {
 			if (item.getIsActive() != null && item.getIsActive()) {
@@ -145,7 +147,6 @@ public class SubmitController {
 			}
 		}
 
-		// 모델에 개별 섹션 추가
 		model.addAttribute("overviewSection", overviewSection);
 		model.addAttribute("noteSection", noteSection);
 		model.addAttribute("submissionItems", submissionItems);
@@ -173,9 +174,6 @@ public class SubmitController {
 		return yearbookRepository.findSummariesByContentsIdOrderByPageNoAsc(contentsId);
 	}
 
-	/**
-	 * 최종 제출을 처리하고 사용자의 submitted 상태를 업데이트합니다.
-	 */
 	@PostMapping("/submit/finalize")
 	@ResponseBody
 	public Map<String, Object> finalizeSubmission(HttpSession session) {
@@ -189,26 +187,98 @@ public class SubmitController {
 		}
 
 		try {
-			// 현재 로그인한 사용자의 정보를 DB에서 다시 조회 (최신 정보 확인)
 			User userToUpdate = userRepository.findById(loginUser.getId())
 					.orElseThrow(() -> new RuntimeException("User not found"));
 
-			// submitted 상태를 true(1)로 변경
 			userToUpdate.setSubmitted(true);
 
-			// 변경된 사용자 정보를 DB에 저장
 			userRepository.save(userToUpdate);
 
-			// 세션 정보도 갱신
 			session.setAttribute("loginUser", userToUpdate);
 
 			response.put("success", true);
 		} catch (Exception e) {
 			response.put("success", false);
 			response.put("message", "An error occurred during submission.");
-			e.printStackTrace(); // 서버 로그에 에러 기록
+			e.printStackTrace();
 		}
 
 		return response;
+	}
+	
+	/**
+	 * 완료된 페이지 수를 카운트합니다.
+	 * 페이지가 완료되려면 모든 photoframe에 photo가 있어야 합니다.
+	 */
+	private int countCompletedPages(List<Yearbook> pages) {
+		int completedCount = 0;
+		
+		for (Yearbook page : pages) {
+			if (isPageCompleted(page)) {
+				completedCount++;
+			}
+		}
+		
+		return completedCount;
+	}
+	
+	/**
+	 * 페이지의 완료 여부를 확인합니다.
+	 * designData의 frames 배열에서 category가 "photoframe"인 frame에 photo가 존재해야 완료로 처리됩니다.
+	 * element 등 다른 category는 photo 체크를 하지 않습니다.
+	 */
+	private boolean isPageCompleted(Yearbook page) {
+		String designData = page.getDesignData();
+		
+		if (designData == null || designData.isEmpty()) {
+			return false;
+		}
+		
+		try {
+			JsonNode rootNode = objectMapper.readTree(designData);
+			JsonNode framesNode = rootNode.get("frames");
+			
+			if (framesNode == null || !framesNode.isArray()) {
+				return false;
+			}
+			
+			boolean hasPhotoFrame = false;
+			
+			for (JsonNode frame : framesNode) {
+				JsonNode themeNode = frame.get("theme");
+				if (themeNode == null) {
+					continue;
+				}
+				
+				JsonNode categoryNode = themeNode.get("category");
+				if (categoryNode == null) {
+					continue;
+				}
+				
+				if ("photoframe".equals(categoryNode.asText())) {
+					hasPhotoFrame = true;
+					
+					JsonNode photoNode = frame.get("photo");
+					
+					if (photoNode == null || photoNode.isNull()) {
+						return false;
+					}
+					
+					JsonNode srcNode = photoNode.get("src");
+					if (srcNode == null || srcNode.isNull() || srcNode.asText().isEmpty()) {
+						return false;
+					}
+				}
+			}
+			
+			if (!hasPhotoFrame) {
+				return false;
+			}
+			
+			return true;
+			
+		} catch (Exception e) {
+			return false;
+		}
 	}
 }

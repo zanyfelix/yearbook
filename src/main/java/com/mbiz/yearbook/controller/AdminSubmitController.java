@@ -20,12 +20,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.ContentsData;
 import com.mbiz.yearbook.model.Submit;
 import com.mbiz.yearbook.model.SubmitForm;
 import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.model.Yearbook;
 import com.mbiz.yearbook.model.YearbookSummary;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.SubmitRepository;
@@ -59,6 +62,8 @@ public class AdminSubmitController {
 
 	@Autowired
 	private YearbookRepository yearbookRepository;
+	
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@GetMapping("/submit")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id,
@@ -109,7 +114,7 @@ public class AdminSubmitController {
 					final int currentPageNo = i;
 
 					YearbookSummary pageToAdd = existingPages.stream().filter(p -> p.getPageNo() == currentPageNo)
-							.findFirst().orElse(null); // 없으면 null
+							.findFirst().orElse(null);
 
 					if (pageToAdd != null) {
 						fullPageList.add(pageToAdd);
@@ -123,9 +128,11 @@ public class AdminSubmitController {
 
 				ContentsData data = new ContentsData();
 				data.setContentsInfo(content);
-				data.setYearbookPages(fullPageList); // 완성된 리스트를 DTO에 담습니다.
+				data.setYearbookPages(fullPageList);
 
-				data.setSavedPagesCount(existingPages.size());
+				// 완료된 페이지 수 계산 (photoframe에 photo가 있는 페이지만)
+				List<Yearbook> yearbookPages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
+				data.setSavedPagesCount(countCompletedPages(yearbookPages));
 
 				contentsListForView.add(data);
 			}
@@ -180,6 +187,82 @@ public class AdminSubmitController {
 		submit.setIsActive(true);
 		submit.setUserId(null);
 		return submit;
+	}
+	
+	/**
+	 * 완료된 페이지 수를 카운트합니다.
+	 * 페이지가 완료되려면 모든 photoframe에 photo가 있어야 합니다.
+	 */
+	private int countCompletedPages(List<Yearbook> pages) {
+		int completedCount = 0;
+		
+		for (Yearbook page : pages) {
+			if (isPageCompleted(page)) {
+				completedCount++;
+			}
+		}
+		
+		return completedCount;
+	}
+	
+	/**
+	 * 페이지의 완료 여부를 확인합니다.
+	 * designData의 frames 배열에서 category가 "photoframe"인 frame에 photo가 존재해야 완료로 처리됩니다.
+	 * element 등 다른 category는 photo 체크를 하지 않습니다.
+	 */
+	private boolean isPageCompleted(Yearbook page) {
+		String designData = page.getDesignData();
+		
+		if (designData == null || designData.isEmpty()) {
+			return false;
+		}
+		
+		try {
+			JsonNode rootNode = objectMapper.readTree(designData);
+			JsonNode framesNode = rootNode.get("frames");
+			
+			if (framesNode == null || !framesNode.isArray()) {
+				return false;
+			}
+			
+			boolean hasPhotoFrame = false;
+			
+			for (JsonNode frame : framesNode) {
+				JsonNode themeNode = frame.get("theme");
+				if (themeNode == null) {
+					continue;
+				}
+				
+				JsonNode categoryNode = themeNode.get("category");
+				if (categoryNode == null) {
+					continue;
+				}
+				
+				if ("photoframe".equals(categoryNode.asText())) {
+					hasPhotoFrame = true;
+					
+					JsonNode photoNode = frame.get("photo");
+					
+					if (photoNode == null || photoNode.isNull()) {
+						return false;
+					}
+					
+					JsonNode srcNode = photoNode.get("src");
+					if (srcNode == null || srcNode.isNull() || srcNode.asText().isEmpty()) {
+						return false;
+					}
+				}
+			}
+			
+			if (!hasPhotoFrame) {
+				return false;
+			}
+			
+			return true;
+			
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	@PostMapping("/submit/save")
