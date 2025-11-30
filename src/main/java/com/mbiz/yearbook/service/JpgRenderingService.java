@@ -764,24 +764,38 @@ public class JpgRenderingService {
 			// 새로운 구조 사용
 			rotation = photoNode.path("rotation").asDouble(0);
 
-			double translateXPercent = photoNode.path("translateX").asDouble(0);
-			double translateYPercent = photoNode.path("translateY").asDouble(0);
-			double translateXPixel = (translateXPercent / 100.0) * RENDER_WIDTH;
-			double translateYPixel = (translateYPercent / 100.0) * RENDER_HEIGHT;
-
-			photoX = translateXPixel;
-			photoY = translateYPixel;
-
-			// 크기 정보 - 수정된 부분
-			JsonNode size = photoNode.path("size");
-			double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH); // ← 추가
-			double scaleRatio = RENDER_WIDTH / screenWidth; // ← 추가
-
-			photoWidth = size.path("widthPx").asDouble() * scaleRatio; // ← 수정
-			photoHeight = size.path("heightPx").asDouble() * scaleRatio; // ← 수정
-
-			logger.info("새 구조 사진: screenWidth={}, scaleRatio={}, 크기({}, {})", screenWidth, scaleRatio, photoWidth,
-					photoHeight);
+			// ✅ 수정: sizePercent가 있으면 프레임 기준 백분율 사용
+	        JsonNode sizePercent = photoNode.path("sizePercent");
+	        if (!sizePercent.isMissingNode()) {
+	            // 프레임 기준 백분율로 크기 계산
+	            photoWidth = frameWidth * (sizePercent.path("width").asDouble(100) / 100.0);
+	            photoHeight = frameHeight * (sizePercent.path("height").asDouble(100) / 100.0);
+	            
+	            // translate도 프레임 기준
+	            double translateXPercent = photoNode.path("translateX").asDouble(0);
+	            double translateYPercent = photoNode.path("translateY").asDouble(0);
+	            photoX = frameWidth * (translateXPercent / 100.0);
+	            photoY = frameHeight * (translateYPercent / 100.0);
+	            
+	            logger.info("sizePercent 사용: 프레임 기준 - 크기({}, {}), 위치({}, {})", 
+	                        photoWidth, photoHeight, photoX, photoY);
+	        } else {
+	            // 기존 방식: screenWidth 기반 픽셀 계산
+	            JsonNode size = photoNode.path("size");
+	            double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH);
+	            double scaleRatio = (double) frameWidth / screenWidth;  // ✅ 수정: 프레임 기준 스케일
+	            
+	            photoWidth = size.path("widthPx").asDouble() * scaleRatio;
+	            photoHeight = size.path("heightPx").asDouble() * scaleRatio;
+	            
+	            // translate도 프레임 기준 스케일 적용
+	            double translateXPercent = photoNode.path("translateX").asDouble(0);
+	            double translateYPercent = photoNode.path("translateY").asDouble(0);
+	            photoX = frameWidth * (translateXPercent / 100.0);
+	            photoY = frameHeight * (translateYPercent / 100.0);
+	            
+	            logger.info("screenWidth 사용: 스케일={}, 크기({}, {})", scaleRatio, photoWidth, photoHeight);
+	        }
 
 		} else {
 			// 기존 구조 폴백
