@@ -543,19 +543,29 @@ class PhotoManager {
 
 		const currentState = photo.data('relativeState') || {};
 
-		// transform matrix에서 위치 추출 (픽셀 단위)
-		currentState.position = {
-			leftPx: matrix.tx,
-			topPx: matrix.ty
+		// ✨ 핵심 수정: 프레임 크기를 기준으로 상대 좌표 계산
+		const frameWidth = frameGroup.width();
+		const frameHeight = frameGroup.height();
+
+		// 사진의 실제 크기
+		const photoWidth = photo.outerWidth();
+		const photoHeight = photo.outerHeight();
+
+		// ✨ 프레임 기준 백분율로 저장 (핵심!)
+		// transform의 translate 값을 프레임 크기 기준 백분율로 저장
+		currentState.translateX = (matrix.tx / frameWidth) * 100;
+		currentState.translateY = (matrix.ty / frameHeight) * 100;
+
+		// 크기도 프레임 기준 백분율로 저장
+		currentState.sizePercent = {
+			width: (photoWidth / frameWidth) * 100,
+			height: (photoHeight / frameHeight) * 100
 		};
 
-		// 실제 크기 저장 (픽셀 단위)
-		currentState.size = {
-			widthPx: photo.outerWidth(),
-			heightPx: photo.outerHeight()
-		};
+		// 회전 정보 저장 (라디안)
+		currentState.rotation = Math.atan2(matrix.b, matrix.a);
 
-		// 회전만 저장 (translate 제외)
+		// transform (회전만, translate 제외)
 		const rotationMatrix = {
 			...matrix,
 			tx: 0,
@@ -564,42 +574,39 @@ class PhotoManager {
 		currentState.transform = TransformHelper.composeMatrix(rotationMatrix);
 		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
 
-		const bg = $('#page-preview-img');
-		const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
-
-		if (actualBgRect) {
-			photo.data('percentState', {
-				widthPercent: (photo.outerWidth() / actualBgRect.width) * 100,
-				heightPercent: (photo.outerHeight() / actualBgRect.height) * 100,
-				translateXPercent: (matrix.tx / actualBgRect.width) * 100,
-				translateYPercent: (matrix.ty / actualBgRect.height) * 100,
-				rotation: Math.atan2(matrix.b, matrix.a)
-			});
-		}
-
-		if (actualBgRect) {
-			currentState.rotation = Math.atan2(matrix.b, matrix.a);
-			currentState.translateX = (matrix.tx / actualBgRect.width) * 100;
-			currentState.translateY = (matrix.ty / actualBgRect.height) * 100;
-
-			// 크기도 백분율로 추가 저장
-			currentState.sizePercent = {
-				width: (photo.outerWidth() / actualBgRect.width) * 100,
-				height: (photo.outerHeight() / actualBgRect.height) * 100
-			};
-		}
+		// 기존 픽셀 값도 보존 (하위 호환성)
+		currentState.position = {
+			leftPx: matrix.tx,
+			topPx: matrix.ty
+		};
+		currentState.size = {
+			widthPx: photoWidth,
+			heightPx: photoHeight
+		};
 
 		if (typeof options.isManual === 'boolean') {
 			currentState.isManuallyAdjusted = options.isManual;
 		}
 
+		// ✨ 프레임 기준임을 표시하는 플래그 추가
+		currentState.isFrameRelative = true;
+
 		photo.data('relativeState', currentState);
 
-		console.log('Photo state saved:', {
-			position: currentState.position,
-			size: currentState.size,
+		photo.data('percentState', {
+			widthPercent: currentState.sizePercent.width,
+			heightPercent: currentState.sizePercent.height,
+			translateXPercent: currentState.translateX,
+			translateYPercent: currentState.translateY,
+			rotation: currentState.rotation
+		});
+
+		console.log('Photo state saved (frame-relative):', {
+			frameSize: { width: frameWidth, height: frameHeight },
+			photoSize: { width: photoWidth, height: photoHeight },
 			sizePercent: currentState.sizePercent,
-			rotation: currentState.transform
+			translatePercent: { x: currentState.translateX, y: currentState.translateY },
+			rotation: currentState.rotation
 		});
 	}
 

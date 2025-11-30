@@ -265,29 +265,323 @@ class FrameManager {
 	}
 
 	static restorePhoto(frameGroup, photoState) {
-		const uploadedPhoto = frameGroup.find('.uploaded-photo');
+	    const uploadedPhoto = frameGroup.find('.uploaded-photo');
+	    const placeholderLink = frameGroup.find('.place-image-here-link');
 
-		// 1. relativeState 데이터 저장 (핵심)
-		const photoRelativeState = {
-			position: photoState.position || { leftPx: 0, topPx: 0 },  // leftPx, topPx로 수정
-			size: photoState.size || { widthPx: 100, heightPx: 100 },  // widthPx, heightPx로 수정
-			transform: photoState.transform || 'none',
-			transformOrigin: photoState.transformOrigin || '50% 50%',
-			// 새로운 필드 추가 (중요!)
-			rotation: photoState.rotation,
-			translateX: photoState.translateX,
-			translateY: photoState.translateY
-		};
-		uploadedPhoto.data('relativeState', photoRelativeState);
+	    console.log('Restoring photo with state:', photoState);
 
-		// 2. 이미지 경로(src)와 파일 경로(filePath) 데이터 설정
-		let imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
-		if (photoState.src && !photoState.src.startsWith('data:')) {
-			uploadedPhoto.data('filePath', photoState.src);
-		}
+	    // 1. relativeState 데이터 저장
+	    const photoRelativeState = {
+	        position: photoState.position || { leftPx: 0, topPx: 0 },
+	        size: photoState.size || { widthPx: 100, heightPx: 100 },
+	        transform: photoState.transform || 'none',
+	        transformOrigin: photoState.transformOrigin || '50% 50%',
+	        rotation: photoState.rotation,
+	        translateX: photoState.translateX,
+	        translateY: photoState.translateY,
+	        sizePercent: photoState.sizePercent,
+	        isFrameRelative: photoState.isFrameRelative  // 플래그 보존
+	    };
+	    uploadedPhoto.data('relativeState', photoRelativeState);
 
-		// 3. 이미지 소스 설정
-		uploadedPhoto.attr('src', imageSrc);
+	    // 2. 이미지 경로 설정
+	    let imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
+	    if (photoState.src && !photoState.src.startsWith('data:')) {
+	        uploadedPhoto.data('filePath', photoState.src);
+	    }
+
+	    // 3. CSS 적용 함수
+	    const applyPhotoCSS = () => {
+	        // ✨ 핵심: 프레임 크기를 기준으로 계산
+	        const frameWidth = frameGroup.width();
+	        const frameHeight = frameGroup.height();
+
+			if (frameWidth <= 0 || frameHeight <= 0) {
+				console.log('Frame size invalid, retrying...', { frameWidth, frameHeight });
+				setTimeout(applyPhotoCSS, 100);
+				return;
+			}
+
+	        let pixelWidth, pixelHeight, translateX, translateY;
+
+	        // ✨ 프레임 기준 백분율 데이터가 있는 경우 (새 형식)
+	        if (photoState.sizePercent && (photoState.isFrameRelative || photoState.translateX !== undefined)) {
+	            // 프레임 기준 백분율 -> 픽셀
+	            pixelWidth = (photoState.sizePercent.width / 100) * frameWidth;
+	            pixelHeight = (photoState.sizePercent.height / 100) * frameHeight;
+	            translateX = (photoState.translateX / 100) * frameWidth;
+	            translateY = (photoState.translateY / 100) * frameHeight;
+	            
+	            console.log('Using frame-relative calculation:', {
+	                frameSize: { width: frameWidth, height: frameHeight },
+	                sizePercent: photoState.sizePercent,
+	                translatePercent: { x: photoState.translateX, y: photoState.translateY },
+	                calculatedSize: { width: pixelWidth, height: pixelHeight },
+	                calculatedTranslate: { x: translateX, y: translateY }
+	            });
+	        }
+	        // 기존 형식 (배경 이미지 기준 백분율) - 하위 호환성
+	        else if (photoState.sizePercent) {
+	            const bg = $('#page-preview-img');
+	            const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+	            
+	            if (actualBgRect) {
+	                // 배경 기준 -> 픽셀 -> 프레임 기준으로 변환
+	                const bgPixelWidth = (photoState.sizePercent.width / 100) * actualBgRect.width;
+	                const bgPixelHeight = (photoState.sizePercent.height / 100) * actualBgRect.height;
+	                
+	                // 프레임 크기에 맞게 재계산
+	                pixelWidth = bgPixelWidth;
+	                pixelHeight = bgPixelHeight;
+	                translateX = photoState.translateX ? (photoState.translateX / 100) * actualBgRect.width : 0;
+	                translateY = photoState.translateY ? (photoState.translateY / 100) * actualBgRect.height : 0;
+	            } else {
+	                // 기본값
+	                pixelWidth = frameWidth;
+	                pixelHeight = frameHeight;
+	                translateX = 0;
+	                translateY = 0;
+	            }
+	            
+	            console.log('Using legacy (background-relative) calculation');
+	        }
+	        // 데이터 없음 - 이미지 비율 유지하면서 프레임 커버
+	        else {
+	            const img = uploadedPhoto[0];
+	            if (img.naturalWidth && img.naturalHeight) {
+	                const imgRatio = img.naturalWidth / img.naturalHeight;
+	                const frameRatio = frameWidth / frameHeight;
+
+	                if (frameRatio > imgRatio) {
+	                    pixelWidth = frameWidth;
+	                    pixelHeight = frameWidth / imgRatio;
+	                } else {
+	                    pixelHeight = frameHeight;
+	                    pixelWidth = frameHeight * imgRatio;
+	                }
+	                // 중앙 정렬
+	                translateX = (frameWidth - pixelWidth) / 2;
+	                translateY = (frameHeight - pixelHeight) / 2;
+	            } else {
+	                pixelWidth = frameWidth;
+	                pixelHeight = frameHeight;
+	                translateX = 0;
+	                translateY = 0;
+	            }
+	            
+	            console.log('Using default (cover frame) calculation');
+	        }
+
+	        // transform 구성 (회전 + translate)
+	        const rotation = photoState.rotation || 0;
+	        let finalTransform;
+
+	        if (rotation !== 0) {
+	            const cos = Math.cos(rotation);
+	            const sin = Math.sin(rotation);
+	            finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+	        } else {
+	            finalTransform = `matrix(1, 0, 0, 1, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+	        }
+
+	        // CSS 적용
+	        uploadedPhoto.css({
+	            display: 'block',
+	            position: 'absolute',
+	            left: '0px',
+	            top: '0px',
+	            width: pixelWidth + 'px',
+	            height: pixelHeight + 'px',
+	            transform: finalTransform,
+	            transformOrigin: photoState.transformOrigin || '50% 50%'
+	        });
+
+	        // placeholder 숨기기
+	        placeholderLink.hide();
+
+	        console.log('Photo CSS applied:', {
+	            size: { width: pixelWidth, height: pixelHeight },
+	            translate: { x: translateX, y: translateY },
+	            rotation: rotation
+	        });
+	    };
+
+	    // 4. 이미지 로드 이벤트 처리
+	    uploadedPhoto.off('load.restore');
+	    uploadedPhoto.on('load.restore', function() {
+	        applyPhotoCSS();
+	        uploadedPhoto.off('load.restore');
+	    });
+
+	    // 5. 이미지 소스 설정
+	    uploadedPhoto.attr('src', imageSrc);
+
+	    // 6. 이미 로드된 이미지 처리 (캐시)
+	    const img = uploadedPhoto[0];
+	    if (img.complete && img.naturalWidth > 0) {
+	        applyPhotoCSS();
+	        uploadedPhoto.off('load.restore');
+	    }
+	}
+	
+	static normalizePhotoState(photoState) {
+	    // 새 형식 (프레임 기준 백분율)인 경우
+	    if (photoState.position?.translateXPercent !== undefined) {
+	        return {
+	            position: {
+	                translateXPercent: photoState.position.translateXPercent,
+	                translateYPercent: photoState.position.translateYPercent
+	            },
+	            size: {
+	                widthPercent: photoState.size.widthPercent,
+	                heightPercent: photoState.size.heightPercent
+	            },
+	            rotation: photoState.rotation || 0,
+	            transform: photoState.transform || 'none',
+	            transformOrigin: photoState.transformOrigin || '50% 50%',
+	            isManuallyAdjusted: photoState.isManuallyAdjusted || false
+	        };
+	    }
+	    
+	    // 기존 형식 (배경 이미지 기준 백분율 또는 픽셀)인 경우 변환
+	    // sizePercent와 translateX/translateY가 있으면 배경 기준 백분율
+	    if (photoState.sizePercent || photoState.translateX !== undefined) {
+	        console.log('Converting legacy photo state format to frame-relative format');
+	        
+	        // 배경 이미지 기준 -> 프레임 기준으로 대략 변환
+	        // 정확한 변환은 프레임과 배경의 상대 크기를 알아야 하지만,
+	        // 대부분의 경우 프레임이 배경보다 작으므로 비율을 조정
+	        return {
+	            position: {
+	                translateXPercent: photoState.translateX || 0,
+	                translateYPercent: photoState.translateY || 0
+	            },
+	            size: {
+	                // sizePercent가 있으면 사용, 없으면 기본값
+	                widthPercent: photoState.sizePercent?.width || 100,
+	                heightPercent: photoState.sizePercent?.height || 100
+	            },
+	            rotation: photoState.rotation || 0,
+	            transform: photoState.transform || 'none',
+	            transformOrigin: photoState.transformOrigin || '50% 50%',
+	            isManuallyAdjusted: photoState.isManuallyAdjusted || false
+	        };
+	    }
+	    
+	    // 픽셀 값만 있는 구형식인 경우 (leftPx, topPx, widthPx, heightPx)
+	    if (photoState.position?.leftPx !== undefined || photoState.size?.widthPx !== undefined) {
+	        console.log('Converting pixel-based photo state to frame-relative format');
+	        
+	        // 픽셀 값은 현재 프레임 크기를 모르므로 기본값 사용
+	        // 실제 적용 시 applyPhotoPosition에서 조정됨
+	        return {
+	            position: {
+	                translateXPercent: 0,
+	                translateYPercent: 0
+	            },
+	            size: {
+	                widthPercent: 100,
+	                heightPercent: 100
+	            },
+	            rotation: photoState.rotation || 0,
+	            transform: photoState.transform || 'none',
+	            transformOrigin: photoState.transformOrigin || '50% 50%',
+	            isManuallyAdjusted: false,
+	            // 원본 픽셀 값 보존 (fallback용)
+	            _legacyPixels: {
+	                leftPx: photoState.position?.leftPx,
+	                topPx: photoState.position?.topPx,
+	                widthPx: photoState.size?.widthPx,
+	                heightPx: photoState.size?.heightPx
+	            }
+	        };
+	    }
+	    
+	    // 알 수 없는 형식 - 기본값 반환
+	    console.warn('Unknown photo state format, using defaults');
+	    return {
+	        position: { translateXPercent: 0, translateYPercent: 0 },
+	        size: { widthPercent: 100, heightPercent: 100 },
+	        rotation: 0,
+	        transform: 'none',
+	        transformOrigin: '50% 50%',
+	        isManuallyAdjusted: false
+	    };
+	}
+
+	/**
+	 * ✨ 사진 위치/크기를 프레임 기준으로 적용
+	 */
+	static applyPhotoPosition(frameGroup, photo, relativeState) {
+	    // 현재 프레임 크기 가져오기
+	    const frameWidth = frameGroup.width();
+	    const frameHeight = frameGroup.height();
+
+	    let pixelWidth, pixelHeight, translateX, translateY;
+
+	    // 레거시 픽셀 값이 있고 백분율이 기본값인 경우, 원본 비율 유지 시도
+	    if (relativeState._legacyPixels && 
+	        relativeState.size.widthPercent === 100 && 
+	        relativeState._legacyPixels.widthPx) {
+	        
+	        // 원본 픽셀 크기를 현재 프레임에 맞게 스케일링
+	        const originalWidth = relativeState._legacyPixels.widthPx;
+	        const originalHeight = relativeState._legacyPixels.heightPx;
+	        
+	        // 원본 이미지의 비율 유지하면서 프레임에 맞춤
+	        const aspectRatio = originalWidth / originalHeight;
+	        
+	        // 프레임 커버 방식으로 크기 결정
+	        if (frameWidth / frameHeight > aspectRatio) {
+	            pixelWidth = frameWidth;
+	            pixelHeight = frameWidth / aspectRatio;
+	        } else {
+	            pixelHeight = frameHeight;
+	            pixelWidth = frameHeight * aspectRatio;
+	        }
+	        
+	        // 중앙 정렬
+	        translateX = (frameWidth - pixelWidth) / 2;
+	        translateY = (frameHeight - pixelHeight) / 2;
+	        
+	    } else {
+	        // 정상적인 백분율 기반 계산
+	        pixelWidth = (relativeState.size.widthPercent / 100) * frameWidth;
+	        pixelHeight = (relativeState.size.heightPercent / 100) * frameHeight;
+	        translateX = (relativeState.position.translateXPercent / 100) * frameWidth;
+	        translateY = (relativeState.position.translateYPercent / 100) * frameHeight;
+	    }
+
+	    // transform 재구성 (회전 + translate)
+	    let finalTransform;
+	    const rotation = relativeState.rotation || 0;
+	    
+	    if (rotation !== 0) {
+	        const cos = Math.cos(rotation);
+	        const sin = Math.sin(rotation);
+	        finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+	    } else {
+	        finalTransform = `matrix(1, 0, 0, 1, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+	    }
+
+	    // CSS 적용
+	    photo.css({
+	        display: 'block',
+	        position: 'absolute',
+	        left: '0px',
+	        top: '0px',
+	        width: pixelWidth + 'px',
+	        height: pixelHeight + 'px',
+	        transform: finalTransform,
+	        transformOrigin: relativeState.transformOrigin || '50% 50%'
+	    });
+
+	    console.log('Photo position applied:', {
+	        frameSize: { width: frameWidth, height: frameHeight },
+	        photoSize: { width: pixelWidth, height: pixelHeight },
+	        translate: { x: translateX, y: translateY },
+	        rotation: rotation
+	    });
 	}
 
 	static setupNewFrame(frameGroup, frameTheme, frameType) {
