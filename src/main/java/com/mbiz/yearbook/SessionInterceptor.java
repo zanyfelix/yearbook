@@ -20,6 +20,7 @@ public class SessionInterceptor implements HandlerInterceptor {
             requestURI.startsWith("/css/") || 
             requestURI.startsWith("/js/") || 
             requestURI.startsWith("/images/") ||
+            requestURI.equals("/payment") ||
             requestURI.startsWith("/static/")) {
             return true;
         }
