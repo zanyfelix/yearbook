@@ -693,9 +693,9 @@ $(document).ready(function() {
 			let photoData = null;
 			const $photo = $frame.find('.uploaded-photo');
 			if ($photo.length && $photo.is(':visible') && $photo.data('filePath')) {
-				
+
 				PhotoManager.savePhotoState($photo, $frame, { isManual: false });
-				
+
 				const photoRelativeState = $photo.data('relativeState');
 
 				if (photoRelativeState) {
@@ -714,7 +714,7 @@ $(document).ready(function() {
 						screenWidth: actualBgRect.width,  // 이것만 추가
 						isFrameRelative: photoRelativeState.isFrameRelative  // ✅ 추가 (선택)
 					};
-					
+
 					console.log('Saving photoData:', photoData);
 				}
 			}
@@ -932,148 +932,180 @@ $(document).ready(function() {
 				}
 			}
 		}
-		
+
 		// ========== 마스크 처리 헬퍼 함수 추가 ==========
 		async function applyRealMaskBeforeCapture() {
-		    const promises = [];
-		    
-		    $('#frame-container .frame-group:not(.element-frame):not(.textbox-frame)').each(function() {
-		        const $frame = $(this);
-		        const $maskContainer = $frame.find('.mask-container');
+			const promises = [];
+
+			$('#frame-container .frame-group:not(.element-frame):not(.textbox-frame)').each(function() {
+				const $frame = $(this);
+				const $maskContainer = $frame.find('.mask-container');
 				const $photoContainer = $frame.find('.photo-container');
-		        const $photo = $frame.find('.uploaded-photo');
-		        const frameTheme = $frame.data('frameTheme');
-		        
-		        // 사진이 없거나 마스크가 없으면 스킵
-		        if (!$photo.is(':visible') || !$photo.attr('src') || !frameTheme?.editMaskPath) {
-		            return;
-		        }
-		        
-		        const promise = new Promise((resolve) => {
-		            const maskImg = new Image();
-		            maskImg.crossOrigin = 'anonymous';
-		            
-		            maskImg.onload = function() {
-		                try {
-		                    const containerWidth = $maskContainer.width();
-		                    const containerHeight = $maskContainer.height();
-		                    
-		                    const canvas = document.createElement('canvas');
-		                    canvas.width = containerWidth;
-		                    canvas.height = containerHeight;
-		                    const ctx2d = canvas.getContext('2d');
-		                    
-		                    // 마스크 그리기
-		                    ctx2d.drawImage(maskImg, 0, 0, containerWidth, containerHeight);
-		                    
-		                    // source-in으로 사진 그리기
-		                    ctx2d.globalCompositeOperation = 'source-in';
-		                    
-		                    const photoImg = $photo[0];
-		                    const photoWidth = $photo.width();
-		                    const photoHeight = $photo.height();
-		                    
-		                    // transform에서 translate 추출
-		                    const transform = $photo.css('transform');
-		                    let tx = 0, ty = 0;
-		                    if (transform && transform !== 'none') {
-		                        const matrix = transform.match(/matrix\(([^)]+)\)/);
-		                        if (matrix) {
-		                            const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
-		                            tx = values[4] || 0;
-		                            ty = values[5] || 0;
-		                        }
-		                    }
-		                    
-		                    ctx2d.drawImage(photoImg, tx, ty, photoWidth, photoHeight);
-		                    
-		                    // 원본 상태 저장
-		                    $photo.data('_captureBackup', {
-		                        src: $photo.attr('src'),
-		                        css: {
-		                            width: $photo.css('width'),
-		                            height: $photo.css('height'),
-		                            transform: $photo.css('transform'),
-		                            left: $photo.css('left'),
-		                            top: $photo.css('top')
-		                        }
-		                    });
-		                    
-		                    $maskContainer.data('_captureBackup', {
-		                        webkitMask: $maskContainer.css('-webkit-mask-image'),
-		                        mask: $maskContainer.css('mask-image')
-		                    });
-							
+				const $photo = $frame.find('.uploaded-photo');
+				const frameTheme = $frame.data('frameTheme');
+
+				// 사진이 없거나 마스크가 없으면 스킵
+				if (!$photo.is(':visible') || !$photo.attr('src') || !frameTheme?.editMaskPath) {
+					return;
+				}
+
+				const promise = new Promise((resolve) => {
+					const maskImg = new Image();
+					maskImg.crossOrigin = 'anonymous';
+
+					maskImg.onload = function() {
+						try {
+							const containerWidth = $maskContainer.width();
+							const containerHeight = $maskContainer.height();
+
+							const canvas = document.createElement('canvas');
+							canvas.width = containerWidth;
+							canvas.height = containerHeight;
+							const ctx2d = canvas.getContext('2d');
+
+							// 마스크 그리기
+							ctx2d.drawImage(maskImg, 0, 0, containerWidth, containerHeight);
+
+							// source-in으로 사진 그리기
+							ctx2d.globalCompositeOperation = 'source-in';
+
+							const photoImg = $photo[0];
+							const photoWidth = $photo.width();
+							const photoHeight = $photo.height();
+
+							// transform에서 translate 추출
+							const transform = $photo.css('transform');
+							let a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0;
+
+							if (transform && transform !== 'none') {
+								const matrix = transform.match(/matrix\(([^)]+)\)/);
+								if (matrix) {
+									const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+									a = values[0];   // cos(angle) * scaleX
+									b = values[1];   // sin(angle) * scaleX
+									c = values[2];   // -sin(angle) * scaleY
+									d = values[3];   // cos(angle) * scaleY
+									tx = values[4];  // translateX
+									ty = values[5];  // translateY
+								}
+							}
+
+							// ✅ 회전 각도 추출 (라디안)
+							const rotation = Math.atan2(b, a);
+
+							// ✅ Canvas에 transform 적용 후 사진 그리기
+							ctx2d.save();
+
+							if (rotation !== 0) {
+								// ✅ 회전이 있는 경우: transform-origin (50% 50%) 적용
+
+								// 사진 중심 좌표 계산 (translate 적용 후의 중심)
+								const centerX = tx + photoWidth / 2;
+								const centerY = ty + photoHeight / 2;
+
+								// 1) 사진 중심으로 이동
+								ctx2d.translate(centerX, centerY);
+
+								// 2) 회전 적용
+								ctx2d.rotate(rotation);
+
+								// 3) 사진 크기의 절반만큼 역방향 이동 (사진 좌상단이 올바른 위치에 오도록)
+								ctx2d.drawImage(photoImg, -photoWidth / 2, -photoHeight / 2, photoWidth, photoHeight);
+
+							} else {
+								// ✅ 회전이 없는 경우: 단순 translate만 적용
+								ctx2d.drawImage(photoImg, tx, ty, photoWidth, photoHeight);
+							}
+
+							ctx2d.restore();
+
+							// 원본 상태 저장
+							$photo.data('_captureBackup', {
+								src: $photo.attr('src'),
+								css: {
+									width: $photo.css('width'),
+									height: $photo.css('height'),
+									transform: $photo.css('transform'),
+									left: $photo.css('left'),
+									top: $photo.css('top')
+								}
+							});
+
+							$maskContainer.data('_captureBackup', {
+								webkitMask: $maskContainer.css('-webkit-mask-image'),
+								mask: $maskContainer.css('mask-image')
+							});
+
 							// ✅ photo-container 배경색 저장 및 투명하게 변경
 							$photoContainer.data('_captureBackup', {
 								backgroundColor: $photoContainer.css('background-color')
 							});
 							$photoContainer.css('background-color', 'transparent');
-		                    
-		                    // 마스킹된 이미지로 교체
-		                    $photo.attr('src', canvas.toDataURL('image/png'));
-		                    $photo.css({
-		                        width: containerWidth + 'px',
-		                        height: containerHeight + 'px',
-		                        transform: 'none',
-		                        left: '0px',
-		                        top: '0px'
-		                    });
-		                    
-		                    $maskContainer.css({
-		                        '-webkit-mask-image': 'none',
-		                        'mask-image': 'none'
-		                    });
-		                    
-		                    resolve();
-		                } catch (err) {
-		                    console.error('마스크 캔버스 처리 실패:', err);
-		                    resolve();
-		                }
-		            };
-		            
-		            maskImg.onerror = () => resolve();
-		            maskImg.src = `${ctx}${frameTheme.editMaskPath}`;
-		        });
-		        
-		        promises.push(promise);
-		    });
-		    
-		    await Promise.all(promises);
+
+							// 마스킹된 이미지로 교체
+							$photo.attr('src', canvas.toDataURL('image/png'));
+							$photo.css({
+								width: containerWidth + 'px',
+								height: containerHeight + 'px',
+								transform: 'none',
+								left: '0px',
+								top: '0px'
+							});
+
+							$maskContainer.css({
+								'-webkit-mask-image': 'none',
+								'mask-image': 'none'
+							});
+
+							resolve();
+						} catch (err) {
+							console.error('마스크 캔버스 처리 실패:', err);
+							resolve();
+						}
+					};
+
+					maskImg.onerror = () => resolve();
+					maskImg.src = `${ctx}${frameTheme.editMaskPath}`;
+				});
+
+				promises.push(promise);
+			});
+
+			await Promise.all(promises);
 		}
 
 		function restoreAfterCapture() {
-		    $('#frame-container .frame-group').each(function() {
-		        const $frame = $(this);
-		        const $maskContainer = $frame.find('.mask-container');
+			$('#frame-container .frame-group').each(function() {
+				const $frame = $(this);
+				const $maskContainer = $frame.find('.mask-container');
 				const $photoContainer = $frame.find('.photo-container');
-		        const $photo = $frame.find('.uploaded-photo');
-		        
-		        const photoBackup = $photo.data('_captureBackup');
-		        if (photoBackup) {
-		            $photo.attr('src', photoBackup.src);
-		            $photo.css(photoBackup.css);
-		            $photo.removeData('_captureBackup');
-		        }
-		        
-		        const maskBackup = $maskContainer.data('_captureBackup');
-		        if (maskBackup) {
-		            $maskContainer.css({
-		                '-webkit-mask-image': maskBackup.webkitMask,
-		                'mask-image': maskBackup.mask
-		            });
-		            $maskContainer.removeData('_captureBackup');
-		        }
-				
+				const $photo = $frame.find('.uploaded-photo');
+
+				const photoBackup = $photo.data('_captureBackup');
+				if (photoBackup) {
+					$photo.attr('src', photoBackup.src);
+					$photo.css(photoBackup.css);
+					$photo.removeData('_captureBackup');
+				}
+
+				const maskBackup = $maskContainer.data('_captureBackup');
+				if (maskBackup) {
+					$maskContainer.css({
+						'-webkit-mask-image': maskBackup.webkitMask,
+						'mask-image': maskBackup.mask
+					});
+					$maskContainer.removeData('_captureBackup');
+				}
+
 				// ✅ photo-container 배경색 복구
 				const containerBackup = $photoContainer.data('_captureBackup');
 				if (containerBackup) {
 					$photoContainer.css('background-color', containerBackup.backgroundColor);
 					$photoContainer.removeData('_captureBackup');
 				}
-		    });
+			});
 		}
-		
+
 		// ========== 기존 썸네일 캡처 코드 수정 ==========
 		// 마스크 적용 (캡처 전)
 		await applyRealMaskBeforeCapture();
@@ -1091,7 +1123,7 @@ $(document).ready(function() {
 			scrollX: 0,
 			scrollY: 0
 		});
-		
+
 		// 원상 복구 (캡처 후)
 		restoreAfterCapture();
 
@@ -1826,85 +1858,75 @@ window.getScaleFromMatrix = function(transform) {
 };
 
 function updateAllPhotosPosition() {
-    $('#frame-container .frame-group').each(function() {
-        const $frame = $(this);
-        const $photo = $frame.find('.uploaded-photo');
-        const $placeholder = $frame.find('.place-image-here-link');
-        const photoSrc = $photo.attr('src');
+	$('#frame-container .frame-group').each(function() {
+		const $frame = $(this);
+		const $photo = $frame.find('.uploaded-photo');
+		const $placeholder = $frame.find('.place-image-here-link');
+		const photoSrc = $photo.attr('src');
 
-        if (photoSrc && photoSrc !== '#') {
-            $placeholder.hide();
+		if (photoSrc && photoSrc !== '#') {
+			$placeholder.hide();
 
-            // ✨ 핵심 수정: 프레임 크기를 기준으로 계산
-            const frameWidth = $frame.width();
-            const frameHeight = $frame.height();
+			// ✅ 마스크 bounds 픽셀 좌표 가져오기
+			const maskBounds = PhotoManager.getMaskBoundsPixels($frame);
 
-            // percentState가 없으면 relativeState에서 변환
-            if (!$photo.data('percentState')) {
-                const photoRelativeState = $photo.data('relativeState');
+			// percentState가 없으면 relativeState에서 변환
+			if (!$photo.data('percentState')) {
+				const photoRelativeState = $photo.data('relativeState');
 
-                if (photoRelativeState && photoRelativeState.sizePercent) {
-                    // sizePercent가 있으면 (프레임 기준 백분율)
-                    $photo.data('percentState', {
-                        widthPercent: photoRelativeState.sizePercent.width,
-                        heightPercent: photoRelativeState.sizePercent.height,
-                        translateXPercent: photoRelativeState.translateX || 0,
-                        translateYPercent: photoRelativeState.translateY || 0,
-                        rotation: photoRelativeState.rotation || 0
-                    });
-                } else if (photoRelativeState && photoRelativeState.size) {
-                    // sizePercent가 없으면 현재 크기에서 계산
-                    const currentTransform = $photo.css('transform');
-                    const matrix = TransformHelper.parseMatrix(currentTransform);
+				if (photoRelativeState && photoRelativeState.sizePercent) {
+					$photo.data('percentState', {
+						widthPercent: photoRelativeState.sizePercent.width,
+						heightPercent: photoRelativeState.sizePercent.height,
+						translateXPercent: photoRelativeState.translateX || 0,
+						translateYPercent: photoRelativeState.translateY || 0,
+						rotation: photoRelativeState.rotation || 0
+					});
+				}
+			}
 
-                    $photo.data('percentState', {
-                        widthPercent: ($photo.outerWidth() / frameWidth) * 100,
-                        heightPercent: ($photo.outerHeight() / frameHeight) * 100,
-                        translateXPercent: (matrix.tx / frameWidth) * 100,
-                        translateYPercent: (matrix.ty / frameHeight) * 100,
-                        rotation: Math.atan2(matrix.b, matrix.a)
-                    });
-                }
-            }
+			// ✅ 마스크 bounds 기준으로 크기/위치 계산
+			const percentState = $photo.data('percentState');
+			if (percentState) {
+				const newWidth = (percentState.widthPercent / 100) * maskBounds.width;
+				const newHeight = (percentState.heightPercent / 100) * maskBounds.height;
 
-            // ✨ 프레임 기준으로 크기/위치 계산
-            const percentState = $photo.data('percentState');
-            if (percentState) {
-                const newWidth = (percentState.widthPercent / 100) * frameWidth;
-                const newHeight = (percentState.heightPercent / 100) * frameHeight;
-                const newTranslateX = (percentState.translateXPercent / 100) * frameWidth;
-                const newTranslateY = (percentState.translateYPercent / 100) * frameHeight;
+				// 마스크 내부 상대 좌표에서 절대 좌표로 변환
+				const relTranslateX = (percentState.translateXPercent / 100) * maskBounds.width;
+				const relTranslateY = (percentState.translateYPercent / 100) * maskBounds.height;
+				const newTranslateX = relTranslateX + maskBounds.x;
+				const newTranslateY = relTranslateY + maskBounds.y;
 
-                let finalTransform;
-                if (percentState.rotation !== 0) {
-                    const cos = Math.cos(percentState.rotation);
-                    const sin = Math.sin(percentState.rotation);
-                    finalTransform = `matrix(${cos}, ${sin}, ${-sin}, ${cos}, ${newTranslateX}, ${newTranslateY})`;
-                } else {
-                    finalTransform = `translate(${newTranslateX}px, ${newTranslateY}px)`;
-                }
+				let finalTransform;
+				if (percentState.rotation !== 0) {
+					const cos = Math.cos(percentState.rotation);
+					const sin = Math.sin(percentState.rotation);
+					finalTransform = `matrix(${cos}, ${sin}, ${-sin}, ${cos}, ${newTranslateX}, ${newTranslateY})`;
+				} else {
+					finalTransform = `matrix(1, 0, 0, 1, ${newTranslateX}, ${newTranslateY})`;
+				}
 
-                $photo.css({
-                    display: 'block',
-                    visibility: 'visible',
-                    width: newWidth + 'px',
-                    height: newHeight + 'px',
-                    left: '0px',
-                    top: '0px',
-                    transform: finalTransform,
-                    transformOrigin: '50% 50%'
-                });
-            }
+				$photo.css({
+					display: 'block',
+					visibility: 'visible',
+					width: newWidth + 'px',
+					height: newHeight + 'px',
+					left: '0px',
+					top: '0px',
+					transform: finalTransform,
+					transformOrigin: '50% 50%'
+				});
+			}
 
-            if ($photo.hasClass('selected-photo')) {
-                PhotoManager.updateSilhouetteSize($photo);
-                PhotoManager.updateSelectionUI($photo);
-            }
-        } else {
-            $placeholder.show();
-            $photo.hide();
-        }
-    });
+			if ($photo.hasClass('selected-photo')) {
+				PhotoManager.updateSilhouetteSize($photo);
+				PhotoManager.updateSelectionUI($photo);
+			}
+		} else {
+			$placeholder.show();
+			$photo.hide();
+		}
+	});
 }
 
 window.getTranslateValues = function(transformString) {
@@ -1980,7 +2002,7 @@ function measurePerformance(operation, callback) {
 	});
 }
 
-// 개선된 버전 - 다양한 fit 옵션 지원
+// 개선된 버전 - 마스크 bounds 기준
 function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 	const settings = {
 		fit: 'cover', // 'cover', 'contain', 'fill', 'none'
@@ -1988,15 +2010,16 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 		...options
 	};
 
-	const maskWidth = maskContainer.width();
-	const maskHeight = maskContainer.height();
-	const maskBounds = maskContainer.data('maskBounds');
+	const frameGroup = photo.closest('.frame-group');
 
-	// 마스크 경계가 있으면 실제 영역 사용
-	const actualWidth = maskBounds ? maskWidth * maskBounds.width : maskWidth;
-	const actualHeight = maskBounds ? maskHeight * maskBounds.height : maskHeight;
-	const offsetX = maskBounds ? maskWidth * maskBounds.x : 0;
-	const offsetY = maskBounds ? maskHeight * maskBounds.y : 0;
+	// ✅ 마스크 bounds 픽셀 좌표 가져오기
+	const maskBounds = PhotoManager.getMaskBoundsPixels(frameGroup);
+
+	// 마스크 bounds 영역을 기준으로 계산
+	const targetWidth = maskBounds.width;
+	const targetHeight = maskBounds.height;
+	const offsetX = maskBounds.x;
+	const offsetY = maskBounds.y;
 
 	if (!photo[0].naturalWidth) {
 		photo.on('load', function() {
@@ -2013,28 +2036,24 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 	// Fit 모드에 따른 스케일 계산
 	switch (settings.fit) {
 		case 'cover':
-			// 마스크를 완전히 채움 (일부가 잘릴 수 있음)
-			scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+			scale = Math.max(targetWidth / imgNaturalWidth, targetHeight / imgNaturalHeight);
 			break;
 
 		case 'contain':
-			// 이미지 전체가 보이도록 (여백이 생길 수 있음)
-			scale = Math.min(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+			scale = Math.min(targetWidth / imgNaturalWidth, targetHeight / imgNaturalHeight);
 			break;
 
 		case 'fill':
-			// 마스크 크기에 정확히 맞춤 (비율 무시)
-			newWidth = actualWidth;
-			newHeight = actualHeight;
+			newWidth = targetWidth;
+			newHeight = targetHeight;
 			break;
 
 		case 'none':
-			// 원본 크기 유지
 			scale = 1;
 			break;
 
 		default:
-			scale = Math.max(actualWidth / imgNaturalWidth, actualHeight / imgNaturalHeight);
+			scale = Math.max(targetWidth / imgNaturalWidth, targetHeight / imgNaturalHeight);
 	}
 
 	if (settings.fit !== 'fill') {
@@ -2042,55 +2061,57 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 		newHeight = imgNaturalHeight * scale;
 	}
 
-	// Position에 따른 위치 계산
-	let newLeft, newTop;
+	// Position에 따른 위치 계산 (마스크 bounds 내부 기준)
+	let translateX, translateY;
 
 	switch (settings.position) {
 		case 'top':
-			newLeft = offsetX + (actualWidth - newWidth) / 2;
-			newTop = offsetY;
+			translateX = offsetX + (targetWidth - newWidth) / 2;
+			translateY = offsetY;
 			break;
 
 		case 'bottom':
-			newLeft = offsetX + (actualWidth - newWidth) / 2;
-			newTop = offsetY + actualHeight - newHeight;
+			translateX = offsetX + (targetWidth - newWidth) / 2;
+			translateY = offsetY + targetHeight - newHeight;
 			break;
 
 		case 'left':
-			newLeft = offsetX;
-			newTop = offsetY + (actualHeight - newHeight) / 2;
+			translateX = offsetX;
+			translateY = offsetY + (targetHeight - newHeight) / 2;
 			break;
 
 		case 'right':
-			newLeft = offsetX + actualWidth - newWidth;
-			newTop = offsetY + (actualHeight - newHeight) / 2;
+			translateX = offsetX + targetWidth - newWidth;
+			translateY = offsetY + (targetHeight - newHeight) / 2;
 			break;
 
 		case 'center':
 		default:
-			newLeft = offsetX + (actualWidth - newWidth) / 2;
-			newTop = offsetY + (actualHeight - newHeight) / 2;
+			translateX = offsetX + (targetWidth - newWidth) / 2;
+			translateY = offsetY + (targetHeight - newHeight) / 2;
 			break;
 	}
 
-	// 애니메이션 효과와 함께 적용
+	// CSS 적용
 	photo.css({
 		width: `${newWidth}px`,
 		height: `${newHeight}px`,
-		left: 0,
-		top: 0,
-		transform: `translate(${newLeft}px, ${newTop}px)`,
+		left: '0px',
+		top: '0px',
+		transform: `matrix(1, 0, 0, 1, ${translateX}, ${translateY})`,
+		transformOrigin: '50% 50%',
 		position: 'absolute',
 		maxWidth: 'none',
 		maxHeight: 'none'
 	});
 
-	// 상태 저장
-	saveImageState(photo, {
-		position: { leftPx: newLeft, topPx: newTop },
-		size: { widthPx: newWidth, heightPx: newHeight },
-		fit: settings.fit,
-		alignment: settings.position
+	// 상태 저장 (마스크 bounds 기준)
+	PhotoManager.savePhotoState(photo, frameGroup, { isManual: false });
+
+	console.log('Image positioned in mask bounds:', {
+		maskBounds: maskBounds,
+		imageSize: { width: newWidth, height: newHeight },
+		translate: { x: translateX, y: translateY }
 	});
 }
 
