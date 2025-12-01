@@ -932,6 +932,151 @@ $(document).ready(function() {
 				}
 			}
 		}
+		
+		// ========== 마스크 처리 헬퍼 함수 추가 ==========
+		async function applyRealMaskBeforeCapture() {
+		    const promises = [];
+		    
+		    $('#frame-container .frame-group:not(.element-frame):not(.textbox-frame)').each(function() {
+		        const $frame = $(this);
+		        const $maskContainer = $frame.find('.mask-container');
+				const $photoContainer = $frame.find('.photo-container');
+		        const $photo = $frame.find('.uploaded-photo');
+		        const frameTheme = $frame.data('frameTheme');
+		        
+		        // 사진이 없거나 마스크가 없으면 스킵
+		        if (!$photo.is(':visible') || !$photo.attr('src') || !frameTheme?.editMaskPath) {
+		            return;
+		        }
+		        
+		        const promise = new Promise((resolve) => {
+		            const maskImg = new Image();
+		            maskImg.crossOrigin = 'anonymous';
+		            
+		            maskImg.onload = function() {
+		                try {
+		                    const containerWidth = $maskContainer.width();
+		                    const containerHeight = $maskContainer.height();
+		                    
+		                    const canvas = document.createElement('canvas');
+		                    canvas.width = containerWidth;
+		                    canvas.height = containerHeight;
+		                    const ctx2d = canvas.getContext('2d');
+		                    
+		                    // 마스크 그리기
+		                    ctx2d.drawImage(maskImg, 0, 0, containerWidth, containerHeight);
+		                    
+		                    // source-in으로 사진 그리기
+		                    ctx2d.globalCompositeOperation = 'source-in';
+		                    
+		                    const photoImg = $photo[0];
+		                    const photoWidth = $photo.width();
+		                    const photoHeight = $photo.height();
+		                    
+		                    // transform에서 translate 추출
+		                    const transform = $photo.css('transform');
+		                    let tx = 0, ty = 0;
+		                    if (transform && transform !== 'none') {
+		                        const matrix = transform.match(/matrix\(([^)]+)\)/);
+		                        if (matrix) {
+		                            const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+		                            tx = values[4] || 0;
+		                            ty = values[5] || 0;
+		                        }
+		                    }
+		                    
+		                    ctx2d.drawImage(photoImg, tx, ty, photoWidth, photoHeight);
+		                    
+		                    // 원본 상태 저장
+		                    $photo.data('_captureBackup', {
+		                        src: $photo.attr('src'),
+		                        css: {
+		                            width: $photo.css('width'),
+		                            height: $photo.css('height'),
+		                            transform: $photo.css('transform'),
+		                            left: $photo.css('left'),
+		                            top: $photo.css('top')
+		                        }
+		                    });
+		                    
+		                    $maskContainer.data('_captureBackup', {
+		                        webkitMask: $maskContainer.css('-webkit-mask-image'),
+		                        mask: $maskContainer.css('mask-image')
+		                    });
+							
+							// ✅ photo-container 배경색 저장 및 투명하게 변경
+							$photoContainer.data('_captureBackup', {
+								backgroundColor: $photoContainer.css('background-color')
+							});
+							$photoContainer.css('background-color', 'transparent');
+		                    
+		                    // 마스킹된 이미지로 교체
+		                    $photo.attr('src', canvas.toDataURL('image/png'));
+		                    $photo.css({
+		                        width: containerWidth + 'px',
+		                        height: containerHeight + 'px',
+		                        transform: 'none',
+		                        left: '0px',
+		                        top: '0px'
+		                    });
+		                    
+		                    $maskContainer.css({
+		                        '-webkit-mask-image': 'none',
+		                        'mask-image': 'none'
+		                    });
+		                    
+		                    resolve();
+		                } catch (err) {
+		                    console.error('마스크 캔버스 처리 실패:', err);
+		                    resolve();
+		                }
+		            };
+		            
+		            maskImg.onerror = () => resolve();
+		            maskImg.src = `${ctx}${frameTheme.editMaskPath}`;
+		        });
+		        
+		        promises.push(promise);
+		    });
+		    
+		    await Promise.all(promises);
+		}
+
+		function restoreAfterCapture() {
+		    $('#frame-container .frame-group').each(function() {
+		        const $frame = $(this);
+		        const $maskContainer = $frame.find('.mask-container');
+				const $photoContainer = $frame.find('.photo-container');
+		        const $photo = $frame.find('.uploaded-photo');
+		        
+		        const photoBackup = $photo.data('_captureBackup');
+		        if (photoBackup) {
+		            $photo.attr('src', photoBackup.src);
+		            $photo.css(photoBackup.css);
+		            $photo.removeData('_captureBackup');
+		        }
+		        
+		        const maskBackup = $maskContainer.data('_captureBackup');
+		        if (maskBackup) {
+		            $maskContainer.css({
+		                '-webkit-mask-image': maskBackup.webkitMask,
+		                'mask-image': maskBackup.mask
+		            });
+		            $maskContainer.removeData('_captureBackup');
+		        }
+				
+				// ✅ photo-container 배경색 복구
+				const containerBackup = $photoContainer.data('_captureBackup');
+				if (containerBackup) {
+					$photoContainer.css('background-color', containerBackup.backgroundColor);
+					$photoContainer.removeData('_captureBackup');
+				}
+		    });
+		}
+		
+		// ========== 기존 썸네일 캡처 코드 수정 ==========
+		// 마스크 적용 (캡처 전)
+		await applyRealMaskBeforeCapture();
 
 		// 전체 페이지 썸네일 캡처
 		const captureTarget = document.getElementById('page-preview');
@@ -946,6 +1091,9 @@ $(document).ready(function() {
 			scrollX: 0,
 			scrollY: 0
 		});
+		
+		// 원상 복구 (캡처 후)
+		restoreAfterCapture();
 
 		const thumbnailBlob = await new Promise(resolve => {
 			thumbnailCanvas.toBlob(resolve, 'image/png');
