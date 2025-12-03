@@ -1,5 +1,5 @@
 // ============================================================================
-// 📁 js/photo/PhotoManager.js - 최적화 버전
+// 📁 js/photo/PhotoManager.js - 마스크 Bounds 기준 버전
 // ============================================================================
 class PhotoManager {
 	static photoOverlay = null;
@@ -11,7 +11,38 @@ class PhotoManager {
 		silhouetteOpacity: 0.4
 	};
 
-	// === 선택 UI 관리 ===
+	// ========== 마스크 Bounds 헬퍼 ==========
+
+	/**
+	 * 프레임에서 마스크 bounding box의 픽셀 좌표를 가져옵니다.
+	 * @returns {Object} { x, y, width, height } 픽셀 단위
+	 */
+	static getMaskBoundsPixels(frameGroup) {
+		const maskContainer = frameGroup.find('.mask-container');
+		const maskBounds = frameGroup.data('maskBounds');
+
+		const containerWidth = maskContainer.width();
+		const containerHeight = maskContainer.height();
+
+		if (maskBounds) {
+			return {
+				x: maskBounds.x * containerWidth,
+				y: maskBounds.y * containerHeight,
+				width: maskBounds.width * containerWidth,
+				height: maskBounds.height * containerHeight
+			};
+		}
+
+		// maskBounds가 없으면 전체 컨테이너 사용
+		return {
+			x: 0,
+			y: 0,
+			width: containerWidth,
+			height: containerHeight
+		};
+	}
+
+	// ========== 선택 UI 관리 ==========
 
 	static addSelectionUI(photo, frameGroup) {
 		this.removeSelectionUI();
@@ -21,7 +52,6 @@ class PhotoManager {
 		const rotateLine = this.createRotateLine();
 		const resizeHandles = this.createResizeHandles();
 
-		// 핸들 클릭 이벤트 차단
 		[...resizeHandles, rotateHandle].forEach(handle => {
 			handle.on('click', (e) => e.stopPropagation());
 		});
@@ -29,14 +59,12 @@ class PhotoManager {
 		selectionBox.append(rotateHandle, rotateLine, ...resizeHandles);
 		frameGroup.append(selectionBox);
 
-		// 커서 업데이트 추가
 		this.updateResizeCursors(photo);
 
 		setTimeout(() => {
 			this.updateSelectionUI(photo);
 		}, 0);
 
-		// 이벤트 바인딩 (중복 제거)
 		EventManager.makeRotatable(photo, rotateHandle);
 		resizeHandles.forEach(handle => this.bindResizeEvent(photo, handle));
 	}
@@ -66,11 +94,9 @@ class PhotoManager {
 		const selectionBox = $('.photo-selection-box');
 		if (!selectionBox.length) return;
 
-		// 사진의 현재 transform 가져오기
 		const photoTransform = photo.css('transform') || 'none';
 		const photoTransformOrigin = photo.css('transform-origin') || '50% 50%';
 
-		// Selection box를 사진과 완전히 동기화
 		selectionBox.css({
 			left: photo.css('left'),
 			top: photo.css('top'),
@@ -80,7 +106,6 @@ class PhotoManager {
 			'transform-origin': photoTransformOrigin
 		});
 
-		// 커서도 함께 업데이트
 		this.updateResizeCursors(photo);
 	}
 
@@ -88,7 +113,7 @@ class PhotoManager {
 		$('.photo-selection-box').remove();
 	}
 
-	// === 드래그 처리 ===
+	// ========== 드래그 처리 (마스크 Bounds 기준) ==========
 
 	static handleDrag(photo, frameGroup, maskContainer, e) {
 		frameGroup.data('isDraggingPhoto', true);
@@ -101,11 +126,15 @@ class PhotoManager {
 		const frameMatrix = TransformHelper.parseMatrix(frameTransform);
 		const frameRotation = Math.atan2(frameMatrix.b, frameMatrix.a);
 
+		// ✅ 마스크 bounds 가져오기
+		const maskBoundsPixels = this.getMaskBoundsPixels(frameGroup);
+
 		const dragData = {
 			startX: e.clientX,
 			startY: e.clientY,
 			initialMatrix: initialMatrix,
-			frameRotation: frameRotation  // 프레임 회전 저장
+			frameRotation: frameRotation,
+			maskBounds: maskBoundsPixels  // 마스크 bounds 저장
 		};
 
 		const $selectionBox = $('.photo-selection-box');
@@ -120,31 +149,41 @@ class PhotoManager {
 			const screenDeltaX = latestEvent.clientX - dragData.startX;
 			const screenDeltaY = latestEvent.clientY - dragData.startY;
 
-			// 프레임 회전의 역변환을 적용하여 프레임 로컬 좌표계에서의 이동량 계산
+			// 프레임 회전의 역변환 적용
 			const cos = Math.cos(-dragData.frameRotation);
 			const sin = Math.sin(-dragData.frameRotation);
 			const localDeltaX = screenDeltaX * cos - screenDeltaY * sin;
 			const localDeltaY = screenDeltaX * sin + screenDeltaY * cos;
 
-			const newMatrix = { ...dragData.initialMatrix };
-			newMatrix.tx += localDeltaX;
-			newMatrix.ty += localDeltaY;
+			let newTx = dragData.initialMatrix.tx + localDeltaX;
+			let newTy = dragData.initialMatrix.ty + localDeltaY;
 
-			let newTransform = TransformHelper.composeMatrix(newMatrix);
+			// ✅ 마스크 영역과 사진이 항상 겹치도록 제한
+			const mb = dragData.maskBounds;
+			const pw = photo.outerWidth();
+			const ph = photo.outerHeight();
 
-			const originalTransform = photo.css('transform');
-			photo.css('transform', newTransform);
-
-			const photoCorners = GeometryHelper.getRotatedCorners(photo);
-			const maskCorners = GeometryHelper.getMaskedAreaCorners(frameGroup);
-
-			if (maskCorners && GeometryHelper.checkIntersection(photoCorners, maskCorners)) {
-				// 교차하면 이동 확정
-			} else {
-				newTransform = originalTransform;
-				photo.css('transform', newTransform);
+			// 사진이 마스크를 완전히 덮어야 함 (cover 모드)
+			if (pw >= mb.width) {
+				// 사진이 마스크보다 클 때: 사진이 마스크를 벗어나지 않도록
+				const minTx = mb.x + mb.width - pw;  // 사진 오른쪽 = 마스크 오른쪽
+				const maxTx = mb.x;                   // 사진 왼쪽 = 마스크 왼쪽
+				newTx = Math.max(minTx, Math.min(maxTx, newTx));
 			}
 
+			if (ph >= mb.height) {
+				const minTy = mb.y + mb.height - ph;
+				const maxTy = mb.y;
+				newTy = Math.max(minTy, Math.min(maxTy, newTy));
+			}
+
+			const newMatrix = { ...dragData.initialMatrix };
+			newMatrix.tx = newTx;
+			newMatrix.ty = newTy;
+
+			const newTransform = TransformHelper.composeMatrix(newMatrix);
+
+			photo.css('transform', newTransform);
 			$selectionBox.css('transform', newTransform);
 			$silhouette.css('transform', newTransform);
 
@@ -183,58 +222,21 @@ class PhotoManager {
 			.on('mouseup.photoDrag', onMouseUp);
 	}
 
-	static getContainerBounds(maskContainer, photo) {
-		const containerWidth = maskContainer.width();
-		const containerHeight = maskContainer.height();
-		const photoWidth = photo.width();
-		const photoHeight = photo.height();
+	/**
+	 * 마스크 bounds의 네 꼭짓점 좌표를 반환 (교차 검사용)
+	 */
+	static getMaskBoundsCorners(frameGroup) {
+		const maskBounds = this.getMaskBoundsPixels(frameGroup);
 
-		return {
-			containerWidth,
-			containerHeight,
-			photoWidth,
-			photoHeight,
-			minLeft: containerWidth - photoWidth,
-			maxLeft: 0,
-			minTop: containerHeight - photoHeight,
-			maxTop: 0
-		};
+		return [
+			{ x: maskBounds.x, y: maskBounds.y },
+			{ x: maskBounds.x + maskBounds.width, y: maskBounds.y },
+			{ x: maskBounds.x + maskBounds.width, y: maskBounds.y + maskBounds.height },
+			{ x: maskBounds.x, y: maskBounds.y + maskBounds.height }
+		];
 	}
 
-	static calculateConstrainedPosition(newLeft, newTop, bounds, photo) {
-		const currentState = photo.data('relativeState');
-
-		if (currentState && currentState.isManuallyAdjusted) {
-			return {
-				left: `${newLeft}px`,
-				top: `${newTop}px`
-			};
-		}
-
-		let constrainedLeft = newLeft;
-		let constrainedTop = newTop;
-
-		// 수평 제약
-		if (bounds.photoWidth > bounds.containerWidth) {
-			constrainedLeft = Math.max(bounds.minLeft, Math.min(newLeft, bounds.maxLeft));
-		} else {
-			constrainedLeft = (bounds.containerWidth - bounds.photoWidth) / 2;
-		}
-
-		// 수직 제약
-		if (bounds.photoHeight > bounds.containerHeight) {
-			constrainedTop = Math.max(bounds.minTop, Math.min(newTop, bounds.maxTop));
-		} else {
-			constrainedTop = (bounds.containerHeight - bounds.photoHeight) / 2;
-		}
-
-		return {
-			left: `${constrainedLeft}px`,
-			top: `${constrainedTop}px`
-		};
-	}
-
-	// === 크기 조절 처리 ===
+	// ========== 크기 조절 처리 ==========
 
 	static bindResizeEvent(photo, handle) {
 		handle.on('mousedown', (e) => {
@@ -243,25 +245,21 @@ class PhotoManager {
 			const frameGroup = photo.closest('.frame-group');
 			frameGroup.data('isResizingPhoto', true);
 
-			// 현재 transform 매트릭스 파싱
 			const currentTransform = photo.css('transform');
 			const currentMatrix = TransformHelper.parseMatrix(currentTransform);
-
-			// 사진 자체의 회전 (라디안)
 			const photoRotation = Math.atan2(currentMatrix.b, currentMatrix.a);
 
-			// ✨ [수정] 프레임의 회전도 가져오기 (라디안)
 			const frameTransform = frameGroup.css('transform');
 			const frameMatrix = TransformHelper.parseMatrix(frameTransform);
 			const frameRotation = Math.atan2(frameMatrix.b, frameMatrix.a);
-
-			// ✨ [수정] 화면상에서의 사진의 최종 회전 각도 = 사진 회전 + 프레임 회전
 			const totalRotation = photoRotation + frameRotation;
-
 
 			const startWidth = photo.outerWidth();
 			const startHeight = photo.outerHeight();
 			const aspectRatio = startWidth / startHeight;
+
+			// ✅ 마스크 bounds 가져오기
+			const maskBoundsPixels = this.getMaskBoundsPixels(frameGroup);
 
 			const resizeData = {
 				startX: e.clientX,
@@ -272,9 +270,10 @@ class PhotoManager {
 				currentTranslateY: currentMatrix.ty,
 				currentMatrix: currentMatrix,
 				aspectRatio: aspectRatio,
-				rotation: photoRotation, // 사진 자체의 회전은 위치 보정에 계속 사용됩니다.
-				totalRotation: totalRotation, // ✨ [추가] 화면 기준 전체 회전은 마우스 이동량 변환에 사용됩니다.
-				handlePosition: this.getHandlePosition(handle)
+				rotation: photoRotation,
+				totalRotation: totalRotation,
+				handlePosition: this.getHandlePosition(handle),
+				maskBounds: maskBoundsPixels  // 마스크 bounds 저장
 			};
 
 			let animationId = null;
@@ -291,104 +290,74 @@ class PhotoManager {
 				const screenDeltaX = ev.clientX - resizeData.startX;
 				const screenDeltaY = ev.clientY - resizeData.startY;
 
-				// 화면 좌표계를 로컬 좌표계로 변환
-				// ✨ [수정] 이때 화면 기준의 '전체 회전 각도'를 사용해야 합니다.
+				// 전체 회전(프레임+사진)의 역변환 적용
 				const cos = Math.cos(-resizeData.totalRotation);
 				const sin = Math.sin(-resizeData.totalRotation);
-				const deltaX = screenDeltaX * cos - screenDeltaY * sin;
-				const deltaY = screenDeltaX * sin + screenDeltaY * cos;
+				const localDeltaX = screenDeltaX * cos - screenDeltaY * sin;
+				const localDeltaY = screenDeltaX * sin + screenDeltaY * cos;
 
-				let newWidth = resizeData.startWidth;
-				let newHeight = resizeData.startHeight;
-				let newTranslateX = resizeData.currentTranslateX;
-				let newTranslateY = resizeData.currentTranslateY;
+				let newWidth, newHeight, translateAdjustX = 0, translateAdjustY = 0;
+				const pos = resizeData.handlePosition;
 
-				// 각 핸들에 따른 크기 및 위치 계산 (이 부분은 기존 로직 유지)
-				switch (resizeData.handlePosition) {
-					case 'se': // 우하단
-						const deltaSE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaX > 0 ? 1 : -1);
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSE);
-						newHeight = newWidth / resizeData.aspectRatio;
-						break;
-
-					case 'sw': // 좌하단
-						const deltaSW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaX < 0 ? 1 : -1);
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaSW);
-						newHeight = newWidth / resizeData.aspectRatio;
-						const offsetX_sw = resizeData.startWidth - newWidth;
-						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
-						newTranslateX = resizeData.currentTranslateX +
-							offsetX_sw * Math.cos(resizeData.rotation);
-						newTranslateY = resizeData.currentTranslateY +
-							offsetX_sw * Math.sin(resizeData.rotation);
-						break;
-
-					case 'ne': // 우상단
-						const deltaNE = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							(deltaY < 0 ? 1 : -1);
-						newHeight = Math.max(this.config.minSize / resizeData.aspectRatio,
-							resizeData.startHeight + deltaNE);
-						newWidth = newHeight * resizeData.aspectRatio;
-						const offsetY_ne = resizeData.startHeight - newHeight;
-						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
-						newTranslateX = resizeData.currentTranslateX -
-							offsetY_ne * Math.sin(resizeData.rotation);
-						newTranslateY = resizeData.currentTranslateY +
-							offsetY_ne * Math.cos(resizeData.rotation);
-						break;
-
-					case 'nw': // 좌상단
-						const deltaNW = Math.max(Math.abs(deltaX), Math.abs(deltaY)) *
-							((deltaX < 0 && deltaY < 0) ? 1 : -1);
-						newWidth = Math.max(this.config.minSize, resizeData.startWidth + deltaNW);
-						newHeight = newWidth / resizeData.aspectRatio;
-						const offsetX_nw = resizeData.startWidth - newWidth;
-						const offsetY_nw = resizeData.startHeight - newHeight;
-						// 위치 보정은 사진 자체의 회전 기준이므로 resizeData.rotation 사용
-						newTranslateX = resizeData.currentTranslateX +
-							offsetX_nw * Math.cos(resizeData.rotation) -
-							offsetY_nw * Math.sin(resizeData.rotation);
-						newTranslateY = resizeData.currentTranslateY +
-							offsetX_nw * Math.sin(resizeData.rotation) +
-							offsetY_nw * Math.cos(resizeData.rotation);
-						break;
+				// 핸들 위치에 따른 크기 조절
+				if (pos === 'se') {
+					newWidth = Math.max(this.config.minSize, resizeData.startWidth + localDeltaX);
+				} else if (pos === 'sw') {
+					newWidth = Math.max(this.config.minSize, resizeData.startWidth - localDeltaX);
+				} else if (pos === 'ne') {
+					newWidth = Math.max(this.config.minSize, resizeData.startWidth + localDeltaX);
+				} else if (pos === 'nw') {
+					newWidth = Math.max(this.config.minSize, resizeData.startWidth - localDeltaX);
 				}
 
-				// CSS는 left/top을 0으로, 크기만 변경
-				photo.css({
-					width: newWidth + 'px',
-					height: newHeight + 'px',
-					left: '0px',
-					top: '0px'
-				});
+				newHeight = newWidth / resizeData.aspectRatio;
 
-				// 위치와 회전을 transform으로 적용
+				// 위치 보정 계산
+				const widthDiff = newWidth - resizeData.startWidth;
+				const heightDiff = newHeight - resizeData.startHeight;
+
+				const cosR = Math.cos(resizeData.rotation);
+				const sinR = Math.sin(resizeData.rotation);
+
+				if (pos === 'nw') {
+					translateAdjustX = -widthDiff * cosR + heightDiff * sinR;
+					translateAdjustY = -widthDiff * sinR - heightDiff * cosR;
+				} else if (pos === 'ne') {
+					translateAdjustX = heightDiff * sinR;
+					translateAdjustY = -heightDiff * cosR;
+				} else if (pos === 'sw') {
+					translateAdjustX = -widthDiff * cosR;
+					translateAdjustY = -widthDiff * sinR;
+				}
+
+				const newTranslateX = resizeData.currentTranslateX + translateAdjustX;
+				const newTranslateY = resizeData.currentTranslateY + translateAdjustY;
+
+				// 새 transform 적용
 				const newMatrix = {
-					...resizeData.currentMatrix,
+					a: resizeData.currentMatrix.a,
+					b: resizeData.currentMatrix.b,
+					c: resizeData.currentMatrix.c,
+					d: resizeData.currentMatrix.d,
 					tx: newTranslateX,
 					ty: newTranslateY
 				};
-				photo.css('transform', TransformHelper.composeMatrix(newMatrix));
 
-				// UI 업데이트
-				this.updateSelectionUI(photo);
-
-				$('.photo-silhouette').css({
+				photo.css({
 					width: newWidth + 'px',
 					height: newHeight + 'px',
-					left: '0px',
-					top: '0px',
-					transform: photo.css('transform')
+					transform: TransformHelper.composeMatrix(newMatrix)
 				});
+
+				this.updateSelectionUI(photo);
+				this.updateSilhouetteSize(photo);
 
 				latestMouseEvent = null;
 				animationId = null;
 			};
 
 			$(document).on('mousemove.photoResize', (ev) => {
-				if (!isResizing) return;
+				ev.preventDefault();
 				latestMouseEvent = ev;
 
 				if (!animationId) {
@@ -432,60 +401,7 @@ class PhotoManager {
 		return 'se';
 	}
 
-	static calculateNewDimensions(resizeData, deltaX, deltaY) {
-		let newWidth = resizeData.startWidth;
-		let newHeight = resizeData.startHeight;
-		let newLeft = resizeData.startLeft;
-		let newTop = resizeData.startTop;
-
-		switch (resizeData.handlePosition) {
-			case 'se':
-				newWidth = resizeData.startWidth + deltaX;
-				newHeight = newWidth / resizeData.aspectRatio;
-				break;
-
-			case 'sw':
-				newWidth = resizeData.startWidth - deltaX;
-				newHeight = newWidth / resizeData.aspectRatio;
-				newLeft = resizeData.startLeft + deltaX;
-				break;
-
-			case 'ne':
-				newHeight = resizeData.startHeight - deltaY;
-				newWidth = newHeight * resizeData.aspectRatio;
-				newTop = resizeData.startTop + deltaY;
-				break;
-
-			case 'nw':
-				newWidth = resizeData.startWidth - deltaX;
-				newHeight = newWidth / resizeData.aspectRatio;
-				newLeft = resizeData.startLeft + deltaX;
-				newTop = resizeData.startTop + (resizeData.startHeight - newHeight);
-				break;
-		}
-
-		return { width: newWidth, height: newHeight, left: newLeft, top: newTop };
-	}
-
-	static applyDimensions(photo, dimensions) {
-		photo.css({
-			width: `${dimensions.width}px`,
-			height: `${dimensions.height}px`,
-			left: `${dimensions.left}px`,
-			top: `${dimensions.top}px`
-		});
-
-		$('.photo-silhouette').css({
-			width: `${dimensions.width}px`,
-			height: `${dimensions.height}px`,
-			left: `${dimensions.left}px`,
-			top: `${dimensions.top}px`
-		});
-
-		this.updateSelectionUI(photo);
-	}
-
-	// === 오버레이 관리 ===
+	// ========== 오버레이 관리 ==========
 
 	static showOverlay(photo, frameGroup) {
 		this.hideOverlay();
@@ -521,8 +437,8 @@ class PhotoManager {
 			opacity: this.config.silhouetteOpacity,
 			border: '1px dashed #ff0000',
 			zIndex: 1,
-			pointerEvents: 'auto',  // 명시적으로 auto 추가
-			cursor: 'move'  // 드래그 가능 표시
+			pointerEvents: 'auto',
+			cursor: 'move'
 		}).removeClass('selected-photo uploaded-photo')
 			.addClass('photo-silhouette');
 	}
@@ -535,7 +451,7 @@ class PhotoManager {
 		$('#photo-full-overlay, .photo-silhouette').remove();
 	}
 
-	// === 상태 저장 ===
+	// ========== 상태 저장 (마스크 Bounds 기준) ==========
 
 	static savePhotoState(photo, frameGroup, options = {}) {
 		const currentTransform = photo.css('transform');
@@ -543,34 +459,32 @@ class PhotoManager {
 
 		const currentState = photo.data('relativeState') || {};
 
-		// ✨ 핵심 수정: 프레임 크기를 기준으로 상대 좌표 계산
-		const frameWidth = frameGroup.width();
-		const frameHeight = frameGroup.height();
+		// ✅ 마스크 bounds 픽셀 좌표 가져오기
+		const maskBounds = this.getMaskBoundsPixels(frameGroup);
 
 		// 사진의 실제 크기
 		const photoWidth = photo.outerWidth();
 		const photoHeight = photo.outerHeight();
 
-		// ✨ 프레임 기준 백분율로 저장 (핵심!)
-		// transform의 translate 값을 프레임 크기 기준 백분율로 저장
-		currentState.translateX = (matrix.tx / frameWidth) * 100;
-		currentState.translateY = (matrix.ty / frameHeight) * 100;
+		// ✅ 마스크 bounds 기준 백분율로 저장
+		// translate 값에서 마스크 오프셋을 빼서 마스크 내부 기준으로 변환
+		const relativeTranslateX = matrix.tx - maskBounds.x;
+		const relativeTranslateY = matrix.ty - maskBounds.y;
 
-		// 크기도 프레임 기준 백분율로 저장
+		currentState.translateX = (relativeTranslateX / maskBounds.width) * 100;
+		currentState.translateY = (relativeTranslateY / maskBounds.height) * 100;
+
+		// 크기도 마스크 bounds 기준 백분율로 저장
 		currentState.sizePercent = {
-			width: (photoWidth / frameWidth) * 100,
-			height: (photoHeight / frameHeight) * 100
+			width: (photoWidth / maskBounds.width) * 100,
+			height: (photoHeight / maskBounds.height) * 100
 		};
 
 		// 회전 정보 저장 (라디안)
 		currentState.rotation = Math.atan2(matrix.b, matrix.a);
 
 		// transform (회전만, translate 제외)
-		const rotationMatrix = {
-			...matrix,
-			tx: 0,
-			ty: 0
-		};
+		const rotationMatrix = { ...matrix, tx: 0, ty: 0 };
 		currentState.transform = TransformHelper.composeMatrix(rotationMatrix);
 		currentState.transformOrigin = photo.css('transform-origin') || '50% 50%';
 
@@ -588,11 +502,12 @@ class PhotoManager {
 			currentState.isManuallyAdjusted = options.isManual;
 		}
 
-		// ✨ 프레임 기준임을 표시하는 플래그 추가
-		currentState.isFrameRelative = true;
+		// ✅ 마스크 bounds 기준임을 표시
+		currentState.isMaskBoundsRelative = true;
 
 		photo.data('relativeState', currentState);
 
+		// percentState도 업데이트
 		photo.data('percentState', {
 			widthPercent: currentState.sizePercent.width,
 			heightPercent: currentState.sizePercent.height,
@@ -601,8 +516,8 @@ class PhotoManager {
 			rotation: currentState.rotation
 		});
 
-		console.log('Photo state saved (frame-relative):', {
-			frameSize: { width: frameWidth, height: frameHeight },
+		console.log('Photo state saved (mask-bounds-relative):', {
+			maskBounds: maskBounds,
 			photoSize: { width: photoWidth, height: photoHeight },
 			sizePercent: currentState.sizePercent,
 			translatePercent: { x: currentState.translateX, y: currentState.translateY },
@@ -610,7 +525,7 @@ class PhotoManager {
 		});
 	}
 
-	// === 유틸리티 메서드 ===
+	// ========== 유틸리티 메서드 ==========
 
 	static rotate(photo, angle) {
 		const current = Helpers.getPhotoRotation(photo);
@@ -622,7 +537,6 @@ class PhotoManager {
 		const handles = photo.closest('.frame-group').find('.resize-handle');
 		const frameGroup = photo.closest('.frame-group');
 
-		// 사진의 회전
 		const photoTransform = photo.css('transform');
 		let photoRotation = 0;
 
@@ -634,7 +548,6 @@ class PhotoManager {
 			}
 		}
 
-		// 프레임의 회전도 고려
 		const frameTransform = frameGroup.css('transform');
 		let frameRotation = 0;
 
@@ -646,17 +559,13 @@ class PhotoManager {
 			}
 		}
 
-		// 전체 회전 = 사진 회전 + 프레임 회전
 		let totalRotation = photoRotation + frameRotation;
-
-		// 회전 각도를 0-360 범위로 정규화
 		totalRotation = ((totalRotation % 360) + 360) % 360;
 
 		handles.each(function() {
 			const $handle = $(this);
 			const basePosition = $handle.attr('class').match(/handle-(\w+)/)[1];
 
-			// 커서 매핑 테이블 (45도 단위)
 			const cursorMap = {
 				'nw': ['nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize'],
 				'ne': ['ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize', 'nw-resize', 'n-resize'],
@@ -664,7 +573,6 @@ class PhotoManager {
 				'sw': ['sw-resize', 'w-resize', 'nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize']
 			};
 
-			// 45도 단위로 커서 방향 결정
 			const index = Math.round(totalRotation / 45) % 8;
 			const newCursor = cursorMap[basePosition][index];
 

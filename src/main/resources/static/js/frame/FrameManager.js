@@ -306,12 +306,13 @@ class FrameManager {
 
 	        // ✨ 프레임 기준 백분율 데이터가 있는 경우 (새 형식)
 	        if (photoState.sizePercent && (photoState.isFrameRelative || photoState.translateX !== undefined)) {
-	            // 프레임 기준 백분율 -> 픽셀
-	            pixelWidth = (photoState.sizePercent.width / 100) * frameWidth;
-	            pixelHeight = (photoState.sizePercent.height / 100) * frameHeight;
-	            translateX = (photoState.translateX / 100) * frameWidth;
-	            translateY = (photoState.translateY / 100) * frameHeight;
-	            
+				// 마스크 bounds 기준 백분율 -> 픽셀 (저장 시와 동일한 기준)
+				const maskBounds = PhotoManager.getMaskBoundsPixels(frameGroup);
+				pixelWidth = (photoState.sizePercent.width / 100) * maskBounds.width;
+				pixelHeight = (photoState.sizePercent.height / 100) * maskBounds.height;
+				translateX = (photoState.translateX / 100) * maskBounds.width + maskBounds.x;
+				translateY = (photoState.translateY / 100) * maskBounds.height + maskBounds.y;
+
 	            console.log('Using frame-relative calculation:', {
 	                frameSize: { width: frameWidth, height: frameHeight },
 	                sizePercent: photoState.sizePercent,
@@ -514,75 +515,65 @@ class FrameManager {
 	 * ✨ 사진 위치/크기를 프레임 기준으로 적용
 	 */
 	static applyPhotoPosition(frameGroup, photo, relativeState) {
-	    // 현재 프레임 크기 가져오기
-	    const frameWidth = frameGroup.width();
-	    const frameHeight = frameGroup.height();
+		// 마스크 bounds 픽셀 좌표 가져오기
+		const maskBounds = PhotoManager.getMaskBoundsPixels(frameGroup);
 
 	    let pixelWidth, pixelHeight, translateX, translateY;
 
-	    // 레거시 픽셀 값이 있고 백분율이 기본값인 경우, 원본 비율 유지 시도
-	    if (relativeState._legacyPixels && 
-	        relativeState.size.widthPercent === 100 && 
-	        relativeState._legacyPixels.widthPx) {
-	        
-	        // 원본 픽셀 크기를 현재 프레임에 맞게 스케일링
-	        const originalWidth = relativeState._legacyPixels.widthPx;
-	        const originalHeight = relativeState._legacyPixels.heightPx;
-	        
-	        // 원본 이미지의 비율 유지하면서 프레임에 맞춤
-	        const aspectRatio = originalWidth / originalHeight;
-	        
-	        // 프레임 커버 방식으로 크기 결정
-	        if (frameWidth / frameHeight > aspectRatio) {
-	            pixelWidth = frameWidth;
-	            pixelHeight = frameWidth / aspectRatio;
-	        } else {
-	            pixelHeight = frameHeight;
-	            pixelWidth = frameHeight * aspectRatio;
-	        }
-	        
-	        // 중앙 정렬
-	        translateX = (frameWidth - pixelWidth) / 2;
-	        translateY = (frameHeight - pixelHeight) / 2;
-	        
-	    } else {
-	        // 정상적인 백분율 기반 계산
-	        pixelWidth = (relativeState.size.widthPercent / 100) * frameWidth;
-	        pixelHeight = (relativeState.size.heightPercent / 100) * frameHeight;
-	        translateX = (relativeState.position.translateXPercent / 100) * frameWidth;
-	        translateY = (relativeState.position.translateYPercent / 100) * frameHeight;
-	    }
+		// 마스크 bounds 기준 백분율에서 픽셀로 변환
+		if (relativeState.isMaskBoundsRelative || relativeState.sizePercent) {
+			// 크기 계산 (마스크 bounds 기준)
+			pixelWidth = (relativeState.sizePercent?.width || relativeState.size?.widthPercent || 100) / 100 * maskBounds.width;
+			pixelHeight = (relativeState.sizePercent?.height || relativeState.size?.heightPercent || 100) / 100 * maskBounds.height;
 
-	    // transform 재구성 (회전 + translate)
-	    let finalTransform;
-	    const rotation = relativeState.rotation || 0;
-	    
-	    if (rotation !== 0) {
-	        const cos = Math.cos(rotation);
-	        const sin = Math.sin(rotation);
-	        finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
-	    } else {
-	        finalTransform = `matrix(1, 0, 0, 1, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
-	    }
+			// 위치 계산 (마스크 bounds 내부 기준 → 절대 좌표로 변환)
+			const relTranslateX = (relativeState.translateX ?? relativeState.position?.translateXPercent ?? 0) / 100 * maskBounds.width;
+			const relTranslateY = (relativeState.translateY ?? relativeState.position?.translateYPercent ?? 0) / 100 * maskBounds.height;
 
-	    // CSS 적용
-	    photo.css({
-	        display: 'block',
-	        position: 'absolute',
-	        left: '0px',
-	        top: '0px',
-	        width: pixelWidth + 'px',
-	        height: pixelHeight + 'px',
-	        transform: finalTransform,
-	        transformOrigin: relativeState.transformOrigin || '50% 50%'
-	    });
+			// 마스크 오프셋 추가하여 실제 좌표 계산
+			translateX = relTranslateX + maskBounds.x;
+			translateY = relTranslateY + maskBounds.y;
+		} else {
+			// 레거시 픽셀 값 처리
+			const frameWidth = frameGroup.width();
+			const frameHeight = frameGroup.height();
 
-	    console.log('Photo position applied:', {
-	        frameSize: { width: frameWidth, height: frameHeight },
-	        photoSize: { width: pixelWidth, height: pixelHeight },
-	        translate: { x: translateX, y: translateY },
-	        rotation: rotation
-	    });
+			pixelWidth = relativeState.size?.widthPx || frameWidth;
+			pixelHeight = relativeState.size?.heightPx || frameHeight;
+			translateX = relativeState.position?.leftPx || 0;
+			translateY = relativeState.position?.topPx || 0;
+		}
+
+		// transform 재구성 (회전 + translate)
+		let finalTransform;
+		const rotation = relativeState.rotation || 0;
+
+		if (rotation !== 0) {
+			const cos = Math.cos(rotation);
+			const sin = Math.sin(rotation);
+			finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+		} else {
+			finalTransform = `matrix(1, 0, 0, 1, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+		}
+
+		// CSS 적용
+		photo.css({
+			display: 'block',
+			position: 'absolute',
+			left: '0px',
+			top: '0px',
+			width: pixelWidth + 'px',
+			height: pixelHeight + 'px',
+			transform: finalTransform,
+			transformOrigin: relativeState.transformOrigin || '50% 50%'
+		});
+
+		console.log('Photo position applied (mask-bounds):', {
+			maskBounds: maskBounds,
+			photoSize: { width: pixelWidth, height: pixelHeight },
+			translate: { x: translateX, y: translateY },
+			rotation: rotation
+		});
 	}
 
 	static setupNewFrame(frameGroup, frameTheme, frameType) {
