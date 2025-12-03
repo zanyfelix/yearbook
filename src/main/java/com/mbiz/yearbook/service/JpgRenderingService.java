@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
@@ -767,17 +768,25 @@ public class JpgRenderingService {
 			// ✅ 수정: sizePercent가 있으면 프레임 기준 백분율 사용
 	        JsonNode sizePercent = photoNode.path("sizePercent");
 	        if (!sizePercent.isMissingNode()) {
-	            // 프레임 기준 백분율로 크기 계산
-	            photoWidth = frameWidth * (sizePercent.path("width").asDouble(100) / 100.0);
-	            photoHeight = frameHeight * (sizePercent.path("height").asDouble(100) / 100.0);
+	        	// 마스크 bounds 계산
+	            BufferedImage maskImg = null;
+	            if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
+	                maskImg = loadMaskImage(theme.getOriginalMaskPath());
+	            }
+	            Rectangle maskBounds = getMaskBounds(maskImg, frameWidth, frameHeight);
 	            
-	            // translate도 프레임 기준
+	            // 마스크 bounds 기준 백분율로 크기 계산
+	            photoWidth = maskBounds.width * (sizePercent.path("width").asDouble(100) / 100.0);
+	            photoHeight = maskBounds.height * (sizePercent.path("height").asDouble(100) / 100.0);
+	            
+	            // translate도 마스크 bounds 기준 + 오프셋 추가
 	            double translateXPercent = photoNode.path("translateX").asDouble(0);
 	            double translateYPercent = photoNode.path("translateY").asDouble(0);
-	            photoX = frameWidth * (translateXPercent / 100.0);
-	            photoY = frameHeight * (translateYPercent / 100.0);
+	            photoX = maskBounds.x + maskBounds.width * (translateXPercent / 100.0);
+	            photoY = maskBounds.y + maskBounds.height * (translateYPercent / 100.0);
 	            
-	            logger.info("sizePercent 사용: 프레임 기준 - 크기({}, {}), 위치({}, {})", 
+	            logger.info("maskBounds 사용: bounds({}, {}, {}, {}), 크기({}, {}), 위치({}, {})", 
+	                        maskBounds.x, maskBounds.y, maskBounds.width, maskBounds.height,
 	                        photoWidth, photoHeight, photoX, photoY);
 	        } else {
 	            // 기존 방식: screenWidth 기반 픽셀 계산
@@ -2393,5 +2402,46 @@ public class JpgRenderingService {
 		}
 
 		return ImageIO.read(imageFile);
+	}
+	
+	/**
+	 * 마스크 이미지에서 불투명 영역의 bounding box 계산
+	 */
+	private Rectangle getMaskBounds(BufferedImage maskImage, int frameWidth, int frameHeight) {
+	    if (maskImage == null) {
+	        return new Rectangle(0, 0, frameWidth, frameHeight);
+	    }
+	    
+	    int minX = maskImage.getWidth();
+	    int minY = maskImage.getHeight();
+	    int maxX = 0;
+	    int maxY = 0;
+	    
+	    for (int y = 0; y < maskImage.getHeight(); y++) {
+	        for (int x = 0; x < maskImage.getWidth(); x++) {
+	            int alpha = (maskImage.getRGB(x, y) >> 24) & 0xFF;
+	            if (alpha > 0) {
+	                minX = Math.min(minX, x);
+	                minY = Math.min(minY, y);
+	                maxX = Math.max(maxX, x);
+	                maxY = Math.max(maxY, y);
+	            }
+	        }
+	    }
+	    
+	    if (maxX < minX || maxY < minY) {
+	        return new Rectangle(0, 0, frameWidth, frameHeight);
+	    }
+	    
+	    // 프레임 크기 기준으로 스케일 변환
+	    double scaleX = (double) frameWidth / maskImage.getWidth();
+	    double scaleY = (double) frameHeight / maskImage.getHeight();
+	    
+	    return new Rectangle(
+	        (int)(minX * scaleX),
+	        (int)(minY * scaleY),
+	        (int)((maxX - minX + 1) * scaleX),
+	        (int)((maxY - minY + 1) * scaleY)
+	    );
 	}
 }
