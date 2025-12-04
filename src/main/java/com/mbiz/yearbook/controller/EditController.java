@@ -507,4 +507,79 @@ public class EditController {
 		}
 		return filename.substring(filename.lastIndexOf("."));
 	}
+
+	/**
+	 * HEIC 파일을 서버에서 JPEG로 변환 (pillow-heif 사용) heic2any가 처리하지 못하는 특수 HEIC 파일용 폴백
+	 */
+	@PostMapping("/edit/convertHeic")
+	@ResponseBody
+	public ResponseEntity<byte[]> convertHeic(@RequestParam("file") MultipartFile file, HttpSession session) {
+		User loginUser = (User) session.getAttribute("loginUser");
+		if (loginUser == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+
+		if (file.isEmpty()) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		Path tempHeic = null;
+		Path tempJpg = null;
+
+		try {
+			// 임시 파일 생성
+			tempHeic = Files.createTempFile("heic_", ".heic");
+			tempJpg = Files.createTempFile("converted_", ".jpg");
+
+			// HEIC 파일 저장
+			file.transferTo(tempHeic.toFile());
+
+			// Python 스크립트로 변환 실행
+			String pythonScript = String.format(
+					"from PIL import Image; " + "from pillow_heif import register_heif_opener; "
+							+ "register_heif_opener(); "
+							+ "Image.open('%s').convert('RGB').save('%s', 'JPEG', quality=90)",
+					tempHeic.toString().replace("\\", "/"), tempJpg.toString().replace("\\", "/"));
+			
+			String pythonCmd = System.getProperty("os.name").toLowerCase().contains("win") ? "python" : "python3";
+
+			ProcessBuilder pb = new ProcessBuilder(pythonCmd, "-c", pythonScript);
+			pb.redirectErrorStream(true);
+			Process process = pb.start();
+
+			// 프로세스 출력 읽기 (에러 확인용)
+			java.io.BufferedReader reader = new java.io.BufferedReader(
+					new java.io.InputStreamReader(process.getInputStream()));
+			StringBuilder output = new StringBuilder();
+			String line;
+			while ((line = reader.readLine()) != null) {
+				output.append(line);
+			}
+
+			int exitCode = process.waitFor();
+
+			if (exitCode != 0) {
+				System.err.println("HEIC 변환 실패: " + output.toString());
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+			}
+
+			// 변환된 파일 읽기
+			byte[] jpegData = Files.readAllBytes(tempJpg);
+
+			return ResponseEntity.ok().contentType(org.springframework.http.MediaType.IMAGE_JPEG).body(jpegData);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			// 임시 파일 정리
+			try {
+				if (tempHeic != null)
+					Files.deleteIfExists(tempHeic);
+				if (tempJpg != null)
+					Files.deleteIfExists(tempJpg);
+			} catch (IOException ignored) {
+			}
+		}
+	}
 }

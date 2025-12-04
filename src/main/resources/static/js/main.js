@@ -1311,7 +1311,7 @@ $(document).ready(function() {
 			const fileExtension = file.name.split('.').pop().toLowerCase();
 
 			// HEIC인 경우 JPEG로 변환
-			if (fileExtension === 'heic') {
+			if (fileExtension === 'heic' || fileExtension === 'heic') {
 				processedFile = await convertHeicToJpeg(file);
 			}
 
@@ -1363,25 +1363,63 @@ $(document).ready(function() {
 		}
 	}
 
-	// HEIC 변환 함수 (기존 유지)
+	// HEIC 변환 함수 (서버 폴백 추가)
 	function convertHeicToJpeg(heicFile) {
 		return new Promise((resolve, reject) => {
-			if (typeof heic2any === 'undefined') {
-				reject(new Error('HEIC 변환 라이브러리가 로드되지 않았습니다.'));
-				return;
-			}
-
-			heic2any({
-				blob: heicFile,
-				toType: "image/jpeg",
-				quality: 0.9
-			})
-				.then(result => {
-					// heic2any는 Blob 또는 Blob 배열을 반환할 수 있음
-					const blob = Array.isArray(result) ? result[0] : result;
-					resolve(blob);
+			// 1차: heic2any로 클라이언트 변환 시도
+			if (typeof heic2any !== 'undefined') {
+				heic2any({
+					blob: heicFile,
+					toType: "image/jpeg",
+					quality: 0.9,
+					multiple: false
 				})
-				.catch(reject);
+					.then(result => {
+						console.log('heic2any 변환 성공');
+						const blob = Array.isArray(result) ? result[0] : result;
+						resolve(blob);
+					})
+					.catch(error => {
+						console.error('heic2any 변환 실패, 서버 폴백 시도:', error);
+						// 2차: 서버에서 변환 시도
+						convertHeicOnServer(heicFile)
+							.then(resolve)
+							.catch(reject);
+					});
+			} else {
+				// heic2any 라이브러리 없으면 바로 서버 폴백
+				console.log('heic2any 없음, 서버 변환 시도');
+				convertHeicOnServer(heicFile)
+					.then(resolve)
+					.catch(reject);
+			}
+		});
+	}
+
+	// 서버에서 HEIC 변환 (pillow-heif 사용)
+	function convertHeicOnServer(heicFile) {
+		return new Promise((resolve, reject) => {
+			const formData = new FormData();
+			formData.append('file', heicFile);
+
+			$.ajax({
+				url: `${ctx}/edit/convertHeic`,
+				method: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				xhrFields: {
+					responseType: 'blob'
+				},
+				success: function(blob) {
+					console.log('서버 HEIC 변환 성공');
+					resolve(blob);
+				},
+				error: function(xhr) {
+					console.error('서버 HEIC 변환 실패:', xhr);
+					reject(new Error('HEIC 파일을 변환할 수 없습니다. 아이폰 설정에서 "호환성 우선"으로 변경 후 다시 시도해주세요.'));
+				}
+			});
 		});
 	}
 
