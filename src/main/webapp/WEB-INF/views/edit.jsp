@@ -1,5 +1,7 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8"	pageEncoding="UTF-8"%>
+<jsp:useBean id="now" class="java.util.Date" />
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+<fmt:formatDate value="${now}" pattern="yyyyMMddHHmmss" var="jsVersion" />
 <!DOCTYPE html>
 <%@ page session="true"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
@@ -492,27 +494,27 @@
      ============================================================================ -->
 
 		<!-- Core Classes (핵심 클래스) -->
-		<script src="<c:url value='/js/core/SelectionManager.js'/>"></script>
-		<script src="<c:url value='/js/core/SafeLineManager.js'/>"></script>
+		<script src="<c:url value='/js/core/SelectionManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/core/SafeLineManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- UI Management (UI 관리) -->
-		<script src="<c:url value='/js/ui/PanelManager.js'/>"></script>
-		<script src="<c:url value='/js/ui/UIManager.js'/>"></script>
+		<script src="<c:url value='/js/ui/PanelManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/ui/UIManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Feature Modules (기능 모듈) -->
-		<script src="<c:url value='/js/frame/FrameManager.js'/>"></script>
-		<script src="<c:url value='/js/text/TextManager.js'/>"></script>
+		<script src="<c:url value='/js/frame/FrameManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/text/TextManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Events & Utils (이벤트 및 유틸리티) -->
-		<script src="<c:url value='/js/utils/DataLoader.js'/>"></script>
-		<script src="<c:url value='/js/utils/Helpers.js'/>"></script>
-		<script src="<c:url value='/js/utils/GeometryHelper.js'/>"></script>
-		<script src="<c:url value='/js/utils/MaskBoundsCalculator.js'/>"></script>
-		<script src="<c:url value='/js/events/EventManager.js'/>"></script>
-		<script src="<c:url value='/js/photo/PhotoManager.js'/>"></script>
+		<script src="<c:url value='/js/utils/DataLoader.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/utils/Helpers.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/utils/GeometryHelper.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/utils/MaskBoundsCalculator.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/events/EventManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/photo/PhotoManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Main Initialization (반드시 마지막에 로드) -->
-		<script src="<c:url value='/js/main.js'/>"></script>
+		<script src="<c:url value='/js/main.js?v=${jsVersion}'/>"></script>
 		<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 		<!-- heic2any 변환 -->
 		<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
