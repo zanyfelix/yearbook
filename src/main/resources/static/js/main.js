@@ -8,6 +8,96 @@ $(document).ready(function() {
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
 
+	// ========================================================================
+	// 다중 선택 및 정렬 매니저 초기화
+	// ========================================================================
+
+	// 전역 매니저 인스턴스 생성
+	window.multiSelectionManager = null;
+	window.alignmentManager = null;
+	window.keyboardManager = null;
+
+	// 모달이 열릴 때 매니저들 초기화
+	$('#editModal').on('shown.bs.modal', function() {
+		// 다중 선택 매니저
+		if (!window.multiSelectionManager) {
+			window.multiSelectionManager = new MultiSelectionManager();
+		}
+
+		// 정렬 매니저
+		if (!window.alignmentManager) {
+			window.alignmentManager = new AlignmentManager();
+		}
+
+		// 키보드 매니저
+		if (!window.keyboardManager) {
+			window.keyboardManager = new KeyboardManager();
+		}
+
+		console.log('다중 선택 및 정렬 매니저 초기화 완료');
+	});
+
+	// 모달이 닫힐 때 정리
+	$('#editModal').on('hidden.bs.modal', function() {
+		if (window.multiSelectionManager) {
+			window.multiSelectionManager.clearSelection();
+		}
+	});
+
+	// ========================================================================
+	// 빈 영역 클릭 시 선택 해제
+	// ========================================================================
+	$('#page-preview').on('click', function(e) {
+	    // ✅ 라쏘 선택 중이거나 방금 완료했으면 무시
+	    if (window.multiSelectionManager) {
+	        if (window.multiSelectionManager.isLassoSelecting || 
+	            window.multiSelectionManager.justFinishedLasso) {
+				console.log('[main.js] 라쏘 중/완료 직후 - click 무시');
+	            return;
+	        }
+	    }
+	    
+	    // 클릭한 대상이 선택 가능한 요소가 아니면 선택 해제
+	    if (!$(e.target).closest('.frame-group, .text-box, .element-frame').length) {
+	        if (window.multiSelectionManager) {
+	            window.multiSelectionManager.clearSelection();
+	        } else if (window.selectionManager) {
+	            window.selectionManager.clearSelection();
+	        }
+	    }
+	});
+
+	// ========================================================================
+	// 전역 헬퍼 함수
+	// ========================================================================
+
+	// transform에서 translate 값 추출
+	window.getTranslateValues = function(transform) {
+		if (!transform || transform === 'none') {
+			return { x: 0, y: 0 };
+		}
+
+		// translate(Xpx, Ypx) 형태
+		const translateMatch = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+		if (translateMatch) {
+			return {
+				x: parseFloat(translateMatch[1]) || 0,
+				y: parseFloat(translateMatch[2]) || 0
+			};
+		}
+
+		// matrix(a, b, c, d, tx, ty) 형태
+		const matrixMatch = transform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+		if (matrixMatch) {
+			return {
+				x: parseFloat(matrixMatch[5]) || 0,
+				y: parseFloat(matrixMatch[6]) || 0
+			};
+		}
+
+		return { x: 0, y: 0 };
+	};
+
 	// 로딩 화면 제어 함수
 	const $loader = $('#preview-loader');
 	function showLoader() { $loader.show(); }
@@ -31,62 +121,163 @@ $(document).ready(function() {
 			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
 		};
 
-		const newPixelSize = {
-			width: (relativeState.size.width / 100) * actualBgRect.width,
-			height: (relativeState.size.height / 100) * actualBgRect.height
-		};
-
 		let finalTransform = 'none';
 
 		if (relativeState.rotation !== undefined && relativeState.rotation !== 0) {
-
 			const cos = Math.cos(relativeState.rotation);
 			const sin = Math.sin(relativeState.rotation);
-
-			// 백분율로 저장된 translate를 픽셀로 변환
 			const translateX = (relativeState.translateX || 0) / 100 * actualBgRect.width;
 			const translateY = (relativeState.translateY || 0) / 100 * actualBgRect.height;
-
-			// 고정밀 matrix 생성 (소수점 6자리까지)
 			finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
 		} else if (relativeState.translateX || relativeState.translateY) {
-			// 회전 없이 이동만 있는 경우
 			const translateX = (relativeState.translateX || 0) / 100 * actualBgRect.width;
 			const translateY = (relativeState.translateY || 0) / 100 * actualBgRect.height;
 			finalTransform = `translate(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px)`;
 		}
 
-		// Transform origin 재구성
 		const transformOrigin = `${relativeState.transformOriginX || 50}% ${relativeState.transformOriginY || 50}%`;
 
-		const finalCss = {
-			left: newPixelPos.left.toFixed(2) + 'px',
-			top: newPixelPos.top.toFixed(2) + 'px',
-			width: newPixelSize.width.toFixed(2) + 'px',
-			height: newPixelSize.height.toFixed(2) + 'px',
-			transform: finalTransform,
-			transformOrigin: transformOrigin,
-			visibility: 'visible'
-		};
-
-		// 텍스트박스 처리
+		// ✅ 텍스트박스는 크기를 내용 기반으로 재계산
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-			finalCss['font-size'] = Math.round(baseFontSize * scaleRatio) + 'px';
-			if ($element.data('savedFontFamily')) {
-				finalCss['font-family'] = $element.data('savedFontFamily');
-			}
+			const scaledFontSize = Math.round(baseFontSize * scaleRatio);
+			
+			// 폰트 크기 먼저 적용
+			$element.css({
+				'font-size': scaledFontSize + 'px',
+				'font-family': $element.data('savedFontFamily') || $element.css('font-family')
+			});
+			
+			// 내용에 맞게 크기 재측정
+			const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
+			
+			$element.css({
+				left: newPixelPos.left.toFixed(2) + 'px',
+				top: newPixelPos.top.toFixed(2) + 'px',
+				width: measuredSize.width + 'px',
+				height: measuredSize.height + 'px',
+				transform: finalTransform,
+				transformOrigin: transformOrigin,
+				visibility: 'visible'
+			});
+		} else {
+			// 프레임, 요소 등 기존 로직
+			const newPixelSize = {
+				width: (relativeState.size.width / 100) * actualBgRect.width,
+				height: (relativeState.size.height / 100) * actualBgRect.height
+			};
+			
+			$element.css({
+				left: newPixelPos.left.toFixed(2) + 'px',
+				top: newPixelPos.top.toFixed(2) + 'px',
+				width: newPixelSize.width.toFixed(2) + 'px',
+				height: newPixelSize.height.toFixed(2) + 'px',
+				transform: finalTransform,
+				transformOrigin: transformOrigin,
+				visibility: 'visible'
+			});
 		}
-
-		console.log(finalCss);
-		$element.css(finalCss);
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
 			PhotoManager.updateSelectionUI($element);
 		}
 	};
+	
+	/**
+	 * 텍스트박스 내용에 맞는 크기 측정 (줄바꿈 유지)
+	 */
+	function measureTextBoxContentSize($textBox, fontSize) {
+		const htmlContent = $textBox.html();
+		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		const padding = parseInt($textBox.css('padding')) || 8;
+		
+		if (hasLineBreaks) {
+			// 줄바꿈이 있는 경우
+			let lines = [];
+			const tempDiv = $('<div>').html(htmlContent);
+			
+			if (htmlContent.includes('<div>')) {
+				const firstLineText = tempDiv.contents().filter(function() {
+					return this.nodeType === 3;
+				}).text();
+				if (firstLineText.trim()) lines.push(firstLineText);
+				tempDiv.find('div').each(function() {
+					lines.push($(this).text() || '\u00A0');
+				});
+			} else if (htmlContent.includes('<br>')) {
+				const parts = htmlContent.split('<br>');
+				parts.forEach(part => {
+					const text = $('<div>').html(part).text();
+					lines.push(text || '\u00A0');
+				});
+			}
+			
+			// 가장 긴 줄 너비 측정
+			let maxWidth = 0;
+			lines.forEach(line => {
+				const $temp = $('<span>')
+					.text(line || '\u00A0')
+					.css({
+						'position': 'absolute',
+						'visibility': 'hidden',
+						'white-space': 'nowrap',
+						'font-size': fontSize + 'px',
+						'font-family': $textBox.css('font-family'),
+						'font-weight': $textBox.css('font-weight'),
+						'letter-spacing': $textBox.css('letter-spacing')
+					});
+				$('body').append($temp);
+				maxWidth = Math.max(maxWidth, $temp.width());
+				$temp.remove();
+			});
+			
+			// 높이 측정
+			const $heightTemp = $('<div>')
+				.html(htmlContent)
+				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'width': (maxWidth + padding * 2 + 10) + 'px',
+					'white-space': 'pre-wrap',
+					'word-break': 'keep-all',
+					'font-size': fontSize + 'px',
+					'font-family': $textBox.css('font-family'),
+					'font-weight': $textBox.css('font-weight'),
+					'line-height': $textBox.css('line-height'),
+					'padding': padding + 'px',
+					'box-sizing': 'border-box'
+				});
+			$('body').append($heightTemp);
+			const measuredHeight = $heightTemp.outerHeight();
+			$heightTemp.remove();
+			
+			return {
+				width: maxWidth + padding * 2 + 5,
+				height: measuredHeight
+			};
+		} else {
+			// 단일 행
+			const $temp = $('<div>')
+				.html(htmlContent || ' ')
+				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'white-space': 'nowrap',
+					'font-size': fontSize + 'px',
+					'font-family': $textBox.css('font-family'),
+					'font-weight': $textBox.css('font-weight'),
+					'padding': padding + 'px'
+				});
+			$('body').append($temp);
+			const width = $temp.outerWidth();
+			const height = $temp.outerHeight();
+			$temp.remove();
+			
+			return { width, height };
+		}
+	}
 
 	window.updateAllPositions = function() {
 		console.log("updateAllPositions");

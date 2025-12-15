@@ -440,7 +440,8 @@ html, body {
 }
 
 .uploaded-photo.selected-photo {
-    border: 3px solid #FFA500;
+    outline: 3px solid #FFA500;
+    outline-offset: -3px;
     box-shadow: 0 0 0 2px rgba(255,165,0,0.3);
     z-index: 18;
     pointer-events: auto;  /* 선택된 사진은 항상 클릭 가능 */
@@ -870,7 +871,6 @@ html, body {
 
 /* 텍스트 상자 기본 스타일 */
 .text-box {
-    /* 테두리 스타일을 점선(dotted)으로 변경하고 투명하게 설정 */
     border: 1px dashed transparent; 
     padding: 8px;
     background-color: transparent;
@@ -878,11 +878,10 @@ html, body {
     min-width: 50px;
     cursor: default;
     
-    /* ✨ 추가: 자동 크기 조정을 위한 스타일 */
-    white-space: nowrap;  /* 기본적으로 한 줄로 표시 */
-    width: auto;  /* 너비 자동 조정 */
-    max-width: none;  /* 최대 너비 제한 없음 */
-    overflow: visible;  /* 내용이 넘쳐도 보이도록 */
+    white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -896,7 +895,6 @@ html, body {
 .text-box.editing {
     cursor: text;
     border: 1px dashed #FF0000; /* 편집 시에는 실선으로 명확하게 표시 */
-    white-space: nowrap;  /* 편집 중에도 한 줄 유지 */
     min-width: 100px;  /* 편집 시 최소 너비 */
 }
 
@@ -1279,7 +1277,7 @@ button:focus,
 
 /* 3. 오른쪽 메인 액션 버튼 그룹 */
 #main-actions button {
-    width: 80px;
+    width: 70px;
     height: 32px;
     font-size: 13px;
 }
@@ -1333,11 +1331,11 @@ button:focus,
     height: 30px; /* 크기 축소 */
     font-size: 13px;
     border-radius: 5px;
-    width: 80px; /* 너비 고정 */
+    width: 75px; /* 너비 고정 */
     flex-grow: 0;
 }
 #text-controls input[type="color"] {
-    width: 38px;   /* 크기 축소 */
+    width: 30px;   /* 크기 축소 */
     height: 30px;  /* 크기 축소 */
     padding: 5px;
     border-radius: 5px;
@@ -2230,4 +2228,573 @@ input:checked + .slider-text .off-text {
         height: 20px;
         margin: 0 3px;
     }
+}
+
+/* ============================================================================
+   다중 선택 (Multi-Selection) 관련 CSS
+   edit.css에 추가하세요
+   ============================================================================ */
+
+/* 다중 선택된 요소 스타일 */
+.multi-selected {
+    outline: 2px dashed #007bff !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15) !important;
+}
+
+/* 라쏘 선택 박스 */
+#lasso-selection-box {
+    position: absolute;
+    border: 2px dashed #007bff;
+    background-color: rgba(0, 123, 255, 0.1);
+    pointer-events: none;
+    z-index: 10000;
+    display: none;
+}
+
+/* 다중 선택 툴바 스타일 */
+#multi-selection-controls {
+    width: auto !important;       /* w-100 오버라이드 */
+    max-width: none !important;
+    flex-shrink: 0;
+}
+
+#multi-selection-controls .control-buttons {
+    flex-wrap: nowrap !important;  /* flex-wrap 오버라이드 */
+    white-space: nowrap;
+    overflow-x: auto;              /* 넘치면 스크롤 */
+    overflow-y: hidden;
+}
+
+/* 버튼 고정 크기 */
+#multi-selection-controls .control-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#multi-selection-controls .control-btn:hover {
+    background: #e9ecef;
+}
+
+#multi-selection-controls .control-btn:active {
+    background: #dee2e6;
+}
+
+/* 버튼 그룹 내 버튼 */
+#multi-selection-controls .btn-group .control-btn {
+    border-radius: 0;
+}
+
+#multi-selection-controls .btn-group .control-btn:first-child {
+    border-radius: 4px 0 0 4px;
+}
+
+#multi-selection-controls .btn-group .control-btn:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+/* 구분선 고정 높이 */
+#multi-selection-controls .vr {
+    height: 30px;
+    flex-shrink: 0;
+}
+
+/* 선택 개수 뱃지 */
+#multi-selection-controls #multi-selection-count {
+    font-size: 14px;      /* 글자 크기 증가 */
+    padding: 6px 12px;    /* 패딩 증가 */
+}
+
+/* 정렬 기준 토글 버튼 */
+#multi-selection-controls #multi-align-base-toggle {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* 삭제 버튼 */
+#multi-selection-controls #multi-delete-btn {
+    flex-shrink: 0;
+}
+
+/* ============================================================================
+   1280x720 해상도 대응 미디어 쿼리
+   ============================================================================ */
+
+/* 1280x720 및 유사 낮은 해상도 대응 */
+@media (max-width: 1366px) and (max-height: 768px) {
+    
+    /* 에디터 툴바 - 전체 높이 고정 */
+    #editor-toolbar {
+        min-height: 50px !important;
+        max-height: 50px !important;
+        overflow: hidden;
+    }
+    
+    /* 에디터 패널 스페이서도 동일한 높이로 조정 */
+    .editor-panel-spacer {
+        min-height: 50px !important;
+        max-height: 50px !important;
+    }
+    
+    /* context-controls 높이 고정 */
+    #editor-toolbar .context-controls {
+        height: 100%;
+        align-items: center;
+    }
+    
+   	#frame-controls:not(.d-none),
+    #photo-controls:not(.d-none),
+    #text-controls:not(.d-none),
+    #element-controls:not(.d-none),
+    #multi-selection-controls:not(.d-none) {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* control-buttons 내부 div도 높이 맞춤 */
+    #frame-controls .control-buttons,
+    #photo-controls .control-buttons,
+    #element-controls .control-buttons {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* text-controls 내부 select, input 높이 통일 */
+    #text-controls select,
+    #text-controls input[type="color"],
+    #text-controls input[type="number"] {
+        height: 28px !important;
+        font-size: 12px !important;
+    }
+    
+   /*  #text-controls select {
+        padding: 2px 4px !important;
+    } */
+    
+    /* 컨트롤 버튼 크기 축소 */
+    .control-btn {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        padding: 3px !important;
+    }
+    
+    .control-btn img {
+        max-width: 18px !important;
+        max-height: 18px !important;
+    }
+    
+    /* 버튼 그룹 간격 축소 */
+    .control-buttons {
+        gap: 3px !important;
+    }
+    
+    /* 회전 버튼 크기 조정 */
+    .rotate-btn {
+        width: 28px !important;
+        height: 28px !important;
+        padding: 3px !important;
+    }
+    
+    /* 정렬 버튼 크기 조정 */
+    .align-btn {
+        width: 28px !important;
+        height: 28px !important;
+        padding: 3px !important;
+    }
+    
+    .align-btn .align-icon {
+        font-size: 14px !important;
+    }
+    
+    /* 구분선 높이 축소 */
+    .vr, .align-buttons-divider {
+        height: 22px !important;
+    }
+    
+    /* 텍스트 입력 필드 크기 조정 */
+    #frame-controls input[type="number"],
+    #text-controls input[type="number"] {
+        width: 50px !important;
+        height: 28px !important;
+        padding: 2px 4px !important;
+        font-size: 12px !important;
+    }
+    
+    /* 레이블 텍스트 크기 조정 */
+    #frame-controls label,
+    #text-controls label {
+        font-size: 11px !important;
+        margin-right: 4px !important;
+    }
+    
+    /* 다중 선택 툴바 조정 */
+    #multi-selection-controls .control-btn {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+    }
+    
+    #multi-selection-controls #multi-selection-count {
+        font-size: 12px !important;
+        padding: 4px 8px !important;
+    }
+    
+    /* 좌측 버튼 영역 - 버튼 크기 조정 */
+    .left-button-area .btn {
+        font-size: 13px !important;
+        padding: 8px 12px !important;
+    }
+    
+    /* 미리보기 영역 - 최소 높이 축소 */
+    #page-preview {
+        min-height: 350px !important;
+    }
+    
+    /* 모달 푸터 버튼 크기 조정 */
+    .modal-footer-custom .btn {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* 1280x720 정확한 해상도 대응 */
+@media (max-width: 1280px) and (max-height: 720px) {
+    
+    /* 에디터 툴바 - 더 축소하고 고정 */
+    #editor-toolbar {
+        min-height: 45px !important;
+        max-height: 45px !important;
+        overflow: hidden;
+    }
+    
+    /* 에디터 패널 스페이서도 동일한 높이로 조정 */
+    .editor-panel-spacer {
+        min-height: 45px !important;
+        max-height: 45px !important;
+    }
+    
+    /* context-controls 높이 고정 */
+    #editor-toolbar .context-controls {
+        height: 100%;
+        align-items: center;
+    }
+    
+    #frame-controls:not(.d-none),
+    #photo-controls:not(.d-none),
+    #text-controls:not(.d-none),
+    #element-controls:not(.d-none),
+    #multi-selection-controls:not(.d-none) {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* control-buttons 내부 div도 높이 맞춤 */
+    #frame-controls .control-buttons,
+    #photo-controls .control-buttons,
+    #element-controls .control-buttons {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* text-controls 내부 select, input 높이 통일 */
+    #text-controls select,
+    #text-controls input[type="color"],
+    #text-controls input[type="number"] {
+        height: 26px !important;
+        font-size: 11px !important;
+    }
+    
+    #text-controls select {
+        width: 100px !important;
+    }
+    
+    #text-controls .font-size-container select {
+        width: 80px !important;
+    }
+    
+    #text-controls .font-size-container input {
+        width: 60px !important;
+    }
+    
+    /* 컨트롤 버튼 더 축소 */
+    .control-btn {
+        width: 26px !important;
+        height: 26px !important;
+        min-width: 26px !important;
+        padding: 2px !important;
+    }
+    
+    .control-btn img {
+        max-width: 16px !important;
+        max-height: 16px !important;
+    }
+    
+    /* 버튼 그룹 간격 더 축소 */
+    .control-buttons {
+        gap: 2px !important;
+    }
+    
+    /* 정렬 버튼 더 축소 */
+    .align-btn {
+        width: 26px !important;
+        height: 26px !important;
+    }
+    
+    .align-btn .align-icon {
+        font-size: 13px !important;
+    }
+    
+    /* 구분선 높이 더 축소 */
+    .vr, .align-buttons-divider {
+        height: 20px !important;
+        margin: 0 2px !important;
+    }
+    
+    /* 텍스트 입력 필드 더 축소 */
+    #frame-controls input[type="number"],
+    #text-controls input[type="number"] {
+        width: 45px !important;
+        height: 26px !important;
+        font-size: 11px !important;
+    }
+    
+    /* 레이블 더 축소 */
+    #frame-controls label,
+    #text-controls label {
+        font-size: 10px !important;
+        margin-right: 3px !important;
+    }
+    
+    /* 좌측 버튼 영역 - 버튼 더 축소 */
+    .left-button-area .btn {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
+    
+    /* 미리보기 영역 - 최소 높이 더 축소 */
+    #page-preview {
+        min-height: 300px !important;
+    }
+    
+    /* 모달 푸터 버튼 더 축소 */
+    .modal-footer-custom .btn {
+        padding: 5px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    /* 다중 선택 카운트 뱃지 축소 */
+    #multi-selection-controls #multi-selection-count {
+        font-size: 11px !important;
+        padding: 3px 6px !important;
+    }
+}
+
+/* 세로 공간이 더 부족한 경우 (720px 이하) */
+@media (max-height: 720px) {
+    
+    /* 툴바를 더욱 압축하고 고정 */
+    #editor-toolbar {
+        min-height: 40px !important;
+        max-height: 40px !important;
+        overflow: hidden;
+    }
+    
+    /* 에디터 패널 스페이서도 동일한 높이로 조정 */
+    .editor-panel-spacer {
+        min-height: 40px !important;
+        max-height: 40px !important;
+    }
+    
+    /* context-controls 높이 고정 */
+    #editor-toolbar .context-controls {
+        height: 100%;
+        align-items: center;
+    }
+    
+    #frame-controls:not(.d-none),
+    #photo-controls:not(.d-none),
+    #text-controls:not(.d-none),
+    #element-controls:not(.d-none),
+    #multi-selection-controls:not(.d-none) {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* control-buttons 내부 div도 높이 맞춤 */
+    #frame-controls .control-buttons,
+    #photo-controls .control-buttons,
+    #element-controls .control-buttons {
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* text-controls 내부 select, input 높이 통일 */
+    #text-controls select,
+    #text-controls input[type="color"],
+    #text-controls input[type="number"] {
+        height: 24px !important;
+        font-size: 10px !important;
+    }
+    
+    #text-controls select {
+        width: 90px !important;
+    }
+    
+    #text-controls .font-size-container select {
+        width: 70px !important;
+    }
+    
+    #text-controls .font-size-container input {
+        width: 50px !important;
+    }
+    
+    /* 컨트롤 섹션 간격 최소화 */
+    .context-controls {
+        gap: 2px !important;
+    }
+    
+    /* 버튼들을 가능한 한 작게 */
+    .control-btn,
+    .align-btn,
+    .rotate-btn {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        padding: 2px !important;
+    }
+    
+    .control-btn img {
+        max-width: 14px !important;
+        max-height: 14px !important;
+    }
+    
+    .align-btn .align-icon {
+        font-size: 12px !important;
+    }
+    
+    /* 입력 필드 최소화 */
+    #frame-controls input[type="number"],
+    #text-controls input[type="number"] {
+        width: 40px !important;
+        height: 24px !important;
+        padding: 1px 2px !important;
+        font-size: 10px !important;
+    }
+    
+    /* 레이블 최소화 */
+    #frame-controls label,
+    #text-controls label {
+        font-size: 9px !important;
+        margin-right: 2px !important;
+    }
+    
+    /* 미리보기 영역 최소 높이 */
+    #page-preview {
+        min-height: 280px !important;
+    }
+}
+
+/* 가로 해상도도 낮은 경우 (1280px 이하) */
+@media (max-width: 1280px) {
+    
+    /* 좌측 사이드바 너비 축소 */
+    .sidebar {
+        width: 250px;
+    }
+    
+    .content {
+        margin-left: 250px;
+    }
+    
+    /* 좌측 버튼 영역 너비 조정 */
+    .left-button-area {
+        width: 140px !important;
+        min-width: 140px !important;
+    }
+    
+    .left-button-area .btn {
+        font-size: 12px !important;
+        padding: 8px 8px !important;
+    }
+    
+    /* 중앙 썸네일 영역 비율 조정 */
+    .center-thumbnail-area {
+        width: 35% !important;
+    }
+    
+    /* 우측 미리보기 영역 비율 조정 */
+    .d-flex.flex-column[style*="60%"] {
+        width: calc(65% - 140px) !important;
+    }
+}
+
+/* 툴바 컨트롤이 2줄로 배치되는 것을 방지 */
+@media (max-width: 1366px) {
+    
+    /* 툴바 내부 요소들을 스크롤 가능하게 */
+    #editor-toolbar .context-controls {
+        overflow-x: hidden;
+        overflow-y: hidden;
+        flex-wrap: nowrap !important;
+    }
+    
+    /* 각 컨트롤 섹션의 최소 너비 보장 */
+    #frame-controls,
+    #photo-controls,
+    #text-controls,
+    #element-controls,
+    #multi-selection-controls {
+        flex-shrink: 0;
+        min-width: fit-content;
+    }
+    
+    /* 스크롤바 스타일링 (선택사항) */
+    #editor-toolbar .context-controls::-webkit-scrollbar {
+        height: 4px;
+    }
+    
+    #editor-toolbar .context-controls::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    #editor-toolbar .context-controls::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 2px;
+    }
+    
+    #editor-toolbar .context-controls::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+}
+
+@media screen and (max-width: 1440px) {
+
+   #text-controls select {
+      font-size: 11px !important;
+      width: 60px !important;
+   }
+
+   #text-controls select#tooltip-font {
+      width: 90px !important;
+   }
+   
+   #text-controls input[type="color"] {
+      width: 30px !important;
+   }
+   
+   #main-actions button {
+      width: 50px !important;
+      font-size: 11px !important;
+   }
 }
