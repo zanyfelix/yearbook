@@ -238,13 +238,13 @@
 									</div>
 									<div id="text-controls" class="d-none w-100">
 										<select id="tooltip-font" class="form-select form-select-sm"
-											title="Font Family" style="width: 180px;"></select>
+											title="Font Family" style="width: 140px;"></select>
 
 
 										<div class="font-size-container"
 											style="display: inline-flex; align-items: center; gap: 5px;">
 											<select id="tooltip-size-select"
-												class="form-select form-select-sm" style="width: 100px;">
+												class="form-select form-select-sm" style="width: 75px;">
 												<option value="">Custom</option>
 												<option value="10">10px</option>
 												<option value="12">12px</option>
@@ -268,7 +268,7 @@
 											<!-- Input은 기본적으로 숨김 -->
 											<input type="number" id="tooltip-size"
 												class="form-control form-control-sm d-none" min="8"
-												max="200" placeholder="px" style="width: 80px;">
+												max="200" placeholder="px" style="width: 75px;">
 										</div>
 										<select id="tooltip-align" class="form-select form-select-sm"><option
 												value="left">Left</option>
@@ -286,11 +286,11 @@
 										</button>
 										<!-- ✨ 정렬 버튼 추가 -->
 										<button id="text-align-h" class="control-btn align-btn"
-											title="수평 중앙" style="width: 25px; height: 25px;">
+											title="수평 중앙">
 											<img src="/images/icon/hor_center.png" alt="horCenter">
 										</button>
 										<button id="text-align-v" class="control-btn align-btn"
-											title="수직 중앙" style="width: 25px; height: 25px;">
+											title="수직 중앙">
 											<img src="/images/icon/ver_center.png" alt="verCenter">
 										</button>
 										<button type="button" id="tooltip-remove"
@@ -323,6 +323,53 @@
 												<img src="/images/icon/trash.png" alt="trash">
 											</button>
 										</div>
+									</div>
+									<div id="multi-selection-controls" class="d-none w-100">
+									    <div class="control-buttons d-flex align-items-center gap-2 flex-wrap">
+									        <!-- 선택 개수 표시 -->
+									        <span id="multi-selection-count" class="badge bg-primary me-2">0개 선택됨</span>
+									        
+									        <!-- 좌/중/우 정렬 -->
+									        <div class="btn-group" role="group" aria-label="수평 정렬">
+									            <button id="multi-align-left" class="control-btn align-btn" title="좌측 정렬">
+									                <img src="/images/icon/align_left.svg" alt="Align Left" style="width: 20px; height: 20px;">
+									            </button>
+									            <button id="multi-align-center-h" class="control-btn align-btn" title="수평 중앙 정렬">
+									                <img src="/images/icon/hor_center.png" alt="Align Center H" style="width: 20px; height: 20px;">
+									            </button>
+									            <button id="multi-align-right" class="control-btn align-btn" title="우측 정렬">
+									                <img src="/images/icon/align_right.svg" alt="Align Right" style="width: 20px; height: 20px;">
+									            </button>
+									        </div>
+									        
+									        <div class="vr mx-1"></div>
+									        
+									        <!-- 상/중/하 정렬 -->
+									        <div class="btn-group" role="group" aria-label="수직 정렬">
+									            <button id="multi-align-top" class="control-btn align-btn" title="상단 정렬">
+									                <img src="/images/icon/align_top.svg" alt="Align Top" style="width: 20px; height: 20px;">
+									            </button>
+									            <button id="multi-align-center-v" class="control-btn align-btn" title="수직 중앙 정렬">
+									                <img src="/images/icon/ver_center.png" alt="Align Center V" style="width: 20px; height: 20px;">
+									            </button>
+									            <button id="multi-align-bottom" class="control-btn align-btn" title="하단 정렬">
+									                <img src="/images/icon/align_bottom.svg" alt="Align Bottom" style="width: 20px; height: 20px;">
+									            </button>
+									        </div>
+									        
+									        <div class="vr mx-1"></div>
+									        
+									        <!-- 균등 배분 -->
+									        <div class="btn-group" role="group" aria-label="균등 배분">
+									            <button id="multi-distribute-h" class="control-btn align-btn" title="가로 균등 배분">
+									                <img src="/images/icon/distribute_h.svg" alt="Distribute H" style="width: 20px; height: 20px;">
+									            </button>
+									            <button id="multi-distribute-v" class="control-btn align-btn" title="세로 균등 배분">
+									                <img src="/images/icon/distribute_v.svg" alt="Distribute V" style="width: 20px; height: 20px;">
+									            </button>
+									        </div>
+									        
+									    </div>
 									</div>
 								</div>
 								<div id="main-actions" class="d-flex align-items-center gap-2"
@@ -496,6 +543,10 @@
 		<!-- Core Classes (핵심 클래스) -->
 		<script src="<c:url value='/js/core/SelectionManager.js?v=${jsVersion}'/>"></script>
 		<script src="<c:url value='/js/core/SafeLineManager.js?v=${jsVersion}'/>"></script>
+		
+		<script src="<c:url value='/js/core/MultiSelectionManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/core/AlignmentManager.js?v=${jsVersion}'/>"></script>
+		<script src="<c:url value='/js/events/KeyboardManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- UI Management (UI 관리) -->
 		<script src="<c:url value='/js/ui/PanelManager.js?v=${jsVersion}'/>"></script>
@@ -527,6 +578,28 @@
 			let selectedPhotoWrapper = null;
 			let selectedBox = null;
 			let selectedBackgroundPath = null;
+			
+			$(document).ready(function() {
+		        // 모달이 열릴 때 매니저들 초기화
+		        $('#editModal').on('shown.bs.modal', function() {
+		            if (!window.multiSelectionManager) {
+		                window.multiSelectionManager = new MultiSelectionManager();
+		            }
+		            if (!window.alignmentManager) {
+		                window.alignmentManager = new AlignmentManager();
+		            }
+		            if (!window.keyboardManager) {
+		                window.keyboardManager = new KeyboardManager();
+		            }
+		        });
+		        
+		        // 모달이 닫힐 때 정리
+		        $('#editModal').on('hidden.bs.modal', function() {
+		            if (window.multiSelectionManager) {
+		                window.multiSelectionManager.clearSelection();
+		            }
+		        });
+		    });
 
 			// 슬라이드 기능 (기존 유지)
 			function scrollLeft(index) {

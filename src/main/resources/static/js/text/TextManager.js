@@ -71,7 +71,7 @@ class TextManager {
 
 	// 텍스트박스 엘리먼트 생성
 	static createTextBoxElement(param, styles) {
-		return $('<div class="text-box" contenteditable="true"></div>')
+		return $('<div class="text-box" contenteditable="false"></div>')
 			.text('Enter ' + param + ' Here')
 			.css(styles);
 	}

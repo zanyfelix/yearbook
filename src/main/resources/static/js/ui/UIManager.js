@@ -1,9 +1,17 @@
-// UIManager.js - UI 관리 클래스
+// UIManager.js - UI 관리 클래스 (다중 선택 지원)
 class UIManager {
 
 	// 모든 툴바 숨기기
 	static hideAllToolbars() {
-		$('#editor-toolbar .context-controls > div').addClass('d-none');
+		console.log('[UIManager] hideAllToolbars 호출');
+		console.trace('[UIManager] 호출 스택:');
+		
+		$('#frame-controls').addClass('d-none');
+		$('#photo-controls').addClass('d-none');
+		$('#text-controls').addClass('d-none');
+		$('#element-controls').addClass('d-none');
+		// ✅ multi-selection-controls도 숨김
+		$('#multi-selection-controls').addClass('d-none').css('display', '');
 	}
 
 	// 프레임 툴팁 표시
@@ -35,45 +43,114 @@ class UIManager {
 		this.bindElementTooltipEvents(elementGroup);
 	}
 
+	// ========================================================================
+	// 다중 선택 툴바 표시 (신규)
+	// ========================================================================
+	static showMultiSelectionToolbar(elements) {
+		console.log('[UIManager] showMultiSelectionToolbar 호출, 요소 개수:', elements.length);
+		
+		// ✅ hideAllToolbars 대신 개별 툴바만 숨기기 (multi-selection-controls 제외)
+		$('#frame-controls').addClass('d-none');
+		$('#photo-controls').addClass('d-none');
+		$('#text-controls').addClass('d-none');
+		$('#element-controls').addClass('d-none');
+		
+		const $controls = $('#multi-selection-controls');
+		
+		// ✅ 명시적으로 표시
+		$controls.removeClass('d-none').css('display', 'flex');
+		console.log('[UIManager] 툴바 표시 완료, display:', $controls.css('display'));
+		
+		this.bindMultiSelectionEvents(elements);
+		
+		// 선택된 개수 표시
+		$('#multi-selection-count').text(`${elements.length}개 선택됨`);
+	}
+	
+	// ========================================================================
+	// 다중 선택 이벤트 바인딩 (신규)
+	// ========================================================================
+	static bindMultiSelectionEvents(elements) {
+		const self = this;
+		
+		// 정렬 버튼들
+		$('#multi-align-left').off('click').on('click', () => {
+			window.alignmentManager.alignLeft(elements);
+		});
+		
+		$('#multi-align-center-h').off('click').on('click', () => {
+			window.alignmentManager.alignCenterH(elements);
+		});
+		
+		$('#multi-align-right').off('click').on('click', () => {
+			window.alignmentManager.alignRight(elements);
+		});
+		
+		$('#multi-align-top').off('click').on('click', () => {
+			window.alignmentManager.alignTop(elements);
+		});
+		
+		$('#multi-align-center-v').off('click').on('click', () => {
+			window.alignmentManager.alignCenterV(elements);
+		});
+		
+		$('#multi-align-bottom').off('click').on('click', () => {
+			window.alignmentManager.alignBottom(elements);
+		});
+		
+		// 균등 배분 버튼
+		$('#multi-distribute-h').off('click').on('click', () => {
+			window.alignmentManager.distributeH(elements);
+		});
+		
+		$('#multi-distribute-v').off('click').on('click', () => {
+			window.alignmentManager.distributeV(elements);
+		});
+		
+		// 정렬 기준 토글
+		$('#multi-align-base-toggle').off('click').on('click', function() {
+			const newBase = window.alignmentManager.toggleAlignmentBase();
+			$(this).text(newBase === 'page' ? '페이지 기준' : '선택 기준');
+			$(this).toggleClass('active', newBase === 'selection');
+		});
+		
+		// 다중 삭제
+		$('#multi-delete').off('click').on('click', () => {
+			const count = elements.length;
+			self.showDeleteConfirmModal(`${count}개의 요소를 삭제하시겠습니까?`, () => {
+				elements.forEach($el => $el.remove());
+				window.multiSelectionManager.clearSelection();
+			});
+		});
+	}
+
 	// 삭제 확인 모달 표시 (공통 메서드)
 	static showDeleteConfirmModal(message, deleteCallback) {
-		// 모달 메시지 설정
 		$('#delete-confirm-message').text(message);
 
-		// Bootstrap 모달 객체 가져오기
 		const modalElement = document.getElementById('deleteConfirmModal');
 		const modal = new bootstrap.Modal(modalElement, {
 			backdrop: 'static',
 			keyboard: false
 		});
 
-		// 기존 이벤트 리스너 제거
 		$('#btn-delete-confirm').off('click');
 
-		// 삭제 확인 버튼 클릭 이벤트
 		$('#btn-delete-confirm').on('click', () => {
-			// 버튼 비활성화 (중복 클릭 방지)
 			$('#btn-delete-confirm').prop('disabled', true);
-
-			// 삭제 콜백 실행
 			deleteCallback();
-
-			// 모달 닫기
 			modal.hide();
 
-			// 버튼 재활성화
 			setTimeout(() => {
 				$('#btn-delete-confirm').prop('disabled', false);
 			}, 500);
 		});
 
-		// 모달이 완전히 숨겨진 후 이벤트 리스너 정리
 		modalElement.addEventListener('hidden.bs.modal', function cleanup() {
 			$('#btn-delete-confirm').off('click');
 			modalElement.removeEventListener('hidden.bs.modal', cleanup);
 		});
 
-		// 모달 표시
 		modal.show();
 	}
 
@@ -89,13 +166,29 @@ class UIManager {
 			rotationHandler.rotateRight();
 		});
 
-		// ✨ 정렬 버튼 추가
+		// 정렬 버튼
+		$('#frame-align-left').off('click').on('click', () => {
+			window.alignmentManager.alignLeft([frameGroup]);
+		});
+		
 		$('#frame-align-h').off('click').on('click', () => {
 			window.selectionManager.alignHorizontalCenter();
+		});
+		
+		$('#frame-align-right').off('click').on('click', () => {
+			window.alignmentManager.alignRight([frameGroup]);
+		});
+		
+		$('#frame-align-top').off('click').on('click', () => {
+			window.alignmentManager.alignTop([frameGroup]);
 		});
 
 		$('#frame-align-v').off('click').on('click', () => {
 			window.selectionManager.alignVerticalCenter();
+		});
+		
+		$('#frame-align-bottom').off('click').on('click', () => {
+			window.alignmentManager.alignBottom([frameGroup]);
 		});
 
 		$('#frame-align-center').off('click').on('click', () => {
@@ -131,15 +224,13 @@ class UIManager {
 		const $silhouette = $('.photo-silhouette');
 
 		$('#photo-rotate-left').off('click').on('click', () => {
-			const newTransform = rotationHandler.rotateLeft(); // 완전한 transform 값을 받음
-			// ✨ 테두리와 실루엣에도 완전한 transform 값을 적용합니다.
+			const newTransform = rotationHandler.rotateLeft();
 			$selectionBox.css('transform', newTransform);
 			$silhouette.css('transform', newTransform);
 		});
 
 		$('#photo-rotate-right').off('click').on('click', () => {
-			const newTransform = rotationHandler.rotateRight(); // 완전한 transform 값을 받음
-			// ✨ 테두리와 실루엣에도 완전한 transform 값을 적용합니다.
+			const newTransform = rotationHandler.rotateRight();
 			$selectionBox.css('transform', newTransform);
 			$silhouette.css('transform', newTransform);
 		});
@@ -152,15 +243,12 @@ class UIManager {
 		const currentColor = this.rgbToHex(textBox.css('color'));
 
 		const sizeValue = parseInt(currentSize);
-		// Select에서 매칭되는 옵션 찾기
 		const selectOption = $('#tooltip-size-select option[value="' + sizeValue + '"]');
 
 		if (selectOption.length) {
-			// 정확한 값이 있으면 Select 표시, Input 숨김
 			$('#tooltip-size-select').val(sizeValue);
 			$('#tooltip-size').addClass('d-none');
 		} else {
-			// Custom 값이면 Select를 Custom으로 설정하고 Input 표시
 			$('#tooltip-size-select').val('');
 			$('#tooltip-size').removeClass('d-none').val(sizeValue || 12);
 		}
@@ -214,13 +302,29 @@ class UIManager {
 			TextManager.updateTextAlign($(this).val());
 		});
 
-		// ✨ 정렬 버튼 추가
+		// 정렬 버튼
+		$('#text-align-left').off('click').on('click', () => {
+			window.alignmentManager.alignLeft([textBox]);
+		});
+		
 		$('#text-align-h').off('click').on('click', () => {
 			window.selectionManager.alignHorizontalCenter();
+		});
+		
+		$('#text-align-right').off('click').on('click', () => {
+			window.alignmentManager.alignRight([textBox]);
+		});
+		
+		$('#text-align-top').off('click').on('click', () => {
+			window.alignmentManager.alignTop([textBox]);
 		});
 
 		$('#text-align-v').off('click').on('click', () => {
 			window.selectionManager.alignVerticalCenter();
+		});
+		
+		$('#text-align-bottom').off('click').on('click', () => {
+			window.alignmentManager.alignBottom([textBox]);
 		});
 
 		$('#text-align-center').off('click').on('click', () => {
@@ -265,23 +369,37 @@ class UIManager {
 
 		$('#element-rotate-left').off('click').on('click', () => {
 			rotationHandler.rotateLeft();
-			// ✅ 추가: 회전 후 커서 업데이트
 			EventManager.updateElementResizeCursors(elementGroup);
 		});
 
 		$('#element-rotate-right').off('click').on('click', () => {
 			rotationHandler.rotateRight();
-			// ✅ 추가: 회전 후 커서 업데이트
 			EventManager.updateElementResizeCursors(elementGroup);
 		});
 
-		// ✨ 정렬 버튼 추가
+		// 정렬 버튼
+		$('#element-align-left').off('click').on('click', () => {
+			window.alignmentManager.alignLeft([elementGroup]);
+		});
+		
 		$('#element-align-h').off('click').on('click', () => {
 			window.selectionManager.alignHorizontalCenter();
+		});
+		
+		$('#element-align-right').off('click').on('click', () => {
+			window.alignmentManager.alignRight([elementGroup]);
+		});
+		
+		$('#element-align-top').off('click').on('click', () => {
+			window.alignmentManager.alignTop([elementGroup]);
 		});
 
 		$('#element-align-v').off('click').on('click', () => {
 			window.selectionManager.alignVerticalCenter();
+		});
+		
+		$('#element-align-bottom').off('click').on('click', () => {
+			window.alignmentManager.alignBottom([elementGroup]);
 		});
 
 		$('#element-align-center').off('click').on('click', () => {
@@ -347,7 +465,6 @@ class RotationHandler {
 			return 0;
 		}
 
-		// rotate(Xdeg) 형태 파싱
 		const rotateMatch = currentTransform.match(/rotate\(([-+]?\d*\.?\d+)(deg|rad)?\)/i);
 		if (rotateMatch && rotateMatch[1]) {
 			let angle = parseFloat(rotateMatch[1]);
@@ -357,7 +474,6 @@ class RotationHandler {
 			return Math.round((angle % 360 + 360) % 360);
 		}
 
-		// matrix() 형태 파싱
 		const matrixMatch = currentTransform.match(/matrix\(([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)\)/);
 		if (matrixMatch) {
 			const a = parseFloat(matrixMatch[1]);
@@ -371,13 +487,11 @@ class RotationHandler {
 	}
 
 	snapAngleLeft(angle) {
-		// 정확한 90도 단위로 스냅
 		if (angle === 0 || angle === 360) return 270;
 		if (angle === 90) return 0;
 		if (angle === 180) return 90;
 		if (angle === 270) return 180;
 
-		// 근사값 처리
 		if (angle > 0 && angle < 90) return 0;
 		if (angle > 90 && angle < 180) return 90;
 		if (angle > 180 && angle < 270) return 180;
@@ -387,13 +501,11 @@ class RotationHandler {
 	}
 
 	snapAngleRight(angle) {
-		// 정확한 90도 단위로 스냅
 		if (angle === 0 || angle === 360) return 90;
 		if (angle === 90) return 180;
 		if (angle === 180) return 270;
 		if (angle === 270) return 0;
 
-		// 근사값 처리
 		if (angle > 0 && angle < 90) return 90;
 		if (angle > 90 && angle < 180) return 180;
 		if (angle > 180 && angle < 270) return 270;
@@ -409,7 +521,7 @@ class RotationHandler {
 		const newRotation = this.snapAngleLeft(currentRotation);
 		const newTransform = `translate(${translate.x}px, ${translate.y}px) rotate(${newRotation}deg)`;
 		this.element.css('transform', newTransform);
-		return newTransform; // ✨ 수정: newTransform 값을 반환
+		return newTransform;
 	}
 
 	rotateRight() {
@@ -419,6 +531,6 @@ class RotationHandler {
 		const newRotation = this.snapAngleRight(currentRotation);
 		const newTransform = `translate(${translate.x}px, ${translate.y}px) rotate(${newRotation}deg)`;
 		this.element.css('transform', newTransform);
-		return newTransform; // ✨ 수정: newTransform 값을 반환
+		return newTransform;
 	}
 }

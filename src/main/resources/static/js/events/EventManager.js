@@ -199,6 +199,15 @@ class EventManager {
 		let clickTimer = null;
 
 		frameGroup.on('click', (e) => {
+			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
+			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
+				e.preventDefault();
+				e.stopPropagation();
+				clearTimeout(clickTimer);
+				window.multiSelectionManager.toggleSelection(frameGroup);
+				return;
+			}
+
 			if (frameGroup.data('isDraggingPhoto') ||
 				frameGroup.data('isRotatingPhoto') ||
 				frameGroup.data('isResizingPhoto')) {
@@ -239,6 +248,13 @@ class EventManager {
 		// 클릭: 선택 상태
 		textBox.on('click', (e) => {
 			e.stopPropagation();
+
+			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
+			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
+				e.preventDefault();
+				window.multiSelectionManager.toggleSelection(textBox);
+				return;
+			}
 
 			if (!textBox.hasClass('selected')) {
 				// 먼저 크기 재조정
@@ -328,6 +344,13 @@ class EventManager {
 		frameGroup.on('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			
+			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
+			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
+				window.multiSelectionManager.toggleSelection(frameGroup);
+				return;
+			}
+			
 			if (!this.isFrameSelected(frameGroup)) {
 				window.selectionManager.selectFrame(frameGroup);
 			}
@@ -343,6 +366,13 @@ class EventManager {
 		frameGroup.on('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			
+			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
+			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
+				window.multiSelectionManager.toggleSelection(frameGroup);
+				return;
+			}
+			
 			if (!this.isElementSelected(frameGroup)) {
 				window.selectionManager.selectElement(frameGroup);
 			}
@@ -629,6 +659,15 @@ class EventManager {
 	static setupGlobalEvents() {
 		// 클릭 영역 외부 클릭 시 선택 해제
 		document.getElementById('page-preview').addEventListener('click', (e) => {
+			// ✅ 라쏘 선택 중이거나 방금 완료했으면 무시
+			if (window.multiSelectionManager) {
+				if (window.multiSelectionManager.isLassoSelecting || 
+					window.multiSelectionManager.justFinishedLasso) {
+					console.log('[EventManager] 라쏘 중/완료 직후 - clearSelection 무시');
+					return;
+				}
+			}
+			
 			// 회전, 드래그, 리사이즈 중이면 선택 해제하지 않음
 			const rotatingFrame = $('.frame-group').filter(function() {
 				return $(this).data('isRotatingPhoto') ||
@@ -641,7 +680,12 @@ class EventManager {
 			}
 
 			if (!this.isSelectableElement(e.target)) {
-				window.selectionManager.clearSelection();
+				// ✅ 다중 선택이 있으면 multiSelectionManager로 처리
+				if (window.multiSelectionManager && window.multiSelectionManager.selectedElements.length > 0) {
+					window.multiSelectionManager.clearSelection();
+				} else {
+					window.selectionManager.clearSelection();
+				}
 			}
 		}, true);
 
@@ -888,6 +932,7 @@ class EventManager {
 	}
 
 	static enterEditMode(textBox) {
+		textBox.attr('contenteditable', 'true');
 		textBox.addClass('editing');
 		textBox.focus();
 		this.autoResizeTextBox(textBox);
@@ -900,6 +945,7 @@ class EventManager {
 
 	static handleTextBlur(textBox) {
 		textBox.removeClass('editing');
+		textBox.attr('contenteditable', 'false');
 
 		if (textBox.text().trim() === '') {
 			textBox.text('Enter Text Here');
