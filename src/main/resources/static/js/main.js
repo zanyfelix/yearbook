@@ -509,6 +509,10 @@ $(document).ready(function() {
 								textType = 'text';
 							}
 						}
+						
+						const TEMPLATE_WEB_BG_WIDTH = 786;
+						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
+						const scaledFontSize = Math.round(baseFontSize * scaleRatio);
 
 						// 스타일 적용
 						$box.css({
@@ -519,12 +523,12 @@ $(document).ready(function() {
 							'width': pixelWidth + 'px',
 							'height': pixelHeight + 'px',
 							'color': boxData.styles?.color || '#000000',
-							'font-size': baseFontSize + 'px',
+							'font-size': scaledFontSize + 'px',
 							'font-weight': boxData.styles?.fontWeight || 'normal',
 							'text-align': boxData.styles?.textAlign || 'left',
 							'font-family': boxData.styles?.fontFamily || 'Arial, sans-serif',
 							'padding': '10px',
-							'visibility': 'hidden',
+							'visibility': 'visible',
 							'display': 'block',
 							'opacity': '1'
 						});
