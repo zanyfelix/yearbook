@@ -344,13 +344,13 @@ class EventManager {
 		frameGroup.on('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
 			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
 				window.multiSelectionManager.toggleSelection(frameGroup);
 				return;
 			}
-			
+
 			if (!this.isFrameSelected(frameGroup)) {
 				window.selectionManager.selectFrame(frameGroup);
 			}
@@ -366,13 +366,13 @@ class EventManager {
 		frameGroup.on('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			// ✅ [다중선택] Ctrl/Cmd 키가 눌려있으면 다중 선택 처리
 			if ((e.ctrlKey || e.metaKey) && window.multiSelectionManager) {
 				window.multiSelectionManager.toggleSelection(frameGroup);
 				return;
 			}
-			
+
 			if (!this.isElementSelected(frameGroup)) {
 				window.selectionManager.selectElement(frameGroup);
 			}
@@ -661,13 +661,13 @@ class EventManager {
 		document.getElementById('page-preview').addEventListener('click', (e) => {
 			// ✅ 라쏘 선택 중이거나 방금 완료했으면 무시
 			if (window.multiSelectionManager) {
-				if (window.multiSelectionManager.isLassoSelecting || 
+				if (window.multiSelectionManager.isLassoSelecting ||
 					window.multiSelectionManager.justFinishedLasso) {
 					console.log('[EventManager] 라쏘 중/완료 직후 - clearSelection 무시');
 					return;
 				}
 			}
-			
+
 			// 회전, 드래그, 리사이즈 중이면 선택 해제하지 않음
 			const rotatingFrame = $('.frame-group').filter(function() {
 				return $(this).data('isRotatingPhoto') ||
@@ -944,8 +944,19 @@ class EventManager {
 	}
 
 	static handleTextBlur(textBox) {
+
+		const htmlContent = textBox.html();
+		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		if (!hasLineBreaks) {
+			textBox.css('white-space', 'nowrap');
+		}
+
 		textBox.removeClass('editing');
 		textBox.attr('contenteditable', 'false');
+
+		if (window.getSelection) {
+			window.getSelection().removeAllRanges();
+		}
 
 		if (textBox.text().trim() === '') {
 			textBox.text('Enter Text Here');

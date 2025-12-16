@@ -17,12 +17,12 @@ class SelectionManager {
 
 	selectFrame(frameGroup) {
 		// ✅ Ctrl 체크는 EventManager에서 처리 - 여기서는 제거
-		
+
 		// 다중 선택 해제
 		if (window.multiSelectionManager && window.multiSelectionManager.hasMultipleSelection()) {
 			window.multiSelectionManager.clearSelection();
 		}
-		
+
 		if (this.selectedMode === 'frame' && this.currentFrame === frameGroup) return;
 		this.clearSelection();
 
@@ -44,7 +44,7 @@ class SelectionManager {
 		if (window.multiSelectionManager && window.multiSelectionManager.hasMultipleSelection()) {
 			window.multiSelectionManager.clearSelection();
 		}
-		
+
 		if (this.selectedMode === 'photo' && this.currentPhoto === photo) return;
 		this.clearSelection();
 
@@ -67,12 +67,12 @@ class SelectionManager {
 
 	selectTextBox(textBox) {
 		// ✅ Ctrl 체크는 EventManager에서 처리 - 여기서는 제거
-		
+
 		// 다중 선택 해제
 		if (window.multiSelectionManager && window.multiSelectionManager.hasMultipleSelection()) {
 			window.multiSelectionManager.clearSelection();
 		}
-		
+
 		if (this.currentTextBox === textBox) return;
 		this.clearSelection();
 
@@ -100,12 +100,12 @@ class SelectionManager {
 
 	selectElement(elementGroup) {
 		// ✅ Ctrl 체크는 EventManager에서 처리 - 여기서는 제거
-		
+
 		// 다중 선택 해제
 		if (window.multiSelectionManager && window.multiSelectionManager.hasMultipleSelection()) {
 			window.multiSelectionManager.clearSelection();
 		}
-		
+
 		if (this.currentElement === elementGroup) return;
 		this.clearSelection();
 
@@ -176,9 +176,20 @@ class SelectionManager {
 				this.currentTextBox.css('z-index', originalZ);
 				this.currentTextBox.removeData('original-z-index');
 			}
+
+			const htmlContent = this.currentTextBox.html();
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+			if (!hasLineBreaks) {
+				this.currentTextBox.css('white-space', 'nowrap');
+			}
+
 			this.currentTextBox.removeClass('selected editing');
 			this.currentTextBox.attr('contenteditable', 'false');
 			this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
+
+			if (window.getSelection) {
+				window.getSelection().removeAllRanges();
+			}
 		}
 
 		UIManager.hideAllToolbars();
@@ -242,7 +253,7 @@ class SelectionManager {
 			window.alignmentManager.alignCenterH(window.multiSelectionManager.getSelectedElements());
 			return;
 		}
-		
+
 		const element = this.getCurrentElement();
 		if (!element) return;
 
@@ -272,7 +283,7 @@ class SelectionManager {
 			window.alignmentManager.alignCenterV(window.multiSelectionManager.getSelectedElements());
 			return;
 		}
-		
+
 		const element = this.getCurrentElement();
 		if (!element) return;
 
@@ -304,7 +315,7 @@ class SelectionManager {
 			window.alignmentManager.alignCenterV(elements);
 			return;
 		}
-		
+
 		const element = this.getCurrentElement();
 		if (!element) return;
 
@@ -346,7 +357,7 @@ class SelectionManager {
 				return null;
 		}
 	}
-	
+
 	/**
 	 * 선택된 요소들 모두 가져오기 (다중 선택 포함)
 	 */
@@ -354,7 +365,7 @@ class SelectionManager {
 		if (window.multiSelectionManager && window.multiSelectionManager.hasMultipleSelection()) {
 			return window.multiSelectionManager.getSelectedElements();
 		}
-		
+
 		const single = this.getCurrentElement();
 		return single ? [single] : [];
 	}

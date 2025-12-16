@@ -484,16 +484,11 @@ $(document).ready(function() {
 							return;
 						}
 
-						const $box = $('<div class="text-box" contenteditable="true"></div>')
-							.html(boxData.html);
+						const $box = $('<div class="text-box" contenteditable="false"></div>');
 
-						$('#frame-container').append($box);
-
-						// 위치와 크기 계산
-						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
-						const pixelTop = Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
-						const pixelWidth = Math.max(50, (boxData.size?.width || 20) / 100 * actualBgRect.width);
-						const pixelHeight = Math.max(30, (boxData.size?.height || 10) / 100 * actualBgRect.height);
+						// ⭐ 핵심: HTML 설정 전에 white-space 먼저 확인
+						const htmlContent = boxData.html;
+						const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 
 						// 기본 폰트 크기 결정 (저장된 값 우선, 없으면 추정)
 						let baseFontSize = boxData.styles?.fontSize || 12;
@@ -514,7 +509,11 @@ $(document).ready(function() {
 						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 						const scaledFontSize = Math.round(baseFontSize * scaleRatio);
 
-						// 스타일 적용
+						// 위치 계산
+						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
+						const pixelTop = Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
+
+						// ⭐ 핵심: 스타일을 먼저 적용 (HTML 설정 전)
 						$box.css({
 							'position': 'absolute',
 							'z-index': 100,
@@ -528,19 +527,23 @@ $(document).ready(function() {
 							'padding': '10px',
 							'visibility': 'visible',
 							'display': 'block',
-							'opacity': '1'
-						});
-
-						const htmlContent = $box.html();
-						const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
-						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
-
-						$box.css({
-							'width': measuredSize.width + 'px',
-							'height': measuredSize.height + 'px',
-							'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',  // ⭐ 핵심: 줄바꿈 방지
+							'opacity': '1',
+							'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',  // ⭐ 먼저 적용
 							'word-break': hasLineBreaks ? 'keep-all' : 'normal',
 							'overflow': 'visible'
+						});
+
+						// ⭐ 스타일 적용 후 HTML 설정
+						$box.html(htmlContent);
+
+						// DOM에 추가
+						$('#frame-container').append($box);
+
+						// 내용 기반 크기 측정 및 적용
+						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
+						$box.css({
+							'width': measuredSize.width + 'px',
+							'height': measuredSize.height + 'px'
 						});
 
 						// Transform 적용
@@ -978,6 +981,23 @@ $(document).ready(function() {
 			const $box = $($textBoxes[i]);
 			if (!$box.text().trim() || $box.outerWidth() <= 0) continue;
 
+			// ⭐ 저장 전 편집 모드 해제 및 상태 정리
+			const wasEditing = $box.hasClass('editing');
+			const originalWhiteSpace = $box.css('white-space');
+
+			if (wasEditing) {
+				$box.removeClass('editing');
+				$box.attr('contenteditable', 'false');
+				$box.blur();  // 포커스 해제
+			}
+
+			// ⭐ 핵심: 저장 전 white-space를 nowrap으로 강제 설정하여 줄바꿈 방지
+			const htmlContent = $box.html();
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+			if (!hasLineBreaks) {
+				$box.css('white-space', 'nowrap');
+			}
+
 			// 텍스트박스 정보 저장 (기존 로직)
 			const boxTransform = $box.css('transform');
 			const boxTransformOrigin = $box.css('transform-origin');
@@ -1070,7 +1090,8 @@ $(document).ready(function() {
 			// 원상 복구
 			$box.css({
 				'transform': boxTransform,
-				'transform-origin': boxTransformOrigin
+				'transform-origin': boxTransformOrigin,
+				'white-space': originalWhiteSpace
 			});
 
 			// 텍스트박스를 이미지로 캡처 (고해상도로)
