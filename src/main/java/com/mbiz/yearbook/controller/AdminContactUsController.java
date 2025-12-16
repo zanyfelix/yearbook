@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -46,6 +47,9 @@ public class AdminContactUsController {
     
     @Autowired
     private UserService userService;
+    
+    @Value("${file.path.thumbnail}")
+	private String uploadPath;
 
     @GetMapping("/contactUs")
     public String showForm(HttpSession session, @RequestParam(required = false) Long id, 
@@ -129,21 +133,24 @@ public class AdminContactUsController {
         }
 
         try {
-            Path filePath = Paths.get(attachmentPath).normalize();
+            Path filePath = Paths.get(uploadPath, attachmentPath).normalize();
+            
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() || resource.isReadable()) {
-                // 추출한 원본 파일명으로 인코딩 처리
+                // 한글 파일명 깨짐 방지 인코딩
                 String encodedOriginalFileName = URLEncoder.encode(originalFileName, StandardCharsets.UTF_8.toString()).replaceAll("\\+", "%20");
                 
                 return ResponseEntity.ok()
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedOriginalFileName + "\"")
                         .body(resource);
             } else {
+                // 파일이 없으면 404 에러 반환
+                System.out.println("❌ 다운로드 실패: 파일을 찾을 수 없음 -> " + filePath.toString());
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            // e.printStackTrace(); // 개발 중에는 오류 확인을 위해 로그를 남기는 것이 좋습니다.
+            e.printStackTrace(); 
             return ResponseEntity.internalServerError().build();
         }
     }
