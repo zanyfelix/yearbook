@@ -48,23 +48,23 @@ $(document).ready(function() {
 	// 빈 영역 클릭 시 선택 해제
 	// ========================================================================
 	$('#page-preview').on('click', function(e) {
-	    // ✅ 라쏘 선택 중이거나 방금 완료했으면 무시
-	    if (window.multiSelectionManager) {
-	        if (window.multiSelectionManager.isLassoSelecting || 
-	            window.multiSelectionManager.justFinishedLasso) {
+		// ✅ 라쏘 선택 중이거나 방금 완료했으면 무시
+		if (window.multiSelectionManager) {
+			if (window.multiSelectionManager.isLassoSelecting ||
+				window.multiSelectionManager.justFinishedLasso) {
 				console.log('[main.js] 라쏘 중/완료 직후 - click 무시');
-	            return;
-	        }
-	    }
-	    
-	    // 클릭한 대상이 선택 가능한 요소가 아니면 선택 해제
-	    if (!$(e.target).closest('.frame-group, .text-box, .element-frame').length) {
-	        if (window.multiSelectionManager) {
-	            window.multiSelectionManager.clearSelection();
-	        } else if (window.selectionManager) {
-	            window.selectionManager.clearSelection();
-	        }
-	    }
+				return;
+			}
+		}
+
+		// 클릭한 대상이 선택 가능한 요소가 아니면 선택 해제
+		if (!$(e.target).closest('.frame-group, .text-box, .element-frame').length) {
+			if (window.multiSelectionManager) {
+				window.multiSelectionManager.clearSelection();
+			} else if (window.selectionManager) {
+				window.selectionManager.clearSelection();
+			}
+		}
 	});
 
 	// ========================================================================
@@ -143,16 +143,16 @@ $(document).ready(function() {
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 			const scaledFontSize = Math.round(baseFontSize * scaleRatio);
-			
+
 			// 폰트 크기 먼저 적용
 			$element.css({
 				'font-size': scaledFontSize + 'px',
 				'font-family': $element.data('savedFontFamily') || $element.css('font-family')
 			});
-			
+
 			// 내용에 맞게 크기 재측정
 			const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
-			
+
 			$element.css({
 				left: newPixelPos.left.toFixed(2) + 'px',
 				top: newPixelPos.top.toFixed(2) + 'px',
@@ -168,7 +168,7 @@ $(document).ready(function() {
 				width: (relativeState.size.width / 100) * actualBgRect.width,
 				height: (relativeState.size.height / 100) * actualBgRect.height
 			};
-			
+
 			$element.css({
 				left: newPixelPos.left.toFixed(2) + 'px',
 				top: newPixelPos.top.toFixed(2) + 'px',
@@ -184,7 +184,7 @@ $(document).ready(function() {
 			PhotoManager.updateSelectionUI($element);
 		}
 	};
-	
+
 	/**
 	 * 텍스트박스 내용에 맞는 크기 측정 (줄바꿈 유지)
 	 */
@@ -192,12 +192,12 @@ $(document).ready(function() {
 		const htmlContent = $textBox.html();
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 		const padding = parseInt($textBox.css('padding')) || 8;
-		
+
 		if (hasLineBreaks) {
 			// 줄바꿈이 있는 경우
 			let lines = [];
 			const tempDiv = $('<div>').html(htmlContent);
-			
+
 			if (htmlContent.includes('<div>')) {
 				const firstLineText = tempDiv.contents().filter(function() {
 					return this.nodeType === 3;
@@ -213,7 +213,7 @@ $(document).ready(function() {
 					lines.push(text || '\u00A0');
 				});
 			}
-			
+
 			// 가장 긴 줄 너비 측정
 			let maxWidth = 0;
 			lines.forEach(line => {
@@ -232,7 +232,7 @@ $(document).ready(function() {
 				maxWidth = Math.max(maxWidth, $temp.width());
 				$temp.remove();
 			});
-			
+
 			// 높이 측정
 			const $heightTemp = $('<div>')
 				.html(htmlContent)
@@ -252,7 +252,7 @@ $(document).ready(function() {
 			$('body').append($heightTemp);
 			const measuredHeight = $heightTemp.outerHeight();
 			$heightTemp.remove();
-			
+
 			return {
 				width: maxWidth + padding * 2 + 5,
 				height: measuredHeight
@@ -274,7 +274,7 @@ $(document).ready(function() {
 			const width = $temp.outerWidth();
 			const height = $temp.outerHeight();
 			$temp.remove();
-			
+
 			return { width, height };
 		}
 	}
@@ -509,7 +509,7 @@ $(document).ready(function() {
 								textType = 'text';
 							}
 						}
-						
+
 						const TEMPLATE_WEB_BG_WIDTH = 786;
 						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 						const scaledFontSize = Math.round(baseFontSize * scaleRatio);
@@ -520,8 +520,6 @@ $(document).ready(function() {
 							'z-index': 100,
 							'left': pixelLeft + 'px',
 							'top': pixelTop + 'px',
-							'width': pixelWidth + 'px',
-							'height': pixelHeight + 'px',
 							'color': boxData.styles?.color || '#000000',
 							'font-size': scaledFontSize + 'px',
 							'font-weight': boxData.styles?.fontWeight || 'normal',
@@ -531,6 +529,18 @@ $(document).ready(function() {
 							'visibility': 'visible',
 							'display': 'block',
 							'opacity': '1'
+						});
+
+						const htmlContent = $box.html();
+						const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
+
+						$box.css({
+							'width': measuredSize.width + 'px',
+							'height': measuredSize.height + 'px',
+							'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',  // ⭐ 핵심: 줄바꿈 방지
+							'word-break': hasLineBreaks ? 'keep-all' : 'normal',
+							'overflow': 'visible'
 						});
 
 						// Transform 적용
