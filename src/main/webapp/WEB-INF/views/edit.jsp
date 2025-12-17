@@ -327,7 +327,7 @@
 									<div id="multi-selection-controls" class="d-none w-100">
 									    <div class="control-buttons d-flex align-items-center gap-2 flex-wrap">
 									        <!-- 선택 개수 표시 -->
-									        <span id="multi-selection-count" class="badge bg-primary me-2">0개 선택됨</span>
+									        <span id="multi-selection-count" class="badge bg-primary me-2">0 selected</span>
 									        
 									        <!-- 좌/중/우 정렬 -->
 									        <div class="btn-group" role="group" aria-label="수평 정렬">

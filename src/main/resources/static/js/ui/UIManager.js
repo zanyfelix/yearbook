@@ -64,7 +64,7 @@ class UIManager {
 		this.bindMultiSelectionEvents(elements);
 		
 		// 선택된 개수 표시
-		$('#multi-selection-count').text(`${elements.length}개 선택됨`);
+		$('#multi-selection-count').text(`${elements.length} selected`);
 	}
 	
 	// ========================================================================
