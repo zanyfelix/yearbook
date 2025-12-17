@@ -140,7 +140,7 @@ $(function() {
 				success: function(response) {
 					if (response.success) {
 						alert("Your submission has been completed successfully.");
-						window.location.href = `${ctx}/home?id=${userId}`;
+						window.location.href = `${ctx}/home?id=` + $('#userId').val();
 					} else {
 						alert("Submission failed. Please try again. " + (response.message || ""));
 					}
