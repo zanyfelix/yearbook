@@ -166,6 +166,15 @@ public class ContactUsController {
 
 			// DB에 저장
 			contactUsService.save(contact);
+			
+			// 메일 발송 (관리자에게 문의 내용 전달)
+			try {
+			    emailService.sendContactUsEmail(contact);
+			} catch (Exception e) {
+			    // 메일 발송 실패 시 로그만 출력하고 DB 저장은 성공으로 처리
+			    System.err.println("Email sending failed: " + e.getMessage());
+			    e.printStackTrace();
+			}
 
 			response.put("success", true);
 			response.put("message", "Your inquiry has been successfully submitted.");

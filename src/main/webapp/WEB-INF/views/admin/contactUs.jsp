@@ -205,7 +205,7 @@
 	      </div>
 	      <div class="modal-footer">
 	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-	        <button type="button" id="forwardInquiryBtn" class="btn btn-primary">Forward to Admin</button>
+	        <!-- <button type="button" id="forwardInquiryBtn" class="btn btn-primary">Forward to Admin</button> -->
 	      </div>
 	    </div>
 	  </div>
