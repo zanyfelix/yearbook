@@ -36,7 +36,7 @@ class DataLoader {
 							});
 							modalHandler(fullListData);
 						} catch (error) {
-							alert("전체 목록을 불러오는 데 실패했습니다.");
+							alert("Failed to load full list.");
 						}
 					}
 					else {

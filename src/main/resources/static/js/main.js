@@ -699,13 +699,13 @@ $(document).ready(function() {
 			data: JSON.stringify(orderData),
 			success: function(response) {
 				if (response.success) {
-					console.log("페이지 순서가 성공적으로 자동 저장되었습니다.");
+					console.log("The page order has been successfully auto-saved.");
 				} else {
-					alert("오류: 페이지 순서 저장에 실패했습니다.");
+					alert("Error: Failed to save page order.");
 				}
 			},
 			error: function() {
-				alert("오류: 서버 통신 중 페이지 순서 저장에 실패했습니다.");
+				alert("Error: Failed to save page order during server communication.");
 			}
 		});
 	}
@@ -835,8 +835,8 @@ $(document).ready(function() {
 			$('#editModal').modal('show');
 
 		} catch (error) {
-			console.error('페이지 준비 중 오류 발생:', error);
-			alert("페이지를 준비하는 중 오류가 발생했습니다.");
+			console.error('An error occurred while preparing the page:', error);
+			alert("An error occurred while preparing the page.");
 			hideLoader();
 		}
 	});
@@ -1568,11 +1568,11 @@ $(document).ready(function() {
 							placeholder
 						);
 					} else {
-						alert("업로드 실패");
+						alert("Upload failed");
 					}
 				},
 				error: function(xhr) {
-					const errorMsg = xhr.responseJSON?.error || "업로드 실패";
+					const errorMsg = xhr.responseJSON?.error || "Upload failed";
 					alert(errorMsg);
 				},
 				complete: function() {
@@ -1582,8 +1582,8 @@ $(document).ready(function() {
 			});
 
 		} catch (error) {
-			console.error('이미지 처리 오류:', error);
-			alert('이미지 처리 중 오류가 발생했습니다: ' + error.message);
+			console.error('Image processing error:', error);
+			alert('An error occurred while processing the image:' + error.message);
 			hideLoader();
 			$('#image-upload-input').val('');
 		}
@@ -2249,7 +2249,7 @@ function displayImageWithVersions(editPath, originalPath, frameGroup, photo, pla
 
 	photo.on('error', function() {
 		console.error('이미지 로드 실패:', fullEditPath);
-		alert('이미지를 표시할 수 없습니다.');
+		alert('The image cannot be displayed.');
 		photo.hide();
 		placeholder.show();
 	});

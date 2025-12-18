@@ -202,9 +202,9 @@ public class AdminHomeController {
 	public ResponseEntity<String> deleteHome(@RequestParam("ids") List<Long> ids) {
 		try {
 			ids.forEach(id -> homeRepository.deleteById(id));
-			return ResponseEntity.ok("선택한 항목이 삭제되었습니다.");
+			return ResponseEntity.ok("The selected item has been deleted.");
 		} catch (Exception e) {
-			return ResponseEntity.status(500).body("삭제 중 오류가 발생했습니다.");
+			return ResponseEntity.status(500).body("An error occurred during deletion.");
 		}
 	}
 
@@ -217,9 +217,9 @@ public class AdminHomeController {
 				home.setIsActive(true);
 			}
 			homeRepository.saveAll(homesToUpdate);
-			return ResponseEntity.ok("선택한 항목이 적용되었습니다.");
+			return ResponseEntity.ok("The selected item has been deleted.");
 		} catch (Exception e) {
-			return ResponseEntity.status(500).body("적용 중 오류가 발생했습니다.");
+			return ResponseEntity.status(500).body("An error occurred during application.");
 		}
 	}
 

@@ -50,7 +50,7 @@ function loadPreviewData(contentsId) {
 			previewModal.show();
 		},
 		error: function() {
-			alert('썸네일을 로드하는 데 실패했습니다.');
+			alert('Failed to load thumbnail.');
 		}
 	});
 }

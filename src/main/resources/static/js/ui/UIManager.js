@@ -117,7 +117,7 @@ class UIManager {
 		// 다중 삭제
 		$('#multi-delete').off('click').on('click', () => {
 			const count = elements.length;
-			self.showDeleteConfirmModal(`${count}개의 요소를 삭제하시겠습니까?`, () => {
+			self.showDeleteConfirmModal(`Do you want to delete ${count} element?`, () => {
 				elements.forEach($el => $el.remove());
 				window.multiSelectionManager.clearSelection();
 			});

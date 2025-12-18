@@ -437,14 +437,14 @@ function executeSubmitCopyToAll() {
 		success: function(response) {
 			if (response.success) {
 				bootstrap.Modal.getInstance(document.getElementById('submitCopyToAllModal')).hide();
-				alert(`✅ Successfully copied submission to ${response.affectedUsers || 'all'} users!`);
+				alert(`Successfully copied submission to ${response.affectedUsers || 'all'} users!`);
 			} else {
-				alert('❌ Failed to copy: ' + (response.message || 'Unknown error'));
+				alert('Failed to copy: ' + (response.message || 'Unknown error'));
 			}
 		},
 		error: function(xhr, status, error) {
 			console.error('Copy failed:', error);
-			alert('❌ Server error occurred while copying.');
+			alert('Server error occurred while copying.');
 		},
 		complete: function() {
 			button.disabled = false;

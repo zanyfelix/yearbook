@@ -273,7 +273,7 @@ function executeCopyToAll() {
 				bootstrap.Modal.getInstance(document.getElementById('copyToAllModal')).hide();
 
 				// 성공 메시지
-				alert(`✅ Successfully copied to ${response.affectedUsers || 'all'} users!`);
+				alert(`Successfully copied to ${response.affectedUsers || 'all'} users!`);
 
 				// 페이지 새로고침 (선택사항)
 				// location.reload();

@@ -284,7 +284,7 @@ class KeyboardManager {
             
             e.preventDefault();
             
-            const message = '선택한 사진을 삭제하시겠습니까?';
+            const message = 'Are you sure you want to delete the selected photos?';
             
             if (this.deleteConfirmRequired) {
                 UIManager.showDeleteConfirmModal(message, () => {
@@ -321,8 +321,8 @@ class KeyboardManager {
             // 확인 모달 표시
             const count = elements.length;
             const message = count > 1 
-                ? `${count}개의 요소를 삭제하시겠습니까?`
-                : '선택한 요소를 삭제하시겠습니까?';
+                ? `Do you want to delete ${count} element?`
+                : 'Do you want to delete the selected elements?';
             
             UIManager.showDeleteConfirmModal(message, () => {
                 this.deleteElements(elements);
