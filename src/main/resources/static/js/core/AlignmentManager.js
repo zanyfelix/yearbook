@@ -107,13 +107,20 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
+            // ✅ 이미 좌측 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.horizontal === 'left') {
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newLeft = bounds.left;
             
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수평 정렬 플래그: 'left'
+        this.saveAllPositions(elements, 'left', null);
     }
     
     // ========================================================================
@@ -128,13 +135,21 @@ class AlignmentManager {
         const boundsCenter = bounds.left + bounds.width / 2;
         
         elements.forEach($el => {
+            // ✅ 이미 수평 중앙 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.horizontal === 'center') {
+                console.log('이미 수평 중앙 정렬 상태 - 스킵');
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newLeft = boundsCenter - rect.width / 2;
             
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수평 정렬 플래그: 'center'
+        this.saveAllPositions(elements, 'center', null);
     }
     
     // ========================================================================
@@ -147,13 +162,20 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
+            // ✅ 이미 우측 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.horizontal === 'right') {
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newLeft = bounds.right - rect.width;
             
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수평 정렬 플래그: 'right'
+        this.saveAllPositions(elements, 'right', null);
     }
     
     // ========================================================================
@@ -166,13 +188,20 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
+            // ✅ 이미 상단 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.vertical === 'top') {
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newTop = bounds.top;
             
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수직 정렬 플래그: 'top'
+        this.saveAllPositions(elements, null, 'top');
     }
     
     // ========================================================================
@@ -187,13 +216,21 @@ class AlignmentManager {
         const boundsMiddle = bounds.top + bounds.height / 2;
         
         elements.forEach($el => {
+            // ✅ 이미 수직 중앙 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.vertical === 'center') {
+                console.log('이미 수직 중앙 정렬 상태 - 스킵');
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newTop = boundsMiddle - rect.height / 2;
             
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수직 정렬 플래그: 'center'
+        this.saveAllPositions(elements, null, 'center');
     }
     
     // ========================================================================
@@ -206,13 +243,20 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
+            // ✅ 이미 하단 정렬된 상태면 스킵
+            const existingState = $el.data('relativeState') || {};
+            if (existingState.alignment?.vertical === 'bottom') {
+                return;
+            }
+            
             const rect = this.getElementRect($el);
             const newTop = bounds.bottom - rect.height;
             
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 수직 정렬 플래그: 'bottom'
+        this.saveAllPositions(elements, null, 'bottom');
     }
     
     // ========================================================================
@@ -260,7 +304,8 @@ class AlignmentManager {
             currentLeft += rect.width + gap;
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 균등 배분은 정렬이 아니므로 플래그 제거
+        this.saveAllPositionsWithoutAlignment(elements);
     }
     
     // ========================================================================
@@ -308,7 +353,8 @@ class AlignmentManager {
             currentTop += rect.height + gap;
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 균등 배분은 정렬이 아니므로 플래그 제거
+        this.saveAllPositionsWithoutAlignment(elements);
     }
     
     // ========================================================================
@@ -337,7 +383,8 @@ class AlignmentManager {
             }
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 크기 변경은 정렬이 아니므로 플래그 제거
+        this.saveAllPositionsWithoutAlignment(elements);
     }
     
     // ========================================================================
@@ -366,7 +413,8 @@ class AlignmentManager {
             }
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 크기 변경은 정렬이 아니므로 플래그 제거
+        this.saveAllPositionsWithoutAlignment(elements);
     }
     
     // ========================================================================
@@ -390,7 +438,8 @@ class AlignmentManager {
             }
         });
         
-        this.saveAllPositions(elements);
+        // ✅ 크기 변경은 정렬이 아니므로 플래그 제거
+        this.saveAllPositionsWithoutAlignment(elements);
     }
     
     // ========================================================================
@@ -409,9 +458,18 @@ class AlignmentManager {
     }
     
     // ========================================================================
-    // 모든 요소 위치 저장
+    // 모든 요소 위치 저장 (정렬 플래그 지원)
     // ========================================================================
-    saveAllPositions(elements) {
+    saveAllPositions(elements, horizontalAlign = null, verticalAlign = null) {
+        elements.forEach($el => {
+            EventManager.saveElementPositionWithAlignment($el, horizontalAlign, verticalAlign, false);
+        });
+    }
+    
+    // ========================================================================
+    // 모든 요소 위치 저장 (정렬 플래그 제거)
+    // ========================================================================
+    saveAllPositionsWithoutAlignment(elements) {
         elements.forEach($el => {
             EventManager.saveElementPosition($el);
         });

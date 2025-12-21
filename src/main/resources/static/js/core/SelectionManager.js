@@ -219,16 +219,93 @@ class SelectionManager {
 		const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
 		const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
 
-		const elementWidth = element.outerWidth();
-		const elementHeight = element.outerHeight();
+		// 회전 각도 먼저 확인 (transform 제거 전)
+		const transform = element.css('transform');
+		let rotation = 0;
+		if (transform && transform !== 'none') {
+			const matrix = transform.match(/matrix\(([^,]+),\s*([^,]+)/);
+			if (matrix) {
+				const a = parseFloat(matrix[1]);
+				const b = parseFloat(matrix[2]);
+				rotation = Math.atan2(b, a);
+			}
+		}
 
-		const minLeft = actualBgRect.left + safeMarginX;
-		const maxLeft = actualBgRect.left + actualBgRect.width - safeMarginX - elementWidth;
-		const minTop = actualBgRect.top + safeMarginY;
-		const maxTop = actualBgRect.top + actualBgRect.height - safeMarginY - elementHeight;
+		// ✅ transform 임시 제거 후 원래 크기 측정
+		element.css('transform', 'none');
+		const originalWidth = element.outerWidth();
+		const originalHeight = element.outerHeight();
+		element.css('transform', transform);
 
-		const constrainedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-		const constrainedTop = Math.max(minTop, Math.min(newTop, maxTop));
+		// 안전 영역 경계
+		const safeLeft = actualBgRect.left + safeMarginX;
+		const safeTop = actualBgRect.top + safeMarginY;
+		const safeRight = actualBgRect.left + actualBgRect.width - safeMarginX;
+		const safeBottom = actualBgRect.top + actualBgRect.height - safeMarginY;
+
+		let constrainedLeft = newLeft;
+		let constrainedTop = newTop;
+
+		if (rotation !== 0) {
+			// ✅ 회전된 경우: 바운딩 박스의 4개 꼭지점 기준으로 체크
+			const cos = Math.cos(rotation);
+			const sin = Math.sin(rotation);
+
+			// 요소 중심점 (left/top 기준)
+			const centerX = newLeft + originalWidth / 2;
+			const centerY = newTop + originalHeight / 2;
+
+			// 4개 꼭지점의 상대 좌표 (중심 기준)
+			const corners = [
+				{ x: -originalWidth / 2, y: -originalHeight / 2 }, // 좌상
+				{ x: originalWidth / 2, y: -originalHeight / 2 },  // 우상
+				{ x: originalWidth / 2, y: originalHeight / 2 },   // 우하
+				{ x: -originalWidth / 2, y: originalHeight / 2 }   // 좌하
+			];
+
+			// 회전된 꼭지점의 실제 위치 계산
+			let minX = Infinity, maxX = -Infinity;
+			let minY = Infinity, maxY = -Infinity;
+
+			corners.forEach(corner => {
+				// 회전 적용
+				const rotatedX = corner.x * cos - corner.y * sin + centerX;
+				const rotatedY = corner.x * sin + corner.y * cos + centerY;
+
+				minX = Math.min(minX, rotatedX);
+				maxX = Math.max(maxX, rotatedX);
+				minY = Math.min(minY, rotatedY);
+				maxY = Math.max(maxY, rotatedY);
+			});
+
+			// 바운딩 박스가 안전 영역을 벗어나는 정도 계산
+			const overflowLeft = safeLeft - minX;
+			const overflowRight = maxX - safeRight;
+			const overflowTop = safeTop - minY;
+			const overflowBottom = maxY - safeBottom;
+
+			// 벗어난 만큼 위치 보정
+			if (overflowLeft > 0) {
+				constrainedLeft = newLeft + overflowLeft;
+			} else if (overflowRight > 0) {
+				constrainedLeft = newLeft - overflowRight;
+			}
+
+			if (overflowTop > 0) {
+				constrainedTop = newTop + overflowTop;
+			} else if (overflowBottom > 0) {
+				constrainedTop = newTop - overflowBottom;
+			}
+		} else {
+			// 회전 없는 경우: 기존 로직
+			const minLeft = safeLeft;
+			const maxLeft = safeRight - originalWidth;
+			const minTop = safeTop;
+			const maxTop = safeBottom - originalHeight;
+
+			constrainedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+			constrainedTop = Math.max(minTop, Math.min(newTop, maxTop));
+		}
 
 		return {
 			left: constrainedLeft,
@@ -257,6 +334,13 @@ class SelectionManager {
 		const element = this.getCurrentElement();
 		if (!element) return;
 
+		// ✅ 이미 수평 중앙 정렬된 상태면 스킵 (재계산 방지)
+		const existingState = element.data('relativeState') || {};
+		if (existingState.alignment?.horizontal === 'center') {
+			console.log('이미 수평 중앙 정렬 상태 - 스킵');
+			return;
+		}
+
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
@@ -271,7 +355,8 @@ class SelectionManager {
 
 		element.css('left', newLeft + 'px');
 
-		EventManager.saveElementPosition(element);
+		// ✅ 정렬 플래그 방식으로 저장 (해상도 독립적)
+		EventManager.saveElementPositionWithAlignment(element, 'center', null);
 	}
 
 	/**
@@ -287,6 +372,13 @@ class SelectionManager {
 		const element = this.getCurrentElement();
 		if (!element) return;
 
+		// ✅ 이미 수직 중앙 정렬된 상태면 스킵 (재계산 방지)
+		const existingState = element.data('relativeState') || {};
+		if (existingState.alignment?.vertical === 'center') {
+			console.log('이미 수직 중앙 정렬 상태 - 스킵');
+			return;
+		}
+
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
@@ -301,7 +393,8 @@ class SelectionManager {
 
 		element.css('top', newTop + 'px');
 
-		EventManager.saveElementPosition(element);
+		// ✅ 정렬 플래그 방식으로 저장 (해상도 독립적)
+		EventManager.saveElementPositionWithAlignment(element, null, 'center');
 	}
 
 	/**
@@ -318,6 +411,14 @@ class SelectionManager {
 
 		const element = this.getCurrentElement();
 		if (!element) return;
+
+		// ✅ 이미 완전 중앙 정렬된 상태면 스킵 (재계산 방지)
+		const existingState = element.data('relativeState') || {};
+		if (existingState.alignment?.horizontal === 'center' &&
+			existingState.alignment?.vertical === 'center') {
+			console.log('이미 완전 중앙 정렬 상태 - 스킵');
+			return;
+		}
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
@@ -339,7 +440,8 @@ class SelectionManager {
 			top: newTop + 'px'
 		});
 
-		EventManager.saveElementPosition(element);
+		// ✅ 정렬 플래그 방식으로 저장 (해상도 독립적)
+		EventManager.saveElementPositionWithAlignment(element, 'center', 'center');
 	}
 
 	/**

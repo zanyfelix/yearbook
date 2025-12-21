@@ -116,11 +116,7 @@ $(document).ready(function() {
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
 
-		const newPixelPos = {
-			left: (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left,
-			top: (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top
-		};
-
+		// ✅ Transform 정보 먼저 계산
 		let finalTransform = 'none';
 
 		if (relativeState.rotation !== undefined && relativeState.rotation !== 0) {
@@ -137,12 +133,16 @@ $(document).ready(function() {
 
 		const transformOrigin = `${relativeState.transformOriginX || 50}% ${relativeState.transformOriginY || 50}%`;
 
-		// ✅ 텍스트박스는 크기를 내용 기반으로 재계산
+		// ✅ 요소 크기 먼저 계산 (정렬 계산에 필요)
+		let elementWidth, elementHeight;
+		// 정렬 계산용 크기 (백분율 기반, 일관성 보장)
+		let alignmentWidth, alignmentHeight;
+
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-			const scaledFontSize = Math.round(baseFontSize * scaleRatio);
+			const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
 
 			// 폰트 크기 먼저 적용
 			$element.css({
@@ -150,35 +150,106 @@ $(document).ready(function() {
 				'font-family': $element.data('savedFontFamily') || $element.css('font-family')
 			});
 
-			// 내용에 맞게 크기 재측정
-			const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
+			// 저장된 백분율 기반 크기
+			const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
+			const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
 
-			$element.css({
-				left: newPixelPos.left.toFixed(2) + 'px',
-				top: newPixelPos.top.toFixed(2) + 'px',
-				width: measuredSize.width + 'px',
-				height: measuredSize.height + 'px',
-				transform: finalTransform,
-				transformOrigin: transformOrigin,
-				visibility: 'visible'
-			});
+			// ✅ 회전이 있으면 저장된 크기 사용 (위치 일관성 우선)
+			if (relativeState.rotation && relativeState.rotation !== 0) {
+				elementWidth = savedWidth;
+				elementHeight = savedHeight;
+			} else {
+				// 회전 없으면 실시간 측정 (텍스트 잘림 방지)
+				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
+				elementWidth = measuredSize.width;
+				elementHeight = measuredSize.height;
+			}
+
+			// ✅ 정렬 계산용 크기: 저장된 백분율 기반 (해상도 독립적)
+			// 정렬 플래그가 있을 때는 백분율 기반 크기 사용
+			const alignment = relativeState.alignment || {};
+			if (alignment.horizontal || alignment.vertical) {
+				alignmentWidth = savedWidth;
+				alignmentHeight = savedHeight;
+			} else {
+				alignmentWidth = elementWidth;
+				alignmentHeight = elementHeight;
+			}
 		} else {
-			// 프레임, 요소 등 기존 로직
-			const newPixelSize = {
-				width: (relativeState.size.width / 100) * actualBgRect.width,
-				height: (relativeState.size.height / 100) * actualBgRect.height
-			};
-
-			$element.css({
-				left: newPixelPos.left.toFixed(2) + 'px',
-				top: newPixelPos.top.toFixed(2) + 'px',
-				width: newPixelSize.width.toFixed(2) + 'px',
-				height: newPixelSize.height.toFixed(2) + 'px',
-				transform: finalTransform,
-				transformOrigin: transformOrigin,
-				visibility: 'visible'
-			});
+			// 프레임, 요소 등
+			elementWidth = (relativeState.size.width / 100) * actualBgRect.width;
+			elementHeight = (relativeState.size.height / 100) * actualBgRect.height;
+			alignmentWidth = elementWidth;
+			alignmentHeight = elementHeight;
 		}
+
+		// ✅ 정렬 플래그 기반 위치 계산 (해상도 독립적)
+		const alignment = relativeState.alignment || {};
+		let newLeft, newTop;
+
+		// ✅ 회전된 요소를 위한 저장된 크기 (백분율 기반)
+		const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
+		const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
+
+		// 수평 위치 계산
+		if (alignment.horizontal === 'center') {
+			// ✅ 정렬 플래그가 있으면 백분율 기반 크기로 계산 (오차 없음)
+			newLeft = actualBgRect.left + (actualBgRect.width - alignmentWidth) / 2;
+		} else if (alignment.horizontal === 'left') {
+			const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
+			newLeft = actualBgRect.left + safeMarginX;
+		} else if (alignment.horizontal === 'right') {
+			const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
+			newLeft = actualBgRect.left + actualBgRect.width - alignmentWidth - safeMarginX;
+		} else {
+			// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
+			if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+				const centerX = (relativeState.center.x / 100) * actualBgRect.width + actualBgRect.left;
+				newLeft = centerX - savedWidth / 2;  // 저장된 크기 사용
+			} else {
+				// 수동 위치 - 백분율 변환
+				newLeft = (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left;
+			}
+		}
+
+		// 수직 위치 계산
+		if (alignment.vertical === 'center') {
+			newTop = actualBgRect.top + (actualBgRect.height - alignmentHeight) / 2;
+		} else if (alignment.vertical === 'top') {
+			const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
+			newTop = actualBgRect.top + safeMarginY;
+		} else if (alignment.vertical === 'bottom') {
+			const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
+			newTop = actualBgRect.top + actualBgRect.height - alignmentHeight - safeMarginY;
+		} else {
+			// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
+			if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+				const centerY = (relativeState.center.y / 100) * actualBgRect.height + actualBgRect.top;
+				newTop = centerY - savedHeight / 2;  // 저장된 크기 사용
+			} else {
+				// 수동 위치 - 백분율 변환
+				newTop = (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top;
+			}
+		}
+
+		// ✅ CSS 적용
+		// 회전된 텍스트는 저장된 크기 사용 (해상도 독립적)
+		let cssWidth = elementWidth;
+		let cssHeight = elementHeight;
+		if ($element.hasClass('text-box') && relativeState.rotation && relativeState.rotation !== 0) {
+			cssWidth = savedWidth;
+			cssHeight = savedHeight;
+		}
+
+		$element.css({
+			left: newLeft + 'px',
+			top: newTop + 'px',
+			width: cssWidth + 'px',
+			height: cssHeight + 'px',
+			transform: finalTransform,
+			transformOrigin: transformOrigin,
+			visibility: 'visible'
+		});
 
 		if ($element.hasClass('uploaded-photo') && $element.hasClass('selected-photo')) {
 			PhotoManager.updateSelectionUI($element);
@@ -561,13 +632,17 @@ $(document).ready(function() {
 						// 데이터 속성 설정
 						$box.data('relativeState', {
 							position: boxData.position || { left: 10, top: 10 },
+							// ✅ 중심점 좌표 복원
+							center: boxData.center || null,
 							size: boxData.size || { width: 20, height: 10 },
 							// ⭐ 중요: rotation 관련 값들도 relativeState에 포함
 							rotation: boxData.rotation || 0,  // 추가
 							translateX: boxData.translateX || 0,  // 추가
 							translateY: boxData.translateY || 0,  // 추가
 							transform: boxData.transform || 'none',
-							transformOrigin: boxData.transformOrigin || '50% 50%'
+							transformOrigin: boxData.transformOrigin || '50% 50%',
+							// ✅ 정렬 플래그 복원
+							alignment: boxData.alignment || { horizontal: null, vertical: null }
 						});
 
 						// 중요: 기본 크기를 원본 크기(스케일링 전)로 저장
@@ -937,6 +1012,8 @@ $(document).ready(function() {
 				translateY: relativeState.translateY || 0,
 				transformOriginX: relativeState.transformOriginX || 50,
 				transformOriginY: relativeState.transformOriginY || 50,
+				// ✅ 정렬 플래그 저장
+				alignment: relativeState.alignment || { horizontal: null, vertical: null },
 				photo: photoData
 			};
 
@@ -965,6 +1042,8 @@ $(document).ready(function() {
 				translateY: relativeState.translateY || 0,
 				transformOriginX: relativeState.transformOriginX || 50,
 				transformOriginY: relativeState.transformOriginY || 50,
+				// ✅ 정렬 플래그 저장
+				alignment: relativeState.alignment || { horizontal: null, vertical: null },
 				type: 'element'
 			};
 
@@ -1042,12 +1121,21 @@ $(document).ready(function() {
 			const baseFontSize = $box.data('base-font-size') || 12;
 			const textType = $box.data('text-type') || 'text';
 
+			// ✅ relativeState에서 정렬 정보 가져오기
+			const relativeState = $box.data('relativeState') || {};
+			const alignment = relativeState.alignment || { horizontal: null, vertical: null };
+
 			const textBoxData = {
 				html: $box.html(),
 				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 					top: ((boxPos.top - actualBgRect.top) / actualBgRect.height) * 100
+				},
+				// ✅ 중심점 좌표 추가 (회전된 요소의 위치 복원용)
+				center: {
+					x: ((boxPos.left + boxW / 2 - actualBgRect.left) / actualBgRect.width) * 100,
+					y: ((boxPos.top + boxH / 2 - actualBgRect.top) / actualBgRect.height) * 100
 				},
 				size: {
 					width: (boxW / actualBgRect.width) * 100,
@@ -1058,6 +1146,8 @@ $(document).ready(function() {
 				translateY: (translateY / actualBgRect.height) * 100,  // 추가
 				transform: boxTransform || 'none',
 				transformOrigin: boxTransformOrigin || '50% 50%',
+				// ✅ 정렬 플래그 저장
+				alignment: alignment,
 				styles: {
 					color: $box.css('color'),
 					fontSize: baseFontSize,
@@ -1170,8 +1260,15 @@ $(document).ready(function() {
 				const $photo = $frame.find('.uploaded-photo');
 				const frameTheme = $frame.data('frameTheme');
 
-				// 사진이 없거나 마스크가 없으면 스킵
+				// ✅ 사진이 없어도 photo-container 배경은 투명하게 처리
 				if (!$photo.is(':visible') || !$photo.attr('src') || !frameTheme?.editMaskPath) {
+					// 사진이 없는 경우에도 배경색 투명 처리
+					if ($photoContainer.length) {
+						$photoContainer.data('_captureBackup', {
+							backgroundColor: $photoContainer.css('background-color')
+						});
+						$photoContainer.css('background-color', 'transparent');
+					}
 					return;
 				}
 

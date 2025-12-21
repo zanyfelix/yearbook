@@ -257,39 +257,11 @@ class EventManager {
 			}
 
 			if (!textBox.hasClass('selected')) {
-				// 먼저 크기 재조정
-				this.autoResizeTextBox(textBox);
-
-				// 회전 여부 확인
-				const currentTransform = textBox.css('transform');
-				const hasRotation = currentTransform &&
-					currentTransform !== 'none' &&
-					currentTransform !== 'matrix(1, 0, 0, 1, 0, 0)';
+				// ✅ 클릭 시에는 크기 재조정하지 않음 (위치 이동 방지)
+				// autoResizeTextBox는 텍스트 내용 변경 시에만 호출
 
 				// 선택 처리
 				window.selectionManager.selectTextBox(textBox);
-
-				// 회전이 없을 때만 위치 보정 로직 실행
-				if (!hasRotation) {
-					textBox.css('transform', 'none');
-					const currentPos = textBox.position();
-					textBox.css('transform', currentTransform);
-
-					setTimeout(() => {
-						const newTransform = textBox.css('transform');
-						textBox.css('transform', 'none');
-						const newPos = textBox.position();
-
-						if (Math.abs(newPos.left - currentPos.left) > 1 ||
-							Math.abs(newPos.top - currentPos.top) > 1) {
-							textBox.css({
-								left: currentPos.left + 'px',
-								top: currentPos.top + 'px'
-							});
-						}
-						textBox.css('transform', newTransform || currentTransform);
-					}, 10);
-				}
 			}
 		});
 
@@ -809,6 +781,18 @@ class EventManager {
 	}
 
 	static saveElementPosition(element) {
+		// 정렬 플래그 없이 저장 (드래그 등으로 위치 변경 시)
+		return this.saveElementPositionWithAlignment(element, null, null, true);
+	}
+
+	/**
+	 * ✅ 정렬 플래그를 포함한 요소 위치 저장
+	 * @param {jQuery} element - 대상 요소
+	 * @param {string|null} horizontalAlign - 수평 정렬 ('left', 'center', 'right', null)
+	 * @param {string|null} verticalAlign - 수직 정렬 ('top', 'center', 'bottom', null)
+	 * @param {boolean} clearAlignment - true면 기존 정렬 플래그 제거 (드래그 시)
+	 */
+	static saveElementPositionWithAlignment(element, horizontalAlign = null, verticalAlign = null, clearAlignment = false) {
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 
@@ -863,10 +847,32 @@ class EventManager {
 			}
 		}
 
+		// 기존 relativeState에서 정렬 정보 가져오기
+		const existingState = element.data('relativeState') || {};
+		const existingAlignment = existingState.alignment || {};
+
+		// ✅ 정렬 플래그 처리
+		let alignment = {};
+		if (clearAlignment) {
+			// 드래그로 위치 변경 시 정렬 플래그 제거
+			alignment = { horizontal: null, vertical: null };
+		} else {
+			// 정렬 메서드 호출 시 해당 방향만 업데이트
+			alignment = {
+				horizontal: horizontalAlign !== null ? horizontalAlign : existingAlignment.horizontal,
+				vertical: verticalAlign !== null ? verticalAlign : existingAlignment.vertical
+			};
+		}
+
 		const relativeState = {
 			position: {
 				left: ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100,
 				top: ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100
+			},
+			// ✅ 중심점 좌표 추가 (회전된 요소의 위치 복원용)
+			center: {
+				x: ((elementPos.left + elementWidth / 2 - actualBgRect.left) / actualBgRect.width) * 100,
+				y: ((elementPos.top + elementHeight / 2 - actualBgRect.top) / actualBgRect.height) * 100
 			},
 			size: {
 				width: (elementWidth / actualBgRect.width) * 100,
@@ -876,7 +882,9 @@ class EventManager {
 			translateX: (translateX / actualBgRect.width) * 100,  // 백분율로 저장
 			translateY: (translateY / actualBgRect.height) * 100,  // 백분율로 저장
 			transformOriginX: originX,  // 백분율
-			transformOriginY: originY   // 백분율
+			transformOriginY: originY,  // 백분율
+			// ✅ 정렬 플래그 추가
+			alignment: alignment
 		};
 
 		// 텍스트박스 추가 정보
