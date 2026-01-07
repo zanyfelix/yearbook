@@ -23,7 +23,6 @@
 	href="${pageContext.request.contextPath}/css/edit.css" />
 </head>
 <body>
-
 	<div class="sidebar">
 		<h5>${sessionScope.loginUser.schoolName}</h5>
 
@@ -528,14 +527,12 @@
 				</div>
 			</div>
 		</div>
-
-		<!-- Bootstrap JS -->
-		<script
-			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-		<!-- jQuery -->
+		
+		<!-- jQuery (먼저 로드) -->
 		<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
-
+		
+		<!-- Bootstrap JS -->
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 		<!-- ============================================================================
      모듈화된 JavaScript 파일들 (의존성 순서에 맞춰 로드)
      ============================================================================ -->

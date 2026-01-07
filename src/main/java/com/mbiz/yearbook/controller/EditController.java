@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mbiz.yearbook.model.Contents;
@@ -76,10 +77,54 @@ public class EditController {
 	@Value("${file.path.user-photos}")
 	private String userPhotosPath;
 
+	// ✅ 편집 권한 체크 헬퍼 메소드
+	private boolean canEdit(HttpSession session) {
+		User loginUser = (User) session.getAttribute("loginUser");
+
+		if (loginUser == null) {
+			return false;
+		}
+
+		// 관리자는 항상 편집 가능
+		if ("ADMIN".equalsIgnoreCase(loginUser.getRole())) {
+			return true;
+		}
+
+		// 관리자 Impersonate 모드인 경우 편집 가능
+		Boolean isImpersonating = (Boolean) session.getAttribute("isImpersonating");
+		if (Boolean.TRUE.equals(isImpersonating)) {
+			return true;
+		}
+
+		// 일반 사용자는 제출 전에만 편집 가능
+		return !loginUser.isSubmitted();
+	}
+
 	// --- /edit (기존과 동일) ---
 	@GetMapping("/edit")
-	public String editMain(HttpSession session, @RequestParam Long id, Model model) {
+	public String editMain(HttpSession session, @RequestParam Long id, Model model,
+			RedirectAttributes redirectAttributes) {
 		User loginUser = (User) session.getAttribute("loginUser");
+
+		Boolean isImpersonating = (Boolean) session.getAttribute("isImpersonating");
+
+		// 일반 사용자가 제출 완료 후 접근 시도하는 경우
+		if (loginUser.isSubmitted() && !"ADMIN".equalsIgnoreCase(loginUser.getRole())
+				&& !Boolean.TRUE.equals(isImpersonating)) {
+
+			redirectAttributes.addFlashAttribute("errorMessage",
+					"This has already been submitted and cannot be edited.");
+			return "redirect:/submit?id=" + id;
+		}
+
+		if (Boolean.TRUE.equals(isImpersonating)) {
+			model.addAttribute("isAdminImpersonate", true);
+			User originalAdmin = (User) session.getAttribute("originalAdmin");
+			if (originalAdmin != null) {
+				model.addAttribute("adminName", originalAdmin.getSchoolName());
+			}
+		}
+
 		model.addAttribute("loginUser", loginUser);
 		model.addAttribute("deadline", loginUser.getDeadline());
 
@@ -208,6 +253,12 @@ public class EditController {
 	@ResponseBody
 	public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file,
 			HttpSession session) {
+
+		if (!canEdit(session)) {
+			return new ResponseEntity<>(Map.of("error", "This has already been submitted and cannot be edited."),
+					HttpStatus.FORBIDDEN);
+		}
+
 		User loginUser = (User) session.getAttribute("loginUser");
 		if (loginUser == null) {
 			return new ResponseEntity<>(Map.of("error", "User not logged in."), HttpStatus.UNAUTHORIZED);
@@ -366,10 +417,16 @@ public class EditController {
 
 	@PostMapping("/edit/savePageWithThumbnail")
 	@ResponseBody
-	public Map<String, Object> savePageWithThumbnail(@RequestParam("payload") String payloadJson,
-			@RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile) {
+	public Map<String, Object> savePageWithThumbnail(@RequestParam("payload") String payloadJson, @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile, HttpSession session) {
 
 		try {
+			if (!canEdit(session)) {
+				Map<String, Object> errorResponse = new HashMap<>();
+				errorResponse.put("success", false);
+				errorResponse.put("message", "This has already been submitted and cannot be edited.");
+				return errorResponse;
+			}
+			
 			// ObjectMapper를 사용하여 JSON 문자열을 DTO 객체로 변환
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
@@ -393,9 +450,16 @@ public class EditController {
 	@ResponseBody
 	public Map<String, Object> savePageWithTextImages(@RequestParam("payload") String payloadJson,
 			@RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
-			@RequestParam Map<String, MultipartFile> files) {
+			@RequestParam Map<String, MultipartFile> files, HttpSession session) {
 
 		try {
+			if (!canEdit(session)) {
+				Map<String, Object> errorResponse = new HashMap<>();
+				errorResponse.put("success", false);
+				errorResponse.put("message", "This has already been submitted and cannot be edited.");
+				return errorResponse;
+			}
+			
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
 
@@ -458,6 +522,11 @@ public class EditController {
 	public ResponseEntity<Map<String, Object>> uploadImageVersions(
 			@RequestParam("originalFile") MultipartFile originalFile, @RequestParam("editFile") MultipartFile editFile,
 			HttpSession session) {
+		
+		if (!canEdit(session)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(Map.of("error", "This has already been submitted and cannot be edited."));
+		}
 
 		User loginUser = (User) session.getAttribute("loginUser");
 		if (loginUser == null) {
@@ -509,12 +578,16 @@ public class EditController {
 	}
 
 	/**
-	 * HEIC 파일을 서버에서 JPEG로 변환 (pillow-heif 사용)
-	 * heic2any가 처리하지 못하는 특수 HEIC 파일용 폴백
+	 * HEIC 파일을 서버에서 JPEG로 변환 (pillow-heif 사용) heic2any가 처리하지 못하는 특수 HEIC 파일용 폴백
 	 */
 	@PostMapping("/edit/convertHeic")
 	@ResponseBody
 	public ResponseEntity<byte[]> convertHeic(@RequestParam("file") MultipartFile file, HttpSession session) {
+		
+		if (!canEdit(session)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+		
 		User loginUser = (User) session.getAttribute("loginUser");
 		if (loginUser == null) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -531,37 +604,32 @@ public class EditController {
 			// 임시 파일 생성
 			tempHeic = Files.createTempFile("heic_", ".heic");
 			tempJpg = Files.createTempFile("converted_", ".jpg");
-			
+
 			// HEIC 파일 저장
 			file.transferTo(tempHeic.toFile());
 
 			String heicPath = tempHeic.toString().replace("\\", "/");
 			String jpgPath = tempJpg.toString().replace("\\", "/");
-			
+
 			// Python pillow-heif로 변환
-			String pythonScript = String.format(
-				"from PIL import Image; " +
-				"from pillow_heif import register_heif_opener; " +
-				"register_heif_opener(); " +
-				"Image.open('%s').convert('RGB').save('%s', 'JPEG', quality=90)",
-				heicPath, jpgPath
-			);
+			String pythonScript = String.format("from PIL import Image; "
+					+ "from pillow_heif import register_heif_opener; " + "register_heif_opener(); "
+					+ "Image.open('%s').convert('RGB').save('%s', 'JPEG', quality=90)", heicPath, jpgPath);
 
 			ProcessBuilder pb = new ProcessBuilder("python3.8", "-c", pythonScript);
 			pb.redirectErrorStream(true);
 			Process process = pb.start();
-			
+
 			java.io.BufferedReader reader = new java.io.BufferedReader(
-				new java.io.InputStreamReader(process.getInputStream())
-			);
+					new java.io.InputStreamReader(process.getInputStream()));
 			StringBuilder output = new StringBuilder();
 			String line;
 			while ((line = reader.readLine()) != null) {
 				output.append(line).append("\n");
 			}
-			
+
 			int exitCode = process.waitFor();
-			
+
 			if (exitCode != 0) {
 				System.err.println("HEIC 변환 실패: " + output.toString());
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -570,9 +638,7 @@ public class EditController {
 			// 변환된 파일 읽기
 			byte[] jpegData = Files.readAllBytes(tempJpg);
 
-			return ResponseEntity.ok()
-				.contentType(org.springframework.http.MediaType.IMAGE_JPEG)
-				.body(jpegData);
+			return ResponseEntity.ok().contentType(org.springframework.http.MediaType.IMAGE_JPEG).body(jpegData);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -580,9 +646,12 @@ public class EditController {
 		} finally {
 			// 임시 파일 정리
 			try {
-				if (tempHeic != null) Files.deleteIfExists(tempHeic);
-				if (tempJpg != null) Files.deleteIfExists(tempJpg);
-			} catch (IOException ignored) {}
+				if (tempHeic != null)
+					Files.deleteIfExists(tempHeic);
+				if (tempJpg != null)
+					Files.deleteIfExists(tempJpg);
+			} catch (IOException ignored) {
+			}
 		}
 	}
 }

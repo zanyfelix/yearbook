@@ -158,5 +158,40 @@ const ctx = '${pageContext.request.contextPath}';
 <script src="${pageContext.request.contextPath}/js/bootstrap.bundle.min.js"></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
 <script src="<c:url value='/js/submit.js'/>"></script>
+<!-- 에러 메시지 모달 -->
+<c:if test="${not empty errorMessage}">
+    <div class="modal fade" id="errorModal" tabindex="-1" 
+         aria-labelledby="errorModalLabel" aria-hidden="true" 
+         data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="errorModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Notice
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <p>${errorMessage}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</c:if>
+
+<!-- Bootstrap JS 로드 (이미 있다면 생략) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 모달 자동 표시 -->
+<c:if test="${not empty errorMessage}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            errorModal.show();
+        });
+    </script>
+</c:if>
 </body>
 </html>
