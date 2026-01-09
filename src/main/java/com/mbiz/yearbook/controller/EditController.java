@@ -117,35 +117,39 @@ public class EditController {
 
 	// --- /edit (기존과 동일) ---
 	@GetMapping("/edit")
-	public String editMain(HttpSession session, @RequestParam Long id, Model model,
-			RedirectAttributes redirectAttributes) {
+	public String editMain(HttpSession session, @RequestParam Long id, 
+	                       Model model, RedirectAttributes redirectAttributes) {
 		User loginUser = (User) session.getAttribute("loginUser");
-
+		
+		// ✅ 관리자 Impersonate 모드 확인
 		Boolean isImpersonating = (Boolean) session.getAttribute("isImpersonating");
-
-		// deadline 체크 (관리자 및 Impersonate 모드 제외)
-		if (!"ADMIN".equalsIgnoreCase(loginUser.getRole()) && !Boolean.TRUE.equals(isImpersonating)) {
-
+		
+		// ✅ 편집 권한 체크 (관리자 및 Impersonate 모드 제외)
+		if (!"ADMIN".equalsIgnoreCase(loginUser.getRole()) && 
+		    !Boolean.TRUE.equals(isImpersonating)) {
+			
+			// ✅ 1순위: 제출 완료 체크 (가장 우선)
+			if (loginUser.isSubmitted()) {
+				redirectAttributes.addFlashAttribute("errorMessage", 
+					"This has already been submitted and cannot be edited.");
+				return "redirect:/submit?id=" + id;
+			}
+			
+			// ✅ 2순위: deadline 체크
 			if (loginUser.getDeadline() != null) {
 				LocalDate today = LocalDate.now();
-				LocalDate deadline = loginUser.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-
+				LocalDate deadline = loginUser.getDeadline().toInstant()
+					.atZone(ZoneId.systemDefault()).toLocalDate();
+				
 				// deadline이 지났으면 접근 차단
 				if (today.isAfter(deadline)) {
-					redirectAttributes.addFlashAttribute("errorMessage",
-							"The deadline has passed and editing is no longer allowed.");
+					redirectAttributes.addFlashAttribute("errorMessage", 
+						"The deadline has passed and editing is no longer allowed.");
 					return "redirect:/submit?id=" + id;
 				}
 			}
-
-			// 제출 완료 체크
-			if (loginUser.isSubmitted()) {
-				redirectAttributes.addFlashAttribute("errorMessage",
-						"This has already been submitted and cannot be edited.");
-				return "redirect:/submit?id=" + id;
-			}
 		}
-
+		
 		// ✅ 관리자 Impersonate 모드 표시용
 		if (Boolean.TRUE.equals(isImpersonating)) {
 			model.addAttribute("isAdminImpersonate", true);
@@ -154,7 +158,7 @@ public class EditController {
 				model.addAttribute("adminName", originalAdmin.getSchoolName());
 			}
 		}
-
+		
 		model.addAttribute("loginUser", loginUser);
 		model.addAttribute("deadline", loginUser.getDeadline());
 
