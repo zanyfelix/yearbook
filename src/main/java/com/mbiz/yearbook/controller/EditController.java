@@ -96,8 +96,23 @@ public class EditController {
 			return true;
 		}
 
-		// 일반 사용자는 제출 전에만 편집 가능
-		return !loginUser.isSubmitted();
+		// 일반 사용자는 제출 전이고 deadline 전에만 편집 가능
+		if (loginUser.isSubmitted()) {
+			return false;
+		}
+
+		// ✅ deadline 체크 추가
+		if (loginUser.getDeadline() != null) {
+			LocalDate today = LocalDate.now();
+			LocalDate deadline = loginUser.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+
+			// deadline이 지났으면 편집 불가
+			if (today.isAfter(deadline)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	// --- /edit (기존과 동일) ---
@@ -108,15 +123,30 @@ public class EditController {
 
 		Boolean isImpersonating = (Boolean) session.getAttribute("isImpersonating");
 
-		// 일반 사용자가 제출 완료 후 접근 시도하는 경우
-		if (loginUser.isSubmitted() && !"ADMIN".equalsIgnoreCase(loginUser.getRole())
-				&& !Boolean.TRUE.equals(isImpersonating)) {
+		// deadline 체크 (관리자 및 Impersonate 모드 제외)
+		if (!"ADMIN".equalsIgnoreCase(loginUser.getRole()) && !Boolean.TRUE.equals(isImpersonating)) {
 
-			redirectAttributes.addFlashAttribute("errorMessage",
-					"This has already been submitted and cannot be edited.");
-			return "redirect:/submit?id=" + id;
+			if (loginUser.getDeadline() != null) {
+				LocalDate today = LocalDate.now();
+				LocalDate deadline = loginUser.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+
+				// deadline이 지났으면 접근 차단
+				if (today.isAfter(deadline)) {
+					redirectAttributes.addFlashAttribute("errorMessage",
+							"The deadline has passed and editing is no longer allowed.");
+					return "redirect:/submit?id=" + id;
+				}
+			}
+
+			// 제출 완료 체크
+			if (loginUser.isSubmitted()) {
+				redirectAttributes.addFlashAttribute("errorMessage",
+						"This has already been submitted and cannot be edited.");
+				return "redirect:/submit?id=" + id;
+			}
 		}
 
+		// ✅ 관리자 Impersonate 모드 표시용
 		if (Boolean.TRUE.equals(isImpersonating)) {
 			model.addAttribute("isAdminImpersonate", true);
 			User originalAdmin = (User) session.getAttribute("originalAdmin");
@@ -417,7 +447,8 @@ public class EditController {
 
 	@PostMapping("/edit/savePageWithThumbnail")
 	@ResponseBody
-	public Map<String, Object> savePageWithThumbnail(@RequestParam("payload") String payloadJson, @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile, HttpSession session) {
+	public Map<String, Object> savePageWithThumbnail(@RequestParam("payload") String payloadJson,
+			@RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile, HttpSession session) {
 
 		try {
 			if (!canEdit(session)) {
@@ -426,7 +457,7 @@ public class EditController {
 				errorResponse.put("message", "This has already been submitted and cannot be edited.");
 				return errorResponse;
 			}
-			
+
 			// ObjectMapper를 사용하여 JSON 문자열을 DTO 객체로 변환
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
@@ -459,7 +490,7 @@ public class EditController {
 				errorResponse.put("message", "This has already been submitted and cannot be edited.");
 				return errorResponse;
 			}
-			
+
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
 
@@ -522,10 +553,10 @@ public class EditController {
 	public ResponseEntity<Map<String, Object>> uploadImageVersions(
 			@RequestParam("originalFile") MultipartFile originalFile, @RequestParam("editFile") MultipartFile editFile,
 			HttpSession session) {
-		
+
 		if (!canEdit(session)) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(Map.of("error", "This has already been submitted and cannot be edited."));
+					.body(Map.of("error", "This has already been submitted and cannot be edited."));
 		}
 
 		User loginUser = (User) session.getAttribute("loginUser");
@@ -583,11 +614,11 @@ public class EditController {
 	@PostMapping("/edit/convertHeic")
 	@ResponseBody
 	public ResponseEntity<byte[]> convertHeic(@RequestParam("file") MultipartFile file, HttpSession session) {
-		
+
 		if (!canEdit(session)) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
-		
+
 		User loginUser = (User) session.getAttribute("loginUser");
 		if (loginUser == null) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
