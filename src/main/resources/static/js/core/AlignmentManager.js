@@ -462,7 +462,7 @@ class AlignmentManager {
     // ========================================================================
     saveAllPositions(elements, horizontalAlign = null, verticalAlign = null) {
         elements.forEach($el => {
-            EventManager.saveElementPositionWithAlignment($el, horizontalAlign, verticalAlign, false);
+            EventManager.saveElementPositionWithAlignment($el);
         });
     }
     

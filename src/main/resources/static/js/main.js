@@ -135,8 +135,6 @@ $(document).ready(function() {
 
 		// ✅ 요소 크기 먼저 계산 (정렬 계산에 필요)
 		let elementWidth, elementHeight;
-		// 정렬 계산용 크기 (백분율 기반, 일관성 보장)
-		let alignmentWidth, alignmentHeight;
 
 		if ($element.hasClass('text-box')) {
 			const baseFontSize = $element.data('base-font-size') || 12;
@@ -165,26 +163,13 @@ $(document).ready(function() {
 				elementHeight = measuredSize.height;
 			}
 
-			// ✅ 정렬 계산용 크기: 저장된 백분율 기반 (해상도 독립적)
-			// 정렬 플래그가 있을 때는 백분율 기반 크기 사용
-			const alignment = relativeState.alignment || {};
-			if (alignment.horizontal || alignment.vertical) {
-				alignmentWidth = savedWidth;
-				alignmentHeight = savedHeight;
-			} else {
-				alignmentWidth = elementWidth;
-				alignmentHeight = elementHeight;
-			}
 		} else {
 			// 프레임, 요소 등
 			elementWidth = (relativeState.size.width / 100) * actualBgRect.width;
 			elementHeight = (relativeState.size.height / 100) * actualBgRect.height;
-			alignmentWidth = elementWidth;
-			alignmentHeight = elementHeight;
 		}
 
 		// ✅ 정렬 플래그 기반 위치 계산 (해상도 독립적)
-		const alignment = relativeState.alignment || {};
 		let newLeft, newTop;
 
 		// ✅ 회전된 요소를 위한 저장된 크기 (백분율 기반)
@@ -192,44 +177,23 @@ $(document).ready(function() {
 		const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
 
 		// 수평 위치 계산
-		if (alignment.horizontal === 'center') {
-			// ✅ 정렬 플래그가 있으면 백분율 기반 크기로 계산 (오차 없음)
-			newLeft = actualBgRect.left + (actualBgRect.width - alignmentWidth) / 2;
-		} else if (alignment.horizontal === 'left') {
-			const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
-			newLeft = actualBgRect.left + safeMarginX;
-		} else if (alignment.horizontal === 'right') {
-			const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
-			newLeft = actualBgRect.left + actualBgRect.width - alignmentWidth - safeMarginX;
+		// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
+		if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+			const centerX = (relativeState.center.x / 100) * actualBgRect.width + actualBgRect.left;
+			newLeft = centerX - savedWidth / 2;  // 저장된 크기 사용
 		} else {
-			// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
-			if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
-				const centerX = (relativeState.center.x / 100) * actualBgRect.width + actualBgRect.left;
-				newLeft = centerX - savedWidth / 2;  // 저장된 크기 사용
-			} else {
-				// 수동 위치 - 백분율 변환
-				newLeft = (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left;
-			}
+			// 수동 위치 - 백분율 변환
+			newLeft = (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left;
 		}
 
 		// 수직 위치 계산
-		if (alignment.vertical === 'center') {
-			newTop = actualBgRect.top + (actualBgRect.height - alignmentHeight) / 2;
-		} else if (alignment.vertical === 'top') {
-			const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
-			newTop = actualBgRect.top + safeMarginY;
-		} else if (alignment.vertical === 'bottom') {
-			const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
-			newTop = actualBgRect.top + actualBgRect.height - alignmentHeight - safeMarginY;
+		// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
+		if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+			const centerY = (relativeState.center.y / 100) * actualBgRect.height + actualBgRect.top;
+			newTop = centerY - savedHeight / 2;  // 저장된 크기 사용
 		} else {
-			// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
-			if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
-				const centerY = (relativeState.center.y / 100) * actualBgRect.height + actualBgRect.top;
-				newTop = centerY - savedHeight / 2;  // 저장된 크기 사용
-			} else {
-				// 수동 위치 - 백분율 변환
-				newTop = (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top;
-			}
+			// 수동 위치 - 백분율 변환
+			newTop = (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top;
 		}
 
 		// ✅ CSS 적용
