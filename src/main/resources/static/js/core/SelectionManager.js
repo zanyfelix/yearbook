@@ -10,7 +10,14 @@ class SelectionManager {
 		this.currentTextBox = null;
 
 		this.originalZIndex = null;
-		this.SELECTED_Z_INDEX = 9999;
+		
+		// ✅ 요소 타입별 선택 시 z-index (텍스트가 항상 최상위)
+		this.SELECTED_Z_INDEX = {
+			text: 9999,        // 텍스트 - 최상위
+			element: 9998,     // 요소(스티커 등)
+			frame: 9997,       // 사진 프레임
+			photo: 9997        // 사진 (프레임과 동일)
+		};
 	}
 
 	// --- Public Selection Methods ---
@@ -31,7 +38,7 @@ class SelectionManager {
 
 		this.originalZIndex = frameGroup.css('z-index');
 		frameGroup.data('original-z-index', this.originalZIndex);
-		frameGroup.css('z-index', this.SELECTED_Z_INDEX);
+		frameGroup.css('z-index', this.SELECTED_Z_INDEX.frame);
 
 		window.selectedFrame = frameGroup;
 		frameGroup.addClass('selected-frame');
@@ -54,7 +61,7 @@ class SelectionManager {
 
 		this.originalZIndex = frameGroup.css('z-index');
 		frameGroup.data('original-z-index', this.originalZIndex);
-		frameGroup.css('z-index', this.SELECTED_Z_INDEX);
+		frameGroup.css('z-index', this.SELECTED_Z_INDEX.photo);
 
 		window.selectedPhotoWrapper = photo;
 		window.selectedFrame = frameGroup;
@@ -81,7 +88,7 @@ class SelectionManager {
 
 		this.originalZIndex = textBox.css('z-index');
 		textBox.data('original-z-index', this.originalZIndex);
-		textBox.css('z-index', this.SELECTED_Z_INDEX);
+		textBox.css('z-index', this.SELECTED_Z_INDEX.text);
 
 		window.selectedBox = textBox;
 
@@ -115,7 +122,7 @@ class SelectionManager {
 
 		this.originalZIndex = elementGroup.css('z-index');
 		elementGroup.data('original-z-index', this.originalZIndex);
-		elementGroup.css('z-index', this.SELECTED_Z_INDEX);
+		elementGroup.css('z-index', this.SELECTED_Z_INDEX.element);
 
 		window.selectedFrame = elementGroup;
 

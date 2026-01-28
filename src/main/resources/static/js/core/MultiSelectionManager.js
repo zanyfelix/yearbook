@@ -55,8 +55,121 @@ class MultiSelectionManager {
     bindEvents() {
         const self = this;
         const $pagePreview = $('#page-preview');
+        const pagePreviewEl = $pagePreview[0];
         
-        // ✅ Ctrl+클릭은 EventManager에서 처리하므로 여기서는 제거
+        // ✅ 클릭 시 겹친 요소 처리를 위한 캡처 단계 이벤트
+        // (캡처 단계에서 처리하여 개별 요소의 이벤트보다 먼저 실행)
+        if (pagePreviewEl) {
+            // 기존 리스너 제거를 위한 참조 저장
+            if (this._clickHandler) {
+                pagePreviewEl.removeEventListener('click', this._clickHandler, true);
+            }
+            
+            this._clickHandler = function(e) {
+                // 클릭 위치에 있는 모든 요소 찾기
+                const elementsAtPoint = document.elementsFromPoint(e.clientX, e.clientY);
+                
+                // 선택 가능한 요소들만 필터링
+                const selectableElements = [];
+                for (const el of elementsAtPoint) {
+                    const $el = $(el).closest(self.selectableSelector);
+                    if ($el.length > 0) {
+                        // 중복 방지
+                        let isDuplicate = false;
+                        for (const existing of selectableElements) {
+                            if (existing[0] === $el[0]) {
+                                isDuplicate = true;
+                                break;
+                            }
+                        }
+                        if (!isDuplicate) {
+                            selectableElements.push($el);
+                        }
+                    }
+                }
+                
+                // 겹친 요소가 2개 이상일 때만 특수 처리
+                if (selectableElements.length < 2) return;
+                
+                // ========================================
+                // Ctrl+클릭: 다중 선택 처리
+                // ========================================
+                if (e.ctrlKey || e.metaKey) {
+                    console.log('[MultiSelectionManager] Ctrl+클릭 - 겹친 요소 감지:', selectableElements.length);
+                    
+                    // 선택되지 않은 요소 중 하나를 찾기
+                    let targetElement = null;
+                    for (const $el of selectableElements) {
+                        const isAlreadySelected = self.findElementIndex($el) >= 0;
+                        const isSingleSelected = (window.selectionManager && 
+                            (window.selectionManager.currentFrame?.[0] === $el[0] ||
+                             window.selectionManager.currentTextBox?.[0] === $el[0] ||
+                             window.selectionManager.currentElement?.[0] === $el[0]));
+                        
+                        if (!isAlreadySelected && !isSingleSelected) {
+                            targetElement = $el;
+                            break;
+                        }
+                    }
+                    
+                    // 선택되지 않은 요소가 있고, 그것이 클릭한 요소가 아니면 가로채서 처리
+                    if (targetElement) {
+                        const clickedElement = $(e.target).closest(self.selectableSelector);
+                        
+                        // 클릭한 요소와 다른 요소(아래에 가려진 요소)를 선택해야 하는 경우
+                        if (clickedElement.length > 0 && clickedElement[0] !== targetElement[0]) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            
+                            console.log('[MultiSelectionManager] 가려진 요소 선택:', targetElement[0].className);
+                            self.toggleSelection(targetElement);
+                            return;
+                        }
+                    }
+                }
+                // ========================================
+                // 일반 클릭: 단일 선택 처리 (텍스트 우선)
+                // ========================================
+                else {
+                    // 현재 선택된 요소 확인
+                    const currentSelected = window.selectionManager?.currentFrame ||
+                                           window.selectionManager?.currentTextBox ||
+                                           window.selectionManager?.currentElement;
+                    
+                    // 클릭한 요소
+                    const clickedElement = $(e.target).closest(self.selectableSelector);
+                    if (!clickedElement.length) return;
+                    
+                    // 겹친 요소 중에서 텍스트(.text-box)를 우선적으로 찾기
+                    let textBoxElement = null;
+                    
+                    for (const $el of selectableElements) {
+                        // 현재 선택된 요소는 스킵
+                        if (currentSelected && $el[0] === currentSelected[0]) continue;
+                        
+                        if ($el.hasClass('text-box')) {
+                            textBoxElement = $el;
+                            break; // 텍스트를 찾으면 바로 종료
+                        }
+                    }
+                    
+                    // 가려진 텍스트가 있고, 클릭한 요소가 텍스트가 아닌 경우
+                    if (textBoxElement && !clickedElement.hasClass('text-box')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        console.log('[MultiSelectionManager] 단일선택 - 가려진 텍스트 선택:', textBoxElement[0].className);
+                        window.selectionManager.selectTextBox(textBoxElement);
+                        return;
+                    }
+                }
+            };
+            
+            // 캡처 단계에서 이벤트 처리 (true = capture phase)
+            pagePreviewEl.addEventListener('click', this._clickHandler, true);
+        }
         
         // 드래그 선택 (라쏘) - 빈 영역에서만 시작
         $pagePreview.off('mousedown.lasso').on('mousedown.lasso', function(e) {
@@ -257,12 +370,13 @@ class MultiSelectionManager {
     toggleSelection($element) {
         // ✅ 먼저 기존 단일 선택 요소를 확인
         let previousSingle = null;
+        
         if (window.selectionManager) {
             previousSingle = window.selectionManager.currentFrame || 
                              window.selectionManager.currentTextBox ||
                              window.selectionManager.currentElement;
             
-            // 단일 선택 UI만 해제 (hideAllToolbars 호출됨)
+            // 단일 선택 UI 해제 (z-index 복원됨)
             if (previousSingle) {
                 window.selectionManager.clearSelection();
             }
@@ -272,6 +386,7 @@ class MultiSelectionManager {
         if (previousSingle && this.findElementIndex(previousSingle) < 0) {
             this.selectedElements.push(previousSingle);
             previousSingle.addClass('multi-selected');
+            // z-index는 clearSelection에서 이미 원래 값으로 복원됨
         }
         
         const index = this.findElementIndex($element);
@@ -283,6 +398,7 @@ class MultiSelectionManager {
             // 선택되지 않음 -> 선택 추가
             this.selectedElements.push($element);
             $element.addClass('multi-selected');
+            // 다중 선택 시에는 z-index를 올리지 않음 (기존 z-index 유지)
         }
         
         // ✅ UI 업데이트는 마지막에 한 번만
