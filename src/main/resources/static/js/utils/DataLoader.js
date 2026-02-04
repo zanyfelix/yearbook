@@ -17,36 +17,96 @@ class DataLoader {
         });
     }
     
-    // 공통 썸네일 로드 로직
+    // ✅ 로딩 스피너 생성
+    static createLoader() {
+        return $(`
+            <div class="thumbnail-loader" style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
+                padding: 40px 0;
+                color: #666;
+            ">
+                <div style="text-align: center;">
+                    <div class="spinner-border spinner-border-sm text-secondary mb-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div style="font-size: 12px;">Loading...</div>
+                </div>
+            </div>
+        `);
+    }
+    
+    // ✅ 이미지 프리로드 함수
+    static preloadImage(src) {
+        return new Promise((resolve) => {
+            if (!src) {
+                resolve(null);
+                return;
+            }
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = src.startsWith('http') || src.startsWith('/') ? src : `${ctx}${src}`;
+        });
+    }
+    
+    // 공통 썸네일 로드 로직 (로딩 표시 추가)
     static async loadThumbnails(category, gubun, targetPanel, modalHandler) {
         const userId = $("#id").val();
+        const panel = $(targetPanel).empty();
+        
+        // 1. 로딩 스피너 표시
+        const $loader = this.createLoader();
+        panel.append($loader);
         
         try {
+            // 2. 데이터 가져오기
             const representativeData = await this.fetchData('/edit/theme', {
                 userId, category, gubun
             });
             
-            const panel = $(targetPanel).empty();
+            if (!representativeData || representativeData.length === 0) {
+                $loader.remove();
+                panel.append('<div class="text-center text-muted py-3">No items found</div>');
+                return;
+            }
+            
+            // 3. 모든 썸네일 이미지 프리로드
+            const preloadPromises = representativeData.map(result => 
+                this.preloadImage(result.theme.thumbnailPath)
+            );
+            
+            await Promise.all(preloadPromises);
+            
+            // 4. 로딩 스피너 제거
+            $loader.remove();
+            
+            // 5. 썸네일 아이템 생성 및 표시
             representativeData.forEach(result => {
                 const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, async () => {
-					if (modalHandler) {
-						try {
-							const fullListData = await this.fetchData('/edit/themesByParent', {
-								themeId: result.theme.id
-							});
-							modalHandler(fullListData);
-						} catch (error) {
-							alert("Failed to load full list.");
-						}
-					}
-					else {
-						FrameManager.applyFrame(result.theme);
-					}
+                    if (modalHandler) {
+                        try {
+                            const fullListData = await this.fetchData('/edit/themesByParent', {
+                                themeId: result.theme.id
+                            });
+                            modalHandler(fullListData);
+                        } catch (error) {
+                            alert("Failed to load full list.");
+                        }
+                    }
+                    else {
+                        FrameManager.applyFrame(result.theme);
+                    }
                 });
                 panel.append(item);
             });
+            
         } catch (error) {
             console.error(`${category} 로딩 실패:`, error);
+            $loader.remove();
+            panel.append('<div class="text-center text-danger py-3">Failed to load</div>');
         }
     }
     
@@ -81,31 +141,59 @@ class DataLoader {
         this.loadThumbnails('element', pageCategory, '#element-panel', null);
     }
     
-    // 모달 로드 공통 로직
-    static loadModal(data, selectedIndex, listEl, applyHandler) {
+    // 모달 로드 공통 로직 (로딩 표시 추가)
+    static async loadModal(data, selectedIndex, listEl, applyHandler) {
         listEl.empty();
         
-        data.forEach((result, index) => {
-            const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
-                window.selectionManager.clearSelection();
-                applyHandler(result);
-                setTimeout(() => window.safeLineManager.update(), 500);
+        // 데이터가 없으면 메시지 표시
+        if (!data || data.length === 0) {
+            listEl.append('<div class="text-center text-muted py-3">No items found</div>');
+            return;
+        }
+        
+        // 1. 로딩 스피너 표시
+        const $loader = this.createLoader();
+        listEl.append($loader);
+        
+        try {
+            // 2. 모든 썸네일 이미지 프리로드
+            const preloadPromises = data.map(result => 
+                this.preloadImage(result.thumbnailPath)
+            );
+            
+            await Promise.all(preloadPromises);
+            
+            // 3. 로딩 스피너 제거
+            $loader.remove();
+            
+            // 4. 썸네일 아이템 생성 및 표시
+            data.forEach((result, index) => {
+                const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
+                    window.selectionManager.clearSelection();
+                    applyHandler(result);
+                    setTimeout(() => window.safeLineManager.update(), 500);
+                });
+                
+                if (index === selectedIndex) {
+                    item.find('.thumbnail-wrapper').addClass('selected-thumbnail');
+                }
+                
+                listEl.append(item);
             });
             
-            if (index === selectedIndex) {
-                item.find('.thumbnail-wrapper').addClass('selected-thumbnail');
-            }
+            // 5. 선택된 항목으로 스크롤
+            setTimeout(() => {
+                const selectedItem = listEl.find('.selected-thumbnail').closest('.col-4');
+                if (selectedItem.length) {
+                    selectedItem[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 100);
             
-            listEl.append(item);
-        });
-        
-        // 선택된 항목으로 스크롤
-        setTimeout(() => {
-            const selectedItem = listEl.find('.selected-thumbnail').closest('.col-4');
-            if (selectedItem.length) {
-                selectedItem[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        }, 100);
+        } catch (error) {
+            console.error('모달 썸네일 로딩 실패:', error);
+            $loader.remove();
+            listEl.append('<div class="text-center text-danger py-3">Failed to load</div>');
+        }
     }
     
     static loadBackgroundModal(data, selectedIndex = 0) {

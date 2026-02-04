@@ -488,20 +488,60 @@ $(document).ready(function() {
 					if (frameData.photo && frameData.photo.src) {
 						const $frame = $('#frame-container .frame-group:last-child');
 						const $photo = $frame.find('.uploaded-photo');
-						const $placeholder = $frame.find('.placeholder-link');
+						const $placeholder = $frame.find('.place-image-here-link');
 
 						if ($photo.length > 0) {
-							// 이미지 경로(src)와 상태 데이터만 저장합니다. (계산 X)
-							$photo.attr('src', `${ctx}${frameData.photo.src}`);
+							// 1. 데이터 먼저 설정
 							$photo.data('filePath', frameData.photo.src);
 							$photo.data('relativeState', frameData.photo);
-
-							// 플레이스홀더를 숨기고 사진 요소를 일단 화면에 표시합니다.
 							$placeholder.hide();
-							$photo.css('visibility', 'hidden').show();
+							
+							// 2. visibility: hidden 상태로 표시
+							$photo.css({ visibility: 'hidden', display: 'block' });
+							
+							// 3. 이미지 로드 완료 대기
+							const imgSrc = `${ctx}${frameData.photo.src}`;
+							let loadHandled = false;
+							
+							$photo.off('load.render error.render');
+							$photo.on('load.render', function() {
+								if (loadHandled) return;
+								loadHandled = true;
+								$photo.off('load.render error.render');
+								// ✅ 위치 계산은 shown.bs.modal에서 updateAllPhotosPosition()이 처리
+								// 여기서는 로드 완료만 확인
+								console.log('[renderPage] 이미지 로드 완료:', imgSrc);
+								checkCompletion();
+							});
+							$photo.on('error.render', function() {
+								if (loadHandled) return;
+								loadHandled = true;
+								console.error('이미지 로드 실패:', imgSrc);
+								$placeholder.show();
+								$photo.hide();
+								$photo.off('load.render error.render');
+								checkCompletion();
+							});
+							
+							// src 설정
+							$photo.attr('src', imgSrc);
+							
+							// 이미 로드 완료된 경우 (캐시된 이미지)
+							const photoElement = $photo[0];
+							if (photoElement.complete && photoElement.naturalWidth > 0) {
+								if (!loadHandled) {
+									loadHandled = true;
+									$photo.off('load.render error.render');
+									console.log('[renderPage] 이미지 캐시됨:', imgSrc);
+									checkCompletion();
+								}
+							}
+						} else {
+							checkCompletion();
 						}
+					} else {
+						checkCompletion();
 					}
-					checkCompletion();
 				});
 			}
 
@@ -628,10 +668,37 @@ $(document).ready(function() {
 
 		// 배경 이미지 처리 후 요소 렌더링
 		if (design.background && bgImg.attr('src') !== design.background) {
-			bgImg.off('load.render').one('load.render', renderElements);
+			let bgLoadHandled = false;
+			
+			bgImg.off('load.render error.render');
+			bgImg.on('load.render', function() {
+				if (bgLoadHandled) return;
+				bgLoadHandled = true;
+				bgImg.off('load.render error.render');
+				console.log('[renderPage] 배경 이미지 로드 완료 - renderElements 호출');
+				renderElements();
+			});
+			bgImg.on('error.render', function() {
+				if (bgLoadHandled) return;
+				bgLoadHandled = true;
+				bgImg.off('load.render error.render');
+				console.error('[renderPage] 배경 이미지 로드 실패');
+				renderElements();  // 실패해도 요소는 렌더링
+			});
+			
 			bgImg.attr('src', design.background);
-			if (bgImg[0].complete) bgImg.trigger('load.render');
+			
+			// src 설정 후 캐시된 경우 체크
+			if (bgImg[0].complete && bgImg[0].naturalWidth > 0) {
+				if (!bgLoadHandled) {
+					bgLoadHandled = true;
+					bgImg.off('load.render error.render');
+					console.log('[renderPage] 배경 이미지 캐시됨 - renderElements 즉시 호출');
+					renderElements();
+				}
+			}
 		} else {
+			console.log('[renderPage] 배경 이미지 변경 없음 - renderElements 즉시 호출');
 			renderElements();
 		}
 	}
@@ -770,17 +837,23 @@ $(document).ready(function() {
 	});
 
 	$('#editModal').on('shown.bs.modal', function() {
+		// ✅ safeLineManager 업데이트
 		if (window.safeLineManager) {
 			window.safeLineManager.update();
 		}
-		//틀잡기(프레임과 텍스트박스 배치)
+		
+		// ✅ 모달이 완전히 표시된 후 위치 재계산 필요
+		// (renderPage 시점에는 모달 크기가 확정되지 않았을 수 있음)
 		if (window.updateAllPositions) {
 			window.updateAllPositions();
 		}
-		//내용채우기(사진)
-		if (window.updateAllPhotosPosition) {
+		
+		// ✅ 사진 위치도 모달 표시 후 재계산
+		if (typeof updateAllPhotosPosition === 'function') {
 			updateAllPhotosPosition();
 		}
+		
+		console.log('[shown.bs.modal] 모달 표시 완료 - 위치 재계산됨');
 	});
 
 	$('#btn-close-modal').on('click', function(e) {
@@ -2182,6 +2255,73 @@ window.getScaleFromMatrix = function(transform) {
 	return { x: 1, y: 1 };
 };
 
+/**
+ * ✅ 이미지 로드 완료 후 사진 위치/크기 적용
+ * renderPage에서 이미지 로드 완료 시 호출됨
+ */
+function applyPhotoPositionAfterLoad($frame, $photo) {
+	const maskBounds = PhotoManager.getMaskBoundsPixels($frame);
+	const relativeState = $photo.data('relativeState');
+	
+	// 저장된 상태가 없거나 sizePercent가 없으면 기본 cover 모드로 배치
+	if (!relativeState || !relativeState.sizePercent) {
+		const maskContainer = $frame.find('.mask-container');
+		if (maskContainer.length) {
+			positionImageInMaskAdvanced($photo, maskContainer, {
+				fit: 'cover',
+				position: 'center'
+			});
+		}
+		console.log('[applyPhotoPositionAfterLoad] 저장된 상태 없음 - cover 모드 적용');
+		return;
+	}
+	
+	// percentState 설정 (relativeState에서 변환)
+	$photo.data('percentState', {
+		widthPercent: relativeState.sizePercent.width,
+		heightPercent: relativeState.sizePercent.height,
+		translateXPercent: relativeState.translateX || 0,
+		translateYPercent: relativeState.translateY || 0,
+		rotation: relativeState.rotation || 0
+	});
+	
+	// 크기/위치 계산 및 적용
+	const percentState = $photo.data('percentState');
+	const newWidth = (percentState.widthPercent / 100) * maskBounds.width;
+	const newHeight = (percentState.heightPercent / 100) * maskBounds.height;
+	
+	// 마스크 내부 상대 좌표에서 절대 좌표로 변환
+	const relTranslateX = (percentState.translateXPercent / 100) * maskBounds.width;
+	const relTranslateY = (percentState.translateYPercent / 100) * maskBounds.height;
+	const newTranslateX = relTranslateX + maskBounds.x;
+	const newTranslateY = relTranslateY + maskBounds.y;
+	
+	let finalTransform;
+	if (percentState.rotation !== 0) {
+		const cos = Math.cos(percentState.rotation);
+		const sin = Math.sin(percentState.rotation);
+		finalTransform = `matrix(${cos}, ${sin}, ${-sin}, ${cos}, ${newTranslateX}, ${newTranslateY})`;
+	} else {
+		finalTransform = `matrix(1, 0, 0, 1, ${newTranslateX}, ${newTranslateY})`;
+	}
+	
+	$photo.css({
+		display: 'block',
+		width: newWidth + 'px',
+		height: newHeight + 'px',
+		left: '0px',
+		top: '0px',
+		transform: finalTransform,
+		transformOrigin: '50% 50%'
+	});
+	
+	console.log('[applyPhotoPositionAfterLoad] 사진 위치 적용 완료:', {
+		maskBounds: maskBounds,
+		size: { width: newWidth, height: newHeight },
+		translate: { x: newTranslateX, y: newTranslateY }
+	});
+}
+
 function updateAllPhotosPosition() {
 	$('#frame-container .frame-group').each(function() {
 		const $frame = $(this);
@@ -2241,6 +2381,23 @@ function updateAllPhotosPosition() {
 					transform: finalTransform,
 					transformOrigin: '50% 50%'
 				});
+			} else {
+				// ✅ percentState가 없으면 기본 cover 모드로 배치
+				const maskContainer = $frame.find('.mask-container');
+				if (maskContainer.length && $photo[0].naturalWidth > 0) {
+					positionImageInMaskAdvanced($photo, maskContainer, {
+						fit: 'cover',
+						position: 'center'
+					});
+					$photo.css('visibility', 'visible');
+					console.log('[updateAllPhotosPosition] percentState 없음 - cover 모드 적용');
+				} else if ($photo[0].naturalWidth > 0) {
+					// 마스크가 없는 경우 단순 표시
+					$photo.css({
+						display: 'block',
+						visibility: 'visible'
+					});
+				}
 			}
 
 			if ($photo.hasClass('selected-photo')) {
