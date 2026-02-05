@@ -843,17 +843,17 @@ $(document).ready(function() {
 		}
 		
 		// ✅ 모달이 완전히 표시된 후 위치 재계산 필요
-		// (renderPage 시점에는 모달 크기가 확정되지 않았을 수 있음)
 		if (window.updateAllPositions) {
 			window.updateAllPositions();
 		}
 		
-		// ✅ 사진 위치도 모달 표시 후 재계산
-		if (typeof updateAllPhotosPosition === 'function') {
-			updateAllPhotosPosition();
-		}
-		
-		console.log('[shown.bs.modal] 모달 표시 완료 - 위치 재계산됨');
+		// ✅ 사진 위치 - 모든 이미지 로드 완료 후 재계산
+		waitForAllPhotosLoaded().then(() => {
+			if (typeof updateAllPhotosPosition === 'function') {
+				updateAllPhotosPosition();
+			}
+			console.log('[shown.bs.modal] 모달 표시 완료 - 모든 이미지 로드 후 위치 재계산됨');
+		});
 	});
 
 	$('#btn-close-modal').on('click', function(e) {
@@ -2319,6 +2319,69 @@ function applyPhotoPositionAfterLoad($frame, $photo) {
 		maskBounds: maskBounds,
 		size: { width: newWidth, height: newHeight },
 		translate: { x: newTranslateX, y: newTranslateY }
+	});
+}
+
+/**
+ * ✅ 모든 사진 이미지 로드 완료 대기
+ * shown.bs.modal에서 호출하여 이미지 로드 후 위치 계산
+ */
+function waitForAllPhotosLoaded() {
+	return new Promise((resolve) => {
+		const $photos = $('#frame-container .frame-group .uploaded-photo');
+		
+		if ($photos.length === 0) {
+			resolve();
+			return;
+		}
+		
+		const photoPromises = [];
+		
+		$photos.each(function() {
+			const $photo = $(this);
+			const src = $photo.attr('src');
+			
+			// src가 없거나 빈 값이면 건너뜀
+			if (!src || src === '#') {
+				return;
+			}
+			
+			const photoElement = $photo[0];
+			
+			// 이미 로드 완료된 경우
+			if (photoElement.complete && photoElement.naturalWidth > 0) {
+				return;
+			}
+			
+			// 로드 대기
+			const promise = new Promise((resolvePhoto) => {
+				const onLoad = () => {
+					$photo.off('load.wait error.wait');
+					resolvePhoto();
+				};
+				const onError = () => {
+					$photo.off('load.wait error.wait');
+					resolvePhoto();
+				};
+				
+				$photo.on('load.wait', onLoad);
+				$photo.on('error.wait', onError);
+				
+				// 타임아웃 (5초)
+				setTimeout(() => {
+					$photo.off('load.wait error.wait');
+					resolvePhoto();
+				}, 5000);
+			});
+			
+			photoPromises.push(promise);
+		});
+		
+		if (photoPromises.length === 0) {
+			resolve();
+		} else {
+			Promise.all(photoPromises).then(resolve);
+		}
 	});
 }
 
