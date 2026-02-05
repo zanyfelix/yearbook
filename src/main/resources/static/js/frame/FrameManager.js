@@ -406,13 +406,24 @@ class FrameManager {
 	            translate: { x: translateX, y: translateY },
 	            rotation: rotation
 	        });
+	        
+	        // ✅ CSS 적용 완료 후 renderPage의 카운팅을 위한 이벤트 트리거
+	        uploadedPhoto.trigger('load.renderCount');
 	    };
 
 	    // 4. 이미지 로드 이벤트 처리
-	    uploadedPhoto.off('load.restore');
+	    uploadedPhoto.off('load.restore error.restore');
 	    uploadedPhoto.on('load.restore', function() {
 	        applyPhotoCSS();
-	        uploadedPhoto.off('load.restore');
+	        uploadedPhoto.off('load.restore error.restore');
+	    });
+	    uploadedPhoto.on('error.restore', function() {
+	        console.error('Photo load error:', imageSrc);
+	        placeholderLink.show();
+	        uploadedPhoto.hide();
+	        uploadedPhoto.off('load.restore error.restore');
+	        // ✅ 에러 시에도 카운팅을 위한 이벤트 트리거
+	        uploadedPhoto.trigger('error.renderCount');
 	    });
 
 	    // 5. 이미지 소스 설정
@@ -422,7 +433,7 @@ class FrameManager {
 	    const img = uploadedPhoto[0];
 	    if (img.complete && img.naturalWidth > 0) {
 	        applyPhotoCSS();
-	        uploadedPhoto.off('load.restore');
+	        uploadedPhoto.off('load.restore error.restore');
 	    }
 	}
 	

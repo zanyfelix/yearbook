@@ -33,9 +33,10 @@ class SafeLineManager {
         const img = $('#page-preview-img')[0];
         if (!img) return;
         
-        // 이미지 로드 이벤트
+        // 이미지 로드 이벤트 - 여러 번 시도
         $(img).on('load', () => {
-            setTimeout(() => this.update(), 150);
+            setTimeout(() => this.update(), 100);
+            setTimeout(() => this.update(), 300); // 추가 재시도
         });
         
         // ResizeObserver 설정
@@ -90,45 +91,63 @@ class SafeLineManager {
         });
     }
     
-	update() {
-	    if (!this.container) return;
+    update() {
+        if (!this.container) return;
 
-	    const img = $('#page-preview-img');
-	    const src = img.attr('src');
+        const img = $('#page-preview-img');
+        const src = img.attr('src');
 
-	    if (!src || src.includes('data:image/gif;base64')) {
-	        this.container.hide();
-	        this.clearSelectionCache();
-	        return;
-	    }
+        if (!src || src.includes('data:image/gif;base64')) {
+            this.container.hide();
+            this.clearSelectionCache();
+            return;
+        }
 
-	    const imgElement = img[0];
-	    
-	    // 이미지 로드 완료 확인 개선
-	    if (!imgElement.complete || !imgElement.naturalWidth) {
-	        this.container.hide();
-	        // 이미지 로드 후 재시도
-	        img.off('load.safeline').one('load.safeline', () => {
-	            setTimeout(() => this.update(), 100);
-	        });
-	        return;
-	    }
+        const imgElement = img[0];
+        
+        // 이미지 로드 대기 로직 강화
+        if (!imgElement.complete || !imgElement.naturalWidth || imgElement.naturalWidth === 0) {
+            this.container.hide();
+            
+            // 기존 로드 이벤트 제거
+            img.off('load.safeline error.safeline');
+            
+            // 로드 완료 시 재시도
+            img.one('load.safeline', () => {
+                setTimeout(() => this.update(), 150);
+            });
+            
+            // 에러 처리
+            img.one('error.safeline', () => {
+                console.error('Image load failed:', src);
+                this.container.hide();
+            });
+            
+            return;
+        }
 
-	    const imgPosition = this.getActualImagePosition(img);
-	    if (!imgPosition) {
-	        this.container.hide();
-	        return;
-	    }
+        const imgPosition = this.getActualImagePosition(img);
+        if (!imgPosition || imgPosition.width === 0 || imgPosition.height === 0) {
+            this.container.hide();
+            // 짧은 시간 후 재시도
+            setTimeout(() => {
+                const retry = this.getActualImagePosition(img);
+                if (retry && retry.width > 0) {
+                    this.update();
+                }
+            }, 100);
+            return;
+        }
 
-	    this.container.show();
-	    
-	    const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
-	    const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
+        this.container.show();
+        
+        const marginX = (this.safeMargin / this.actualWidth) * imgPosition.width;
+        const marginY = (this.safeMargin / this.actualHeight) * imgPosition.height;
 
-	    this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
-	    this.updateMessagePosition(imgPosition);
-	    this.clearSelectionCache();
-	}
+        this.drawHatchedSafeAreas(imgPosition, marginX, marginY);
+        this.updateMessagePosition(imgPosition);
+        this.clearSelectionCache();
+    }
     
     drawHatchedSafeAreas(imgPosition, marginX, marginY) {
         this.container.empty();

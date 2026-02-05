@@ -1,5 +1,5 @@
 // ============================================================================
-// 📁 js/core/SelectionManager.js - 다중 선택 통합 버전
+// 📁 js/core/SelectionManager.js - 다중 선택 통합 버전 (z-index 개선)
 // ============================================================================
 class SelectionManager {
 	constructor() {
@@ -11,13 +11,78 @@ class SelectionManager {
 
 		this.originalZIndex = null;
 		
-		// ✅ 요소 타입별 선택 시 z-index (텍스트가 항상 최상위)
-		this.SELECTED_Z_INDEX = {
-			text: 9999,        // 텍스트 - 최상위
-			element: 9998,     // 요소(스티커 등)
-			frame: 9997,       // 사진 프레임
-			photo: 9997        // 사진 (프레임과 동일)
+		// ✅ 요소 타입별 기본 z-index
+		this.BASE_Z_INDEX = {
+			text: 100,      // 텍스트 기본
+			element: 80,    // 요소(스티커 등) 기본
+			frame: 50,      // 사진 프레임 기본
+			photo: 50       // 사진 기본
 		};
+		
+		// ✅ 선택 시 올라가는 z-index (충분히 높게)
+		this.SELECTED_Z_INDEX_BOOST = 10000;
+		
+		// ✅ 현재 최대 z-index 추적
+		this.maxZIndex = 100;
+	}
+
+	// ✅ 요소의 현재 z-index를 가져오거나 기본값 반환
+	getElementZIndex(element) {
+		const current = parseInt(element.css('z-index')) || 0;
+		if (current === 0 || isNaN(current)) {
+			// 요소 타입에 따른 기본값 반환
+			if (element.hasClass('textbox-frame')) return this.BASE_Z_INDEX.text;
+			if (element.hasClass('element-frame')) return this.BASE_Z_INDEX.element;
+			if (element.hasClass('frame-group')) return this.BASE_Z_INDEX.frame;
+			return this.BASE_Z_INDEX.frame;
+		}
+		return current;
+	}
+
+	// ✅ 선택 시 z-index를 현재 최대값+1로 설정
+	bringToFront(element) {
+		this.originalZIndex = this.getElementZIndex(element);
+		element.data('original-z-index', this.originalZIndex);
+		
+		// 현재 페이지의 모든 요소 중 최대 z-index 찾기
+		let currentMax = this.maxZIndex;
+		$('#page-preview').find('.frame-group, .textbox-frame, .element-frame').each(function() {
+			const z = parseInt($(this).css('z-index')) || 0;
+			if (z > currentMax && z < 9999) { // 선택된 요소 제외
+				currentMax = z;
+			}
+		});
+		
+		this.maxZIndex = Math.max(currentMax + 1, this.maxZIndex);
+		const newZIndex = this.maxZIndex + this.SELECTED_Z_INDEX_BOOST;
+		
+		element.css('z-index', newZIndex);
+		return newZIndex;
+	}
+
+	// ✅ 겹친 요소들 중 실제 클릭된 요소 찾기
+	findClickedElement(clickX, clickY, candidateElements) {
+		let topElement = null;
+		let topZIndex = -1;
+		
+		candidateElements.each(function() {
+			const $el = $(this);
+			const offset = $el.offset();
+			const width = $el.outerWidth();
+			const height = $el.outerHeight();
+			
+			// 클릭 지점이 요소 영역 내에 있는지 확인
+			if (clickX >= offset.left && clickX <= offset.left + width &&
+			    clickY >= offset.top && clickY <= offset.top + height) {
+				const zIndex = parseInt($el.css('z-index')) || 0;
+				if (zIndex > topZIndex) {
+					topZIndex = zIndex;
+					topElement = $el;
+				}
+			}
+		});
+		
+		return topElement;
 	}
 
 	// --- Public Selection Methods ---
@@ -36,9 +101,8 @@ class SelectionManager {
 		this.selectedMode = 'frame';
 		this.currentFrame = frameGroup;
 
-		this.originalZIndex = frameGroup.css('z-index');
-		frameGroup.data('original-z-index', this.originalZIndex);
-		frameGroup.css('z-index', this.SELECTED_Z_INDEX.frame);
+		// ✅ 선택 시 최상단으로 올림
+		this.bringToFront(frameGroup);
 
 		window.selectedFrame = frameGroup;
 		frameGroup.addClass('selected-frame');
@@ -59,9 +123,8 @@ class SelectionManager {
 		this.currentFrame = frameGroup;
 		this.currentPhoto = photo;
 
-		this.originalZIndex = frameGroup.css('z-index');
-		frameGroup.data('original-z-index', this.originalZIndex);
-		frameGroup.css('z-index', this.SELECTED_Z_INDEX.photo);
+		// ✅ 선택 시 최상단으로 올림
+		this.bringToFront(frameGroup);
 
 		window.selectedPhotoWrapper = photo;
 		window.selectedFrame = frameGroup;
@@ -86,9 +149,8 @@ class SelectionManager {
 		this.selectedMode = 'text';
 		this.currentTextBox = textBox;
 
-		this.originalZIndex = textBox.css('z-index');
-		textBox.data('original-z-index', this.originalZIndex);
-		textBox.css('z-index', this.SELECTED_Z_INDEX.text);
+		// ✅ 선택 시 최상단으로 올림
+		this.bringToFront(textBox);
 
 		window.selectedBox = textBox;
 
@@ -120,9 +182,8 @@ class SelectionManager {
 		this.currentElement = elementGroup;
 		this.currentFrame = elementGroup;
 
-		this.originalZIndex = elementGroup.css('z-index');
-		elementGroup.data('original-z-index', this.originalZIndex);
-		elementGroup.css('z-index', this.SELECTED_Z_INDEX.element);
+		// ✅ 선택 시 최상단으로 올림
+		this.bringToFront(elementGroup);
 
 		window.selectedFrame = elementGroup;
 

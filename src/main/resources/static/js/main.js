@@ -460,6 +460,29 @@ $(document).ready(function() {
 
 		const bgImg = $('#page-preview-img');
 
+		// ✅ 사진 이미지 로딩 추적 변수
+		let photosToLoad = 0;
+		let photosLoaded = 0;
+		let elementsRendered = false;
+
+		// ✅ 모든 작업 완료 확인 함수
+		function checkAllComplete() {
+			console.log('[renderPage] 완료 체크:', {
+				elementsRendered,
+				photosToLoad,
+				photosLoaded
+			});
+			
+			// 요소 렌더링 완료 && 모든 사진 로드 완료
+			if (elementsRendered && photosLoaded >= photosToLoad) {
+				console.log('[renderPage] 모든 작업 완료 - hideLoader 호출');
+				if (typeof onComplete === 'function') {
+					// 약간의 여유시간 후 로딩바 숨김
+					setTimeout(onComplete, 100);
+				}
+			}
+		}
+
 		// ✅ renderElements는 design 객체에 접근해야 하므로 내부에 유지
 		function renderElements() {
 			const totalFrames = design.frames?.length || 0;
@@ -470,12 +493,15 @@ $(document).ready(function() {
 			function checkCompletion() {
 				renderedCount++;
 				if (renderedCount >= totalElements) {
-					if (typeof onComplete === 'function') onComplete();
+					console.log('[renderPage] 모든 요소 렌더링 완료');
+					elementsRendered = true;
+					checkAllComplete();
 				}
 			}
 
 			if (totalElements === 0) {
-				if (typeof onComplete === 'function') onComplete();
+				elementsRendered = true;
+				checkAllComplete();
 				return;
 			}
 
@@ -485,63 +511,31 @@ $(document).ready(function() {
 				design.frames.forEach(frameData => {
 					FrameManager.applyFrame(frameData.theme, frameData);
 
+					// ✅ 사진이 있는 프레임은 로딩 카운트만 증가
 					if (frameData.photo && frameData.photo.src) {
+						photosToLoad++;
+						
 						const $frame = $('#frame-container .frame-group:last-child');
 						const $photo = $frame.find('.uploaded-photo');
-						const $placeholder = $frame.find('.place-image-here-link');
-
-						if ($photo.length > 0) {
-							// 1. 데이터 먼저 설정
-							$photo.data('filePath', frameData.photo.src);
-							$photo.data('relativeState', frameData.photo);
-							$placeholder.hide();
-							
-							// 2. visibility: hidden 상태로 표시
-							$photo.css({ visibility: 'hidden', display: 'block' });
-							
-							// 3. 이미지 로드 완료 대기
-							const imgSrc = `${ctx}${frameData.photo.src}`;
-							let loadHandled = false;
-							
-							$photo.off('load.render error.render');
-							$photo.on('load.render', function() {
-								if (loadHandled) return;
-								loadHandled = true;
-								$photo.off('load.render error.render');
-								// ✅ 위치 계산은 shown.bs.modal에서 updateAllPhotosPosition()이 처리
-								// 여기서는 로드 완료만 확인
-								console.log('[renderPage] 이미지 로드 완료:', imgSrc);
-								checkCompletion();
-							});
-							$photo.on('error.render', function() {
-								if (loadHandled) return;
-								loadHandled = true;
-								console.error('이미지 로드 실패:', imgSrc);
-								$placeholder.show();
-								$photo.hide();
-								$photo.off('load.render error.render');
-								checkCompletion();
-							});
-							
-							// src 설정
-							$photo.attr('src', imgSrc);
-							
-							// 이미 로드 완료된 경우 (캐시된 이미지)
-							const photoElement = $photo[0];
-							if (photoElement.complete && photoElement.naturalWidth > 0) {
-								if (!loadHandled) {
-									loadHandled = true;
-									$photo.off('load.render error.render');
-									console.log('[renderPage] 이미지 캐시됨:', imgSrc);
-									checkCompletion();
-								}
-							}
-						} else {
-							checkCompletion();
-						}
-					} else {
-						checkCompletion();
+						
+						// ✅ restorePhoto에서 이미지 로드를 처리하므로 
+						// 여기서는 load.restore 이벤트를 감지
+						$photo.off('load.renderCount');
+						$photo.one('load.renderCount', function() {
+							console.log('[renderPage] 사진 로드 완료 감지');
+							photosLoaded++;
+							checkAllComplete();
+						});
+						
+						// ✅ 에러도 감지
+						$photo.one('error.renderCount', function() {
+							console.error('[renderPage] 사진 로드 실패 감지');
+							photosLoaded++;
+							checkAllComplete();
+						});
 					}
+					
+					checkCompletion();
 				});
 			}
 
@@ -676,7 +670,15 @@ $(document).ready(function() {
 				bgLoadHandled = true;
 				bgImg.off('load.render error.render');
 				console.log('[renderPage] 배경 이미지 로드 완료 - renderElements 호출');
+				// ✅ 배경 로드 완료 후 요소 렌더링
 				renderElements();
+				// ✅ 요소 렌더링 후 배경 기준으로 프레임 위치 재계산
+				setTimeout(() => {
+					if (window.updateAllPositions) {
+						console.log('[renderPage] 배경 로드 후 프레임 위치 재계산');
+						window.updateAllPositions();
+					}
+				}, 150);
 			});
 			bgImg.on('error.render', function() {
 				if (bgLoadHandled) return;
@@ -688,13 +690,20 @@ $(document).ready(function() {
 			
 			bgImg.attr('src', design.background);
 			
-			// src 설정 후 캐시된 경우 체크
+			// ✅ src 설정 후 캐시된 경우 체크
 			if (bgImg[0].complete && bgImg[0].naturalWidth > 0) {
 				if (!bgLoadHandled) {
 					bgLoadHandled = true;
 					bgImg.off('load.render error.render');
 					console.log('[renderPage] 배경 이미지 캐시됨 - renderElements 즉시 호출');
 					renderElements();
+					// ✅ 캐시된 경우에도 프레임 위치 재계산
+					setTimeout(() => {
+						if (window.updateAllPositions) {
+							console.log('[renderPage] 배경 캐시됨 - 프레임 위치 재계산');
+							window.updateAllPositions();
+						}
+					}, 100);
 				}
 			}
 		} else {
@@ -837,23 +846,81 @@ $(document).ready(function() {
 	});
 
 	$('#editModal').on('shown.bs.modal', function() {
-		// ✅ safeLineManager 업데이트
+		// ✅ safeLineManager 업데이트 (안전선)
 		if (window.safeLineManager) {
-			window.safeLineManager.update();
+			// 여러 번 시도하여 이미지 로딩 타이밍 이슈 해결
+			setTimeout(() => window.safeLineManager.update(), 50);
+			setTimeout(() => window.safeLineManager.update(), 200);
 		}
 		
-		// ✅ 모달이 완전히 표시된 후 위치 재계산 필요
-		if (window.updateAllPositions) {
-			window.updateAllPositions();
-		}
+		// ✅ 배경 이미지 크기 확인 후 모든 요소 위치 재계산
+		const $bgImg = $('#page-preview-img');
+		const bgComplete = $bgImg[0] && $bgImg[0].complete && $bgImg[0].naturalWidth > 0;
 		
-		// ✅ 사진 위치 - 모든 이미지 로드 완료 후 재계산
-		waitForAllPhotosLoaded().then(() => {
+		console.log('[shown.bs.modal] 배경 이미지 상태:', {
+			complete: $bgImg[0]?.complete,
+			naturalWidth: $bgImg[0]?.naturalWidth,
+			bgComplete: bgComplete
+		});
+		
+		// ✅ 배경 로드 상태 확인 후 프레임 위치 재계산
+		const recalculateAllPositions = () => {
+			// 프레임 + 텍스트 위치 재계산
+			if (window.updateAllPositions) {
+				window.updateAllPositions();
+				console.log('[shown.bs.modal] 프레임 위치 재계산 완료');
+			}
+			
+			// 사진 위치 재계산
 			if (typeof updateAllPhotosPosition === 'function') {
 				updateAllPhotosPosition();
+				console.log('[shown.bs.modal] 사진 위치 재계산 완료');
 			}
-			console.log('[shown.bs.modal] 모달 표시 완료 - 모든 이미지 로드 후 위치 재계산됨');
+		};
+		
+		if (!bgComplete) {
+			// 배경 이미지가 아직 로드 중
+			console.log('[shown.bs.modal] 배경 이미지 로드 대기 중...');
+			$bgImg.off('load.shownmodal error.shownmodal');
+			$bgImg.one('load.shownmodal', function() {
+				setTimeout(recalculateAllPositions, 100);
+			});
+			$bgImg.one('error.shownmodal', function() {
+				console.error('[shown.bs.modal] 배경 이미지 로드 실패');
+			});
+		} else {
+			// 배경 이미지 이미 로드됨 (캐시)
+			console.log('[shown.bs.modal] 배경 이미지 캐시됨 - 레이아웃 안정화 대기');
+			
+			// 여러 단계로 재계산하여 정확도 향상
+			setTimeout(recalculateAllPositions, 100);
+			setTimeout(recalculateAllPositions, 250);
+		}
+		
+		// ✅ 로드되지 않은 사진 이미지 확인
+		const $photos = $('#frame-container .uploaded-photo').filter(function() {
+			const src = $(this).attr('src');
+			return src && src !== '#';
 		});
+		
+		const unloadedPhotos = $photos.filter(function() {
+			return !this.complete || this.naturalWidth === 0;
+		});
+		
+		if (unloadedPhotos.length > 0) {
+			console.log(`[shown.bs.modal] ${unloadedPhotos.length}개 사진 이미지 로드 대기 중...`);
+			$('#preview-loader').show();
+			
+			waitForAllPhotosLoaded().then(() => {
+				setTimeout(() => {
+					if (typeof updateAllPhotosPosition === 'function') {
+						updateAllPhotosPosition();
+					}
+					$('#preview-loader').hide();
+					console.log('[shown.bs.modal] 모든 사진 로드 완료');
+				}, 100);
+			});
+		}
 	});
 
 	$('#btn-close-modal').on('click', function(e) {
@@ -905,15 +972,17 @@ $(document).ready(function() {
 		console.log('Edit 버튼 클릭 - yearbookId:', yearbookId);
 
 		const pageCategory = $(this).data('category');
-		DataLoader.loadBackgrounds(pageCategory);
+		
+		// ✅ 모달에 페이지 카테고리 저장 (PanelManager에서 사용)
+		$('#editModal').data('page-category', pageCategory);
 
 		showLoader();
 
 		try {
-			await DataLoader.loadAndSetupFonts();
-			console.log('폰트 로딩 완료, 페이지 데이터 로딩 시작.');
-
-			const pageData = await new Promise((resolve, reject) => {
+			// ✅ 병렬 로딩: 폰트와 페이지 데이터를 동시에 로드
+			const startTime = performance.now();
+			
+			const pageDataPromise = new Promise((resolve, reject) => {
 				if (yearbookId) {
 					$.ajax({
 						url: `${ctx}/edit/pageData`,
@@ -924,7 +993,7 @@ $(document).ready(function() {
 						},
 						cache: false,
 						success: function(data) {
-							console.log('페이지 데이터 로드 성공:', data);
+							console.log('페이지 데이터 로드 성공');
 							resolve(data);
 						},
 						error: function(err) {
@@ -938,6 +1007,16 @@ $(document).ready(function() {
 				}
 			});
 
+			// ✅ 폰트와 페이지 데이터 병렬 로드
+			const [_, pageData] = await Promise.all([
+				DataLoader.loadAndSetupFonts(),
+				pageDataPromise
+			]);
+			
+			const loadTime = performance.now() - startTime;
+			console.log(`병렬 로딩 완료: ${loadTime.toFixed(0)}ms`);
+
+			// ✅ 둘 다 완료된 후 렌더링
 			renderPage(pageData, hideLoader);
 
 			if (pageData && pageData.lastSaved) {
@@ -945,6 +1024,9 @@ $(document).ready(function() {
 			}
 
 			$('#editModal').modal('show');
+			
+			// ✅ 백그라운드 썸네일은 PanelManager가 패널 클릭 시 로드
+			// (지연 로딩으로 초기 로딩 시간 단축)
 
 		} catch (error) {
 			console.error('An error occurred while preparing the page:', error);
