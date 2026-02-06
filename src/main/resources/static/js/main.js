@@ -422,6 +422,12 @@ $(document).ready(function() {
 		$('#background-panel, #frame-panel, #text-panel, #element-panel').addClass('d-none');
 		$('#photoFrameList, #textboxFrameList').addClass('d-none');
 
+		// ✅ 모든 패널 내용 비우기 (캐시 방지)
+		$('#background-panel').empty();
+		$('#photoFrameList').empty();
+		$('#textboxFrameList').empty();
+		$('#element-panel').empty();
+
 		$('#btn-background').addClass('active');
 		$('#background-panel').removeClass('d-none');
 
@@ -851,6 +857,17 @@ $(document).ready(function() {
 			// 여러 번 시도하여 이미지 로딩 타이밍 이슈 해결
 			setTimeout(() => window.safeLineManager.update(), 50);
 			setTimeout(() => window.safeLineManager.update(), 200);
+		}
+		
+		// ✅ Background 패널 초기 데이터 로드
+		if (window.panelManager) {
+			const $bgPanel = $('#background-panel');
+			// 패널이 비어있으면 데이터 로드
+			if ($bgPanel.children().length === 0) {
+				const pageCategory = $('#editModal').data('page-category');
+				console.log('[shown.bs.modal] Background 패널 초기 데이터 로드:', pageCategory);
+				DataLoader.loadBackgrounds(pageCategory);
+			}
 		}
 		
 		// ✅ 배경 이미지 크기 확인 후 모든 요소 위치 재계산

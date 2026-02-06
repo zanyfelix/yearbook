@@ -1,4 +1,5 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"	pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
 <jsp:useBean id="now" class="java.util.Date" />
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 <fmt:formatDate value="${now}" pattern="yyyyMMddHHmmss" var="jsVersion" />
@@ -23,6 +24,18 @@
 	href="${pageContext.request.contextPath}/css/edit.css" />
 </head>
 <body>
+	<div id="page-loading-overlay"
+		style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+		<div style="text-align: center;">
+			<div class="spinner-border text-primary" role="status"
+				style="width: 3rem; height: 3rem;">
+				<span class="visually-hidden">Loading...</span>
+			</div>
+			<div style="margin-top: 1rem; font-size: 1.1rem; color: #666;">
+				Loading thumbnails...</div>
+		</div>
+	</div>
+
 	<div class="sidebar">
 		<h5>${sessionScope.loginUser.schoolName}</h5>
 
@@ -205,11 +218,13 @@
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="frame-align-h" class="control-btn align-btn"
 												title="수평 중앙">
-												<img src="/images/icon/hor_center.png" alt="horCenter" style="width: 25px; height: 25px;">
+												<img src="/images/icon/hor_center.png" alt="horCenter"
+													style="width: 25px; height: 25px;">
 											</button>
 											<button id="frame-align-v" class="control-btn align-btn"
 												title="수직 중앙">
-												<img src="/images/icon/ver_center.png" alt="verCenter" style="width: 25px; height: 25px;">
+												<img src="/images/icon/ver_center.png" alt="verCenter"
+													style="width: 25px; height: 25px;">
 											</button>
 											<button id="btn-delete-frame" class="control-btn delete-btn"
 												title="프레임 삭제">
@@ -314,7 +329,7 @@
 												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="element-align-v" class="control-btn align-btn"
-												title="수직 중앙" style="width: 25px; height: 25px;"> 
+												title="수직 중앙" style="width: 25px; height: 25px;">
 												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
 											<button id="btn-delete-element"
@@ -324,51 +339,69 @@
 										</div>
 									</div>
 									<div id="multi-selection-controls" class="d-none w-100">
-									    <div class="control-buttons d-flex align-items-center gap-2 flex-wrap">
-									        <!-- 선택 개수 표시 -->
-									        <span id="multi-selection-count" class="badge bg-primary me-2">0 selected</span>
-									        
-									        <!-- 좌/중/우 정렬 -->
-									        <div class="btn-group" role="group" aria-label="수평 정렬">
-									            <button id="multi-align-left" class="control-btn align-btn" title="좌측 정렬">
-									                <img src="/images/icon/align_left.svg" alt="Align Left" style="width: 20px; height: 20px;">
-									            </button>
-									            <button id="multi-align-center-h" class="control-btn align-btn" title="수평 중앙 정렬">
-									                <img src="/images/icon/hor_center.png" alt="Align Center H" style="width: 20px; height: 20px;">
-									            </button>
-									            <button id="multi-align-right" class="control-btn align-btn" title="우측 정렬">
-									                <img src="/images/icon/align_right.svg" alt="Align Right" style="width: 20px; height: 20px;">
-									            </button>
-									        </div>
-									        
-									        <div class="vr mx-1"></div>
-									        
-									        <!-- 상/중/하 정렬 -->
-									        <div class="btn-group" role="group" aria-label="수직 정렬">
-									            <button id="multi-align-top" class="control-btn align-btn" title="상단 정렬">
-									                <img src="/images/icon/align_top.svg" alt="Align Top" style="width: 20px; height: 20px;">
-									            </button>
-									            <button id="multi-align-center-v" class="control-btn align-btn" title="수직 중앙 정렬">
-									                <img src="/images/icon/ver_center.png" alt="Align Center V" style="width: 20px; height: 20px;">
-									            </button>
-									            <button id="multi-align-bottom" class="control-btn align-btn" title="하단 정렬">
-									                <img src="/images/icon/align_bottom.svg" alt="Align Bottom" style="width: 20px; height: 20px;">
-									            </button>
-									        </div>
-									        
-									        <div class="vr mx-1"></div>
-									        
-									        <!-- 균등 배분 -->
-									        <div class="btn-group" role="group" aria-label="균등 배분">
-									            <button id="multi-distribute-h" class="control-btn align-btn" title="가로 균등 배분">
-									                <img src="/images/icon/distribute_h.svg" alt="Distribute H" style="width: 20px; height: 20px;">
-									            </button>
-									            <button id="multi-distribute-v" class="control-btn align-btn" title="세로 균등 배분">
-									                <img src="/images/icon/distribute_v.svg" alt="Distribute V" style="width: 20px; height: 20px;">
-									            </button>
-									        </div>
-									        
-									    </div>
+										<div
+											class="control-buttons d-flex align-items-center gap-2 flex-wrap">
+											<!-- 선택 개수 표시 -->
+											<span id="multi-selection-count"
+												class="badge bg-primary me-2">0 selected</span>
+
+											<!-- 좌/중/우 정렬 -->
+											<div class="btn-group" role="group" aria-label="수평 정렬">
+												<button id="multi-align-left" class="control-btn align-btn"
+													title="좌측 정렬">
+													<img src="/images/icon/align_left.svg" alt="Align Left"
+														style="width: 20px; height: 20px;">
+												</button>
+												<button id="multi-align-center-h"
+													class="control-btn align-btn" title="수평 중앙 정렬">
+													<img src="/images/icon/hor_center.png" alt="Align Center H"
+														style="width: 20px; height: 20px;">
+												</button>
+												<button id="multi-align-right" class="control-btn align-btn"
+													title="우측 정렬">
+													<img src="/images/icon/align_right.svg" alt="Align Right"
+														style="width: 20px; height: 20px;">
+												</button>
+											</div>
+
+											<div class="vr mx-1"></div>
+
+											<!-- 상/중/하 정렬 -->
+											<div class="btn-group" role="group" aria-label="수직 정렬">
+												<button id="multi-align-top" class="control-btn align-btn"
+													title="상단 정렬">
+													<img src="/images/icon/align_top.svg" alt="Align Top"
+														style="width: 20px; height: 20px;">
+												</button>
+												<button id="multi-align-center-v"
+													class="control-btn align-btn" title="수직 중앙 정렬">
+													<img src="/images/icon/ver_center.png" alt="Align Center V"
+														style="width: 20px; height: 20px;">
+												</button>
+												<button id="multi-align-bottom"
+													class="control-btn align-btn" title="하단 정렬">
+													<img src="/images/icon/align_bottom.svg" alt="Align Bottom"
+														style="width: 20px; height: 20px;">
+												</button>
+											</div>
+
+											<div class="vr mx-1"></div>
+
+											<!-- 균등 배분 -->
+											<div class="btn-group" role="group" aria-label="균등 배분">
+												<button id="multi-distribute-h"
+													class="control-btn align-btn" title="가로 균등 배분">
+													<img src="/images/icon/distribute_h.svg" alt="Distribute H"
+														style="width: 20px; height: 20px;">
+												</button>
+												<button id="multi-distribute-v"
+													class="control-btn align-btn" title="세로 균등 배분">
+													<img src="/images/icon/distribute_v.svg" alt="Distribute V"
+														style="width: 20px; height: 20px;">
+												</button>
+											</div>
+
+										</div>
 									</div>
 								</div>
 								<div id="main-actions" class="d-flex align-items-center gap-2"
@@ -527,45 +560,57 @@
 				</div>
 			</div>
 		</div>
-		
+
 		<!-- jQuery (먼저 로드) -->
 		<script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
-		
+
 		<!-- Bootstrap JS -->
-		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 		<!-- ============================================================================
      모듈화된 JavaScript 파일들 (의존성 순서에 맞춰 로드)
      ============================================================================ -->
 
 		<!-- Core Classes (핵심 클래스) -->
-		<script src="<c:url value='/js/core/SelectionManager.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/core/SafeLineManager.js?v=${jsVersion}'/>"></script>
-		
-		<script src="<c:url value='/js/core/MultiSelectionManager.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/core/AlignmentManager.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/events/KeyboardManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/core/SelectionManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/core/SafeLineManager.js?v=${jsVersion}'/>"></script>
+
+		<script
+			src="<c:url value='/js/core/MultiSelectionManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/core/AlignmentManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/events/KeyboardManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- UI Management (UI 관리) -->
 		<script src="<c:url value='/js/ui/PanelManager.js?v=${jsVersion}'/>"></script>
 		<script src="<c:url value='/js/ui/UIManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Feature Modules (기능 모듈) -->
-		<script src="<c:url value='/js/frame/FrameManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/frame/FrameManager.js?v=${jsVersion}'/>"></script>
 		<script src="<c:url value='/js/text/TextManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Events & Utils (이벤트 및 유틸리티) -->
 		<script src="<c:url value='/js/utils/DataLoader.js?v=${jsVersion}'/>"></script>
 		<script src="<c:url value='/js/utils/Helpers.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/utils/GeometryHelper.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/utils/MaskBoundsCalculator.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/events/EventManager.js?v=${jsVersion}'/>"></script>
-		<script src="<c:url value='/js/photo/PhotoManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/utils/GeometryHelper.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/utils/MaskBoundsCalculator.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/events/EventManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/photo/PhotoManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Main Initialization (반드시 마지막에 로드) -->
 		<script src="<c:url value='/js/main.js?v=${jsVersion}'/>"></script>
 		<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 		<!-- heic2any 변환 -->
-		<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
 
 		<!-- 전역 변수 및 기존 함수들 -->
@@ -575,28 +620,36 @@
 			let selectedPhotoWrapper = null;
 			let selectedBox = null;
 			let selectedBackgroundPath = null;
-			
-			$(document).ready(function() {
-		        // 모달이 열릴 때 매니저들 초기화
-		        $('#editModal').on('shown.bs.modal', function() {
-		            if (!window.multiSelectionManager) {
-		                window.multiSelectionManager = new MultiSelectionManager();
-		            }
-		            if (!window.alignmentManager) {
-		                window.alignmentManager = new AlignmentManager();
-		            }
-		            if (!window.keyboardManager) {
-		                window.keyboardManager = new KeyboardManager();
-		            }
-		        });
-		        
-		        // 모달이 닫힐 때 정리
-		        $('#editModal').on('hidden.bs.modal', function() {
-		            if (window.multiSelectionManager) {
-		                window.multiSelectionManager.clearSelection();
-		            }
-		        });
-		    });
+
+			$(document)
+					.ready(
+							function() {
+								// 모달이 열릴 때 매니저들 초기화
+								$('#editModal')
+										.on(
+												'shown.bs.modal',
+												function() {
+													if (!window.multiSelectionManager) {
+														window.multiSelectionManager = new MultiSelectionManager();
+													}
+													if (!window.alignmentManager) {
+														window.alignmentManager = new AlignmentManager();
+													}
+													if (!window.keyboardManager) {
+														window.keyboardManager = new KeyboardManager();
+													}
+												});
+
+								// 모달이 닫힐 때 정리
+								$('#editModal').on(
+										'hidden.bs.modal',
+										function() {
+											if (window.multiSelectionManager) {
+												window.multiSelectionManager
+														.clearSelection();
+											}
+										});
+							});
 
 			// 슬라이드 기능 (기존 유지)
 			function scrollLeft(index) {
@@ -618,6 +671,75 @@
 					});
 				}
 			}
+		</script>
+		<script>
+			// ✅ 페이지 로딩 완료 처리
+			$(document).ready(function() {
+				console.log('페이지 로드 시작 - 썸네일 이미지 로딩 대기');
+
+				// 모든 썸네일 이미지 수집
+				const $thumbnails = $('.page-thumb');
+				const totalImages = $thumbnails.length;
+				let loadedImages = 0;
+				let hasError = false;
+
+				console.log(`총 ${totalImages}개의 썸네일 이미지 로딩 시작`);
+
+				if (totalImages === 0) {
+					// 이미지가 없으면 즉시 로딩바 숨김
+					$('#page-loading-overlay').fadeOut(300);
+					console.log('썸네일 이미지가 없어 로딩바 즉시 숨김');
+					return;
+				}
+
+				// 이미지 로딩 완료 체크 함수
+				function checkAllLoaded() {
+					loadedImages++;
+					console.log(`썸네일 로드 진행: ${loadedImages}/${totalImages}`);
+
+					if (loadedImages >= totalImages) {
+						// 모든 이미지 로딩 완료
+						console.log('모든 썸네일 로딩 완료 - 로딩바 숨김');
+						setTimeout(function() {
+							$('#page-loading-overlay').fadeOut(300);
+						}, 100);
+					}
+				}
+
+				// 각 썸네일 이미지에 로드 이벤트 리스너 추가
+				$thumbnails.each(function() {
+					const $img = $(this);
+
+					// 이미 로드된 이미지 (캐시)
+					if (this.complete && this.naturalWidth > 0) {
+						console.log('썸네일 캐시됨:', $img.attr('src'));
+						checkAllLoaded();
+					} else {
+						// 로드 이벤트 대기
+						$img.on('load', function() {
+							console.log('썸네일 로드 완료:', $img.attr('src'));
+							checkAllLoaded();
+						});
+
+						// 에러 처리 (로딩 실패해도 진행)
+						$img.on('error', function() {
+							console.error('썸네일 로드 실패:', $img.attr('src'));
+							if (!hasError) {
+								hasError = true;
+							}
+							checkAllLoaded();
+						});
+					}
+				});
+
+				// 타임아웃: 10초 후에도 로딩바 강제 숨김
+				setTimeout(function() {
+					if ($('#page-loading-overlay').is(':visible')) {
+						console.warn('타임아웃: 10초 경과 - 로딩바 강제 숨김');
+						$('#page-loading-overlay').fadeOut(300);
+					}
+				}, 10000);
+			});
 		</script>
 </body>
 </html>
