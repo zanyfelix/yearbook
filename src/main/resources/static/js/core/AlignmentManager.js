@@ -103,11 +103,22 @@ class AlignmentManager {
     alignLeft(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 좌측 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.horizontal === 'left';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 좌측 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 이미 좌측 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 좌측 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.horizontal === 'left') {
                 return;
@@ -119,8 +130,8 @@ class AlignmentManager {
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        // ✅ 수평 정렬 플래그: 'left'
-        this.saveAllPositions(elements, 'left', null);
+        // ✅ 수평 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, 'left', null, bounds);
     }
     
     // ========================================================================
@@ -129,16 +140,26 @@ class AlignmentManager {
     alignCenterH(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 수평 중앙 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.horizontal === 'center';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 수평 중앙 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         const boundsCenter = bounds.left + bounds.width / 2;
         
         elements.forEach($el => {
-            // ✅ 이미 수평 중앙 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 수평 중앙 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.horizontal === 'center') {
-                console.log('이미 수평 중앙 정렬 상태 - 스킵');
                 return;
             }
             
@@ -148,8 +169,8 @@ class AlignmentManager {
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        // ✅ 수평 정렬 플래그: 'center'
-        this.saveAllPositions(elements, 'center', null);
+        // ✅ 수평 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, 'center', null, bounds);
     }
     
     // ========================================================================
@@ -158,11 +179,22 @@ class AlignmentManager {
     alignRight(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 우측 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.horizontal === 'right';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 우측 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 이미 우측 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 우측 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.horizontal === 'right') {
                 return;
@@ -174,8 +206,8 @@ class AlignmentManager {
             this.setElementPosition($el, newLeft, rect.top);
         });
         
-        // ✅ 수평 정렬 플래그: 'right'
-        this.saveAllPositions(elements, 'right', null);
+        // ✅ 수평 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, 'right', null, bounds);
     }
     
     // ========================================================================
@@ -184,11 +216,22 @@ class AlignmentManager {
     alignTop(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 상단 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.vertical === 'top';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 상단 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 이미 상단 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 상단 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.vertical === 'top') {
                 return;
@@ -200,8 +243,8 @@ class AlignmentManager {
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        // ✅ 수직 정렬 플래그: 'top'
-        this.saveAllPositions(elements, null, 'top');
+        // ✅ 수직 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, null, 'top', bounds);
     }
     
     // ========================================================================
@@ -210,16 +253,26 @@ class AlignmentManager {
     alignCenterV(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 수직 중앙 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.vertical === 'center';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 수직 중앙 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         const boundsMiddle = bounds.top + bounds.height / 2;
         
         elements.forEach($el => {
-            // ✅ 이미 수직 중앙 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 수직 중앙 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.vertical === 'center') {
-                console.log('이미 수직 중앙 정렬 상태 - 스킵');
                 return;
             }
             
@@ -229,8 +282,8 @@ class AlignmentManager {
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        // ✅ 수직 정렬 플래그: 'center'
-        this.saveAllPositions(elements, null, 'center');
+        // ✅ 수직 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, null, 'center', bounds);
     }
     
     // ========================================================================
@@ -239,11 +292,22 @@ class AlignmentManager {
     alignBottom(elements) {
         if (!elements || elements.length === 0) return;
         
+        // ✅ 모든 요소가 이미 하단 정렬이면 완전히 스킵
+        const allAligned = elements.every($el => {
+            const state = $el.data('relativeState') || {};
+            return state.alignment?.vertical === 'bottom';
+        });
+        
+        if (allAligned) {
+            console.log('모든 요소가 이미 하단 정렬 - 스킵');
+            return;
+        }
+        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 이미 하단 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 하단 정렬된 상태면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.vertical === 'bottom') {
                 return;
@@ -255,8 +319,8 @@ class AlignmentManager {
             this.setElementPosition($el, rect.left, newTop);
         });
         
-        // ✅ 수직 정렬 플래그: 'bottom'
-        this.saveAllPositions(elements, null, 'bottom');
+        // ✅ 수직 정렬 플래그와 기준 좌표 저장
+        this.saveAllPositionsWithBounds(elements, null, 'bottom', bounds);
     }
     
     // ========================================================================
@@ -462,7 +526,41 @@ class AlignmentManager {
     // ========================================================================
     saveAllPositions(elements, horizontalAlign = null, verticalAlign = null) {
         elements.forEach($el => {
-            EventManager.saveElementPositionWithAlignment($el);
+            // ✅ 정렬 플래그를 EventManager에 전달
+            EventManager.saveElementPositionWithAlignment($el, horizontalAlign, verticalAlign, false);
+        });
+    }
+    
+    // ========================================================================
+    // 모든 요소 위치 저장 (정렬 플래그 + 기준 좌표 지원)
+    // ========================================================================
+    saveAllPositionsWithBounds(elements, horizontalAlign = null, verticalAlign = null, bounds = null) {
+        // bounds를 백분율로 변환
+        const bg = $('#page-preview-img');
+        const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+        
+        let alignmentBounds = null;
+        if (bounds && actualBgRect) {
+            alignmentBounds = {
+                left: ((bounds.left - actualBgRect.left) / actualBgRect.width) * 100,
+                top: ((bounds.top - actualBgRect.top) / actualBgRect.height) * 100,
+                right: ((bounds.right - actualBgRect.left) / actualBgRect.width) * 100,
+                bottom: ((bounds.bottom - actualBgRect.top) / actualBgRect.height) * 100,
+                centerX: ((bounds.left + bounds.width / 2 - actualBgRect.left) / actualBgRect.width) * 100,
+                centerY: ((bounds.top + bounds.height / 2 - actualBgRect.top) / actualBgRect.height) * 100
+            };
+        }
+        
+        elements.forEach($el => {
+            // 정렬 플래그를 EventManager에 전달
+            EventManager.saveElementPositionWithAlignment($el, horizontalAlign, verticalAlign, false);
+            
+            // ✅ 기준 좌표(alignmentBounds)를 relativeState에 추가 저장
+            if (alignmentBounds) {
+                const currentState = $el.data('relativeState') || {};
+                currentState.alignmentBounds = alignmentBounds;
+                $el.data('relativeState', currentState);
+            }
         });
     }
     

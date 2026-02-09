@@ -176,21 +176,82 @@ $(document).ready(function() {
 		const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
 		const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
 
-		// 수평 위치 계산
-		// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
-		if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+		// ✅ SafeLine 마진 계산 (정렬 시 필요)
+		const safeMarginX = window.safeLineManager ? 
+			(window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width : 0;
+		const safeMarginY = window.safeLineManager ? 
+			(window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height : 0;
+		
+		const safeBounds = {
+			left: actualBgRect.left + safeMarginX,
+			top: actualBgRect.top + safeMarginY,
+			width: actualBgRect.width - (safeMarginX * 2),
+			height: actualBgRect.height - (safeMarginY * 2)
+		};
+
+		// 수평 위치 계산 - 정렬 플래그 우선 확인
+		const hAlign = relativeState.alignment?.horizontal;
+		if (hAlign === 'left') {
+			// ✅ 좌측 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.left !== undefined) {
+				newLeft = (relativeState.alignmentBounds.left / 100) * actualBgRect.width + actualBgRect.left;
+			} else {
+				newLeft = safeBounds.left;
+			}
+		} else if (hAlign === 'center') {
+			// ✅ 수평 중앙 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.centerX !== undefined) {
+				const centerX = (relativeState.alignmentBounds.centerX / 100) * actualBgRect.width + actualBgRect.left;
+				newLeft = centerX - elementWidth / 2;
+			} else {
+				newLeft = safeBounds.left + (safeBounds.width - elementWidth) / 2;
+			}
+		} else if (hAlign === 'right') {
+			// ✅ 우측 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.right !== undefined) {
+				const right = (relativeState.alignmentBounds.right / 100) * actualBgRect.width + actualBgRect.left;
+				newLeft = right - elementWidth;
+			} else {
+				newLeft = safeBounds.left + safeBounds.width - elementWidth;
+			}
+		} else if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+			// 회전된 요소는 중심점 기반
 			const centerX = (relativeState.center.x / 100) * actualBgRect.width + actualBgRect.left;
-			newLeft = centerX - savedWidth / 2;  // 저장된 크기 사용
+			newLeft = centerX - savedWidth / 2;
 		} else {
 			// 수동 위치 - 백분율 변환
 			newLeft = (relativeState.position.left / 100) * actualBgRect.width + actualBgRect.left;
 		}
 
-		// 수직 위치 계산
-		// ✅ 회전된 요소는 중심점 기반 + 저장된 크기로 위치 계산
-		if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+		// 수직 위치 계산 - 정렬 플래그 우선 확인
+		const vAlign = relativeState.alignment?.vertical;
+		if (vAlign === 'top') {
+			// ✅ 상단 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.top !== undefined) {
+				newTop = (relativeState.alignmentBounds.top / 100) * actualBgRect.height + actualBgRect.top;
+			} else {
+				newTop = safeBounds.top;
+			}
+		} else if (vAlign === 'center') {
+			// ✅ 수직 중앙 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.centerY !== undefined) {
+				const centerY = (relativeState.alignmentBounds.centerY / 100) * actualBgRect.height + actualBgRect.top;
+				newTop = centerY - elementHeight / 2;
+			} else {
+				newTop = safeBounds.top + (safeBounds.height - elementHeight) / 2;
+			}
+		} else if (vAlign === 'bottom') {
+			// ✅ 하단 정렬 - 저장된 기준 좌표 사용
+			if (relativeState.alignmentBounds?.bottom !== undefined) {
+				const bottom = (relativeState.alignmentBounds.bottom / 100) * actualBgRect.height + actualBgRect.top;
+				newTop = bottom - elementHeight;
+			} else {
+				newTop = safeBounds.top + safeBounds.height - elementHeight;
+			}
+		} else if (relativeState.rotation && relativeState.rotation !== 0 && relativeState.center) {
+			// 회전된 요소는 중심점 기반
 			const centerY = (relativeState.center.y / 100) * actualBgRect.height + actualBgRect.top;
-			newTop = centerY - savedHeight / 2;  // 저장된 크기 사용
+			newTop = centerY - savedHeight / 2;
 		} else {
 			// 수동 위치 - 백분율 변환
 			newTop = (relativeState.position.top / 100) * actualBgRect.height + actualBgRect.top;
@@ -2028,8 +2089,11 @@ $(document).ready(function() {
 
 	// Exit without Saving 버튼 클릭 이벤트
 	$(document).on('click', '#btn-exit-without-saving', function() {
+		// ✅ clearConfirmModal이 완전히 닫힌 후 editModal 닫기
+		$('#clearConfirmModal').one('hidden.bs.modal', function() {
+			$('#editModal').modal('hide');
+		});
 		$('#clearConfirmModal').modal('hide');
-		$('#editModal').modal('hide');
 	});
 
 	// Reset 버튼 클릭 이벤트 - 통합 처리
