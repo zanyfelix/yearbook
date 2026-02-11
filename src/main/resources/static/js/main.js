@@ -711,7 +711,9 @@ $(document).ready(function() {
 							transform: boxData.transform || 'none',
 							transformOrigin: boxData.transformOrigin || '50% 50%',
 							// ✅ 정렬 플래그 복원
-							alignment: boxData.alignment || { horizontal: null, vertical: null }
+							alignment: boxData.alignment || { horizontal: null, vertical: null },
+							// ✅ 정렬 기준 좌표 복원 (재정렬 시 위치 고정용)
+							alignmentBounds: boxData.alignmentBounds || undefined
 						});
 
 						// 중요: 기본 크기를 원본 크기(스케일링 전)로 저장
@@ -1215,6 +1217,8 @@ $(document).ready(function() {
 				transformOriginY: relativeState.transformOriginY || 50,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
+				alignmentBounds: relativeState.alignmentBounds || null,
 				photo: photoData
 			};
 
@@ -1245,6 +1249,8 @@ $(document).ready(function() {
 				transformOriginY: relativeState.transformOriginY || 50,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
+				alignmentBounds: relativeState.alignmentBounds || null,
 				type: 'element'
 			};
 
@@ -1349,6 +1355,8 @@ $(document).ready(function() {
 				transformOrigin: boxTransformOrigin || '50% 50%',
 				// ✅ 정렬 플래그 저장
 				alignment: alignment,
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
+				alignmentBounds: relativeState.alignmentBounds || null,
 				styles: {
 					color: $box.css('color'),
 					fontSize: baseFontSize,

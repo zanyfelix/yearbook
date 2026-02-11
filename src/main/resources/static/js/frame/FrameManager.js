@@ -219,7 +219,11 @@ class FrameManager {
 			translateX: savedState.translateX || 0,
 			translateY: savedState.translateY || 0,
 			transformOriginX: savedState.transformOriginX || 50,
-			transformOriginY: savedState.transformOriginY || 50
+			transformOriginY: savedState.transformOriginY || 50,
+			// ✅ 정렬 플래그 복원
+			alignment: savedState.alignment || { horizontal: null, vertical: null },
+			// ✅ 정렬 기준 좌표 복원 (재정렬 시 위치 고정용)
+			alignmentBounds: savedState.alignmentBounds || undefined
 		};
 
 		frameGroup.data('relativeState', frameRelativeState);
