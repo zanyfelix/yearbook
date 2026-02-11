@@ -191,14 +191,16 @@ $(document).ready(function() {
 
 		// 수평 위치 계산 - 정렬 플래그 우선 확인
 		const hAlign = relativeState.alignment?.horizontal;
-		if (hAlign === 'left') {
+		const hasHAlignBounds = relativeState.alignmentBounds !== undefined;
+		
+		if (hAlign === 'left' && hasHAlignBounds) {
 			// ✅ 좌측 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.left !== undefined) {
 				newLeft = (relativeState.alignmentBounds.left / 100) * actualBgRect.width + actualBgRect.left;
 			} else {
 				newLeft = safeBounds.left;
 			}
-		} else if (hAlign === 'center') {
+		} else if (hAlign === 'center' && hasHAlignBounds) {
 			// ✅ 수평 중앙 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.centerX !== undefined) {
 				const centerX = (relativeState.alignmentBounds.centerX / 100) * actualBgRect.width + actualBgRect.left;
@@ -206,7 +208,7 @@ $(document).ready(function() {
 			} else {
 				newLeft = safeBounds.left + (safeBounds.width - elementWidth) / 2;
 			}
-		} else if (hAlign === 'right') {
+		} else if (hAlign === 'right' && hasHAlignBounds) {
 			// ✅ 우측 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.right !== undefined) {
 				const right = (relativeState.alignmentBounds.right / 100) * actualBgRect.width + actualBgRect.left;
@@ -225,14 +227,16 @@ $(document).ready(function() {
 
 		// 수직 위치 계산 - 정렬 플래그 우선 확인
 		const vAlign = relativeState.alignment?.vertical;
-		if (vAlign === 'top') {
+		const hasVAlignBounds = relativeState.alignmentBounds !== undefined;
+		
+		if (vAlign === 'top' && hasVAlignBounds) {
 			// ✅ 상단 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.top !== undefined) {
 				newTop = (relativeState.alignmentBounds.top / 100) * actualBgRect.height + actualBgRect.top;
 			} else {
 				newTop = safeBounds.top;
 			}
-		} else if (vAlign === 'center') {
+		} else if (vAlign === 'center' && hasVAlignBounds) {
 			// ✅ 수직 중앙 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.centerY !== undefined) {
 				const centerY = (relativeState.alignmentBounds.centerY / 100) * actualBgRect.height + actualBgRect.top;
@@ -240,7 +244,7 @@ $(document).ready(function() {
 			} else {
 				newTop = safeBounds.top + (safeBounds.height - elementHeight) / 2;
 			}
-		} else if (vAlign === 'bottom') {
+		} else if (vAlign === 'bottom' && hasVAlignBounds) {
 			// ✅ 하단 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.bottom !== undefined) {
 				const bottom = (relativeState.alignmentBounds.bottom / 100) * actualBgRect.height + actualBgRect.top;

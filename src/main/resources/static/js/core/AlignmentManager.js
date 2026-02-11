@@ -103,10 +103,10 @@ class AlignmentManager {
     alignLeft(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 좌측 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 좌측 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'left';
+            return state.alignment?.horizontal === 'left' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -118,9 +118,9 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 좌측 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 좌측 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'left') {
+            if (existingState.alignment?.horizontal === 'left' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
@@ -140,10 +140,10 @@ class AlignmentManager {
     alignCenterH(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 수평 중앙 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 수평 중앙 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'center';
+            return state.alignment?.horizontal === 'center' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -157,9 +157,9 @@ class AlignmentManager {
         const boundsCenter = bounds.left + bounds.width / 2;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 수평 중앙 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 수평 중앙 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'center') {
+            if (existingState.alignment?.horizontal === 'center' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
@@ -179,10 +179,10 @@ class AlignmentManager {
     alignRight(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 우측 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 우측 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'right';
+            return state.alignment?.horizontal === 'right' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -194,9 +194,9 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 우측 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 우측 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'right') {
+            if (existingState.alignment?.horizontal === 'right' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
@@ -216,10 +216,10 @@ class AlignmentManager {
     alignTop(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 상단 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 상단 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'top';
+            return state.alignment?.vertical === 'top' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -231,9 +231,9 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 상단 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 상단 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'top') {
+            if (existingState.alignment?.vertical === 'top' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
@@ -253,10 +253,10 @@ class AlignmentManager {
     alignCenterV(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 수직 중앙 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 수직 중앙 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'center';
+            return state.alignment?.vertical === 'center' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -270,9 +270,9 @@ class AlignmentManager {
         const boundsMiddle = bounds.top + bounds.height / 2;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 수직 중앙 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 수직 중앙 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'center') {
+            if (existingState.alignment?.vertical === 'center' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
@@ -292,10 +292,10 @@ class AlignmentManager {
     alignBottom(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 하단 정렬이면 완전히 스킵
+        // ✅ 모든 요소가 이미 하단 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
             const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'bottom';
+            return state.alignment?.vertical === 'bottom' && state.alignmentBounds !== undefined;
         });
         
         if (allAligned) {
@@ -307,9 +307,9 @@ class AlignmentManager {
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 하단 정렬된 상태면 스킵
+            // ✅ 개별 요소가 이미 하단 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'bottom') {
+            if (existingState.alignment?.vertical === 'bottom' && existingState.alignmentBounds !== undefined) {
                 return;
             }
             
