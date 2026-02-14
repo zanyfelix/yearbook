@@ -30,7 +30,7 @@ class FrameManager {
 		}
 
 		if (!frameType.isSimple && frameTheme.editMaskPath) {
-			MaskBoundsCalculator.getBounds(`${ctx}${frameTheme.editMaskPath}`)
+			const boundsPromise = MaskBoundsCalculator.getBounds(`${ctx}${frameTheme.editMaskPath}`)
 				.then(bounds => {
 					// 계산된 영역 정보를 프레임 요소의 데이터로 저장
 					frameGroup.data('maskBounds', bounds);
@@ -38,6 +38,8 @@ class FrameManager {
 				.catch(err => {
 					console.error("마스크 영역 계산 실패:", err);
 				});
+			// ✅ Promise를 저장하여 사진 복원 시 대기할 수 있도록 함
+			frameGroup.data('maskBoundsPromise', boundsPromise);
 		}
 
 		if (savedState) {
@@ -222,7 +224,7 @@ class FrameManager {
 			transformOriginY: savedState.transformOriginY || 50,
 			// ✅ 정렬 플래그 복원
 			alignment: savedState.alignment || { horizontal: null, vertical: null },
-			// ✅ 정렬 기준 좌표 복원 (재정렬 시 위치 고정용)
+			// ✅ 정렬 기준 좌표 복원 (재정렬 시 스킵 판단용)
 			alignmentBounds: savedState.alignmentBounds || undefined
 		};
 
@@ -259,11 +261,22 @@ class FrameManager {
 				'transform-origin': `${frameRelativeState.transformOriginX}% ${frameRelativeState.transformOriginY}%`
 			});
 
-			// 사진이 있으면 복원
+			// 사진이 있으면 복원 (마스크 bounds 로드 대기)
 			if (!frameType.isSimple && savedState.photo?.src) {
-				setTimeout(() => {
-					this.restorePhoto(frameGroup, savedState.photo);
-				}, 100);
+				const boundsPromise = frameGroup.data('maskBoundsPromise');
+				if (boundsPromise) {
+					// ✅ maskBounds가 로드된 후 사진 복원 (정확한 크기 계산 보장)
+					boundsPromise.then(() => {
+						setTimeout(() => {
+							this.restorePhoto(frameGroup, savedState.photo);
+						}, 50);
+					});
+				} else {
+					// maskBoundsPromise가 없는 경우 (마스크 없는 프레임)
+					setTimeout(() => {
+						this.restorePhoto(frameGroup, savedState.photo);
+					}, 100);
+				}
 			}
 		}
 	}
@@ -296,6 +309,15 @@ class FrameManager {
 
 	    // 3. CSS 적용 함수
 	    const applyPhotoCSS = () => {
+	        // ✅ maskBounds가 아직 로드되지 않았으면 Promise 대기
+	        if (!frameGroup.data('maskBounds') && frameGroup.data('maskBoundsPromise')) {
+	            console.log('applyPhotoCSS: maskBounds 미로드 - Promise 대기');
+	            frameGroup.data('maskBoundsPromise').then(() => {
+	                applyPhotoCSS();
+	            });
+	            return;
+	        }
+
 	        // ✨ 핵심: 프레임 크기를 기준으로 계산
 	        const frameWidth = frameGroup.width();
 	        const frameHeight = frameGroup.height();

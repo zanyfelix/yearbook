@@ -712,7 +712,7 @@ $(document).ready(function() {
 							transformOrigin: boxData.transformOrigin || '50% 50%',
 							// ✅ 정렬 플래그 복원
 							alignment: boxData.alignment || { horizontal: null, vertical: null },
-							// ✅ 정렬 기준 좌표 복원 (재정렬 시 위치 고정용)
+							// ✅ 정렬 기준 좌표 복원 (재정렬 시 스킵 판단용)
 							alignmentBounds: boxData.alignmentBounds || undefined
 						});
 
@@ -1217,7 +1217,7 @@ $(document).ready(function() {
 				transformOriginY: relativeState.transformOriginY || 50,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
-				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 스킵 판단용)
 				alignmentBounds: relativeState.alignmentBounds || null,
 				photo: photoData
 			};
@@ -1249,7 +1249,7 @@ $(document).ready(function() {
 				transformOriginY: relativeState.transformOriginY || 50,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
-				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 스킵 판단용)
 				alignmentBounds: relativeState.alignmentBounds || null,
 				type: 'element'
 			};
@@ -1331,6 +1331,7 @@ $(document).ready(function() {
 			// ✅ relativeState에서 정렬 정보 가져오기
 			const relativeState = $box.data('relativeState') || {};
 			const alignment = relativeState.alignment || { horizontal: null, vertical: null };
+			const alignmentBounds = relativeState.alignmentBounds || null;
 
 			const textBoxData = {
 				html: $box.html(),
@@ -1355,8 +1356,8 @@ $(document).ready(function() {
 				transformOrigin: boxTransformOrigin || '50% 50%',
 				// ✅ 정렬 플래그 저장
 				alignment: alignment,
-				// ✅ 정렬 기준 좌표 저장 (재정렬 시 위치 고정용)
-				alignmentBounds: relativeState.alignmentBounds || null,
+				// ✅ 정렬 기준 좌표 저장 (재정렬 시 스킵 판단용)
+				alignmentBounds: alignmentBounds,
 				styles: {
 					color: $box.css('color'),
 					fontSize: baseFontSize,
@@ -2569,6 +2570,13 @@ function updateAllPhotosPosition() {
 
 		if (photoSrc && photoSrc !== '#') {
 			$placeholder.hide();
+
+			// ✅ maskBounds가 아직 로드되지 않았으면 이 프레임은 건너뜀
+			// (restorePhoto에서 maskBounds 로드 후 정확한 크기로 적용됨)
+			if (!$frame.data('maskBounds') && $frame.data('maskBoundsPromise')) {
+				console.log('[updateAllPhotosPosition] maskBounds 미로드 - 스킵:', $frame.data('frameTheme')?.name);
+				return; // $.each의 continue
+			}
 
 			// ✅ 마스크 bounds 픽셀 좌표 가져오기
 			const maskBounds = PhotoManager.getMaskBoundsPixels($frame);
