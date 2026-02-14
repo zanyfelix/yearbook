@@ -164,7 +164,10 @@ $(document).ready(function() {
 			} else {
 				// 회전 없으면 실시간 측정 (텍스트 잘림 방지)
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
-				elementWidth = measuredSize.width;
+				// ✅ [핵심 수정] 저장된 너비와 측정된 너비 중 큰 값 사용
+				// measureTextBoxContentSize의 임시 <span> 측정이 실제 렌더링보다 미세하게 작을 수 있어
+				// 저장 시 정확했던 너비가 복원 시 줄어들면서 단어가 밀리는 현상 방지
+				elementWidth = Math.max(measuredSize.width, savedWidth);
 				elementHeight = measuredSize.height;
 			}
 
@@ -652,7 +655,8 @@ $(document).ready(function() {
 
 						const TEMPLATE_WEB_BG_WIDTH = 786;
 						const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-						const scaledFontSize = Math.round(baseFontSize * scaleRatio);
+						// ✅ updateElementPosition과 동일한 정밀도 사용 (소수점 1자리)
+						const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
 
 						// 위치 계산
 						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
@@ -686,8 +690,12 @@ $(document).ready(function() {
 
 						// 내용 기반 크기 측정 및 적용
 						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
+						// ✅ [핵심 수정] 저장된 너비와 측정된 너비 중 큰 값 사용
+						// 임시 <span> 측정이 실제 렌더링보다 미세하게 작을 수 있어 단어가 밀리는 현상 방지
+						const savedPixelWidth = boxData.size ? (boxData.size.width / 100) * actualBgRect.width : 0;
+						const finalWidth = Math.max(measuredSize.width, savedPixelWidth);
 						$box.css({
-							'width': measuredSize.width + 'px',
+							'width': finalWidth + 'px',
 							'height': measuredSize.height + 'px'
 						});
 
