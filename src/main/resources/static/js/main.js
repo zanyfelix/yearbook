@@ -116,6 +116,11 @@ $(document).ready(function() {
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
 
+		// ✅ 회전 디버그 로그
+		if (relativeState.rotation && relativeState.rotation !== 0) {
+			console.log('[updateElementPosition] rotated element found - rotation:', relativeState.rotation, 'center:', relativeState.center);
+		}
+
 		// ✅ Transform 정보 먼저 계산
 		let finalTransform = 'none';
 
@@ -1144,6 +1149,16 @@ $(document).ready(function() {
 	// Save 버튼 클릭 이벤트
 	window.executeSave = async function executeSave(shouldClose) {
 		showLoader();
+
+		// ✅ [핵심 수정] clearSelection 호출 전에 모든 프레임의 현재 상태(rotation 포함)를 먼저 저장
+		// clearSelection()이 CSS transform을 초기화할 수 있으므로, 그 전에 relativeState를 갱신
+		$('#frame-container .frame-group').each(function() {
+			EventManager.saveElementPosition($(this));
+		});
+		$('#frame-container .text-box').each(function() {
+			EventManager.saveElementPosition($(this));
+		});
+
 		window.selectionManager.clearSelection();
 
 		const designData = {
@@ -1205,6 +1220,15 @@ $(document).ready(function() {
 				}
 			}
 
+			// ✅ 회전된 프레임인 경우 center가 없으면 현재 위치에서 계산
+			let center = relativeState.center;
+			if (!center && relativeState.rotation && relativeState.rotation !== 0) {
+				center = {
+					x: relativeState.position.left + relativeState.size.width / 2,
+					y: relativeState.position.top + relativeState.size.height / 2
+				};
+			}
+
 			const frameData = {
 				theme: $frame.data('frameTheme'),
 				position: relativeState.position,
@@ -1215,6 +1239,8 @@ $(document).ready(function() {
 				translateY: relativeState.translateY || 0,
 				transformOriginX: relativeState.transformOriginX || 50,
 				transformOriginY: relativeState.transformOriginY || 50,
+				// ✅ 회전된 프레임의 중심점 저장 (복원 시 위치 정확도 보장)
+				center: center || null,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
 				// ✅ 정렬 기준 좌표 저장 (재정렬 시 스킵 판단용)
@@ -1223,6 +1249,7 @@ $(document).ready(function() {
 			};
 
 			designData.frames.push(frameData);
+			console.log('[executeSave] frame saved - rotation:', frameData.rotation, 'center:', frameData.center);
 		});
 
 		// Element 저장 부분 추가 (frames 저장 후)
@@ -1238,6 +1265,15 @@ $(document).ready(function() {
 
 			if (!relativeState) return;
 
+			// ✅ 회전된 요소인 경우 center 계산
+			let elementCenter = relativeState.center;
+			if (!elementCenter && relativeState.rotation && relativeState.rotation !== 0) {
+				elementCenter = {
+					x: relativeState.position.left + relativeState.size.width / 2,
+					y: relativeState.position.top + relativeState.size.height / 2
+				};
+			}
+
 			const elementData = {
 				theme: $element.data('frameTheme'),
 				position: relativeState.position,
@@ -1247,6 +1283,8 @@ $(document).ready(function() {
 				translateY: relativeState.translateY || 0,
 				transformOriginX: relativeState.transformOriginX || 50,
 				transformOriginY: relativeState.transformOriginY || 50,
+				// ✅ 회전된 요소의 중심점 저장
+				center: elementCenter || null,
 				// ✅ 정렬 플래그 저장
 				alignment: relativeState.alignment || { horizontal: null, vertical: null },
 				// ✅ 정렬 기준 좌표 저장 (재정렬 시 스킵 판단용)

@@ -214,6 +214,15 @@ class FrameManager {
 	}
 
 	static restoreFrameState(frameGroup, savedState, frameType) {
+		// ✅ 회전된 프레임의 center가 없으면 position + size로 계산
+		let center = savedState.center;
+		if (!center && savedState.rotation && savedState.rotation !== 0) {
+			center = {
+				x: savedState.position.left + savedState.size.width / 2,
+				y: savedState.position.top + savedState.size.height / 2
+			};
+		}
+
 		const frameRelativeState = {
 			position: savedState.position,
 			size: savedState.size,
@@ -222,11 +231,15 @@ class FrameManager {
 			translateY: savedState.translateY || 0,
 			transformOriginX: savedState.transformOriginX || 50,
 			transformOriginY: savedState.transformOriginY || 50,
+			// ✅ 회전된 프레임의 중심점 복원
+			center: center || null,
 			// ✅ 정렬 플래그 복원
 			alignment: savedState.alignment || { horizontal: null, vertical: null },
 			// ✅ 정렬 기준 좌표 복원 (재정렬 시 스킵 판단용)
 			alignmentBounds: savedState.alignmentBounds || undefined
 		};
+
+		console.log('[restoreFrameState] rotation:', frameRelativeState.rotation, 'center:', frameRelativeState.center);
 
 		frameGroup.data('relativeState', frameRelativeState);
 
@@ -260,6 +273,8 @@ class FrameManager {
 				transform: finalTransform,
 				'transform-origin': `${frameRelativeState.transformOriginX}% ${frameRelativeState.transformOriginY}%`
 			});
+
+			console.log('[restoreFrameState] applied transform:', finalTransform, 'rotation:', frameRelativeState.rotation);
 
 			// 사진이 있으면 복원 (마스크 bounds 로드 대기)
 			if (!frameType.isSimple && savedState.photo?.src) {
