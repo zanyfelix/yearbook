@@ -887,6 +887,56 @@ class EventManager {
 			alignment: alignment
 		};
 
+		// ✅ [핵심 수정] alignmentBounds 저장 - 해상도 변경 시 정확한 정렬 재계산 보장
+		if (!clearAlignment && (horizontalAlign !== null || verticalAlign !== null)) {
+			// 기존 alignmentBounds 보존 (한 축만 정렬하는 경우 다른 축 유지)
+			const existingBounds = existingState.alignmentBounds || {};
+			const newBounds = { ...existingBounds };
+
+			// 수평 정렬 기준 좌표 저장
+			if (horizontalAlign === 'center') {
+				// 페이지 중앙 = 배경 너비의 50%
+				newBounds.centerX = 50;
+				// left, right는 제거 (center와 충돌 방지)
+				delete newBounds.left;
+				delete newBounds.right;
+			} else if (horizontalAlign === 'left') {
+				newBounds.left = ((elementPos.left - actualBgRect.left) / actualBgRect.width) * 100;
+				delete newBounds.centerX;
+				delete newBounds.right;
+			} else if (horizontalAlign === 'right') {
+				newBounds.right = ((elementPos.left + elementWidth - actualBgRect.left) / actualBgRect.width) * 100;
+				delete newBounds.centerX;
+				delete newBounds.left;
+			}
+
+			// 수직 정렬 기준 좌표 저장
+			if (verticalAlign === 'center') {
+				// 페이지 중앙 = 배경 높이의 50%
+				newBounds.centerY = 50;
+				delete newBounds.top;
+				delete newBounds.bottom;
+			} else if (verticalAlign === 'top') {
+				newBounds.top = ((elementPos.top - actualBgRect.top) / actualBgRect.height) * 100;
+				delete newBounds.centerY;
+				delete newBounds.bottom;
+			} else if (verticalAlign === 'bottom') {
+				newBounds.bottom = ((elementPos.top + elementHeight - actualBgRect.top) / actualBgRect.height) * 100;
+				delete newBounds.centerY;
+				delete newBounds.top;
+			}
+
+			relativeState.alignmentBounds = newBounds;
+		} else if (clearAlignment) {
+			// 드래그로 이동 시 alignmentBounds도 제거
+			// (alignment 플래그가 이미 null로 설정되었으므로 bounds도 불필요)
+		} else {
+			// 정렬 변경 없이 저장하는 경우 기존 alignmentBounds 보존
+			if (existingState.alignmentBounds) {
+				relativeState.alignmentBounds = existingState.alignmentBounds;
+			}
+		}
+
 		// 텍스트박스 추가 정보
 		if (element.hasClass('text-box')) {
 			relativeState.hasRotation = rotation !== 0;

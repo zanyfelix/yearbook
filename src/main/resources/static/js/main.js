@@ -208,13 +208,14 @@ $(document).ready(function() {
 			} else {
 				newLeft = safeBounds.left;
 			}
-		} else if (hAlign === 'center' && hasHAlignBounds) {
-			// ✅ 수평 중앙 정렬 - 저장된 기준 좌표 사용
-			if (relativeState.alignmentBounds?.centerX !== undefined) {
+		} else if (hAlign === 'center') {
+			// ✅ 수평 중앙 정렬 - alignmentBounds 유무에 관계없이 중앙 계산
+			if (hasHAlignBounds && relativeState.alignmentBounds?.centerX !== undefined) {
 				const centerX = (relativeState.alignmentBounds.centerX / 100) * actualBgRect.width + actualBgRect.left;
 				newLeft = centerX - elementWidth / 2;
 			} else {
-				newLeft = safeBounds.left + (safeBounds.width - elementWidth) / 2;
+				// alignmentBounds 없어도 alignment 플래그가 center면 페이지 중앙으로
+				newLeft = actualBgRect.left + (actualBgRect.width - elementWidth) / 2;
 			}
 		} else if (hAlign === 'right' && hasHAlignBounds) {
 			// ✅ 우측 정렬 - 저장된 기준 좌표 사용
@@ -244,13 +245,14 @@ $(document).ready(function() {
 			} else {
 				newTop = safeBounds.top;
 			}
-		} else if (vAlign === 'center' && hasVAlignBounds) {
-			// ✅ 수직 중앙 정렬 - 저장된 기준 좌표 사용
-			if (relativeState.alignmentBounds?.centerY !== undefined) {
+		} else if (vAlign === 'center') {
+			// ✅ 수직 중앙 정렬 - alignmentBounds 유무에 관계없이 중앙 계산
+			if (hasVAlignBounds && relativeState.alignmentBounds?.centerY !== undefined) {
 				const centerY = (relativeState.alignmentBounds.centerY / 100) * actualBgRect.height + actualBgRect.top;
 				newTop = centerY - elementHeight / 2;
 			} else {
-				newTop = safeBounds.top + (safeBounds.height - elementHeight) / 2;
+				// alignmentBounds 없어도 alignment 플래그가 center면 페이지 중앙으로
+				newTop = actualBgRect.top + (actualBgRect.height - elementHeight) / 2;
 			}
 		} else if (vAlign === 'bottom' && hasVAlignBounds) {
 			// ✅ 하단 정렬 - 저장된 기준 좌표 사용
@@ -1161,10 +1163,10 @@ $(document).ready(function() {
 		// ✅ [핵심 수정] clearSelection 호출 전에 모든 프레임의 현재 상태(rotation 포함)를 먼저 저장
 		// clearSelection()이 CSS transform을 초기화할 수 있으므로, 그 전에 relativeState를 갱신
 		$('#frame-container .frame-group').each(function() {
-			EventManager.saveElementPosition($(this));
+			EventManager.saveElementPositionWithAlignment($(this), null, null, false);
 		});
 		$('#frame-container .text-box').each(function() {
-			EventManager.saveElementPosition($(this));
+			EventManager.saveElementPositionWithAlignment($(this), null, null, false);
 		});
 
 		window.selectionManager.clearSelection();
