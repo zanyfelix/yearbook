@@ -1162,6 +1162,8 @@ $(document).ready(function() {
 
 		// ✅ [핵심 수정] clearSelection 호출 전에 모든 프레임의 현재 상태(rotation 포함)를 먼저 저장
 		// clearSelection()이 CSS transform을 초기화할 수 있으므로, 그 전에 relativeState를 갱신
+		// ⚠️ saveElementPosition(clearAlignment=true) 대신 saveElementPositionWithAlignment(clearAlignment=false) 사용
+		//    → 정렬 플래그(alignment)와 정렬 기준 좌표(alignmentBounds)를 보존
 		$('#frame-container .frame-group').each(function() {
 			EventManager.saveElementPositionWithAlignment($(this), null, null, false);
 		});

@@ -55,15 +55,19 @@ class AlignmentManager {
         let minLeft = Infinity, minTop = Infinity;
         let maxRight = -Infinity, maxBottom = -Infinity;
         
-        elements.forEach($el => {
+        elements.forEach(($el, idx) => {
             const rect = this.getElementRect($el);
+            console.log(`[AlignmentManager] getSelectionBounds 요소[${idx}]:`, 
+                'class:', $el[0]?.className?.split(' ')[0],
+                'left:', rect.left.toFixed(1), 'top:', rect.top.toFixed(1), 
+                'width:', rect.width.toFixed(1), 'height:', rect.height.toFixed(1));
             minLeft = Math.min(minLeft, rect.left);
             minTop = Math.min(minTop, rect.top);
             maxRight = Math.max(maxRight, rect.left + rect.width);
             maxBottom = Math.max(maxBottom, rect.top + rect.height);
         });
         
-        return {
+        const result = {
             left: minLeft,
             top: minTop,
             right: maxRight,
@@ -71,6 +75,9 @@ class AlignmentManager {
             width: maxRight - minLeft,
             height: maxBottom - minTop
         };
+        
+        console.log('[AlignmentManager] getSelectionBounds 결과:', JSON.stringify(result));
+        return result;
     }
     
     // ========================================================================
@@ -87,6 +94,15 @@ class AlignmentManager {
         
         $element.css('transform', currentTransform);
         
+        // ✅ 비정상 값 감지
+        if (width === 0 || height === 0) {
+            console.warn('[AlignmentManager] getElementRect - 크기가 0!', 
+                'class:', $element[0]?.className, 
+                'width:', width, 'height:', height,
+                'display:', $element.css('display'),
+                'visibility:', $element.css('visibility'));
+        }
+        
         return {
             left: position.left,
             top: position.top,
@@ -101,7 +117,12 @@ class AlignmentManager {
     // 좌측 정렬 (Align Left)
     // ========================================================================
     alignLeft(elements) {
-        if (!elements || elements.length === 0) return;
+        if (!elements || elements.length === 0) {
+            console.warn('[AlignmentManager] alignLeft - elements가 비어있음');
+            return;
+        }
+        
+        console.log('[AlignmentManager] alignLeft 시작 - 요소 개수:', elements.length);
         
         // ✅ 모든 요소가 이미 좌측 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
@@ -115,9 +136,14 @@ class AlignmentManager {
         }
         
         const bounds = this.getAlignmentBounds(elements);
-        if (!bounds) return;
+        if (!bounds) {
+            console.warn('[AlignmentManager] alignLeft - bounds가 null');
+            return;
+        }
         
-        elements.forEach($el => {
+        console.log('[AlignmentManager] alignLeft bounds:', JSON.stringify(bounds));
+        
+        elements.forEach(($el, idx) => {
             // ✅ 개별 요소가 이미 좌측 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.horizontal === 'left' && existingState.alignmentBounds !== undefined) {
@@ -127,7 +153,13 @@ class AlignmentManager {
             const rect = this.getElementRect($el);
             const newLeft = bounds.left;
             
+            console.log(`[AlignmentManager] alignLeft 요소[${idx}] - class: ${$el[0].className}, rect.left: ${rect.left}, newLeft: ${newLeft}, rect.top: ${rect.top}`);
+            
             this.setElementPosition($el, newLeft, rect.top);
+            
+            // ✅ 적용 후 위치 확인
+            const afterPos = $el.position();
+            console.log(`[AlignmentManager] alignLeft 요소[${idx}] - 적용 후 position: left=${afterPos.left}, top=${afterPos.top}, css-left=${$el.css('left')}`);
         });
         
         // ✅ 수평 정렬 플래그와 기준 좌표 저장
@@ -177,7 +209,12 @@ class AlignmentManager {
     // 우측 정렬 (Align Right)
     // ========================================================================
     alignRight(elements) {
-        if (!elements || elements.length === 0) return;
+        if (!elements || elements.length === 0) {
+            console.warn('[AlignmentManager] alignRight - elements가 비어있음');
+            return;
+        }
+        
+        console.log('[AlignmentManager] alignRight 시작 - 요소 개수:', elements.length);
         
         // ✅ 모든 요소가 이미 우측 정렬이고 alignmentBounds가 있으면 스킵
         const allAligned = elements.every($el => {
@@ -191,9 +228,14 @@ class AlignmentManager {
         }
         
         const bounds = this.getAlignmentBounds(elements);
-        if (!bounds) return;
+        if (!bounds) {
+            console.warn('[AlignmentManager] alignRight - bounds가 null');
+            return;
+        }
         
-        elements.forEach($el => {
+        console.log('[AlignmentManager] alignRight bounds:', JSON.stringify(bounds));
+        
+        elements.forEach(($el, idx) => {
             // ✅ 개별 요소가 이미 우측 정렬되고 alignmentBounds가 있으면 스킵
             const existingState = $el.data('relativeState') || {};
             if (existingState.alignment?.horizontal === 'right' && existingState.alignmentBounds !== undefined) {
@@ -203,7 +245,13 @@ class AlignmentManager {
             const rect = this.getElementRect($el);
             const newLeft = bounds.right - rect.width;
             
+            console.log(`[AlignmentManager] alignRight 요소[${idx}] - class: ${$el[0].className}, rect.left: ${rect.left}, rect.width: ${rect.width}, newLeft: ${newLeft}`);
+            
             this.setElementPosition($el, newLeft, rect.top);
+            
+            // ✅ 적용 후 위치 확인
+            const afterPos = $el.position();
+            console.log(`[AlignmentManager] alignRight 요소[${idx}] - 적용 후 position: left=${afterPos.left}, css-left=${$el.css('left')}`);
         });
         
         // ✅ 수평 정렬 플래그와 기준 좌표 저장
@@ -510,10 +558,29 @@ class AlignmentManager {
     // 요소 위치 설정 (SafeLine 제약 적용)
     // ========================================================================
     setElementPosition($element, left, top) {
+        // ✅ 입력값 검증
+        if (isNaN(left) || isNaN(top)) {
+            console.error('[AlignmentManager] setElementPosition - NaN 감지! left:', left, 'top:', top);
+            return;
+        }
+        
         // SafeLine 제약 적용
         const constrained = window.selectionManager.applySafeLineConstraints(
             left, top, $element
         );
+        
+        // ✅ 제약 결과 검증
+        if (isNaN(constrained.left) || isNaN(constrained.top)) {
+            console.error('[AlignmentManager] setElementPosition - constrained 결과가 NaN! constrained:', constrained, 
+                '| safeLineManager.safeMargin:', window.safeLineManager?.safeMargin,
+                '| safeLineManager.actualWidth:', window.safeLineManager?.actualWidth);
+            // NaN일 경우 제약 없이 원래 값 사용
+            $element.css({
+                left: left + 'px',
+                top: top + 'px'
+            });
+            return;
+        }
         
         $element.css({
             left: constrained.left + 'px',

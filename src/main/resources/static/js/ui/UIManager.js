@@ -73,49 +73,62 @@ class UIManager {
 	static bindMultiSelectionEvents(elements) {
 		const self = this;
 		
+		// ✅ 정렬 버튼 클릭 시 이벤트 버블링 방지 (page-preview click handler의 clearSelection 호출 방지)
 		// 정렬 버튼들
-		$('#multi-align-left').off('click').on('click', () => {
+		$('#multi-align-left').off('click').on('click', (e) => {
+			e.stopPropagation();
+			console.log('[UIManager] multi-align-left 클릭');
 			window.alignmentManager.alignLeft(elements);
 		});
 		
-		$('#multi-align-center-h').off('click').on('click', () => {
+		$('#multi-align-center-h').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.alignCenterH(elements);
 		});
 		
-		$('#multi-align-right').off('click').on('click', () => {
+		$('#multi-align-right').off('click').on('click', (e) => {
+			e.stopPropagation();
+			console.log('[UIManager] multi-align-right 클릭');
 			window.alignmentManager.alignRight(elements);
 		});
 		
-		$('#multi-align-top').off('click').on('click', () => {
+		$('#multi-align-top').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.alignTop(elements);
 		});
 		
-		$('#multi-align-center-v').off('click').on('click', () => {
+		$('#multi-align-center-v').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.alignCenterV(elements);
 		});
 		
-		$('#multi-align-bottom').off('click').on('click', () => {
+		$('#multi-align-bottom').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.alignBottom(elements);
 		});
 		
 		// 균등 배분 버튼
-		$('#multi-distribute-h').off('click').on('click', () => {
+		$('#multi-distribute-h').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.distributeH(elements);
 		});
 		
-		$('#multi-distribute-v').off('click').on('click', () => {
+		$('#multi-distribute-v').off('click').on('click', (e) => {
+			e.stopPropagation();
 			window.alignmentManager.distributeV(elements);
 		});
 		
 		// 정렬 기준 토글
-		$('#multi-align-base-toggle').off('click').on('click', function() {
+		$('#multi-align-base-toggle').off('click').on('click', function(e) {
+			e.stopPropagation();
 			const newBase = window.alignmentManager.toggleAlignmentBase();
 			$(this).text(newBase === 'page' ? '페이지 기준' : '선택 기준');
 			$(this).toggleClass('active', newBase === 'selection');
 		});
 		
 		// 다중 삭제
-		$('#multi-delete').off('click').on('click', () => {
+		$('#multi-delete').off('click').on('click', (e) => {
+			e.stopPropagation();
 			const count = elements.length;
 			self.showDeleteConfirmModal(`Do you want to delete ${count} element?`, () => {
 				elements.forEach($el => $el.remove());
