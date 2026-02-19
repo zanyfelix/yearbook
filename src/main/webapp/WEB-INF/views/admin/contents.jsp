@@ -137,9 +137,10 @@
 							</div>
 							<div class="modal-body">
 								<!-- 수정 시 채울 hidden PK -->
-								<input type="hidden" id="id" name="id" /> <input type="hidden"
-									id="userId" name="userId" value="${userId}" />
-
+								<input type="hidden" id="id" name="id" /> 
+								<input type="hidden" id="userId" name="userId" value="${userId}" />
+								<input type="hidden" id="originalPagesInput" name="originalPages">
+								
 								<div class="mb-3">
 									<label for="categorySelect" class="form-label">CATEGORY</label>
 									<select class="form-select" id="categorySelect" name="category">

@@ -39,5 +39,7 @@ public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
     @Query("UPDATE Yearbook yp SET yp.pageNo = :pageNo WHERE yp.id = :id")
     void updatePageOrder(@Param("id") Long id, @Param("pageNo") int pageNo);
     
+ // 중복 방어를 위해 Optional → List 반환 메서드 추가 필요
+    List<Yearbook> findAllByContentsIdAndPageNo(Long contentsId, Integer pageNo);
     
 }

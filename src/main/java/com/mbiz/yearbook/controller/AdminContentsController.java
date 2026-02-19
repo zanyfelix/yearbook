@@ -22,6 +22,7 @@ import com.mbiz.yearbook.model.ToggleActiveDto;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.UserRepository;
+import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContentsService;
 import com.mbiz.yearbook.service.UserService;
 import com.mbiz.yearbook.util.DuplicateUserIdException;
@@ -42,6 +43,10 @@ public class AdminContentsController {
 	
 	@Autowired
 	private UserRepository userRepository;
+
+	// ✅ [추가] pages 수 감소 시 초과 Yearbook 레코드 정리를 위해 주입
+	@Autowired
+	private YearbookRepository yearbookRepository;
 	
 	@GetMapping("/admin/contents")
 	public String showForm(HttpSession session, @RequestParam(required = false) Long id, @RequestParam(required = false) Long userId, Model model) {
@@ -106,12 +111,58 @@ public class AdminContentsController {
         return "redirect:/admin/contents?userId=" + contents.getUserId();
     }
 	
+	// =========================================================================
+	// ✅ [수정] /admin/contents/modify - pages 감소 시 초과 Yearbook 레코드 자동 정리
+	//
+	//    기존: contentsService.update()만 호출 → pages 줄여도 초과 레코드 잔존
+	//    수정:
+	//      1. 수정 전 기존 pages 값 조회
+	//      2. 새 pages < 기존 pages 이면 초과 Yearbook 레코드 삭제
+	//      3. Contents 업데이트 수행
+	//      4. 삭제된 레코드 수를 성공 메시지에 포함
+	// =========================================================================
 	@PostMapping("/admin/contents/modify")
 	public String update(@ModelAttribute Contents contents, RedirectAttributes attrs, Model model) {
+
+		// 1. 수정 전 기존 pages 값 조회
+		Contents existing = contentsRepository.findById(contents.getId()).orElse(null);
+
+		int deletedCount = 0;
+		if (existing != null) {
+			int oldPages = existing.getPages();
+			int newPages = contents.getPages();
+
+			// 2. pages 수가 줄어든 경우 → 초과 Yearbook 레코드 삭제
+			if (newPages < oldPages) {
+				List<com.mbiz.yearbook.model.Yearbook> excessPages = yearbookRepository
+						.findByContentsIdOrderByPageNoAsc(contents.getId())
+						.stream()
+						.filter(p -> p.getPageNo() > newPages)
+						.collect(java.util.stream.Collectors.toList());
+
+				if (!excessPages.isEmpty()) {
+					List<Long> excessIds = excessPages.stream()
+							.map(com.mbiz.yearbook.model.Yearbook::getId)
+							.collect(java.util.stream.Collectors.toList());
+					yearbookRepository.deleteAllById(excessIds);
+					deletedCount = excessIds.size();
+				}
+			}
+		}
+
+		// 3. Contents 업데이트
 		contentsService.update(contents);
-        attrs.addFlashAttribute("successMessage", "Content information has been modified.");
-        return "redirect:/admin/contents?userId=" + contents.getUserId();
-    }
+
+		// 4. 결과 메시지
+		if (deletedCount > 0) {
+			attrs.addFlashAttribute("successMessage",
+				"Content information has been modified. (초과 페이지 " + deletedCount + "건 자동 삭제됨)");
+		} else {
+			attrs.addFlashAttribute("successMessage", "Content information has been modified.");
+		}
+
+		return "redirect:/admin/contents?userId=" + contents.getUserId();
+	}
 	
 	@PostMapping("/admin/contents/delete")
     public String delete(@RequestParam(value = "ids", required = false) List<Long> ids, @RequestParam(required = false) Long userId, 

@@ -118,21 +118,24 @@ public class AdminProgressController {
 				overallTotal += content.getPages();
 				List<Yearbook> existingPages = yearbookRepository
 						.findByContentsIdOrderByPageNoAsc(content.getId());
-				overallCompleted += countCompletedPages(existingPages);
+				// ✅ [수정] pageNo <= content.getPages() 범위 내 페이지만 완료 카운트
+				overallCompleted += countCompletedPages(existingPages, content.getPages());
 			}
 
 			for (Contents content : allGroupContents) {
 				groupTotal += content.getPages();
 				List<Yearbook> existingPages = yearbookRepository
 						.findByContentsIdOrderByPageNoAsc(content.getId());
-				groupCompleted += countCompletedPages(existingPages);
+				// ✅ [수정] pageNo <= content.getPages() 범위 내 페이지만 완료 카운트
+				groupCompleted += countCompletedPages(existingPages, content.getPages());
 			}
 
 			for (Contents content : allEventContents) {
 				eventTotal += content.getPages();
 				List<Yearbook> existingPages = yearbookRepository
 						.findByContentsIdOrderByPageNoAsc(content.getId());
-				eventCompleted += countCompletedPages(existingPages);
+				// ✅ [수정] pageNo <= content.getPages() 범위 내 페이지만 완료 카운트
+				eventCompleted += countCompletedPages(existingPages, content.getPages());
 			}
 
 			int overallProgress = (overallTotal != 0) ? (overallCompleted * 100) / overallTotal : 0;
@@ -161,10 +164,17 @@ public class AdminProgressController {
 	 * 완료된 페이지 수를 카운트합니다.
 	 * 페이지가 완료되려면 모든 photoframe에 photo가 있어야 합니다.
 	 */
-	private int countCompletedPages(List<Yearbook> pages) {
+	// ✅ [수정] maxPageNo 파라미터 추가: 허용 범위를 초과한 페이지는 카운트에서 제외
+	//    기존: 모든 저장된 레코드를 순회 → 초과 페이지도 완료로 카운트되어 Progress > 100% 발생 가능
+	//    수정: pageNo <= maxPageNo 인 레코드만 완료 여부 체크
+	private int countCompletedPages(List<Yearbook> pages, int maxPageNo) {
 		int completedCount = 0;
 		
 		for (Yearbook page : pages) {
+			// ✅ 허용 범위 초과 페이지 스킵
+			if (page.getPageNo() > maxPageNo) {
+				continue;
+			}
 			if (isPageCompleted(page)) {
 				completedCount++;
 			}

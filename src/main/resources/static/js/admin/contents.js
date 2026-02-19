@@ -29,6 +29,28 @@ $(function() {
 	// Bootstrap 모달 인스턴스 생성 (Bootstrap 5 API는 그대로 사용)
 	const registerModal = new bootstrap.Modal($registerModalEl[0]);
 
+	// ✅ [추가] 모달 폼 제출 전 pages 감소 경고
+	$('#registerSubmitBtn').on('click', function(e) {
+		const originalPages = parseInt($('#originalPagesInput').val(), 10);
+		const newPages = parseInt($('#pagesInput').val(), 10);
+
+		// originalPagesInput이 있고 (MODIFY 모드), pages가 줄어든 경우에만 경고
+		if (!isNaN(originalPages) && originalPages > 0 && !isNaN(newPages) && newPages < originalPages) {
+			const diff = originalPages - newPages;
+			const confirmed = confirm(
+				'⚠️ Warning: Pages reduced from ' + originalPages + ' → ' + newPages + '\n\n' +
+				diff + ' page(s) will be permanently deleted from the database.\n' +
+				'Any saved yearbook data for those pages will be lost.\n\n' +
+				'Are you sure you want to proceed?'
+			);
+			if (!confirmed) {
+				e.preventDefault();
+				e.stopPropagation();
+				return false;
+			}
+		}
+	});
+
 	// --- 1) REGISTER 버튼 클릭 ---
 	$('#btn-register').on('click', function() {
 
@@ -52,7 +74,6 @@ $(function() {
 
 	// --- 2) MODIFY 버튼 클릭 ---
 	$('#btn-modify').on('click', function() {
-		// :checked 필터를 사용하여 체크된 박스만 선택합니다.
 		const $checked = $('.selectBox:checked');
 
 		if ($checked.length !== 1) {
@@ -60,22 +81,23 @@ $(function() {
 			return;
 		}
 
-		// .closest('tr')로 가장 가까운 tr 부모 요소를 찾습니다.
 		const $row = $checked.closest('tr');
 
-		// 1) PK 및 나머지 필드 채우기
 		const id = $checked.val();
 		$('#id').val(id);
 		$('#userId').val(userId);
 
-		// 2) .find()와 :eq() 셀렉터로 특정 순서의 td를 찾고 .text()로 값을 가져옵니다.
 		let categoryText = $row.find('td:eq(2)').text().trim().toLowerCase();
 		$('#categorySelect').val(categoryText);
 
 		$('#titleInput').val($row.find('td:eq(3)').text().trim());
-		$('#pagesInput').val($row.find('td:eq(4)').text().trim());
 
-		// 3) 모달 설정 변경
+		const currentPages = parseInt($row.find('td:eq(4)').text().trim(), 10);
+		$('#pagesInput').val(currentPages);
+
+		// ✅ [추가] 원본 pages 값을 hidden input에 저장 (수정 시 감소 경고용)
+		$('#originalPagesInput').val(currentPages);
+
 		$form.attr('action', ctx + '/admin/contents/modify');
 		$titleEl.text('CONTENTS MODIFY');
 		$submitBtn.text('수정');
