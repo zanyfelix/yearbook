@@ -17,7 +17,7 @@ $(document).ready(function() {
             const submittedStatus = $row.find('td:eq(2)').text().trim(); // YEARBOOK column
             const schoolName = $row.find('td:eq(1)').text().trim(); // SCHOOL NAME column
 
-            if (submittedStatus === 'Submitted') {
+            if (submittedStatus === 'Submitted' || loginUserId === 'admin1') {
                 selectedIds.push($(this).val());
             } else {
                 hasUnsubmitted = true;
@@ -46,7 +46,7 @@ $(document).ready(function() {
 
         // Fetch API with timeout (5 minutes)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 300,000ms = 5 minutes
+        const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30분
 
         try {
             const downloadUrl = `${ctx}/admin/yearbook/download?ids=${selectedIds.join(',')}`;

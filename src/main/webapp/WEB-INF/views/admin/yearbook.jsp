@@ -103,6 +103,7 @@ const ctx  = '${pageContext.request.contextPath}';
 const id   = '${id}';
 const category = '${category}';
 const userId = '${userId}';
+const loginUserId = '${sessionScope.loginUser.userId}';
 </script>
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
