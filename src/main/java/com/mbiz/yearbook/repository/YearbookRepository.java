@@ -38,6 +38,17 @@ public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
     @Transactional
     @Query("UPDATE Yearbook yp SET yp.pageNo = :pageNo WHERE yp.id = :id")
     void updatePageOrder(@Param("id") Long id, @Param("pageNo") int pageNo);
+
+    /**
+     * UNIQUE 충돌 없이 pageNo를 음수(임시값)로 변경합니다.
+     * 2-phase update의 1단계에서 사용합니다.
+     * @param id 업데이트할 Yearbook의 ID
+     * @param tempPageNo 임시로 설정할 음수 pageNo 값
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE Yearbook yp SET yp.pageNo = :tempPageNo WHERE yp.id = :id")
+    void updatePageOrderToTemp(@Param("id") Long id, @Param("tempPageNo") int tempPageNo);
     
  // 중복 방어를 위해 Optional → List 반환 메서드 추가 필요
     List<Yearbook> findAllByContentsIdAndPageNo(Long contentsId, Integer pageNo);

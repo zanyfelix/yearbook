@@ -46,7 +46,13 @@ public class YearbookService {
             return; // 업데이트할 데이터가 없으면 종료
         }
 
-        // 리스트를 순회하며 각 페이지의 순서를 업데이트
+        // ✅ 2-phase update: (contentsId, pageNo) UNIQUE 제약 충돌 방지
+        // Phase 1: 음수 임시값으로 변경 → 기존 pageNo 값이 모두 비워져 UNIQUE 충돌 없음
+        for (EditController.PageOrderDTO order : pageOrders) {
+            yearbookRepository.updatePageOrderToTemp(order.getId(), -order.getId().intValue());
+        }
+
+        // Phase 2: 실제 새 pageNo 값으로 변경
         for (EditController.PageOrderDTO order : pageOrders) {
             yearbookRepository.updatePageOrder(order.getId(), order.getPageNo());
         }
