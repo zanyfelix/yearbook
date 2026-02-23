@@ -149,7 +149,8 @@ $(document).ready(function() {
 
 			// ✅ 줄바꿈 여부 먼저 확인 (white-space 결정에 사용)
 			const htmlContent = $element.html();
-			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+			const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
 			// ✅ font + white-space 를 한 번에 적용 (중간 렌더링 1회 제거 → 브라우저 축소 시 줄바꿈 깜빡임 방지)
 			$element.css({
@@ -304,11 +305,41 @@ $(document).ready(function() {
 	};
 
 	/**
+	 * 텍스트박스 HTML 정규화
+	 * - <span>, <b>, <i> 등 인라인 스타일 태그 제거 (텍스트만 유지)
+	 * - <div>...</div> → 내용<br> 변환 (줄바꿈으로 처리)
+	 * - trailing <br> 제거 (끝에만 있는 불필요한 <br>)
+	 */
+	function normalizeTextBoxHtml(html) {
+		if (!html) return '';
+
+		let result = html;
+
+		// 1. <div>...</div> → 내용<br> 변환 (브라우저가 Enter 시 생성하는 div 처리)
+		result = result.replace(/<div>([\s\S]*?)<\/div>/gi, '$1<br>');
+
+		// 2. 허용하지 않는 인라인 태그 제거 (span, b, i, u, strong, em 등) — 내용은 유지
+		result = result.replace(/<\/?(span|b|i|u|strong|em|font|s|strike|sub|sup)[^>]*>/gi, '');
+
+		// 3. 인라인 스타일이 있는 태그 제거 (style= 속성 포함 태그)
+		result = result.replace(/<[a-z][^>]*\sstyle="[^"]*"[^>]*>/gi, '');
+
+		// 4. trailing <br> 반복 제거 (끝에 연속으로 붙은 <br> 모두 제거)
+		result = result.replace(/(<br\s*\/?>\s*)+$/gi, '');
+
+		// 5. 앞뒤 공백 정리
+		result = result.trim();
+
+		return result;
+	}
+
+	/**
 	 * 텍스트박스 내용에 맞는 크기 측정 (줄바꿈 유지)
 	 */
 	function measureTextBoxContentSize($textBox, fontSize) {
 		const htmlContent = $textBox.html();
-		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		const padding = parseInt($textBox.css('padding')) || 8;
 
 		if (hasLineBreaks) {
@@ -377,6 +408,7 @@ $(document).ready(function() {
 			};
 		} else {
 			// 단일 행
+			// ✅ letter-spacing, line-height 포함 → 실제 렌더링과 일치하는 너비 측정
 			const $temp = $('<div>')
 				.html(htmlContent || ' ')
 				.css({
@@ -386,6 +418,8 @@ $(document).ready(function() {
 					'font-size': fontSize + 'px',
 					'font-family': $textBox.css('font-family'),
 					'font-weight': $textBox.css('font-weight'),
+					'letter-spacing': $textBox.css('letter-spacing'),
+					'line-height': $textBox.css('line-height'),
 					'padding': padding + 'px'
 				});
 			$('body').append($temp);
@@ -393,7 +427,9 @@ $(document).ready(function() {
 			const height = $temp.outerHeight();
 			$temp.remove();
 
-			return { width, height };
+			// ✅ +6px 안전 버퍼: 서브픽셀 폰트 렌더링 반올림 오안 보정
+			// 브라우저 축소 시 실제 렌더링 너비가 측정값보다 미세하게 커서 줄바꿼되는 현상 방지
+			return { width: width + 6, height };
 		}
 	}
 
@@ -646,7 +682,8 @@ $(document).ready(function() {
 
 						// ⭐ 핵심: HTML 설정 전에 white-space 먼저 확인
 						const htmlContent = boxData.html;
-						const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+						const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+						const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
 						// 기본 폰트 크기 결정 (저장된 값 우선, 없으면 추정)
 						let baseFontSize = boxData.styles?.fontSize || 12;
@@ -1339,7 +1376,8 @@ $(document).ready(function() {
 
 			// ⭐ 핵심: 저장 전 white-space를 nowrap으로 강제 설정하여 줄바꿈 방지
 			const htmlContent = $box.html();
-			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+			const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 			if (!hasLineBreaks) {
 				$box.css('white-space', 'nowrap');
 			}
@@ -1394,7 +1432,7 @@ $(document).ready(function() {
 			const alignmentBounds = relativeState.alignmentBounds || null;
 
 			const textBoxData = {
-				html: $box.html(),
+				html: normalizeTextBoxHtml($box.html()),  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
 				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,

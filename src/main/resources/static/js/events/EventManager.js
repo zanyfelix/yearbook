@@ -279,7 +279,7 @@ class EventManager {
 		textBox.on('paste', (e) => {
 			e.preventDefault();
 
-			// 클립보드에서 순수 텍스트만 가져오기
+			// 클립보드에서 순수 텍스트만 가져오기 (HTML 태그 제거)
 			let text = '';
 			if (e.originalEvent.clipboardData) {
 				text = e.originalEvent.clipboardData.getData('text/plain');
@@ -287,18 +287,24 @@ class EventManager {
 				text = window.clipboardData.getData('Text');
 			}
 
-			// 현재 선택 영역에 텍스트 삽입
-			if (document.queryCommandSupported('insertText')) {
-				document.execCommand('insertText', false, text);
-			} else {
-				// 폴백: 현재 위치에 텍스트 삽입
-				const selection = window.getSelection();
-				if (selection.rangeCount) {
-					const range = selection.getRangeAt(0);
-					range.deleteContents();
-					range.insertNode(document.createTextNode(text));
-					range.collapse(false);
-				}
+			// 줄바꿈(\n, \r\n)을 <br>로 변환하여 줄바꿈은 유지, 나머지 태그는 제거
+			const sanitized = text
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/\r\n/g, '<br>')
+				.replace(/\n/g, '<br>');
+
+			// 현재 선택 영역에 sanitize된 HTML 삽입
+			const selection = window.getSelection();
+			if (selection.rangeCount) {
+				const range = selection.getRangeAt(0);
+				range.deleteContents();
+				const fragment = range.createContextualFragment(sanitized);
+				range.insertNode(fragment);
+				range.collapse(false);
+				selection.removeAllRanges();
+				selection.addRange(range);
 			}
 
 			// 텍스트박스 크기 자동 조정
@@ -1004,7 +1010,8 @@ class EventManager {
 	static handleTextBlur(textBox) {
 
 		const htmlContent = textBox.html();
-		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		if (!hasLineBreaks) {
 			textBox.css('white-space', 'nowrap');
 		}
@@ -1031,7 +1038,8 @@ class EventManager {
 
 	static autoResizeTextBox($box) {
 		const htmlContent = $box.html();
-		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
 		const $temp = $('<div>')
 			.html(htmlContent || ' ')
