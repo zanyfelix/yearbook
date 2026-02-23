@@ -124,17 +124,6 @@ class AlignmentManager {
         
         console.log('[AlignmentManager] alignLeft 시작 - 요소 개수:', elements.length);
         
-        // ✅ 모든 요소가 이미 좌측 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'left' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 좌측 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) {
             console.warn('[AlignmentManager] alignLeft - bounds가 null');
@@ -144,12 +133,6 @@ class AlignmentManager {
         console.log('[AlignmentManager] alignLeft bounds:', JSON.stringify(bounds));
         
         elements.forEach(($el, idx) => {
-            // ✅ 개별 요소가 이미 좌측 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'left' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newLeft = bounds.left;
             
@@ -172,29 +155,12 @@ class AlignmentManager {
     alignCenterH(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 수평 중앙 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'center' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 수평 중앙 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         const boundsCenter = bounds.left + bounds.width / 2;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 수평 중앙 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'center' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newLeft = boundsCenter - rect.width / 2;
             
@@ -216,17 +182,6 @@ class AlignmentManager {
         
         console.log('[AlignmentManager] alignRight 시작 - 요소 개수:', elements.length);
         
-        // ✅ 모든 요소가 이미 우측 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.horizontal === 'right' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 우측 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) {
             console.warn('[AlignmentManager] alignRight - bounds가 null');
@@ -236,12 +191,6 @@ class AlignmentManager {
         console.log('[AlignmentManager] alignRight bounds:', JSON.stringify(bounds));
         
         elements.forEach(($el, idx) => {
-            // ✅ 개별 요소가 이미 우측 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.horizontal === 'right' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newLeft = bounds.right - rect.width;
             
@@ -264,27 +213,10 @@ class AlignmentManager {
     alignTop(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 상단 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'top' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 상단 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 상단 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'top' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newTop = bounds.top;
             
@@ -301,29 +233,12 @@ class AlignmentManager {
     alignCenterV(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 수직 중앙 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'center' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 수직 중앙 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         const boundsMiddle = bounds.top + bounds.height / 2;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 수직 중앙 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'center' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newTop = boundsMiddle - rect.height / 2;
             
@@ -340,27 +255,10 @@ class AlignmentManager {
     alignBottom(elements) {
         if (!elements || elements.length === 0) return;
         
-        // ✅ 모든 요소가 이미 하단 정렬이고 alignmentBounds가 있으면 스킵
-        const allAligned = elements.every($el => {
-            const state = $el.data('relativeState') || {};
-            return state.alignment?.vertical === 'bottom' && state.alignmentBounds !== undefined;
-        });
-        
-        if (allAligned) {
-            console.log('모든 요소가 이미 하단 정렬 - 스킵');
-            return;
-        }
-        
         const bounds = this.getAlignmentBounds(elements);
         if (!bounds) return;
         
         elements.forEach($el => {
-            // ✅ 개별 요소가 이미 하단 정렬되고 alignmentBounds가 있으면 스킵
-            const existingState = $el.data('relativeState') || {};
-            if (existingState.alignment?.vertical === 'bottom' && existingState.alignmentBounds !== undefined) {
-                return;
-            }
-            
             const rect = this.getElementRect($el);
             const newTop = bounds.bottom - rect.height;
             
