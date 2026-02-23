@@ -81,15 +81,23 @@
 				<div class="position-relative">
 					<div class="slide-container" id="slider-${st.index}">
 						<c:forEach var="page" items="${item.yearbookPages}">
-							<div class="page-card" draggable="false" id="card-${page.id}">
-								<%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
-								<c:set var="yearbookId"
-									value="${not empty page.id ? page.id : ''}" />
-								<c:set var="contentsId"
-									value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
-								<c:set var="pageNo"
-									value="${not empty page.pageNo ? page.pageNo : i}" />
-
+							<%-- ✨ 핵심: 모든 썸네일에 yearbookId, contentsId, pageNo를 모두 출력 --%>
+							<c:set var="yearbookId"
+								value="${not empty page.id ? page.id : ''}" />
+							<c:set var="contentsId"
+								value="${not empty page.contentsId ? page.contentsId : item.contentsInfo.id}" />
+							<c:set var="pageNo"
+								value="${not empty page.pageNo ? page.pageNo : i}" />
+							<%-- 빈 페이지(DB 미저장)는 id가 null이므로 contentsId+pageNo 조합으로 고유 id 부여 --%>
+							<c:choose>
+								<c:when test="${not empty page.id}">
+									<c:set var="cardId" value="card-${page.id}" />
+								</c:when>
+								<c:otherwise>
+									<c:set var="cardId" value="card-empty-${contentsId}-${pageNo}" />
+								</c:otherwise>
+							</c:choose>
+							<div class="page-card" draggable="false" id="${cardId}">
 								<div class="menu-container">
 									<button class="menu-dots-btn" aria-label="More options"
 										data-yearbook-id="${yearbookId}">⋮</button>

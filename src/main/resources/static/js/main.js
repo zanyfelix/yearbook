@@ -880,7 +880,9 @@ $(document).ready(function() {
 		$('.slide-container').each(function() {
 			$(this).find('.page-card').each(function(index) {
 				const cardId = $(this).attr('id');
-				const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+				// card-123 형태(저장된 페이지)만 yearbookId 추출, card-empty-... 형태(빈 페이지)는 null
+				const yearbookId = (cardId && cardId.startsWith('card-') && !cardId.startsWith('card-empty-'))
+					? parseInt(cardId.split('-')[1], 10) : null;
 
 				if (yearbookId) {
 					orderData.push({
