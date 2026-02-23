@@ -288,12 +288,13 @@ class EventManager {
 			}
 
 			// 줄바꿈(\n, \r\n)을 <br>로 변환하여 줄바꿈은 유지, 나머지 태그는 제거
+			// ✅ 순서 중요: \n → <br> 변환을 먼저, 이스케이프는 각 줄 텍스트에만 적용
 			const sanitized = text
 				.replace(/&/g, '&amp;')
-				.replace(/</g, '&lt;')
-				.replace(/>/g, '&gt;')
-				.replace(/\r\n/g, '<br>')
-				.replace(/\n/g, '<br>');
+				.replace(/\r\n/g, '\n')   // \r\n → \n 통일
+				.split('\n')              // 줄 단위로 분리
+				.map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;'))  // 각 줄 이스케이프
+				.join('<br>');            // <br>로 합치기
 
 			// 현재 선택 영역에 sanitize된 HTML 삽입
 			const selection = window.getSelection();
