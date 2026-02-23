@@ -307,28 +307,48 @@ $(document).ready(function() {
 	/**
 	 * 텍스트박스 HTML 정규화
 	 * - <span>, <b>, <i> 등 인라인 스타일 태그 제거 (텍스트만 유지)
-	 * - <div>...</div> → 내용<br> 변환 (줄바꿈으로 처리)
-	 * - trailing <br> 제거 (끝에만 있는 불필요한 <br>)
+	 * - <div>...</div> → <br> 변환 (Enter로 생성된 div를 줄바꿈으로 처리)
+	 * - 선두/trailing <br> 제거 (불필요한 <br>)
+	 *
+	 * Chrome contenteditable Enter 패턴:
+	 *   "Hello" + Enter         → "Hello<div><br></div>"
+	 *   "Hello" + Enter + "World" → "Hello<div>World</div>"
+	 *   Enter 연속              → "Hello<div><br></div><div><br></div>"
 	 */
 	function normalizeTextBoxHtml(html) {
 		if (!html) return '';
 
 		let result = html;
+		console.log('[NORM 0] input =', JSON.stringify(result));
 
-		// 1. <div>...</div> → 내용<br> 변환 (브라우저가 Enter 시 생성하는 div 처리)
-		result = result.replace(/<div>([\s\S]*?)<\/div>/gi, '$1<br>');
+		// 1. <div[속성]><br></div> → <br> 변환 (Enter만 친 빈 줄 처리, 속성 있는 div 포함)
+		result = result.replace(/<div[^>]*>\s*<br\s*\/?>\s*<\/div>/gi, '<br>');
+		console.log('[NORM 1] after div+br =', JSON.stringify(result));
 
-		// 2. 허용하지 않는 인라인 태그 제거 (span, b, i, u, strong, em 등) — 내용은 유지
-		result = result.replace(/<\/?(span|b|i|u|strong|em|font|s|strike|sub|sup)[^>]*>/gi, '');
+		// 2. <div[속성]>내용</div> → <br>내용 변환 (속성 있는 div 포함)
+		result = result.replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '<br>$1');
+		console.log('[NORM 2] after div =', JSON.stringify(result));
 
-		// 3. 인라인 스타일이 있는 태그 제거 (style= 속성 포함 태그)
+		// 3. 허용하지 않는 인라인 태그 제거
+		// ✅ <br>이 삭제되지 않도록 b/i/u/s 는 단독 태그일 때만 매칭 (뒤에 공백/>/\ 가 와야 함)
+		result = result.replace(/<\/?(span|strong|em|font|strike|sub|sup|b(?=[\s>/])|i(?=[\s>/])|u(?=[\s>/])|s(?=[\s>/]))[^>]*>/gi, '');
+		console.log('[NORM 3] after inline tags =', JSON.stringify(result));
+
+		// 4. 인라인 스타일이 있는 태그 제거
 		result = result.replace(/<[a-z][^>]*\sstyle="[^"]*"[^>]*>/gi, '');
+		console.log('[NORM 4] after style tags =', JSON.stringify(result));
 
-		// 4. trailing <br> 반복 제거 (끝에 연속으로 붙은 <br> 모두 제거)
+		// 5. 맨 앞에 붙은 불필요한 <br> 제거
+		result = result.replace(/^(<br\s*\/?>\s*)+/gi, '');
+		console.log('[NORM 5] after leading br =', JSON.stringify(result));
+
+		// 6. trailing <br> 반복 제거
 		result = result.replace(/(<br\s*\/?>\s*)+$/gi, '');
+		console.log('[NORM 6] after trailing br =', JSON.stringify(result));
 
-		// 5. 앞뒤 공백 정리
+		// 7. 앞뒤 공백 정리
 		result = result.trim();
+		console.log('[NORM 7] final =', JSON.stringify(result));
 
 		return result;
 	}
@@ -1431,8 +1451,13 @@ $(document).ready(function() {
 			const alignment = relativeState.alignment || { horizontal: null, vertical: null };
 			const alignmentBounds = relativeState.alignmentBounds || null;
 
+			const _rawHtml = $box.html();
+			console.log('[DEBUG 1] rawHtml =', JSON.stringify(_rawHtml));
+			const _normalized = normalizeTextBoxHtml(_rawHtml);
+			console.log('[DEBUG 2] normalized =', JSON.stringify(_normalized));
+
 			const textBoxData = {
-				html: normalizeTextBoxHtml($box.html()),  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
+				html: _normalized,  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
 				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,

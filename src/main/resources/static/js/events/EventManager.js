@@ -288,7 +288,7 @@ class EventManager {
 			}
 
 			// 줄바꿈(\n, \r\n)을 <br>로 변환하여 줄바꿈은 유지, 나머지 태그는 제거
-			// ✅ 순서 중요: \n → <br> 변환을 먼저, 이스케이프는 각 줄 텍스트에만 적용
+			// ✅ 순서 중요: 이스케이프를 각 줄 텍스트에만 적용 후 <br>로 합치기
 			const sanitized = text
 				.replace(/&/g, '&amp;')
 				.replace(/\r\n/g, '\n')   // \r\n → \n 통일
@@ -296,17 +296,8 @@ class EventManager {
 				.map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;'))  // 각 줄 이스케이프
 				.join('<br>');            // <br>로 합치기
 
-			// 현재 선택 영역에 sanitize된 HTML 삽입
-			const selection = window.getSelection();
-			if (selection.rangeCount) {
-				const range = selection.getRangeAt(0);
-				range.deleteContents();
-				const fragment = range.createContextualFragment(sanitized);
-				range.insertNode(fragment);
-				range.collapse(false);
-				selection.removeAllRanges();
-				selection.addRange(range);
-			}
+			// ✅ execCommand('insertHTML') 사용: <br> 태그를 DOM에 정확히 삽입
+			document.execCommand('insertHTML', false, sanitized);
 
 			// 텍스트박스 크기 자동 조정
 			this.autoResizeTextBox(textBox);
