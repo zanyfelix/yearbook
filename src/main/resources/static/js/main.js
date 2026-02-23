@@ -147,22 +147,20 @@ $(document).ready(function() {
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 			const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
 
-			// 폰트 크기 먼저 적용
+			// ✅ 줄바꿈 여부 먼저 확인 (white-space 결정에 사용)
+			const htmlContent = $element.html();
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+
+			// ✅ font + white-space 를 한 번에 적용 (중간 렌더링 1회 제거 → 브라우저 축소 시 줄바꿈 깜빡임 방지)
 			$element.css({
 				'font-size': scaledFontSize + 'px',
-				'font-family': $element.data('savedFontFamily') || $element.css('font-family')
+				'font-family': $element.data('savedFontFamily') || $element.css('font-family'),
+				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
 			});
 
 			// 저장된 백분율 기반 크기
 			const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
 			const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
-
-			// ✅ 줄바꿈 여부 확인 (white-space 복원 및 크기 계산에 사용)
-			const htmlContent = $element.html();
-			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
-
-			// ✅ white-space를 HTML 내용 기반으로 올바르게 복원 (자동 줄바꿈 방지)
-			$element.css('white-space', hasLineBreaks ? 'pre-wrap' : 'nowrap');
 
 			// ✅ 회전이 있으면 저장된 크기 사용 (위치 일관성 우선)
 			if (relativeState.rotation && relativeState.rotation !== 0) {
