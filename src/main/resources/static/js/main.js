@@ -157,16 +157,26 @@ $(document).ready(function() {
 			const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
 			const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
 
+			// ✅ 줄바꿈 여부 확인 (white-space 복원 및 크기 계산에 사용)
+			const htmlContent = $element.html();
+			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+
+			// ✅ white-space를 HTML 내용 기반으로 올바르게 복원 (자동 줄바꿈 방지)
+			$element.css('white-space', hasLineBreaks ? 'pre-wrap' : 'nowrap');
+
 			// ✅ 회전이 있으면 저장된 크기 사용 (위치 일관성 우선)
 			if (relativeState.rotation && relativeState.rotation !== 0) {
 				elementWidth = savedWidth;
 				elementHeight = savedHeight;
-			} else {
-				// 회전 없으면 실시간 측정 (텍스트 잘림 방지)
+			} else if (hasLineBreaks) {
+				// ✅ 줄바꿈 있는 텍스트: 너비는 savedWidth 우선 (단어 흐름 보존)
+				// 높이만 scaledFontSize 기준으로 재측정 (브라우저 크기 변화 반영)
+				elementWidth = savedWidth;
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
-				// ✅ [핵심 수정] 저장된 너비와 측정된 너비 중 큰 값 사용
-				// measureTextBoxContentSize의 임시 <span> 측정이 실제 렌더링보다 미세하게 작을 수 있어
-				// 저장 시 정확했던 너비가 복원 시 줄어들면서 단어가 밀리는 현상 방지
+				elementHeight = measuredSize.height;
+			} else {
+				// 단일 행 텍스트: 실시간 너비 측정 (텍스트 잘림 방지)
+				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
 				elementWidth = Math.max(measuredSize.width, savedWidth);
 				elementHeight = measuredSize.height;
 			}
