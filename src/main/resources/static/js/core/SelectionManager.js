@@ -155,6 +155,7 @@ class SelectionManager {
 		window.selectedBox = textBox;
 
 		textBox.addClass('selected');
+		EventManager.autoResizeTextBox(textBox);
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 
