@@ -168,10 +168,10 @@ $(document).ready(function() {
 				elementWidth = savedWidth;
 				elementHeight = savedHeight;
 			} else if (hasLineBreaks) {
-				// ✅ 줄바꿈 있는 텍스트: 너비는 savedWidth 우선 (단어 흐름 보존)
-				// 높이만 scaledFontSize 기준으로 재측정 (브라우저 크기 변화 반영)
-				elementWidth = savedWidth;
+				// ✅ 줄바꿈 있는 텍스트: 가장 긴 줄 기준 측정 너비와 savedWidth 중 큰 값 사용
+				// 방법3: 측정 너비(+15px 버퍼 포함)로 너비를 충분히 확보 → 브라우저 축소 시 자동 줄바꿈 방지
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
+				elementWidth = Math.max(measuredSize.width, savedWidth);
 				elementHeight = measuredSize.height;
 			} else {
 				// 단일 행 텍스트: 실시간 너비 측정 (텍스트 잘림 방지)
@@ -319,36 +319,28 @@ $(document).ready(function() {
 		if (!html) return '';
 
 		let result = html;
-		console.log('[NORM 0] input =', JSON.stringify(result));
 
 		// 1. <div[속성]><br></div> → <br> 변환 (Enter만 친 빈 줄 처리, 속성 있는 div 포함)
 		result = result.replace(/<div[^>]*>\s*<br\s*\/?>\s*<\/div>/gi, '<br>');
-		console.log('[NORM 1] after div+br =', JSON.stringify(result));
 
 		// 2. <div[속성]>내용</div> → <br>내용 변환 (속성 있는 div 포함)
 		result = result.replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '<br>$1');
-		console.log('[NORM 2] after div =', JSON.stringify(result));
 
 		// 3. 허용하지 않는 인라인 태그 제거
 		// ✅ <br>이 삭제되지 않도록 b/i/u/s 는 단독 태그일 때만 매칭 (뒤에 공백/>/\ 가 와야 함)
 		result = result.replace(/<\/?(span|strong|em|font|strike|sub|sup|b(?=[\s>/])|i(?=[\s>/])|u(?=[\s>/])|s(?=[\s>/]))[^>]*>/gi, '');
-		console.log('[NORM 3] after inline tags =', JSON.stringify(result));
 
 		// 4. 인라인 스타일이 있는 태그 제거
 		result = result.replace(/<[a-z][^>]*\sstyle="[^"]*"[^>]*>/gi, '');
-		console.log('[NORM 4] after style tags =', JSON.stringify(result));
 
-		// 5. 맨 앞에 붙은 불필요한 <br> 제거
+		// 5. 맨 앞에 붙은 불필요한 <br> 제거 (div 변환으로 생긴 선두 <br>)
 		result = result.replace(/^(<br\s*\/?>\s*)+/gi, '');
-		console.log('[NORM 5] after leading br =', JSON.stringify(result));
 
-		// 6. trailing <br> 반복 제거
+		// 6. trailing <br> 반복 제거 (끝에 연속으로 붙은 <br> 모두 제거)
 		result = result.replace(/(<br\s*\/?>\s*)+$/gi, '');
-		console.log('[NORM 6] after trailing br =', JSON.stringify(result));
 
 		// 7. 앞뒤 공백 정리
 		result = result.trim();
-		console.log('[NORM 7] final =', JSON.stringify(result));
 
 		return result;
 	}
@@ -422,8 +414,9 @@ $(document).ready(function() {
 			const measuredHeight = $heightTemp.outerHeight();
 			$heightTemp.remove();
 
+			// ✅ +15px 안전 버퍼: 서브픽셀 폰트 렌더링 오차 + 가장 긴 줄 여유 확보 (자동 줄바꿈 방지)
 			return {
-				width: maxWidth + padding * 2 + 5,
+				width: maxWidth + padding * 2 + 15,
 				height: measuredHeight
 			};
 		} else {
@@ -447,9 +440,9 @@ $(document).ready(function() {
 			const height = $temp.outerHeight();
 			$temp.remove();
 
-			// ✅ +6px 안전 버퍼: 서브픽셀 폰트 렌더링 반올림 오안 보정
-			// 브라우저 축소 시 실제 렌더링 너비가 측정값보다 미세하게 커서 줄바꿼되는 현상 방지
-			return { width: width + 6, height };
+			// ✅ +15px 안전 버퍼: 서브픽셀 폰트 렌더링 반올림 오차 보정
+			// 브라우저 축소 시 실제 렌더링 너비가 측정값보다 미세하게 커서 줄바꿈되는 현상 방지
+			return { width: width + 15, height };
 		}
 	}
 
@@ -1240,6 +1233,11 @@ $(document).ready(function() {
 
 		window.selectionManager.clearSelection();
 
+		// ✅ 다중 선택(블록) 해제 — multi-selected 파란 테두리가 썸네일에 캡처되는 현상 방지
+		if (window.multiSelectionManager) {
+			window.multiSelectionManager.clearSelection();
+		}
+
 		const designData = {
 			frames: [],
 			textBoxes: [],
@@ -1451,13 +1449,8 @@ $(document).ready(function() {
 			const alignment = relativeState.alignment || { horizontal: null, vertical: null };
 			const alignmentBounds = relativeState.alignmentBounds || null;
 
-			const _rawHtml = $box.html();
-			console.log('[DEBUG 1] rawHtml =', JSON.stringify(_rawHtml));
-			const _normalized = normalizeTextBoxHtml(_rawHtml);
-			console.log('[DEBUG 2] normalized =', JSON.stringify(_normalized));
-
 			const textBoxData = {
-				html: _normalized,  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
+				html: normalizeTextBoxHtml($box.html()),  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
 				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
@@ -2225,8 +2218,16 @@ $(document).ready(function() {
 
 	// Exit without Saving 버튼 클릭 이벤트
 	$(document).on('click', '#btn-exit-without-saving', function() {
+		// ✅ 포커스 해제 먼저 (Bootstrap aria-hidden 버그 방지)
+		// 포커스된 자식 요소가 있으면 Bootstrap이 aria-hidden을 못 붙여 modal-backdrop이 남는 현상 방지
+		$(this).blur();
+		document.activeElement?.blur();
+
 		// ✅ clearConfirmModal이 완전히 닫힌 후 editModal 닫기
 		$('#clearConfirmModal').one('hidden.bs.modal', function() {
+			// modal-backdrop 잔존 방지: 강제 제거 후 editModal 닫기
+			$('.modal-backdrop').remove();
+			$('body').removeClass('modal-open').css('padding-right', '');
 			$('#editModal').modal('hide');
 		});
 		$('#clearConfirmModal').modal('hide');
