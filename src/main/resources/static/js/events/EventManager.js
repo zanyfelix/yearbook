@@ -991,17 +991,21 @@ class EventManager {
 		textBox.attr('contenteditable', 'true');
 		textBox.addClass('editing');
 		textBox.focus();
-		this.autoResizeTextBox(textBox);
+		// autoResizeTextBox 제거: selectTextBox에서 updateElementPosition으로 이미 올바른 크기 설정됨
+		// 텍스트 입력 시 handleTextInput → autoResizeTextBox가 실시간 크기 조정 처리
 	}
 
 	static handleTextInput(textBox) {
 		this.autoResizeTextBox(textBox);
-		setTimeout(() => this.saveElementPosition(textBox), 10);
+		// alignment 보존하여 저장 (텍스트 입력 시 정렬 정보 유실 방지)
+		setTimeout(() => this.saveElementPositionWithAlignment(textBox, null, null, false), 10);
 	}
 
 	static handleTextBlur(textBox) {
 
-		const htmlContent = textBox.html();
+		// 회전 핸들 div 제거하여 정확한 줄바꿈 감지
+		const rawHtml = textBox.html();
+		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		if (!hasLineBreaks) {
@@ -1025,43 +1029,55 @@ class EventManager {
 			textBox.trigger('resize');
 		}
 
-		setTimeout(() => this.saveElementPosition(textBox), 10);
+		// alignment 보존하여 저장 (blur 시 정렬 정보 유실 방지)
+		setTimeout(() => this.saveElementPositionWithAlignment(textBox, null, null, false), 10);
 	}
 
 	static autoResizeTextBox($box) {
-		const htmlContent = $box.html();
+		// 회전 핸들 div 제거하여 클린 HTML로 줄바꿈 감지
+		const rawHtml = $box.html();
+		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
-		const $temp = $('<div>')
-			.html(htmlContent || ' ')
-			.css({
-				'position': 'absolute',
-				'visibility': 'hidden',
-				'height': 'auto',
-				'width': 'auto',
-				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
-				'font-size': $box.css('font-size'),
-				'font-family': $box.css('font-family'),
-				'font-weight': $box.css('font-weight'),
-				'padding': $box.css('padding'),
-				'border': $box.css('border'),
-				'box-sizing': 'border-box'
+		// measureTextBoxContentSize와 동일한 측정 사용 (버퍼 불일치 방지)
+		const fontSize = parseFloat($box.css('font-size'));
+		if (window.measureTextBoxContentSize) {
+			const measuredSize = window.measureTextBoxContentSize($box, fontSize);
+			$box.css({
+				'width': measuredSize.width + 'px',
+				'height': measuredSize.height + 'px',
+				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
 			});
+		} else {
+			// fallback
+			const $temp = $('<div>')
+				.html(htmlContent || ' ')
+				.css({
+					'position': 'absolute',
+					'visibility': 'hidden',
+					'height': 'auto',
+					'width': 'auto',
+					'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
+					'font-size': $box.css('font-size'),
+					'font-family': $box.css('font-family'),
+					'font-weight': $box.css('font-weight'),
+					'padding': $box.css('padding'),
+					'border': $box.css('border'),
+					'box-sizing': 'border-box'
+				});
 
-		$('body').append($temp);
+			$('body').append($temp);
+			const measuredWidth = $temp.outerWidth();
+			const measuredHeight = $temp.outerHeight();
+			$temp.remove();
 
-		const measuredWidth = $temp.outerWidth();
-		const measuredHeight = $temp.outerHeight();
-		$temp.remove();
-
-		const widthBuffer = 2;
-
-		$box.css({
-			'width': (measuredWidth + widthBuffer) + 'px', // 너비에 버퍼 추가
-			'height': measuredHeight + 'px',
-			'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
-		});
+			$box.css({
+				'width': (measuredWidth + 15) + 'px',
+				'height': measuredHeight + 'px',
+				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap'
+			});
+		}
 	}
 
 	static checkTextOverflow(textBox) {

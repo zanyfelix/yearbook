@@ -148,7 +148,9 @@ $(document).ready(function() {
 			const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
 
 			// ✅ 줄바꿈 여부 먼저 확인 (white-space 결정에 사용)
-			const htmlContent = $element.html();
+			// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
+			const rawHtml = $element.html();
+			const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 			const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
 			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
@@ -349,7 +351,9 @@ $(document).ready(function() {
 	 * 텍스트박스 내용에 맞는 크기 측정 (줄바꿈 유지)
 	 */
 	function measureTextBoxContentSize($textBox, fontSize) {
-		const htmlContent = $textBox.html();
+		// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
+		const rawHtml = $textBox.html();
+		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		const padding = parseInt($textBox.css('padding')) || 8;
@@ -445,6 +449,9 @@ $(document).ready(function() {
 			return { width: width + 15, height };
 		}
 	}
+
+	// autoResizeTextBox에서 동일한 측정 로직 사용을 위해 전역 노출
+	window.measureTextBoxContentSize = measureTextBoxContentSize;
 
 	window.updateAllPositions = function() {
 		console.log("updateAllPositions");

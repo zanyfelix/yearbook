@@ -155,7 +155,12 @@ class SelectionManager {
 		window.selectedBox = textBox;
 
 		textBox.addClass('selected');
-		EventManager.autoResizeTextBox(textBox);
+		// 페이지 로드 시와 동일한 측정/위치 계산으로 선택 시 위치 이동 방지
+		if (window.updateElementPosition) {
+			window.updateElementPosition(textBox);
+		} else {
+			EventManager.autoResizeTextBox(textBox);
+		}
 		this.addTextRotationHandle(textBox);
 		UIManager.showTextTooltip(textBox);
 
@@ -246,6 +251,9 @@ class SelectionManager {
 				this.currentTextBox.removeData('original-z-index');
 			}
 
+			// 회전 핸들 먼저 제거 (html() 줄바꿈 오감지 방지)
+			this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
+
 			const htmlContent = this.currentTextBox.html();
 			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 			if (!hasLineBreaks) {
@@ -254,7 +262,6 @@ class SelectionManager {
 
 			this.currentTextBox.removeClass('selected editing');
 			this.currentTextBox.attr('contenteditable', 'false');
-			this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
 
 			if (window.getSelection) {
 				window.getSelection().removeAllRanges();

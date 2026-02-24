@@ -315,7 +315,9 @@ class TextManager {
 
 	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
 	static adjustBoxSizeForLineBreaks(textBox) {
-		const htmlContent = textBox.html();
+		// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
+		const rawHtml = textBox.html();
+		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 
 		if (hasLineBreaks) {
@@ -456,10 +458,10 @@ class TextManager {
 	// 폰트 패밀리 변경
 	static updateFontFamily(fontFamily) {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
-		if (selectedBox && selectedBox.length > 0) {
-			selectedBox.css('font-family', fontFamily);
-			selectedBox.data('savedFontFamily', fontFamily);
-		}
+		if (!selectedBox || selectedBox.length === 0) return;
+
+		selectedBox.css('font-family', fontFamily);
+		selectedBox.data('savedFontFamily', fontFamily);
 	}
 
 	// 폰트 로드 완료 처리
