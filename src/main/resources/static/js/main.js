@@ -170,15 +170,15 @@ $(document).ready(function() {
 				elementWidth = savedWidth;
 				elementHeight = savedHeight;
 			} else if (hasLineBreaks) {
-				// ✅ 줄바꿈 있는 텍스트: 가장 긴 줄 기준 측정 너비와 savedWidth 중 큰 값 사용
-				// 방법3: 측정 너비(+15px 버퍼 포함)로 너비를 충분히 확보 → 브라우저 축소 시 자동 줄바꿈 방지
+				// ✅ 줄바꿈 있는 텍스트: 가장 긴 줄 기준 측정 너비 사용
+				// measureTextBoxContentSize에 +15px 버퍼 포함되어 서브픽셀 오차 보정됨
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
-				elementWidth = Math.max(measuredSize.width, savedWidth);
+				elementWidth = measuredSize.width;
 				elementHeight = measuredSize.height;
 			} else {
 				// 단일 행 텍스트: 실시간 너비 측정 (텍스트 잘림 방지)
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
-				elementWidth = Math.max(measuredSize.width, savedWidth);
+				elementWidth = measuredSize.width;
 				elementHeight = measuredSize.height;
 			}
 
@@ -756,13 +756,10 @@ $(document).ready(function() {
 						$('#frame-container').append($box);
 
 						// 내용 기반 크기 측정 및 적용
+						// measureTextBoxContentSize에 +15px 버퍼 포함되어 서브픽셀 오차 보정됨
 						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
-						// ✅ [핵심 수정] 저장된 너비와 측정된 너비 중 큰 값 사용
-						// 임시 <span> 측정이 실제 렌더링보다 미세하게 작을 수 있어 단어가 밀리는 현상 방지
-						const savedPixelWidth = boxData.size ? (boxData.size.width / 100) * actualBgRect.width : 0;
-						const finalWidth = Math.max(measuredSize.width, savedPixelWidth);
 						$box.css({
-							'width': finalWidth + 'px',
+							'width': measuredSize.width + 'px',
 							'height': measuredSize.height + 'px'
 						});
 
