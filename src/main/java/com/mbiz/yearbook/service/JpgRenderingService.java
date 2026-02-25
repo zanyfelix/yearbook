@@ -563,18 +563,22 @@ public class JpgRenderingService {
 		logRenderingSummary(root);
 
 		// 1. 배경 렌더링
+		int[] bgArea = new int[]{0, 0, RENDER_WIDTH, RENDER_HEIGHT};
 		try {
-			renderBackground(g2d, root);
+			int[] bgResult = renderBackground(g2d, root);
+			if (bgResult != null) {
+				bgArea = bgResult;
+			}
 		} catch (Exception e) {
 			logger.error("배경 렌더링 실패", e);
 			// 배경 실패해도 계속 진행
 		}
 
 		// 2. 프레임 렌더링 (사진 포함)
-		renderFrames(g2d, root);
+		renderFrames(g2d, root, bgArea);
 
 		// 3. 텍스트박스 렌더링
-		renderTextBoxes(g2d, root);
+		renderTextBoxes(g2d, root, bgArea);
 
 		g2d.dispose();
 
@@ -595,7 +599,7 @@ public class JpgRenderingService {
 	/**
 	 * 배경 이미지 렌더링
 	 */
-	private void renderBackground(Graphics2D g2d, JsonNode root) throws IOException {
+	private int[] renderBackground(Graphics2D g2d, JsonNode root) throws IOException {
 		String bgEditPath = root.path("background").asText();
 
 		logger.info("=== 배경 렌더링 시작 ===");
@@ -604,7 +608,7 @@ public class JpgRenderingService {
 
 		if (bgEditPath == null || bgEditPath.isEmpty()) {
 			logger.warn("배경 경로가 비어있음 - 배경 렌더링 스킵");
-			return;
+			return null;
 		}
 
 		// _M.png를 _B.png로 교체
@@ -670,7 +674,7 @@ public class JpgRenderingService {
 
 			if (!bgFile.exists()) {
 				logger.error("모든 경로에서 배경 파일을 찾을 수 없음");
-				return;
+				return null;
 			}
 		}
 
@@ -678,11 +682,35 @@ public class JpgRenderingService {
 			BufferedImage bgImage = ImageIO.read(bgFile);
 			if (bgImage == null) {
 				logger.error("배경 이미지 읽기 실패: {}", fullPath);
-				return;
+				return null;
+			}
+			
+			// 배경 이미지의 자연 비율 유지 (편집기 object-fit: contain 방식)
+			int bgNatW = bgImage.getWidth();
+			int bgNatH = bgImage.getHeight();
+
+			double bgRatio     = (double) bgNatW / bgNatH;
+			double canvasRatio = (double) RENDER_WIDTH / RENDER_HEIGHT;
+
+			int drawW, drawH, drawX, drawY;
+
+			if (bgRatio > canvasRatio) {
+			    // 가로 기준으로 맞춤
+			    drawW = RENDER_WIDTH;
+			    drawH = (int) Math.round((double) RENDER_WIDTH / bgRatio);
+			    drawX = 0;
+			    drawY = (int) Math.round((RENDER_HEIGHT - drawH) / 2.0);
+			} else {
+			    // 세로 기준으로 맞춤
+			    drawH = RENDER_HEIGHT;
+			    drawW = (int) Math.round((double) RENDER_HEIGHT * bgRatio);
+			    drawX = (int) Math.round((RENDER_WIDTH - drawW) / 2.0);
+			    drawY = 0;
 			}
 
-			g2d.drawImage(bgImage, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
-			logger.info("✓ 배경 렌더링 완료: {} (크기: {}x{})", bgFile.getName(), bgImage.getWidth(), bgImage.getHeight());
+			g2d.drawImage(bgImage, drawX, drawY, drawW, drawH, null);
+			logger.info("✓ 배경 렌더링 완료: {} (크기: {}x{}, 그려진 영역: {},{},{},{})", bgFile.getName(), bgImage.getWidth(), bgImage.getHeight(), drawX, drawY, drawW, drawH);
+			return new int[]{drawX, drawY, drawW, drawH};
 
 		} catch (IOException e) {
 			logger.error("배경 이미지 로드 중 오류: {}", fullPath, e);
@@ -690,19 +718,22 @@ public class JpgRenderingService {
 		}
 	}
 
-	private void renderFrames(Graphics2D g2d, JsonNode root) throws IOException {
+	private void renderFrames(Graphics2D g2d, JsonNode root, int[] bgArea) throws IOException {
 		for (JsonNode frameNode : root.path("frames")) {
 			Theme theme = themeRepository.findById(frameNode.path("theme").path("id").asLong()).orElse(null);
 			if (theme == null)
 				continue;
 
-			// 프레임 위치와 크기
-			double frameX = RENDER_WIDTH * (frameNode.path("position").path("left").asDouble() / 100.0);
-			double frameY = RENDER_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0);
-			double frameWidth = RENDER_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0);
-			double frameHeight = RENDER_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0);
+			// 프레임 위치와 크기 (bgArea 기준: bgArea[0]=bgX, bgArea[1]=bgY, bgArea[2]=bgW, bgArea[3]=bgH)
+			double frameX = bgArea[0] + bgArea[2] * (frameNode.path("position").path("left").asDouble() / 100.0);
+			double frameY = bgArea[1] + bgArea[3] * (frameNode.path("position").path("top").asDouble() / 100.0);
+			double frameWidth = bgArea[2] * (frameNode.path("size").path("width").asDouble() / 100.0);
+			double frameHeight = bgArea[3] * (frameNode.path("size").path("height").asDouble() / 100.0);
 
-			BufferedImage frameComposite = new BufferedImage((int) Math.ceil(frameWidth), (int) Math.ceil(frameHeight),
+			// ✅ Math.round()로 변경 — 브라우저의 서브픽셀 반올림과 일치시킴
+			int frameWidthPx = (int) Math.round(frameWidth);
+			int frameHeightPx = (int) Math.round(frameHeight);
+			BufferedImage frameComposite = new BufferedImage(frameWidthPx, frameHeightPx,
 					BufferedImage.TYPE_INT_ARGB);
 			Graphics2D g2dFrame = frameComposite.createGraphics();
 			setHighQualityRenderingHints(g2dFrame);
@@ -768,24 +799,29 @@ public class JpgRenderingService {
 			// ✅ 수정: sizePercent가 있으면 프레임 기준 백분율 사용
 	        JsonNode sizePercent = photoNode.path("sizePercent");
 	        if (!sizePercent.isMissingNode()) {
-	        	// 마스크 bounds 계산
+	        	// ✅ 마스크 bounds 계산 — 프론트엔드와 동일하게 editMaskPath 사용
+	        	// 프론트엔드 MaskBoundsCalculator는 editMaskPath(_M.png)를 사용하므로 동일한 이미지 기준
 	            BufferedImage maskImg = null;
-	            if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-	                maskImg = loadMaskImage(theme.getOriginalMaskPath());
+	            String maskPathForBounds = theme.getEditMaskPath();
+	            if (maskPathForBounds == null || maskPathForBounds.isEmpty()) {
+	                maskPathForBounds = theme.getOriginalMaskPath(); // editMask 없으면 원본 사용
 	            }
-	            Rectangle maskBounds = getMaskBounds(maskImg, frameWidth, frameHeight);
-	            
-	            // 마스크 bounds 기준 백분율로 크기 계산
+	            if (maskPathForBounds != null && !maskPathForBounds.isEmpty()) {
+	                maskImg = loadMaskImage(maskPathForBounds);
+	            }
+	            Rectangle2D.Double maskBounds = getMaskBounds(maskImg, frameWidth, frameHeight);
+
+	            // 마스크 bounds 기준 백분율로 크기 계산 (프론트엔드 applyPhotoPosition과 동일)
 	            photoWidth = maskBounds.width * (sizePercent.path("width").asDouble(100) / 100.0);
 	            photoHeight = maskBounds.height * (sizePercent.path("height").asDouble(100) / 100.0);
-	            
+
 	            // translate도 마스크 bounds 기준 + 오프셋 추가
 	            double translateXPercent = photoNode.path("translateX").asDouble(0);
 	            double translateYPercent = photoNode.path("translateY").asDouble(0);
 	            photoX = maskBounds.x + maskBounds.width * (translateXPercent / 100.0);
 	            photoY = maskBounds.y + maskBounds.height * (translateYPercent / 100.0);
-	            
-	            logger.info("maskBounds 사용: bounds({}, {}, {}, {}), 크기({}, {}), 위치({}, {})", 
+
+	            logger.info("maskBounds 사용 (editMask): bounds({}, {}, {}, {}), 크기({}, {}), 위치({}, {})",
 	                        maskBounds.x, maskBounds.y, maskBounds.width, maskBounds.height,
 	                        photoWidth, photoHeight, photoX, photoY);
 	        } else {
@@ -839,6 +875,12 @@ public class JpgRenderingService {
 			maskImage = loadMaskImage(theme.getOriginalMaskPath());
 		}
 
+		// ✅ 사진 좌표를 Math.round로 정수 변환 (일관된 반올림)
+		int photoXi = (int) Math.round(photoX);
+		int photoYi = (int) Math.round(photoY);
+		int photoWi = (int) Math.round(photoWidth);
+		int photoHi = (int) Math.round(photoHeight);
+
 		if (maskImage != null) {
 			// 마스크 적용을 위해 프레임 내 상대 좌표로 변환
 			BufferedImage maskedPhoto = new BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_ARGB);
@@ -853,7 +895,7 @@ public class JpgRenderingService {
 			}
 
 			// 사진을 절대 좌표에 그리기
-			g2dMasked.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
+			g2dMasked.drawImage(photoImage, photoXi, photoYi, photoWi, photoHi, null);
 
 			// 회전 리셋 후 마스크 적용
 			g2dMasked.setTransform(new AffineTransform());
@@ -870,10 +912,10 @@ public class JpgRenderingService {
 				double centerX = photoX + photoWidth / 2;
 				double centerY = photoY + photoHeight / 2;
 				g2dTemp.rotate(rotation, centerX, centerY);
-				g2dTemp.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
+				g2dTemp.drawImage(photoImage, photoXi, photoYi, photoWi, photoHi, null);
 				g2dTemp.dispose();
 			} else {
-				g2d.drawImage(photoImage, (int) photoX, (int) photoY, (int) photoWidth, (int) photoHeight, null);
+				g2d.drawImage(photoImage, photoXi, photoYi, photoWi, photoHi, null);
 			}
 		}
 	}
@@ -921,48 +963,141 @@ public class JpgRenderingService {
 		g2dTransformed.dispose();
 	}
 
-	private void renderSingleTextBoxImproved(Graphics2D g2d, JsonNode textBox) {
+	private void renderSingleTextBoxImproved(Graphics2D g2d, JsonNode textBox, int[] bgArea) {
 		// 위치와 크기 계산
-		double boxX = RENDER_WIDTH * (textBox.path("position").path("left").asDouble() / 100.0);
-		double boxY = RENDER_HEIGHT * (textBox.path("position").path("top").asDouble() / 100.0);
-		double boxWidth = RENDER_WIDTH * (textBox.path("size").path("width").asDouble() / 100.0);
-		double boxHeight = RENDER_HEIGHT * (textBox.path("size").path("height").asDouble() / 100.0);
+		double boxX = bgArea[0] + bgArea[2] * (textBox.path("position").path("left").asDouble() / 100.0);
+		double boxY = bgArea[1] + bgArea[3] * (textBox.path("position").path("top").asDouble() / 100.0);
+		double boxWidth = bgArea[2] * (textBox.path("size").path("width").asDouble() / 100.0);
+		double boxHeight = bgArea[3] * (textBox.path("size").path("height").asDouble() / 100.0);
 
-		// ... 텍스트 처리 코드 ...
+		// HTML에서 텍스트 및 스타일 추출
+		String html = textBox.path("html").asText();
+		if (html == null || html.trim().isEmpty()) {
+			logger.warn("텍스트박스 HTML이 비어있음 - 스킵");
+			return;
+		}
+
+		// 스타일 노드에서 기본 스타일 추출
+		JsonNode styles = textBox.path("styles");
+		String fontFamily = styles.path("fontFamily").asText("Arial");
+		double baseFontSize = styles.path("fontSize").asDouble(16.0);
+		String textAlign = styles.path("textAlign").asText("left");
+		String fontWeight = styles.path("fontWeight").asText("normal");
+
+		// 편집기 기준 폰트 크기 → 렌더링 크기로 스케일
+		// 편집기 bgWidth = editorBgWidth (captureInfo에 있으면 사용, 아니면 EDIT_WIDTH 기본값)
+		double editorBgWidth = textBox.path("captureInfo").path("editorBgWidth").asDouble(EDIT_WIDTH);
+		double fontScale = bgArea[2] / editorBgWidth;
+		int scaledFontSize = Math.max(1, (int) Math.round(baseFontSize * fontScale));
+
+		// 폰트 스타일 결정
+		int fontStyle = Font.PLAIN;
+		if ("bold".equalsIgnoreCase(fontWeight) || "700".equals(fontWeight) || "600".equals(fontWeight)) {
+			fontStyle = Font.BOLD;
+		}
+
+		Font font = getFont(fontFamily, fontStyle, scaledFontSize);
+
+		// HTML에서 순수 텍스트 추출 (간단한 태그 제거)
+		String plainText = html.replaceAll("<[^>]+>", "").replaceAll("&nbsp;", " ")
+				.replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">").trim();
+
+		if (plainText.isEmpty()) {
+			logger.warn("텍스트박스 순수 텍스트가 비어있음 - 스킵");
+			return;
+		}
+
+		// 색상 추출 (HTML에서 color 스타일 검색)
+		Color textColor = Color.BLACK;
+		try {
+			java.util.regex.Matcher colorMatcher = java.util.regex.Pattern
+					.compile("color\\s*:\\s*([#rgb()0-9a-fA-F,. ]+?)(?:;|\"|'|$)")
+					.matcher(html);
+			if (colorMatcher.find()) {
+				textColor = parseColor(colorMatcher.group(1).trim());
+			}
+		} catch (Exception e) {
+			// 색상 파싱 실패 시 검정색 유지
+		}
 
 		Graphics2D g2dText = (Graphics2D) g2d.create();
 		setHighQualityRenderingHints(g2dText);
 
-		// 새로운 구조 확인
+		// 회전/translate 처리
 		boolean hasNewStructure = textBox.has("rotation");
-		double rotation = 0;
-
 		if (hasNewStructure) {
-			rotation = textBox.path("rotation").asDouble(0);
+			double rotation = textBox.path("rotation").asDouble(0);
+			double translateXPercent = textBox.path("translateX").asDouble(0);
+			double translateYPercent = textBox.path("translateY").asDouble(0);
+			double translateX = (translateXPercent / 100.0) * bgArea[2];
+			double translateY = (translateYPercent / 100.0) * bgArea[3];
 			double transformOriginX = textBox.path("transformOriginX").asDouble(50);
 			double transformOriginY = textBox.path("transformOriginY").asDouble(50);
 
-			if (Math.abs(rotation) > 0.001) {
-				double pivotX = boxX + (boxWidth * transformOriginX / 100);
-				double pivotY = boxY + (boxHeight * transformOriginY / 100);
-
-				AffineTransform at = g2dText.getTransform();
-				at.translate(pivotX, pivotY);
-				at.rotate(rotation);
-				at.translate(-boxWidth * transformOriginX / 100, -boxHeight * transformOriginY / 100);
-				g2dText.setTransform(at);
-			}
+			g2dText.translate(boxX, boxY);
+			AffineTransform at = new AffineTransform();
+			at.translate(translateX, translateY);
+			double pivotInBoxX = boxWidth * transformOriginX / 100.0;
+			double pivotInBoxY = boxHeight * transformOriginY / 100.0;
+			at.rotate(rotation, pivotInBoxX, pivotInBoxY);
+			g2dText.transform(at);
 		} else {
-			// 기존 transform 처리 유지
+			// 기존 transform 처리
 			String transform = textBox.path("transform").asText("none");
-			// ... 기존 코드 ...
+			g2dText.translate(boxX, boxY);
+			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+				TransformParser parser = TransformParser.parse(transform);
+				if (Math.abs(parser.rotation) > 0.001) {
+					String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
+					double[] origin = parseTransformOrigin(transformOrigin, boxWidth, boxHeight);
+					g2dText.rotate(parser.rotation, origin[0], origin[1]);
+				}
+			}
 		}
 
-		// 텍스트 렌더링
-		g2dText.translate(boxX, boxY);
-		// ... 나머지 텍스트 렌더링 코드 ...
+		// 텍스트 렌더링 (클리핑 영역 설정)
+		g2dText.setClip(0, 0, (int) Math.ceil(boxWidth), (int) Math.ceil(boxHeight));
+		g2dText.setFont(font);
+		g2dText.setColor(textColor);
+
+		FontMetrics fm = g2dText.getFontMetrics();
+		int lineHeight = fm.getHeight();
+		int padding = (int)(5 * fontScale);
+		int currentY = padding + fm.getAscent();
+
+		// 줄바꿈 처리하여 텍스트 그리기
+		String[] lines = plainText.split("\\n|<br\\s*/?>");
+		for (String line : lines) {
+			if (line.trim().isEmpty()) {
+				currentY += lineHeight;
+				continue;
+			}
+
+			int textWidth = fm.stringWidth(line);
+			int textX;
+			switch (textAlign.toLowerCase()) {
+				case "center":
+					textX = (int)((boxWidth - textWidth) / 2);
+					break;
+				case "right":
+					textX = (int)(boxWidth - textWidth - padding);
+					break;
+				default: // left
+					textX = padding;
+					break;
+			}
+
+			if (currentY <= boxHeight + fm.getAscent()) {
+				g2dText.drawString(line, textX, currentY);
+			}
+			currentY += lineHeight;
+		}
 
 		g2dText.dispose();
+
+		logger.info("텍스트박스 폴백 렌더링: 위치({}, {}), 크기({}, {}), 폰트={}/{}px, 텍스트='{}'",
+				(int)boxX, (int)boxY, (int)boxWidth, (int)boxHeight, fontFamily, scaledFontSize,
+				plainText.length() > 30 ? plainText.substring(0, 30) + "..." : plainText);
 	}
 
 	private Rectangle2D getMaskContentBounds(BufferedImage maskImage) {
@@ -2169,7 +2304,7 @@ public class JpgRenderingService {
 		return null;
 	}
 
-	private void renderTextBoxes(Graphics2D g2d, JsonNode root) {
+	private void renderTextBoxes(Graphics2D g2d, JsonNode root, int[] bgArea) {
 		int textBoxCount = 0;
 
 		for (JsonNode textBox : root.path("textBoxes")) {
@@ -2189,27 +2324,27 @@ public class JpgRenderingService {
 
 			if (!renderImagePath.isEmpty() && !isModified) {
 				logger.info("  -> 저장된 이미지로 렌더링: {}", renderImagePath);
-				renderTextBoxAsImage(g2d, textBox, renderImagePath);
+				renderTextBoxAsImage(g2d, textBox, renderImagePath, bgArea);
 			} else {
 				logger.info("  -> 텍스트로 직접 렌더링");
 
 				// 위치 정보 로그
-				double boxX = RENDER_WIDTH * (textBox.path("position").path("left").asDouble() / 100.0);
-				double boxY = RENDER_HEIGHT * (textBox.path("position").path("top").asDouble() / 100.0);
+				double boxX = bgArea[0] + bgArea[2] * (textBox.path("position").path("left").asDouble() / 100.0);
+				double boxY = bgArea[1] + bgArea[3] * (textBox.path("position").path("top").asDouble() / 100.0);
 				logger.info("  위치: ({}, {})", boxX, boxY);
 
-				renderSingleTextBoxImproved(g2d, textBox);
+				renderSingleTextBoxImproved(g2d, textBox, bgArea);
 			}
 		}
 
 		logger.info("이 {} 개의 텍스트박스 렌더링 완료", textBoxCount);
 	}
 
-	private void renderTextBoxAsImage(Graphics2D g2d, JsonNode textBox, String imagePath) {
+	private void renderTextBoxAsImage(Graphics2D g2d, JsonNode textBox, String imagePath, int[] bgArea) {
 		try {
 			BufferedImage textImage = loadTextImage(imagePath);
 			if (textImage == null) {
-				renderSingleTextBoxImproved(g2d, textBox);
+				renderSingleTextBoxImproved(g2d, textBox, bgArea);
 				return;
 			}
 
@@ -2217,83 +2352,104 @@ public class JpgRenderingService {
 			boolean hasNewStructure = textBox.has("rotation");
 
 			if (hasNewStructure) {
-				renderTextBoxWithNewStructure(g2d, textBox, textImage);
+				renderTextBoxWithNewStructure(g2d, textBox, textImage, bgArea);
 			} else {
-				renderTextBoxWithCaptureInfo(g2d, textBox, textImage);
+				renderTextBoxWithCaptureInfo(g2d, textBox, textImage, bgArea);
 			}
 
 		} catch (Exception e) {
 			logger.error("텍스트 이미지 렌더링 실패: {}", e.getMessage());
-			renderSingleTextBoxImproved(g2d, textBox);
+			renderSingleTextBoxImproved(g2d, textBox, bgArea);
 		}
 	}
 
-	private void renderTextBoxWithNewStructure(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
-		// 1. 위치 및 크기 정보 계산 (기존과 동일)
+	private void renderTextBoxWithNewStructure(Graphics2D g2d, JsonNode textBox, BufferedImage textImage, int[] bgArea) {
+		// 1. 위치 및 크기 정보 계산
 		double leftPercent = textBox.path("position").path("left").asDouble();
 		double topPercent = textBox.path("position").path("top").asDouble();
 		double widthPercent = textBox.path("size").path("width").asDouble();
 		double heightPercent = textBox.path("size").path("height").asDouble();
 
-		double baseLeft = (leftPercent / 100.0) * RENDER_WIDTH;
-		double baseTop = (topPercent / 100.0) * RENDER_HEIGHT;
-		double boxWidth = (widthPercent / 100.0) * RENDER_WIDTH;
-		double boxHeight = (heightPercent / 100.0) * RENDER_HEIGHT;
+		double baseLeft = bgArea[0] + (leftPercent / 100.0) * bgArea[2];
+		double baseTop = bgArea[1] + (topPercent / 100.0) * bgArea[3];
+		// boxWidth/boxHeight: 에디터 기준 논리 크기 (position, rotate 기준)
+		double boxWidth = (widthPercent / 100.0) * bgArea[2];
+		double boxHeight = (heightPercent / 100.0) * bgArea[3];
 
-		// 2. Transform 정보 계산 (기존과 동일)
+		// 2. Transform 정보 계산
 		double rotation = textBox.path("rotation").asDouble(0);
 		double translateXPercent = textBox.path("translateX").asDouble(0);
 		double translateYPercent = textBox.path("translateY").asDouble(0);
-		double translateX = (translateXPercent / 100.0) * RENDER_WIDTH;
-		double translateY = (translateYPercent / 100.0) * RENDER_HEIGHT;
+		double translateX = (translateXPercent / 100.0) * bgArea[2];
+		double translateY = (translateYPercent / 100.0) * bgArea[3];
 		double transformOriginX = textBox.path("transformOriginX").asDouble(50);
 		double transformOriginY = textBox.path("transformOriginY").asDouble(50);
 
-		// --- 💡핵심 수정 부분 시작 ---
+		// 3. PNG 실제 픽셀 크기 확인
+		// html2canvas가 (width+5, height+5)*RENDER_SCALE 로 캡처했으므로
+		// PNG 자체 크기를 그대로 사용해야 텍스트가 압축되지 않음
+		// captureInfo에서 원본 편집기 크기 읽기
+		JsonNode captureInfo = textBox.path("captureInfo");
+		double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(EDIT_WIDTH);
+		double drawScale = bgArea[2] / editorBgWidth; // 편집기→렌더링 스케일
+
+		// PNG 크기를 drawScale 기반으로 계산
+		// captureInfo.originalWidth/Height는 transform 제거 후 측정한 편집기 픽셀 크기
+		double origW = captureInfo.path("originalWidth").asDouble(0);
+		double origH = captureInfo.path("originalHeight").asDouble(0);
+
+		// captureInfo가 있으면 원본 크기 * drawScale, 없으면 PNG 실제 크기 사용
+		int drawWidth, drawHeight;
+		if (origW > 0 && origH > 0) {
+			// 원본 편집기 크기 기반 (캡처 시 +5 여유값도 반영)
+			drawWidth  = (int) Math.round(origW * drawScale);
+			drawHeight = (int) Math.round(origH * drawScale);
+		} else {
+			// captureInfo 없으면 boxWidth/Height 사용 (이전 동작 유지)
+			drawWidth  = (int) Math.round(boxWidth);
+			drawHeight = (int) Math.round(boxHeight);
+		}
+
+		// 4. 그래픽 변환 설정
 		Graphics2D g2dText = (Graphics2D) g2d.create();
 		setHighQualityRenderingHints(g2dText);
 
-		// 3. 요소의 기본 위치(left, top)로 먼저 이동합니다.
+		// 4-1. 요소의 기본 위치(left, top)로 이동
 		g2dText.translate(baseLeft, baseTop);
 
-		// 4. CSS Transform과 동일한 변환을 생성합니다.
-		AffineTransform transform = new AffineTransform();
-
-		// 4-1. 최종 이동(translateX, translateY)을 먼저 적용합니다.
-		transform.translate(translateX, translateY);
-
-		// 4-2. 요소 내부의 transform-origin을 기준으로 회전합니다.
+		// 4-2. CSS Transform과 동일한 변환 적용
+		AffineTransform at = new AffineTransform();
+		// translateX/Y 먼저, rotate 나중 (Java AffineTransform은 역순 적용이므로 결과적으로 rotate→translate)
+		at.translate(translateX, translateY);
 		double pivotInBoxX = boxWidth * transformOriginX / 100.0;
 		double pivotInBoxY = boxHeight * transformOriginY / 100.0;
-		transform.rotate(rotation, pivotInBoxX, pivotInBoxY);
+		at.rotate(rotation, pivotInBoxX, pivotInBoxY);
+		g2dText.transform(at);
 
-		// 4-3. 생성된 변환을 그래픽 컨텍스트에 적용합니다.
-		g2dText.transform(transform);
-
-		// 5. 변환된 좌표계의 원점(0,0)에 이미지를 그립니다.
-		g2dText.drawImage(textImage, 0, 0, (int) Math.round(boxWidth), (int) Math.round(boxHeight), null);
+		// 5. PNG 이미지를 원본 크기 기반으로 그리기
+		g2dText.drawImage(textImage, 0, 0, drawWidth, drawHeight, null);
 
 		g2dText.dispose();
-		// --- 💡핵심 수정 부분 끝 ---
 
-		logger.info("새 구조 텍스트박스 렌더링: position({}, {}), size({}, {}), rotation={}, translate({}, {})", baseLeft, baseTop,
-				boxWidth, boxHeight, rotation, translateX, translateY);
+		logger.info("새 구조 텍스트박스 렌더링: position({}, {}), logicSize({}, {}), drawSize({}, {}), rotation={}, translate({}, {})",
+				(int)baseLeft, (int)baseTop, (int)boxWidth, (int)boxHeight, drawWidth, drawHeight,
+				rotation, (int)translateX, (int)translateY);
 	}
 
-	private void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage) {
+	private void renderTextBoxWithCaptureInfo(Graphics2D g2d, JsonNode textBox, BufferedImage textImage, int[] bgArea) {
 		try {
 			JsonNode captureInfo = textBox.path("captureInfo");
 	        JsonNode absolutePixels = captureInfo.path("absolutePixels");
 	        
 	        if (captureInfo.isMissingNode() || absolutePixels.isMissingNode()) {
-	            renderSingleTextBoxImproved(g2d, textBox);
+	            renderSingleTextBoxImproved(g2d, textBox, bgArea);
 	            return;
 	        }
 	        
 	        boolean hasNewStructure = textBox.has("rotation");
 	        
 	        if (hasNewStructure) {
-	            renderTextBoxWithNewStructure(g2d, textBox, textImage);
+	            renderTextBoxWithNewStructure(g2d, textBox, textImage, bgArea);
 	            return;
 	        }
 
@@ -2307,11 +2463,14 @@ public class JpgRenderingService {
 			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
 
 			// 스케일 적용 (편집기 → 렌더링)
-			double scale = RENDER_WIDTH / editorBgWidth;
-			double finalX = editorX * scale;
-			double finalY = editorY * scale;
-			double finalWidth = editorWidth * scale;
-			double finalHeight = editorHeight * scale;
+			double scale = bgArea[2] / editorBgWidth;
+			double finalX = bgArea[0] + editorX * scale;
+			double finalY = bgArea[1] + editorY * scale;
+			// 그리기 크기: captureInfo.originalWidth/Height 기반 (transform 없이 측정한 실제 편집기 크기)
+			double origW = captureInfo.path("originalWidth").asDouble(0);
+			double origH = captureInfo.path("originalHeight").asDouble(0);
+			double finalWidth  = (origW > 0 ? origW  : editorWidth)  * scale;
+			double finalHeight = (origH > 0 ? origH : editorHeight) * scale;
 
 			// 기존 transform 처리 (구버전 호환)
 			String transform = textBox.path("transform").asText("none");
@@ -2343,7 +2502,7 @@ public class JpgRenderingService {
 
 		} catch (Exception e) {
 			logger.error("captureInfo 텍스트박스 렌더링 실패: {}", e.getMessage());
-			renderSingleTextBoxImproved(g2d, textBox);
+			renderSingleTextBoxImproved(g2d, textBox, bgArea);
 		}
 	}
 
@@ -2406,42 +2565,47 @@ public class JpgRenderingService {
 	
 	/**
 	 * 마스크 이미지에서 불투명 영역의 bounding box 계산
+	 * ✅ 프론트엔드 MaskBoundsCalculator.getBounds()와 동일한 알고리즘:
+	 *   1) 마스크 이미지에서 alpha > 0인 픽셀의 min/max 좌표를 구함
+	 *   2) 비율(0~1)로 변환하여 캐싱 → 프레임 크기에 곱해 최종 좌표 계산
+	 *   이렇게 하면 마스크 해상도(_M vs _B)에 관계없이 동일한 비율이 나옴
 	 */
-	private Rectangle getMaskBounds(BufferedImage maskImage, int frameWidth, int frameHeight) {
+	private Rectangle2D.Double getMaskBounds(BufferedImage maskImage, int frameWidth, int frameHeight) {
 	    if (maskImage == null) {
-	        return new Rectangle(0, 0, frameWidth, frameHeight);
+	        return new Rectangle2D.Double(0, 0, frameWidth, frameHeight);
 	    }
-	    
-	    int minX = maskImage.getWidth();
-	    int minY = maskImage.getHeight();
-	    int maxX = 0;
-	    int maxY = 0;
-	    
-	    for (int y = 0; y < maskImage.getHeight(); y++) {
-	        for (int x = 0; x < maskImage.getWidth(); x++) {
+
+	    int imgW = maskImage.getWidth();
+	    int imgH = maskImage.getHeight();
+	    int minX = imgW, minY = imgH, maxX = -1, maxY = -1;
+
+	    for (int y = 0; y < imgH; y++) {
+	        for (int x = 0; x < imgW; x++) {
 	            int alpha = (maskImage.getRGB(x, y) >> 24) & 0xFF;
 	            if (alpha > 0) {
-	                minX = Math.min(minX, x);
-	                minY = Math.min(minY, y);
-	                maxX = Math.max(maxX, x);
-	                maxY = Math.max(maxY, y);
+	                if (x < minX) minX = x;
+	                if (x > maxX) maxX = x;
+	                if (y < minY) minY = y;
+	                if (y > maxY) maxY = y;
 	            }
 	        }
 	    }
-	    
-	    if (maxX < minX || maxY < minY) {
-	        return new Rectangle(0, 0, frameWidth, frameHeight);
+
+	    if (maxX < 0 || maxY < 0) {
+	        return new Rectangle2D.Double(0, 0, frameWidth, frameHeight);
 	    }
-	    
-	    // 프레임 크기 기준으로 스케일 변환
-	    double scaleX = (double) frameWidth / maskImage.getWidth();
-	    double scaleY = (double) frameHeight / maskImage.getHeight();
-	    
-	    return new Rectangle(
-	        (int)(minX * scaleX),
-	        (int)(minY * scaleY),
-	        (int)((maxX - minX + 1) * scaleX),
-	        (int)((maxY - minY + 1) * scaleY)
+
+	    // ✅ 프론트엔드와 동일: 비율(ratio)로 먼저 계산, 그 다음 프레임 크기에 곱함
+	    double ratioX = (double) minX / imgW;
+	    double ratioY = (double) minY / imgH;
+	    double ratioW = (double) (maxX - minX + 1) / imgW;
+	    double ratioH = (double) (maxY - minY + 1) / imgH;
+
+	    return new Rectangle2D.Double(
+	        ratioX * frameWidth,
+	        ratioY * frameHeight,
+	        ratioW * frameWidth,
+	        ratioH * frameHeight
 	    );
 	}
 }
