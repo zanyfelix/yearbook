@@ -73,6 +73,7 @@
 		      <th>SCHOOL_NAME</th>
 		      <th>DEADLINE</th>
 		      <th>ROLE</th>
+		      <th>SAFE_MARGIN</th>
 		      <th>ACTIVE</th>
 		    </tr>
 	      </thead>
@@ -88,6 +89,21 @@
 	            <td>${item.schoolName}</td>
 	            <td><fmt:formatDate value="${item.deadline}" pattern="yyyy-MM-dd"/></td>
 	            <td>${item.role}</td>
+	            <td>
+				  <c:if test="${item.role != 'admin'}">
+				  <label class="safe-margin-toggle">
+				    <input type="hidden" name="safeMargin" value="3"/>
+				    <input
+				      type="checkbox"
+				      name="safeMargin"
+				      value="6"
+				      data-user-id="${item.id}"
+				      ${item.safeMargin == 6 ? "checked" : ""}
+				    />
+				    <span class="sm-slider"></span>
+				  </label>
+				  </c:if>
+				</td>
 	            <td>
 				  <label class="toggle-switch">
 				    <!-- unchecked 시에도 값이 0으로 넘어가게 하는 hidden field -->

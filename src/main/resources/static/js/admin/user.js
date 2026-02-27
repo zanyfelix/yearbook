@@ -79,6 +79,29 @@ $(document).ready(function() {
 		// 선택된 항목이 있으면, form의 onsubmit 이벤트가 정상적으로 실행됩니다.
 	});
 
+	// safeMargin 토글 스위치 변경 (3mm ↔ 6mm)
+	$('.safe-margin-toggle input[type="checkbox"]').on('change', function() {
+		const $this = $(this);
+		const payload = {
+			id: +$this.data('user-id'),
+			safeMargin: this.checked ? 6 : 3
+		};
+
+		$.ajax({
+			url: window.contextPath + '/admin/user/toggle-safe-margin',
+			type: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify(payload),
+			success: function() {
+				// 성공
+			},
+			error: function(jqXHR, textStatus, errorThrown) {
+				alert('Safe margin change failed: ' + errorThrown);
+				$this.prop('checked', !$this.prop('checked')); // 실패 시 원복
+			}
+		});
+	});
+
 	// active 토글 스위치 변경
 	$('.toggle-switch input[type="checkbox"]').on('change', function() {
 		const $this = $(this);

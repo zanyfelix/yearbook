@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.mbiz.yearbook.model.ToggleActiveDto;
+import com.mbiz.yearbook.model.ToggleSafeMarginDto;
 import com.mbiz.yearbook.model.User;
 import com.mbiz.yearbook.repository.UserRepository;
 import com.mbiz.yearbook.service.AuditLogService;
@@ -132,6 +133,12 @@ public class AdminUserController {
 	@PostMapping("/user/toggle-active")
 	public ResponseEntity<Map<String, String>> toggleActive(@RequestBody ToggleActiveDto dto) {
 		userService.updateActive(dto.getId(), dto.isActive());
+		return ResponseEntity.ok().build();
+	}
+
+	@PostMapping("/user/toggle-safe-margin")
+	public ResponseEntity<Map<String, String>> toggleSafeMargin(@RequestBody ToggleSafeMarginDto dto) {
+		userService.updateSafeMargin(dto.getId(), dto.getSafeMargin());
 		return ResponseEntity.ok().build();
 	}
 }

@@ -61,6 +61,8 @@
 	<div class="content">
 		<input type="hidden" id="id" name="id"
 			value="${sessionScope.loginUser.id}" />
+		<input type="hidden" id="userSafeMargin"
+			value="${sessionScope.loginUser.safeMargin}" />
 		<div class="top-bar">
 			<span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate
 					value="${deadline}" pattern="MMMM dd, yyyy" /> (D-${remainDays}

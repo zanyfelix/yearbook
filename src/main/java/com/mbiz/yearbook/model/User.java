@@ -79,5 +79,8 @@ public class User {
     
     @Column(name = "submitted")
     private boolean submitted = false;
-    
+
+    @Column(name = "safe_margin")
+    private int safeMargin = 3;  // 안전선 여백 (mm), 기본값 3mm
+
 }

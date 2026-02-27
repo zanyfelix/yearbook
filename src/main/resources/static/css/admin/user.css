@@ -223,6 +223,51 @@ button.btn-primary {
   background-color: #ffffff;
   color: #000000;
 }
+/* ── SafeMargin 토글 (3mm / 6mm) ── */
+.safe-margin-toggle {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+.safe-margin-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.safe-margin-toggle .sm-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  border-radius: 30px;
+  transition: background-color 0.3s;
+}
+.safe-margin-toggle .sm-slider::before {
+  content: "3mm";
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  left: 2px; bottom: 2px;
+  background-color: #fff;
+  color: #6c757d;
+  font-size: 8px;
+  font-weight: bold;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+.safe-margin-toggle input:checked + .sm-slider {
+  background-color: #007bff;
+}
+.safe-margin-toggle input:checked + .sm-slider::before {
+  transform: translateX(30px);
+  content: "6mm";
+  background-color: #ffffff;
+  color: #000000;
+}
 /* ────────────────────────────── */
 /* 전체 선택 / 개별 선택 체크박스 공통 */
 #selectAll,

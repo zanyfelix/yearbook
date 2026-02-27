@@ -3,7 +3,9 @@ class SafeLineManager {
     constructor() {
         this.actualWidth = 221.9;
         this.actualHeight = 285.4;
-        this.safeMargin = 3;
+        // 사용자별 safeMargin 설정 (edit.jsp에서 hidden input으로 전달)
+        const userMargin = parseInt($('#userSafeMargin').val());
+        this.safeMargin = (userMargin === 3 || userMargin === 6) ? userMargin : 3;
         this.container = null;
         this.resizeTimeout = null;
         this.windowResizeTimeout = null;

@@ -142,5 +142,13 @@ public class UserService {
         user.setActive(active);
         // save() 불필요 — 트랜잭션 커밋 시점에 JPA가 자동 업데이트합니다.
     }
-    
+
+    @Transactional
+    public void updateSafeMargin(Long id, int safeMargin) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() ->
+                new IllegalArgumentException("해당 사용자가 없습니다. id=" + id));
+        user.setSafeMargin(safeMargin);
+    }
+
 }
