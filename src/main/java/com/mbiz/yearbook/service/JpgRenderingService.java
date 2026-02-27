@@ -2317,16 +2317,16 @@ public class JpgRenderingService {
 
 			// renderImage 경로 확인
 			String renderImagePath = textBox.path("renderImage").asText();
-			boolean isModified = textBox.path("isModified").asBoolean(true);
 
 			logger.info("  renderImage: {}", renderImagePath);
-			logger.info("  isModified: {}", isModified);
 
-			if (!renderImagePath.isEmpty() && !isModified) {
-				logger.info("  -> 저장된 이미지로 렌더링: {}", renderImagePath);
+			// ✅ renderImage가 존재하면 무조건 PNG 이미지 사용 (브라우저 렌더링 결과를 그대로 활용)
+			// isModified 체크 제거 — 최종 렌더링에서는 저장된 PNG가 항상 최신 상태
+			if (!renderImagePath.isEmpty()) {
+				logger.info("  -> 캡처된 PNG 이미지로 렌더링: {}", renderImagePath);
 				renderTextBoxAsImage(g2d, textBox, renderImagePath, bgArea);
 			} else {
-				logger.info("  -> 텍스트로 직접 렌더링");
+				logger.info("  -> renderImage 없음, Java 텍스트 폴백 렌더링");
 
 				// 위치 정보 로그
 				double boxX = bgArea[0] + bgArea[2] * (textBox.path("position").path("left").asDouble() / 100.0);
@@ -2385,30 +2385,25 @@ public class JpgRenderingService {
 		double transformOriginX = textBox.path("transformOriginX").asDouble(50);
 		double transformOriginY = textBox.path("transformOriginY").asDouble(50);
 
-		// 3. PNG 실제 픽셀 크기 확인
-		// html2canvas가 (width+5, height+5)*RENDER_SCALE 로 캡처했으므로
-		// PNG 자체 크기를 그대로 사용해야 텍스트가 압축되지 않음
-		// captureInfo에서 원본 편집기 크기 읽기
+		// ✅ 3. PNG 그리기 크기: PNG 자연 해상도를 기반으로 정확한 크기 결정
+		// 핵심 원리: html2canvas가 (boxW+5, boxH+5) 영역을 captureScale로 캡처했으므로
+		// PNG 자체의 해상도가 곧 정답. drawScale/captureScale 비율만 보정하면 됨.
 		JsonNode captureInfo = textBox.path("captureInfo");
 		double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(EDIT_WIDTH);
-		double drawScale = bgArea[2] / editorBgWidth; // 편집기→렌더링 스케일
+		double drawScale = (double) bgArea[2] / editorBgWidth; // 편집기→렌더링 스케일
+		double captureScale = captureInfo.path("scale").asDouble(PRECISE_SCALE_RATIO); // 캡처 시 사용한 스케일
 
-		// PNG 크기를 drawScale 기반으로 계산
-		// captureInfo.originalWidth/Height는 transform 제거 후 측정한 편집기 픽셀 크기
-		double origW = captureInfo.path("originalWidth").asDouble(0);
-		double origH = captureInfo.path("originalHeight").asDouble(0);
+		// PNG 자연 해상도 × (drawScale / captureScale) 로 보정
+		double scaleAdjust = drawScale / captureScale;
 
-		// captureInfo가 있으면 원본 크기 * drawScale, 없으면 PNG 실제 크기 사용
-		int drawWidth, drawHeight;
-		if (origW > 0 && origH > 0) {
-			// 원본 편집기 크기 기반 (캡처 시 +5 여유값도 반영)
-			drawWidth  = (int) Math.round(origW * drawScale);
-			drawHeight = (int) Math.round(origH * drawScale);
-		} else {
-			// captureInfo 없으면 boxWidth/Height 사용 (이전 동작 유지)
-			drawWidth  = (int) Math.round(boxWidth);
-			drawHeight = (int) Math.round(boxHeight);
-		}
+		// ✅ 핵심 수정: scaleAdjust가 1.0에 매우 근접하면 (±0.5% 이내)
+		// 리스케일을 하지 않고 PNG 원본 해상도 그대로 배치 → 인터폴레이션 아티팩트 제거
+		boolean useNativeResolution = Math.abs(scaleAdjust - 1.0) < 0.005;
+
+		logger.info("텍스트 PNG: 자연크기={}x{}, captureScale={}, drawScale={}, scaleAdjust={}, useNative={}",
+				textImage.getWidth(), textImage.getHeight(),
+				String.format("%.6f", captureScale), String.format("%.6f", drawScale),
+				String.format("%.8f", scaleAdjust), useNativeResolution);
 
 		// 4. 그래픽 변환 설정
 		Graphics2D g2dText = (Graphics2D) g2d.create();
@@ -2419,20 +2414,30 @@ public class JpgRenderingService {
 
 		// 4-2. CSS Transform과 동일한 변환 적용
 		AffineTransform at = new AffineTransform();
-		// translateX/Y 먼저, rotate 나중 (Java AffineTransform은 역순 적용이므로 결과적으로 rotate→translate)
 		at.translate(translateX, translateY);
 		double pivotInBoxX = boxWidth * transformOriginX / 100.0;
 		double pivotInBoxY = boxHeight * transformOriginY / 100.0;
 		at.rotate(rotation, pivotInBoxX, pivotInBoxY);
 		g2dText.transform(at);
 
-		// 5. PNG 이미지를 원본 크기 기반으로 그리기
-		g2dText.drawImage(textImage, 0, 0, drawWidth, drawHeight, null);
+		// 5. PNG 이미지를 정확한 크기로 그리기
+		if (useNativeResolution) {
+			// ✅ scaleAdjust ≈ 1.0: PNG 픽셀을 1:1로 배치 (인터폴레이션 없음 → 최고 품질)
+			g2dText.drawImage(textImage, 0, 0, null);
+			logger.info("  → PNG 원본 해상도 1:1 배치 (인터폴레이션 없음)");
+		} else {
+			// scaleAdjust가 1.0에서 멀면: AffineTransform 기반 정밀 스케일링
+			AffineTransform imgTransform = new AffineTransform();
+			imgTransform.scale(scaleAdjust, scaleAdjust);
+			g2dText.drawImage(textImage, imgTransform, null);
+			logger.info("  → AffineTransform 스케일링 적용: scaleAdjust={}", String.format("%.6f", scaleAdjust));
+		}
 
 		g2dText.dispose();
 
-		logger.info("새 구조 텍스트박스 렌더링: position({}, {}), logicSize({}, {}), drawSize({}, {}), rotation={}, translate({}, {})",
-				(int)baseLeft, (int)baseTop, (int)boxWidth, (int)boxHeight, drawWidth, drawHeight,
+		logger.info("새 구조 텍스트박스 렌더링: position({}, {}), logicSize({}, {}), pngSize={}x{}, rotation={}, translate({}, {})",
+				(int)baseLeft, (int)baseTop, (int)boxWidth, (int)boxHeight,
+				textImage.getWidth(), textImage.getHeight(),
 				rotation, (int)translateX, (int)translateY);
 	}
 
@@ -2463,14 +2468,20 @@ public class JpgRenderingService {
 			double editorBgWidth = captureInfo.path("editorBgWidth").asDouble(786.0);
 
 			// 스케일 적용 (편집기 → 렌더링)
-			double scale = bgArea[2] / editorBgWidth;
-			double finalX = bgArea[0] + editorX * scale;
-			double finalY = bgArea[1] + editorY * scale;
-			// 그리기 크기: captureInfo.originalWidth/Height 기반 (transform 없이 측정한 실제 편집기 크기)
-			double origW = captureInfo.path("originalWidth").asDouble(0);
-			double origH = captureInfo.path("originalHeight").asDouble(0);
-			double finalWidth  = (origW > 0 ? origW  : editorWidth)  * scale;
-			double finalHeight = (origH > 0 ? origH : editorHeight) * scale;
+			double drawScale = (double) bgArea[2] / editorBgWidth;
+			double finalX = bgArea[0] + editorX * drawScale;
+			double finalY = bgArea[1] + editorY * drawScale;
+
+			// ✅ PNG 자연 해상도 기반으로 그리기 크기 결정 (캡처 스케일 보정)
+			double captureScale = captureInfo.path("scale").asDouble(PRECISE_SCALE_RATIO);
+			double scaleAdjust = drawScale / captureScale;
+
+			// ✅ scaleAdjust가 1.0에 매우 근접하면 리스케일 하지 않음 (인터폴레이션 아티팩트 제거)
+			boolean useNativeResolution = Math.abs(scaleAdjust - 1.0) < 0.005;
+
+			// transform origin 계산을 위한 크기 (스케일 적용 후)
+			double finalWidth  = useNativeResolution ? textImage.getWidth() : textImage.getWidth() * scaleAdjust;
+			double finalHeight = useNativeResolution ? textImage.getHeight() : textImage.getHeight() * scaleAdjust;
 
 			// 기존 transform 처리 (구버전 호환)
 			String transform = textBox.path("transform").asText("none");
@@ -2492,13 +2503,27 @@ public class JpgRenderingService {
 				}
 			}
 
-			// 이미지 그리기
-			g2dImage.drawImage(textImage, (int) Math.round(finalX), (int) Math.round(finalY),
-					(int) Math.round(finalWidth), (int) Math.round(finalHeight), null);
+			// ✅ 이미지 그리기: scaleAdjust ≈ 1.0이면 원본 해상도로 1:1 배치
+			if (useNativeResolution) {
+				// 서브픽셀 정밀도를 위해 AffineTransform으로 위치 지정
+				AffineTransform imgTransform = new AffineTransform();
+				imgTransform.translate(finalX, finalY);
+				g2dImage.drawImage(textImage, imgTransform, null);
+				logger.info("  → captureInfo PNG 원본 해상도 1:1 배치 (인터폴레이션 없음)");
+			} else {
+				// 스케일링 필요 시 AffineTransform 기반 정밀 렌더링
+				AffineTransform imgTransform = new AffineTransform();
+				imgTransform.translate(finalX, finalY);
+				imgTransform.scale(scaleAdjust, scaleAdjust);
+				g2dImage.drawImage(textImage, imgTransform, null);
+				logger.info("  → captureInfo AffineTransform 스케일링: scaleAdjust={}", String.format("%.6f", scaleAdjust));
+			}
 
 			g2dImage.dispose();
 
-			logger.info("captureInfo 텍스트박스 렌더링: 위치({}, {}), 크기({}, {})", finalX, finalY, finalWidth, finalHeight);
+			logger.info("captureInfo 텍스트박스 렌더링: 위치({}, {}), pngSize={}x{}, scaleAdjust={}, useNative={}",
+					finalX, finalY, textImage.getWidth(), textImage.getHeight(),
+					String.format("%.8f", scaleAdjust), useNativeResolution);
 
 		} catch (Exception e) {
 			logger.error("captureInfo 텍스트박스 렌더링 실패: {}", e.getMessage());
