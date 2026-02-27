@@ -226,7 +226,23 @@ class SafeLineManager {
             window.selectionManager.safeConstraintsCache = null;
         }
     }
-    
+
+    /**
+     * SafeMargin 맞춤을 위한 균일 축소 비율 계산
+     * oldMargin 기준 콘텐츠 영역 → newMargin 기준 콘텐츠 영역으로의 축소율
+     * 가로/세로 중 더 큰 축소가 필요한 축 기준 (양쪽 모두 안전선 보장)
+     * @param {number} oldMargin - 기존 여백 (mm), 예: 3
+     * @param {number} newMargin - 새 여백 (mm), 예: 6
+     * @returns {number} 균일 축소 비율 (< 1.0 when newMargin > oldMargin)
+     */
+    getMarginFitScale(oldMargin, newMargin) {
+        const oldContentW = this.actualWidth  - 2 * oldMargin;
+        const oldContentH = this.actualHeight - 2 * oldMargin;
+        const newContentW = this.actualWidth  - 2 * newMargin;
+        const newContentH = this.actualHeight - 2 * newMargin;
+        return Math.min(newContentW / oldContentW, newContentH / oldContentH);
+    }
+
     destroy() {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();

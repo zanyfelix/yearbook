@@ -113,4 +113,41 @@ public class YearbookService {
 
         return response;
     }
+
+    /**
+     * SafeFit 실행 전 현재 designData를 백업
+     * @param yearbookId 대상 페이지 ID
+     */
+    @Transactional
+    public void backupDesignData(Long yearbookId) {
+        Yearbook yearbook = yearbookRepository.findById(yearbookId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 페이지가 없습니다. id=" + yearbookId));
+
+        if (yearbook.getDesignData() == null || yearbook.getDesignData().isEmpty()) {
+            throw new IllegalStateException("백업할 designData가 없습니다.");
+        }
+
+        yearbook.setBackupDesignData(yearbook.getDesignData());
+        yearbookRepository.save(yearbook);
+    }
+
+    /**
+     * 백업된 designData로 복원 (원본 3mm 레이아웃)
+     * @param yearbookId 대상 페이지 ID
+     * @return 복원된 Yearbook 엔티티
+     */
+    @Transactional
+    public Yearbook restoreDesignData(Long yearbookId) {
+        Yearbook yearbook = yearbookRepository.findById(yearbookId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 페이지가 없습니다. id=" + yearbookId));
+
+        if (yearbook.getBackupDesignData() == null || yearbook.getBackupDesignData().isEmpty()) {
+            throw new IllegalStateException("복원할 백업 데이터가 없습니다.");
+        }
+
+        yearbook.setDesignData(yearbook.getBackupDesignData());
+        yearbook.setBackupDesignData(null);
+        yearbook.setLastSaved(new Date());
+        return yearbookRepository.save(yearbook);
+    }
 }

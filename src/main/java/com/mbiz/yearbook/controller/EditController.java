@@ -361,6 +361,41 @@ public class EditController {
 				.orElseThrow(() -> new RuntimeException("Yearbook page not found with id: " + yearbookId));
 	}
 
+	// --- SafeFit 백업/복원 API ---
+	@PostMapping("/edit/backupDesignData")
+	@ResponseBody
+	public ResponseEntity<Map<String, Object>> backupDesignData(@RequestBody Map<String, Long> request) {
+		Map<String, Object> response = new HashMap<>();
+		try {
+			Long yearbookId = request.get("yearbookId");
+			yearbookService.backupDesignData(yearbookId);
+			response.put("success", true);
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response.put("success", false);
+			response.put("message", e.getMessage());
+			return ResponseEntity.badRequest().body(response);
+		}
+	}
+
+	@PostMapping("/edit/restoreDesignData")
+	@ResponseBody
+	public ResponseEntity<Map<String, Object>> restoreDesignData(@RequestBody Map<String, Long> request) {
+		Map<String, Object> response = new HashMap<>();
+		try {
+			Long yearbookId = request.get("yearbookId");
+			Yearbook restored = yearbookService.restoreDesignData(yearbookId);
+			response.put("success", true);
+			response.put("designData", restored.getDesignData());
+			response.put("lastSaved", restored.getLastSaved());
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response.put("success", false);
+			response.put("message", e.getMessage());
+			return ResponseEntity.badRequest().body(response);
+		}
+	}
+
 	@PostMapping("/edit/resetPage")
 	@ResponseBody
 	public Map<String, Object> resetPage(@RequestParam("id") Long id) {

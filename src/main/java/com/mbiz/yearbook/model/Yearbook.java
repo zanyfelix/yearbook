@@ -2,6 +2,8 @@ package com.mbiz.yearbook.model;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -45,4 +47,16 @@ public class Yearbook extends BaseTimeEntity {
     
     @Column(name = "subcategory")
     private String subcategory;
+
+    @JsonIgnore  // API 응답에 거대한 백업 JSON 포함 방지
+    @Column(name = "backup_design_data", columnDefinition = "LONGTEXT")
+    private String backupDesignData;
+
+    /**
+     * 백업 존재 여부 (Jackson이 hasBackup 필드로 직렬화)
+     * backupDesignData 자체는 @JsonIgnore로 응답에서 제외
+     */
+    public boolean getHasBackup() {
+        return backupDesignData != null && !backupDesignData.isEmpty();
+    }
 }
