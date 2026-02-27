@@ -1250,14 +1250,14 @@ $(document).ready(function() {
 		const bgImg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
 
-		// RENDER_SCALE을 여기서 정의
-		const RENDER_SCALE = 2621 / 786;
-
 		if (!actualBgRect) {
 			alert("Could not save because background information could not be found.");
 			hideLoader();
 			return;
 		}
+
+		// ✅ RENDER_SCALE: 실제 편집기 배경 너비 기반으로 계산 (백엔드 drawScale과 정확히 일치시켜 scaleAdjust=1.0 보장)
+		const RENDER_SCALE = 2621 / actualBgRect.width;
 
 		// Save 버튼 클릭 이벤트 내 프레임 저장 부분
 		$('#frame-container .frame-group:not(.element-frame)').each(function() {
@@ -1545,8 +1545,8 @@ $(document).ready(function() {
 				// DOM 업데이트 대기
 				await new Promise(resolve => setTimeout(resolve, 100));
 
-				// 렌더링과 동일한 스케일로 캡처 (SCALE_RATIO = 3.33)
-				const RENDER_SCALE = 2621 / 786;  // 약 3.33
+				// ✅ 렌더링과 동일한 스케일로 캡처 (실제 배경 너비 기반)
+				// 이미 상위 스코프에서 RENDER_SCALE = 2621 / actualBgRect.width 로 정의됨
 
 				const canvas = await html2canvas($box[0], {
 					scale: RENDER_SCALE,
