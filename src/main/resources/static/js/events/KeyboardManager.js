@@ -135,77 +135,53 @@ class KeyboardManager {
     }
     
     // ========================================================================
-    // 사진 이동 (프레임 내에서)
+    // 사진 이동 (프레임 내에서) — 드래그와 동일한 좌표계(transform tx/ty) 사용
     // ========================================================================
     movePhoto($photo, $frame, deltaX, deltaY) {
-        // 현재 사진 위치
-        const currentLeft = parseFloat($photo.css('left')) || 0;
-        const currentTop = parseFloat($photo.css('top')) || 0;
-        
-        // 새 위치 계산
-        let newLeft = currentLeft + deltaX;
-        let newTop = currentTop + deltaY;
-        
-        // 마스크/프레임 경계 제약 적용
-        const constrained = this.constrainPhotoPosition($photo, $frame, newLeft, newTop);
-        
-        // 위치 적용
-        $photo.css({
-            left: constrained.left + 'px',
-            top: constrained.top + 'px'
-        });
-        
+        // ✅ 드래그(handleDrag)와 동일: transform matrix의 tx/ty로 위치 관리
+        const currentTransform = $photo.css('transform');
+        const matrix = TransformHelper.parseMatrix(currentTransform);
+
+        const currentTx = matrix.tx;
+        const currentTy = matrix.ty;
+
+        let newTx = currentTx + deltaX;
+        let newTy = currentTy + deltaY;
+
+        // ✅ 드래그와 동일한 마스크 bounds 기준 제약
+        const mb = PhotoManager.getMaskBoundsPixels($frame);
+        const pw = $photo.outerWidth();
+        const ph = $photo.outerHeight();
+
+        // softClamp: 현재 위치가 범위 밖이더라도 더 벗어나는 방향만 차단
+        const softClamp = (cur, next, min, max) => {
+            if (cur < min) return Math.min(max, Math.max(cur, next));
+            if (cur > max) return Math.max(min, Math.min(cur, next));
+            return Math.max(min, Math.min(max, next));
+        };
+
+        if (pw >= mb.width) {
+            const minTx = mb.x + mb.width - pw;  // 사진 우측 = 마스크 우측
+            const maxTx = mb.x;                   // 사진 좌측 = 마스크 좌측
+            newTx = softClamp(currentTx, newTx, minTx, maxTx);
+        }
+        if (ph >= mb.height) {
+            const minTy = mb.y + mb.height - ph;
+            const maxTy = mb.y;
+            newTy = softClamp(currentTy, newTy, minTy, maxTy);
+        }
+
+        // transform으로 위치 적용 (rotation 등 기존 matrix 값 유지)
+        const newMatrix = { ...matrix, tx: newTx, ty: newTy };
+        $photo.css('transform', TransformHelper.composeMatrix(newMatrix));
+
         // 상태 저장
         if (typeof PhotoManager !== 'undefined' && PhotoManager.savePhotoState) {
             PhotoManager.savePhotoState($photo, $frame);
         }
-        
+
         // 선택 UI 업데이트
         this.updatePhotoSelectionUI($photo, $frame);
-    }
-    
-    // ========================================================================
-    // 사진 위치 제약 (프레임 밖으로 나가지 않도록)
-    // ========================================================================
-    constrainPhotoPosition($photo, $frame, newLeft, newTop) {
-        const maskContainer = $frame.find('.mask-container');
-        
-        if (maskContainer.length === 0) {
-            return { left: newLeft, top: newTop };
-        }
-        
-        const maskWidth = maskContainer.width();
-        const maskHeight = maskContainer.height();
-        const photoWidth = $photo.width();
-        const photoHeight = $photo.height();
-        
-        // 사진이 마스크보다 클 때: 사진이 마스크를 완전히 덮도록 제약
-        // 사진이 마스크보다 작을 때: 사진이 마스크 안에 있도록 제약
-        
-        let minLeft, maxLeft, minTop, maxTop;
-        
-        if (photoWidth >= maskWidth) {
-            // 사진이 마스크보다 크거나 같음
-            minLeft = maskWidth - photoWidth;  // 음수
-            maxLeft = 0;
-        } else {
-            // 사진이 마스크보다 작음
-            minLeft = 0;
-            maxLeft = maskWidth - photoWidth;
-        }
-        
-        if (photoHeight >= maskHeight) {
-            minTop = maskHeight - photoHeight;  // 음수
-            maxTop = 0;
-        } else {
-            minTop = 0;
-            maxTop = maskHeight - photoHeight;
-        }
-        
-        return {
-            left: Math.max(minLeft, Math.min(maxLeft, newLeft)),
-            top: Math.max(minTop, Math.min(maxTop, newTop))
-        };
     }
     
     // ========================================================================
@@ -226,28 +202,59 @@ class KeyboardManager {
     // 단일 요소 이동
     // ========================================================================
     moveSingleElement($element, deltaX, deltaY) {
-        // 현재 위치 가져오기
-        const currentLeft = parseFloat($element.css('left')) || 0;
-        const currentTop = parseFloat($element.css('top')) || 0;
-        
-        // 새 위치 계산
+        // 현재 CSS 위치 + transform translate 추출
+        const currentTransform = $element.css('transform');
+        let translateX = 0, translateY = 0, rotation = 0;
+        if (currentTransform && currentTransform !== 'none') {
+            const matrix = currentTransform.match(
+                /matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/
+            );
+            if (matrix) {
+                const a = parseFloat(matrix[1]);
+                const b = parseFloat(matrix[2]);
+                translateX = parseFloat(matrix[5]);
+                translateY = parseFloat(matrix[6]);
+                rotation   = Math.atan2(b, a); // 라디안
+            }
+        }
+
+        // 현재 시각적 위치 = CSS left/top + alignment translate
+        const currentLeft = (parseFloat($element.css('left')) || 0) + translateX;
+        const currentTop  = (parseFloat($element.css('top'))  || 0) + translateY;
+
+        // 새 시각적 위치에 delta 적용
         let newLeft = currentLeft + deltaX;
-        let newTop = currentTop + deltaY;
-        
+        let newTop  = currentTop  + deltaY;
+
         // SafeLine 제약 적용
         const constrained = window.selectionManager.applySafeLineConstraints(
             newLeft, newTop, $element
         );
-        
-        // 위치 적용
+
+        // translate 없이 left/top으로만 위치 적용 (rotation만 유지)
+        const rotationTransform = (rotation !== 0)
+            ? `rotate(${rotation}rad)`
+            : 'none';
+
         $element.css({
-            left: constrained.left + 'px',
-            top: constrained.top + 'px'
+            left:      constrained.left + 'px',
+            top:       constrained.top  + 'px',
+            transform: rotationTransform
         });
-        
-        // 상태 저장
+
+        // relativeState 저장
         EventManager.saveElementPosition($element);
-        
+
+        // ✅ 방향키 수동 이동 시 alignment 클리어 → 복원 시 snap-back 방지
+        const relativeState = $element.data('relativeState');
+        if (relativeState) {
+            relativeState.alignment      = { horizontal: null, vertical: null };
+            relativeState.alignmentBounds = null;
+            relativeState.translateX      = 0;
+            relativeState.translateY      = 0;
+            $element.data('relativeState', relativeState);
+        }
+
         // 선택 UI 업데이트
         this.updateSelectionUI($element);
     }
