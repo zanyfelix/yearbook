@@ -17,7 +17,7 @@ $(document).ready(function() {
             const submittedStatus = $row.find('td:eq(2)').text().trim(); // YEARBOOK column
             const schoolName = $row.find('td:eq(1)').text().trim(); // SCHOOL NAME column
 
-            if (submittedStatus === 'Submitted' || loginUserId === 'admin1') {
+            if (submittedStatus === 'Submitted' || loginUserRole.toUpperCase() === 'ADMIN') {
                 selectedIds.push($(this).val());
             } else {
                 hasUnsubmitted = true;
@@ -65,13 +65,30 @@ $(document).ready(function() {
 
             // Convert response to Blob
             const blob = await response.blob();
-            
+
+            // Read filename from server's Content-Disposition header (RFC 5987)
+            let fileName = 'yearbook_files.zip'; // fallback
+            const contentDisposition = response.headers.get('Content-Disposition');
+            if (contentDisposition) {
+                // filename*=UTF-8''... 우선 파싱 (한글 파일명 지원)
+                const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+                if (filenameStarMatch) {
+                    fileName = decodeURIComponent(filenameStarMatch[1]);
+                } else {
+                    // filename="..." 폴백
+                    const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                    if (filenameMatch) {
+                        fileName = filenameMatch[1];
+                    }
+                }
+            }
+
             // Trigger client-side download
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = 'yearbook_files.zip';
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

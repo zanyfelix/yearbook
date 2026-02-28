@@ -5,7 +5,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -126,15 +130,15 @@ public class AdminYearbookController {
 	            // 사용자가 한 명이면 해당 ZIP 파일을 바로 다운로드
 	            File fileToDownload = userZipFiles.get(0);
 	            response.setContentType("application/zip");
-	            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileToDownload.getName() + "\"");
+	            response.setHeader("Content-Disposition", buildContentDisposition(fileToDownload.getName()));
 	            streamFileToResponse(fileToDownload, response);
 	        } else {
 	            // 사용자가 여러 명이면, 마스터 ZIP으로 묶어서 다운로드
 	            masterZipFile = createMasterZipFromZips(userZipFiles);
+	            String masterTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
 	            response.setContentType("application/zip");
-	            response.setHeader("Content-Disposition", "attachment; filename=\"Yearbooks_Collection.zip\"");
-	            
-	            // ▼▼▼ [핵심 수정] 올바른 인자로 메소드 호출 ▼▼▼
+	            String masterFileName = "yearbook_files_" + masterTimestamp + ".zip";
+	            response.setHeader("Content-Disposition", buildContentDisposition(masterFileName));
 	            streamFileToResponse(masterZipFile, response);
 	        }
 
@@ -220,6 +224,18 @@ public class AdminYearbookController {
 	/**
 	 * Streams a file to the HTTP response
 	 */
+
+	/**
+	 * RFC 5987 기반 Content-Disposition 헤더 생성 (한글 파일명 지원)
+	 * - filename= : ASCII 폴백 (한글은 _ 로 대체)
+	 * - filename*= : UTF-8 퍼센트 인코딩 (모든 브라우저에서 한글 파일명 표시)
+	 */
+	private String buildContentDisposition(String fileName) {
+	    String asciiName = fileName.replaceAll("[^\\x20-\\x7E]", "_");
+	    String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+	    return "attachment; filename=\"" + asciiName + "\"; filename*=UTF-8''" + encoded;
+	}
+
 	private void streamFileToResponse(File file, HttpServletResponse response) throws IOException {
 	    response.setContentLength((int) file.length());
 	    

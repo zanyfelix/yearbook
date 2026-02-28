@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
@@ -485,7 +487,11 @@ public class JpgRenderingService {
 
 		logger.info("Total pages rendered: {}", totalRendered);
 
-		String zipFileName = String.format("%s_yearbook.zip", user.getSchoolName().replaceAll("[^a-zA-Z0-9.-]", "_"));
+		String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+		String schoolNameNoSpaces = (user.getSchoolName() != null && !user.getSchoolName().isEmpty())
+				? user.getSchoolName().replace(" ", "")
+				: "unknown";
+		String zipFileName = String.format("%s_yearbook_files_%s.zip", schoolNameNoSpaces, timestamp);
 		File zipFile = new File(System.getProperty("java.io.tmpdir"), zipFileName);
 
 		createZipFile(tempUserDir, zipFile);
