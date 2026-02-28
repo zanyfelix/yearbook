@@ -506,24 +506,39 @@ class AlignmentManager {
         
         let alignmentBounds = null;
         if (bounds && actualBgRect) {
-            alignmentBounds = {
-                left: ((bounds.left - actualBgRect.left) / actualBgRect.width) * 100,
-                top: ((bounds.top - actualBgRect.top) / actualBgRect.height) * 100,
-                right: ((bounds.right - actualBgRect.left) / actualBgRect.width) * 100,
-                bottom: ((bounds.bottom - actualBgRect.top) / actualBgRect.height) * 100,
-                centerX: ((bounds.left + bounds.width / 2 - actualBgRect.left) / actualBgRect.width) * 100,
-                centerY: ((bounds.top + bounds.height / 2 - actualBgRect.top) / actualBgRect.height) * 100
-            };
+            // ✅ 정렬 타입에 해당하는 프로퍼티만 저장 (6개 전체 덮어쓰기 대신)
+            const ab = {};
+            // 수평 정렬 기준 좌표
+            if (horizontalAlign === 'left') {
+                ab.left = ((bounds.left - actualBgRect.left) / actualBgRect.width) * 100;
+            } else if (horizontalAlign === 'right') {
+                ab.right = ((bounds.right - actualBgRect.left) / actualBgRect.width) * 100;
+            } else if (horizontalAlign === 'center') {
+                ab.centerX = ((bounds.left + bounds.width / 2 - actualBgRect.left) / actualBgRect.width) * 100;
+            }
+            // 수직 정렬 기준 좌표
+            if (verticalAlign === 'top') {
+                ab.top = ((bounds.top - actualBgRect.top) / actualBgRect.height) * 100;
+            } else if (verticalAlign === 'bottom') {
+                ab.bottom = ((bounds.bottom - actualBgRect.top) / actualBgRect.height) * 100;
+            } else if (verticalAlign === 'center') {
+                ab.centerY = ((bounds.top + bounds.height / 2 - actualBgRect.top) / actualBgRect.height) * 100;
+            }
+            if (Object.keys(ab).length > 0) alignmentBounds = ab;
         }
         
         elements.forEach($el => {
             // 정렬 플래그를 EventManager에 전달
             EventManager.saveElementPositionWithAlignment($el, horizontalAlign, verticalAlign, false);
             
-            // ✅ 기준 좌표(alignmentBounds)를 relativeState에 추가 저장
+            // ✅ 기준 좌표(alignmentBounds)를 relativeState에 병합 저장
+            // ❗ 덮어쓰기(대입) 대신 확산 병합 사용:
+            //   - inner saveElementPositionWithAlignment이 이미 두 축을 올바르게 병합했지만
+            //     centerX/Y는 50으로 하드코딩되므로 외부의 실제 선택 중앙값으로 교정 필요
+            //   - 병합(스프레드)은 기존 호리젠탈 축(예: left)를 보존하면서 새 축(top)만 추가/교정
             if (alignmentBounds) {
                 const currentState = $el.data('relativeState') || {};
-                currentState.alignmentBounds = alignmentBounds;
+                currentState.alignmentBounds = { ...(currentState.alignmentBounds || {}), ...alignmentBounds };
                 $el.data('relativeState', currentState);
             }
         });

@@ -261,6 +261,11 @@ class FrameManager {
 				const translateY = (frameRelativeState.translateY / 100) * actualBgRect.height;
 
 				finalTransform = `matrix(${cos.toFixed(6)}, ${sin.toFixed(6)}, ${(-sin).toFixed(6)}, ${cos.toFixed(6)}, ${translateX.toFixed(2)}, ${translateY.toFixed(2)})`;
+			} else if (frameRelativeState.translateX || frameRelativeState.translateY) {
+				// ✅ rotation=0이지만 translateX/Y가 있는 경우 (updateElementPosition과 동일한 처리)
+				const translateX = (frameRelativeState.translateX / 100) * actualBgRect.width;
+				const translateY = (frameRelativeState.translateY / 100) * actualBgRect.height;
+				finalTransform = `translate(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px)`;
 			}
 
 			// 중요: transform을 none으로 먼저 설정
