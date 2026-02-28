@@ -216,28 +216,28 @@
 									<div id="frame-controls" class="d-none w-100">
 										<div class="control-buttons">
 											<button id="frame-rotate-left" class="control-btn rotate-btn"
-												title="왼쪽 회전">
+												title="Turn Left">
 												<img src="/images/icon/transform.png" alt="Rotate Left"
 													style="transform: scaleX(-1);">
 											</button>
 											<button id="frame-rotate-right"
-												class="control-btn rotate-btn" title="오른쪽 회전">
+												class="control-btn rotate-btn" title="Turn Right">
 												<img src="/images/icon/transform.png" alt="Rotate Right">
 											</button>
 
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="frame-align-h" class="control-btn align-btn"
-												title="수평 중앙">
+												title="Center horizontally">
 												<img src="/images/icon/hor_center.png" alt="horCenter"
 													style="width: 25px; height: 25px;">
 											</button>
 											<button id="frame-align-v" class="control-btn align-btn"
-												title="수직 중앙">
+												title="Vertically Centered">
 												<img src="/images/icon/ver_center.png" alt="verCenter"
 													style="width: 25px; height: 25px;">
 											</button>
 											<button id="btn-delete-frame" class="control-btn delete-btn"
-												title="프레임 삭제">
+												title="Delete Frame">
 												<img src="/images/icon/trash.png" alt="trash"
 													style="width: 16px; height: 16px">
 											</button>
@@ -246,16 +246,16 @@
 									<div id="photo-controls" class="d-none w-100">
 										<div class="control-buttons">
 											<button id="photo-rotate-left" class="control-btn rotate-btn"
-												title="왼쪽 회전">
+												title="Turn Left">
 												<img src="/images/icon/transform.png" alt="Rotate Left"
 													style="transform: scaleX(-1);">
 											</button>
 											<button id="photo-rotate-right"
-												class="control-btn rotate-btn" title="오른쪽 회전">
+												class="control-btn rotate-btn" title="Turn Right">
 												<img src="/images/icon/transform.png" alt="Rotate Right">
 											</button>
 											<button id="btn-delete-photo" class="control-btn delete-btn"
-												title="사진 삭제">
+												title="Delete Photo">
 												<img src="/images/icon/trash.png" alt="trash">
 											</button>
 										</div>
@@ -300,50 +300,50 @@
 											<option value="right">Right</option></select> <input type="color"
 											id="tooltip-color" title="Color">
 										<button id="text-rotate-left" class="control-btn rotate-btn"
-											title="왼쪽 회전">
+											title="Turn Left">
 											<img src="/images/icon/transform.png" alt="Rotate Left"
 												style="transform: scaleX(-1);">
 										</button>
 										<button id="text-rotate-right" class="control-btn rotate-btn"
-											title="오른쪽 회전">
+											title="Turn Right">
 											<img src="/images/icon/transform.png" alt="Rotate Right">
 										</button>
 										<!-- ✨ 정렬 버튼 추가 -->
 										<button id="text-align-h" class="control-btn align-btn"
-											title="수평 중앙">
+											title="Center horizontally">
 											<img src="/images/icon/hor_center.png" alt="horCenter">
 										</button>
 										<button id="text-align-v" class="control-btn align-btn"
-											title="수직 중앙">
+											title="Vertically centered">
 											<img src="/images/icon/ver_center.png" alt="verCenter">
 										</button>
 										<button type="button" id="tooltip-remove"
-											class="control-btn delete-btn" title="텍스트 삭제">
+											class="control-btn delete-btn" title="Delete Text">
 											<img src="/images/icon/trash.png" alt="trash">
 										</button>
 									</div>
 									<div id="element-controls" class="d-none w-100">
 										<div class="control-buttons">
 											<button id="element-rotate-left"
-												class="control-btn rotate-btn" title="왼쪽 회전">
+												class="control-btn rotate-btn" title="Turn Left">
 												<img src="/images/icon/transform.png" alt="Rotate Left"
 													style="transform: scaleX(-1);">
 											</button>
 											<button id="element-rotate-right"
-												class="control-btn rotate-btn" title="오른쪽 회전">
+												class="control-btn rotate-btn" title="Turn Right">
 												<img src="/images/icon/transform.png" alt="Rotate Right">
 											</button>
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="element-align-h" class="control-btn align-btn"
-												title="수평 중앙" style="width: 25px; height: 25px;">
+												title="Center horizontally" style="width: 25px; height: 25px;">
 												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="element-align-v" class="control-btn align-btn"
-												title="수직 중앙" style="width: 25px; height: 25px;">
+												title="Vertically centered" style="width: 25px; height: 25px;">
 												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
 											<button id="btn-delete-element"
-												class="control-btn delete-btn" title="Element 삭제">
+												class="control-btn delete-btn" title="Delete Element">
 												<img src="/images/icon/trash.png" alt="trash">
 											</button>
 										</div>
@@ -358,17 +358,17 @@
 											<!-- 좌/중/우 정렬 -->
 											<div class="btn-group" role="group" aria-label="수평 정렬">
 												<button id="multi-align-left" class="control-btn align-btn"
-													title="좌측 정렬">
+													title="Left Align">
 													<img src="/images/icon/align_left.svg" alt="Align Left"
 														style="width: 20px; height: 20px;">
 												</button>
 												<button id="multi-align-center-h"
-													class="control-btn align-btn" title="수평 중앙 정렬">
+													class="control-btn align-btn" title="Horizontally Centered">
 													<img src="/images/icon/hor_center.png" alt="Align Center H"
 														style="width: 20px; height: 20px;">
 												</button>
 												<button id="multi-align-right" class="control-btn align-btn"
-													title="우측 정렬">
+													title="Right Align">
 													<img src="/images/icon/align_right.svg" alt="Align Right"
 														style="width: 20px; height: 20px;">
 												</button>
@@ -379,17 +379,17 @@
 											<!-- 상/중/하 정렬 -->
 											<div class="btn-group" role="group" aria-label="수직 정렬">
 												<button id="multi-align-top" class="control-btn align-btn"
-													title="상단 정렬">
+													title="Top Align">
 													<img src="/images/icon/align_top.svg" alt="Align Top"
 														style="width: 20px; height: 20px;">
 												</button>
 												<button id="multi-align-center-v"
-													class="control-btn align-btn" title="수직 중앙 정렬">
+													class="control-btn align-btn" title="Vertical Align">
 													<img src="/images/icon/ver_center.png" alt="Align Center V"
 														style="width: 20px; height: 20px;">
 												</button>
 												<button id="multi-align-bottom"
-													class="control-btn align-btn" title="하단 정렬">
+													class="control-btn align-btn" title="Bottom Align">
 													<img src="/images/icon/align_bottom.svg" alt="Align Bottom"
 														style="width: 20px; height: 20px;">
 												</button>
@@ -400,12 +400,12 @@
 											<!-- 균등 배분 -->
 											<div class="btn-group" role="group" aria-label="균등 배분">
 												<button id="multi-distribute-h"
-													class="control-btn align-btn" title="가로 균등 배분">
+													class="control-btn align-btn" title="Distribute Horizontally">
 													<img src="/images/icon/distribute_h.svg" alt="Distribute H"
 														style="width: 20px; height: 20px;">
 												</button>
 												<button id="multi-distribute-v"
-													class="control-btn align-btn" title="세로 균등 배분">
+													class="control-btn align-btn" title="Distribute Vertically">
 													<img src="/images/icon/distribute_v.svg" alt="Distribute V"
 														style="width: 20px; height: 20px;">
 												</button>
