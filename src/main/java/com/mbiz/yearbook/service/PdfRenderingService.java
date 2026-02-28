@@ -126,6 +126,15 @@ public class PdfRenderingService {
             int frameHeight = (int) (RENDER_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
             int frameY = RENDER_HEIGHT - (int) (RENDER_HEIGHT * (frameNode.path("position").path("top").asDouble() / 100.0)) - frameHeight;
 
+            // ✅ translateX/Y 적용 (position과 별도로 저장된 이동 오프셋)
+            double translateXPercent = frameNode.path("translateX").asDouble(0);
+            double translateYPercent = frameNode.path("translateY").asDouble(0);
+            if (translateXPercent != 0 || translateYPercent != 0) {
+                frameX += (int) (RENDER_WIDTH * (translateXPercent / 100.0));
+                // PDF는 Y축이 반전이므로 translateY는 빼야 함
+                frameY -= (int) (RENDER_HEIGHT * (translateYPercent / 100.0));
+            }
+
             System.out.println("=== 프레임 처리 시작 ===");
             System.out.println("프레임 위치: " + frameX + ", " + frameY);
             System.out.println("프레임 크기: " + frameWidth + " x " + frameHeight);

@@ -115,6 +115,14 @@ public class ThumbnailRenderingService {
         int frameWidth = (int) Math.round(THUMB_WIDTH * (frameNode.path("size").path("width").asDouble() / 100.0));
         int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
 
+        // ✅ translateX/Y 적용 (position과 별도로 저장된 이동 오프셋)
+        double translateXPercent = frameNode.path("translateX").asDouble(0);
+        double translateYPercent = frameNode.path("translateY").asDouble(0);
+        if (translateXPercent != 0 || translateYPercent != 0) {
+            frameX += (int) Math.round(THUMB_WIDTH * (translateXPercent / 100.0));
+            frameY += (int) Math.round(THUMB_HEIGHT * (translateYPercent / 100.0));
+        }
+
         if (frameWidth <= 0 || frameHeight <= 0) return;
 
         // 프레임용 임시 캔버스 생성

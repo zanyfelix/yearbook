@@ -730,6 +730,14 @@ public class JpgRenderingService {
 			double frameWidth = bgArea[2] * (frameNode.path("size").path("width").asDouble() / 100.0);
 			double frameHeight = bgArea[3] * (frameNode.path("size").path("height").asDouble() / 100.0);
 
+			// ✅ translateX/Y 적용 (position과 별도로 저장된 이동 오프셋)
+			double translateXPercent = frameNode.path("translateX").asDouble(0);
+			double translateYPercent = frameNode.path("translateY").asDouble(0);
+			if (translateXPercent != 0 || translateYPercent != 0) {
+				frameX += bgArea[2] * (translateXPercent / 100.0);
+				frameY += bgArea[3] * (translateYPercent / 100.0);
+			}
+
 			// ✅ Math.round()로 변경 — 브라우저의 서브픽셀 반올림과 일치시킴
 			int frameWidthPx = (int) Math.round(frameWidth);
 			int frameHeightPx = (int) Math.round(frameHeight);
@@ -935,7 +943,7 @@ public class JpgRenderingService {
 			transformOriginX = frameNode.path("transformOriginX").asDouble(50);
 			transformOriginY = frameNode.path("transformOriginY").asDouble(50);
 
-// translateX/Y는 이미 position에 반영되어 있음
+// ✅ 수정: translateX/Y는 position과 별도로 저장되므로 직접 더해야 함
 		} else {
 // 기존 transform 파싱
 			String frameTransform = frameNode.path("transform").asText("none");
