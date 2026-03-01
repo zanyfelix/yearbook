@@ -322,9 +322,28 @@ class FrameManager {
 	    uploadedPhoto.data('relativeState', photoRelativeState);
 
 	    // 2. 이미지 경로 설정
-	    let imageSrc = photoState.src.startsWith('data:') ? photoState.src : `${ctx}${photoState.src}`;
+	    // ✅ editSrc 없으면 originalPath 패턴에서 editPath 추론
+	    //    /photo/originals/{uuid}_original.ext → /photo/edits/{uuid}_edit.jpg
+	    function inferEditSrc(src) {
+	        if (!src || src.startsWith('data:')) return null;
+	        if (src.includes('/photo/originals/') && /_original\.[^.]+$/.test(src)) {
+	            return src.replace('/photo/originals/', '/photo/edits/')
+	                      .replace(/_original\.[^.]+$/, '_edit.jpg');
+	        }
+	        return null;
+	    }
+
+	    const resolvedEditSrc = photoState.editSrc || inferEditSrc(photoState.src);
+	    const displaySrc = resolvedEditSrc || photoState.src;
+	    let imageSrc = displaySrc.startsWith('data:') ? displaySrc : `${ctx}${displaySrc}`;
+
+	    // originalPath / editPath / filePath 모두 저장 (저장·캐시 시 올바른 경로 사용)
 	    if (photoState.src && !photoState.src.startsWith('data:')) {
 	        uploadedPhoto.data('filePath', photoState.src);
+	        uploadedPhoto.data('originalPath', photoState.src);
+	    }
+	    if (resolvedEditSrc) {
+	        uploadedPhoto.data('editPath', resolvedEditSrc);
 	    }
 
 	    // 3. CSS 적용 함수
@@ -465,11 +484,28 @@ class FrameManager {
 	    });
 	    uploadedPhoto.on('error.restore', function() {
 	        console.error('Photo load error:', imageSrc);
-	        placeholderLink.show();
-	        uploadedPhoto.hide();
-	        uploadedPhoto.off('load.restore error.restore');
-	        // ✅ 에러 시에도 카운팅을 위한 이벤트 트리거
-	        uploadedPhoto.trigger('error.renderCount');
+	        // 추론된 editSrc 로드 실패 시 original로 폴백
+	        const originalSrc = photoState.src;
+	        if (resolvedEditSrc && !photoState.editSrc && originalSrc && !originalSrc.startsWith('data:') && imageSrc !== `${ctx}${originalSrc}`) {
+	            console.warn('Inferred edit file not found, falling back to original:', originalSrc);
+	            uploadedPhoto.data('editPath', null);
+	            imageSrc = `${ctx}${originalSrc}`;
+	            uploadedPhoto.off('error.restore');
+	            uploadedPhoto.on('error.restore', function() {
+	                console.error('Original photo load error:', imageSrc);
+	                placeholderLink.show();
+	                uploadedPhoto.hide();
+	                uploadedPhoto.off('load.restore error.restore');
+	                uploadedPhoto.trigger('error.renderCount');
+	            });
+	            uploadedPhoto.attr('src', imageSrc);
+	        } else {
+	            placeholderLink.show();
+	            uploadedPhoto.hide();
+	            uploadedPhoto.off('load.restore error.restore');
+	            // ✅ 에러 시에도 카운팅을 위한 이벤트 트리거
+	            uploadedPhoto.trigger('error.renderCount');
+	        }
 	    });
 
 	    // 5. 이미지 소스 설정
