@@ -1472,9 +1472,12 @@ button:focus,
     flex: 1;
     overflow-y: auto;
     padding: 1rem !important;
+    /* Firefox + macOS Safari 스크롤바 표준 속성 */
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
 }
 
-/* ✨ 추가: 스크롤바 스타일 */
+/* Chrome/Edge/Opera 스크롤바 스타일 */
 #thumbnail-area::-webkit-scrollbar {
     width: 6px;
 }
@@ -2833,20 +2836,26 @@ input:checked + .slider-text .off-text {
         min-width: fit-content;
     }
     
-    /* 스크롤바 스타일링 (선택사항) */
+    /* 스크롤바 스타일링 - Firefox + macOS Safari 표준 속성 */
+    #editor-toolbar .context-controls {
+        scrollbar-width: thin;
+        scrollbar-color: #888 #f1f1f1;
+    }
+
+    /* Chrome/Edge/Opera 스크롤바 스타일 */
     #editor-toolbar .context-controls::-webkit-scrollbar {
         height: 4px;
     }
-    
+
     #editor-toolbar .context-controls::-webkit-scrollbar-track {
         background: #f1f1f1;
     }
-    
+
     #editor-toolbar .context-controls::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 2px;
     }
-    
+
     #editor-toolbar .context-controls::-webkit-scrollbar-thumb:hover {
         background: #555;
     }

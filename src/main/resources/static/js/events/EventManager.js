@@ -243,7 +243,7 @@ class EventManager {
 
 	// 텍스트박스 이벤트 설정
 	static setupTextEvents(textBox) {
-		textBox.off('click dblclick mousedown keydown input blur');
+		textBox.off('click dblclick mousedown keydown input blur compositionstart compositionend');
 
 		// 클릭: 선택 상태
 		textBox.on('click', (e) => {
@@ -273,7 +273,18 @@ class EventManager {
 			}
 		});
 
-		textBox.on('input', () => this.handleTextInput(textBox));
+		// ✅ IME 조합 중 autoResizeTextBox 방지 (macOS Chrome/Safari 대응)
+		// macOS에서는 한글/일본어 조합 중에도 input 이벤트가 발생하여
+		// DOM 변경(autoResizeTextBox)이 IME 입력을 방해하는 문제 수정
+		let isComposing = false;
+		textBox.on('compositionstart', () => { isComposing = true; });
+		textBox.on('compositionend', () => {
+			isComposing = false;
+			this.handleTextInput(textBox);  // 조합 완료 후 한 번 실행
+		});
+		textBox.on('input', () => {
+			if (!isComposing) this.handleTextInput(textBox);
+		});
 		textBox.on('blur', () => this.handleTextBlur(textBox));
 
 		textBox.on('paste', (e) => {
@@ -1006,7 +1017,11 @@ class EventManager {
 		// 회전 핸들 div 제거하여 정확한 줄바꿈 감지
 		const rawHtml = textBox.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
-		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		// ✅ autoResizeTextBox/updateElementPosition/measureTextBoxContentSize와 동일한 정규식
+		const strippedHtmlForCheck = htmlContent
+			.replace(/<br\s*\/?>\s*$/gi, '')
+			.replace(/(<div>\s*<br\s*\/?>\s*<\/div>\s*)+$/gi, '')  // Chrome Enter 시 생성되는 말미 <div><br></div> 제거
+			.replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		if (!hasLineBreaks) {
 			textBox.css('white-space', 'nowrap');
@@ -1024,6 +1039,20 @@ class EventManager {
 		}
 
 		this.autoResizeTextBox(textBox);
+
+		// ✅ blur 후 center alignment 시 시각적 재중앙 정렬
+		// (autoResizeTextBox가 width를 변경하므로, 중앙 기준으로 left 재계산)
+		const blurRelativeState = textBox.data('relativeState');
+		if (blurRelativeState?.alignment?.horizontal === 'center') {
+			const bg = $('#page-preview-img');
+			const blurBgRect = window.safeLineManager.getActualImagePosition(bg);
+			if (blurBgRect) {
+				const newBoxWidth = textBox.outerWidth();
+				const centerXRatio = blurRelativeState.alignmentBounds?.centerX ?? 50;
+				const centerXPx = blurBgRect.left + (blurBgRect.width * centerXRatio) / 100;
+				textBox.css('left', (centerXPx - newBoxWidth / 2) + 'px');
+			}
+		}
 
 		if (textBox.hasClass('selected')) {
 			textBox.trigger('resize');

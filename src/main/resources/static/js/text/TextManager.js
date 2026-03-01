@@ -213,6 +213,15 @@ class TextManager {
 			transformOrigin: currentTransformOrigin || '50% 50%'
 		};
 
+		// ✅ 기존 alignment 정보 보존 (폰트 변경 등으로 인한 center alignment 유실 방지)
+		const existingState = textBox.data('relativeState') || {};
+		if (existingState.alignment) {
+			relativeState.alignment = existingState.alignment;
+		}
+		if (existingState.alignmentBounds) {
+			relativeState.alignmentBounds = existingState.alignmentBounds;
+		}
+
 		return relativeState;
 	}
 
@@ -278,6 +287,15 @@ class TextManager {
 		// 크기 조정
 		this.adjustBoxSizeForLineBreaks(selectedBox);
 
+		// ✅ center alignment 시 폰트 변경 후 시각적 재중앙 정렬
+		// (adjustBoxSizeForLineBreaks가 width를 변경하므로, 중앙 기준으로 left 재계산)
+		if (savedRelativeState?.alignment?.horizontal === 'center' && actualBgRect) {
+			const newBoxWidth = selectedBox.outerWidth();
+			const centerXRatio = savedRelativeState.alignmentBounds?.centerX ?? 50;
+			const centerXPx = actualBgRect.left + (actualBgRect.width * centerXRatio) / 100;
+			selectedBox.css('left', (centerXPx - newBoxWidth / 2) + 'px');
+		}
+
 		// ⭐ transform 확실히 복원
 		selectedBox.css({
 			'transform': savedTransform,
@@ -285,6 +303,7 @@ class TextManager {
 		});
 
 		// ⭐ relativeState도 회전 정보를 유지하도록 업데이트
+		// ✅ calculateRelativeState()가 기존 alignment 정보를 보존하므로 별도 복사 불필요
 		if (savedRelativeState && savedRelativeState.rotation !== undefined) {
 			const newRelativeState = this.calculateRelativeState(selectedBox, actualBgRect);
 			newRelativeState.rotation = savedRelativeState.rotation;
@@ -314,92 +333,32 @@ class TextManager {
 	}
 
 	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
+	// ✅ measureTextBoxContentSize() 통합: +2 vs +15 버퍼 불일치 제거, center alignment 오차 방지
 	static adjustBoxSizeForLineBreaks(textBox) {
-		// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
-		const rawHtml = textBox.html();
-		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
-		const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
+		const fontSize = parseFloat(textBox.css('font-size'));
 
-		if (hasLineBreaks) {
-			// 줄바꿈이 있는 경우 크기 측정
-			let lines = [];
-			const tempDiv = $('<div>').html(htmlContent);
+		if (window.measureTextBoxContentSize) {
+			// ✅ main.js의 측정 함수 공유: 버퍼(+15), 줄 추출 로직, strippedHtml 처리 모두 일치
+			const measuredSize = window.measureTextBoxContentSize(textBox, fontSize);
 
-			if (htmlContent.includes('<div>')) {
-				const firstLineText = tempDiv.contents().filter(function() {
-					return this.nodeType === 3;
-				}).text();
-				if (firstLineText.trim()) lines.push(firstLineText);
+			// 줄바꿈 여부 판정 (white-space 설정에 사용)
+			const rawHtml = textBox.html();
+			const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
+			const strippedHtmlForCheck = htmlContent
+				.replace(/<br\s*\/?>\s*$/gi, '')
+				.replace(/(<div>\s*<br\s*\/?>\s*<\/div>\s*)+$/gi, '')
+				.replace(/<div>\s*<\/div>\s*$/gi, '');
+			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
-				tempDiv.find('div').each(function() {
-					lines.push($(this).text() || '\u00A0');
-				});
-			}
-			else if (htmlContent.includes('<br>')) {
-				const parts = htmlContent.split('<br>');
-				parts.forEach(part => {
-					const text = $('<div>').html(part).text();
-					lines.push(text || '\u00A0');
-				});
-			}
-
-			// 가장 긴 줄의 너비 측정
-			let maxWidth = 0;
-			lines.forEach(line => {
-				const $temp = $('<span>')
-					.text(line || '\u00A0')
-					.css({
-						'position': 'absolute',
-						'visibility': 'hidden',
-						'white-space': 'nowrap',
-						'font-size': textBox.css('font-size'),
-						'font-family': textBox.css('font-family'),
-						'font-weight': textBox.css('font-weight'),
-						'letter-spacing': textBox.css('letter-spacing')
-					});
-
-				$('body').append($temp);
-				maxWidth = Math.max(maxWidth, $temp.width());
-				$temp.remove();
-			});
-
-			// 정확한 높이 측정
-			const $heightTemp = $('<div>')
-				.html(htmlContent)
-				.css({
-					'position': 'absolute',
-					'visibility': 'hidden',
-					'width': (maxWidth + 20) + 'px',
-					'white-space': 'pre-wrap',
-					'word-break': 'keep-all',
-					'font-size': textBox.css('font-size'),
-					'font-family': textBox.css('font-family'),
-					'font-weight': textBox.css('font-weight'),
-					'line-height': textBox.css('line-height'),
-					'padding': textBox.css('padding'),
-					'box-sizing': 'border-box'
-				});
-
-			$('body').append($heightTemp);
-			const measuredHeight = $heightTemp.outerHeight();
-			$heightTemp.remove();
-
-			const padding = parseInt(textBox.css('padding')) || 10;
-			const newWidth = maxWidth + padding * 2 + 2;
-			const newHeight = measuredHeight;
-
-			// 크기만 적용 (transform 관련 처리 완전 제거)
 			textBox.css({
-				'width': newWidth + 'px',
-				'height': newHeight + 'px',
-				'white-space': 'pre-wrap',
-				'word-break': 'keep-all',
+				'width': measuredSize.width + 'px',
+				'height': measuredSize.height + 'px',
+				'white-space': hasLineBreaks ? 'pre-wrap' : 'nowrap',
+				'word-break': hasLineBreaks ? 'keep-all' : 'normal',
 				'overflow-wrap': 'normal'
 			});
-
-			// ⭐ transform-origin은 건드리지 않음!
-
 		} else {
+			// fallback: measureTextBoxContentSize 미로드 시
 			this.resizeTextBox(textBox, textBox.css('font-size'));
 		}
 	}
