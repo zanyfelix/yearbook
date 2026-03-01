@@ -3,6 +3,20 @@ $(document).ready(function() {
 	let activePageThumb = null;
 	let hasSaved = false;
 
+	// ── 텍스트 드래그 선택(파란 영역) 방지 ──────────────────────────────
+	// 근본 차단: CSS user-select:none 을 .left-button-area, .center-thumbnail-area,
+	//            .sidebar, #page-preview 에 적용.
+	//            (#page-preview 내 contenteditable은 CSS에서 user-select:text 로 복원)
+	// 보조 처리: 혹시라도 남아있는 선택 상태를 mousedown 시 해제한다.
+	$(document).on('mousedown', function(e) {
+		// 텍스트 입력 필드(텍스트박스 편집)는 건드리지 않음
+		if ($(e.target).closest('input, textarea, [contenteditable="true"]').length) return;
+		if (window.getSelection && window.getSelection().type !== 'None') {
+			window.getSelection().removeAllRanges();
+		}
+	});
+	// ─────────────────────────────────────────────────────────────────────
+
 	// 전역 인스턴스 초기화
 	window.selectionManager = new SelectionManager();
 	window.safeLineManager = new SafeLineManager();
@@ -42,6 +56,8 @@ $(document).ready(function() {
 		if (window.multiSelectionManager) {
 			window.multiSelectionManager.clearSelection();
 		}
+		// 모달 닫힐 때 텍스트 선택(파란 영역) 해제
+		if (window.getSelection) window.getSelection().removeAllRanges();
 	});
 
 	// ========================================================================

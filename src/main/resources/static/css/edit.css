@@ -14,6 +14,10 @@ html, body {
 	position: fixed;
 	height: 100%;
 	padding-top: 20px;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }
 
 .sidebar h5 {
@@ -216,7 +220,20 @@ html, body {
     align-items: center;
     justify-content: center;
     flex: 1;
-    overflow: hidden;        
+    overflow: hidden;
+    /* 배경 영역 드래그 시 텍스트 선택(파란 영역) 방지 */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* 텍스트박스 편집 영역은 텍스트 선택 허용 */
+#page-preview [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
 }
 
 .page-preview-container {
@@ -1422,6 +1439,10 @@ button:focus,
     flex-direction: column;
     padding: 0 !important;
     border-right: 1px solid #dee2e6;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 /* ✨ 추가: 중앙 썸네일 영역 스타일 */
@@ -1432,6 +1453,10 @@ button:focus,
     flex-direction: column;
     padding: 0 !important;
     border-right: 1px solid #dee2e6;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 /* ✨ 추가: 버튼 컨테이너 */
