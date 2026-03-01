@@ -2005,12 +2005,13 @@ $(document).ready(function() {
 
 							resolve();
 						} catch (err) {
-							console.error('마스크 캔버스 처리 실패:', err);
 							resolve();
 						}
 					};
 
-					maskImg.onerror = () => resolve();
+					maskImg.onerror = () => {
+						resolve();
+					};
 					maskImg.src = `${ctx}${frameTheme.editMaskPath}`;
 				});
 
