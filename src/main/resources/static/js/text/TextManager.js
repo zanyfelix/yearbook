@@ -385,7 +385,7 @@ class TextManager {
 			$heightTemp.remove();
 
 			const padding = parseInt(textBox.css('padding')) || 10;
-			const newWidth = maxWidth + padding * 2 + 5;
+			const newWidth = maxWidth + padding * 2 + 2;
 			const newHeight = measuredHeight;
 
 			// 크기만 적용 (transform 관련 처리 완전 제거)

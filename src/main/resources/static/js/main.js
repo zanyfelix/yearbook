@@ -370,48 +370,55 @@ $(document).ready(function() {
 		// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
 		const rawHtml = $textBox.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
-		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		const strippedHtmlForCheck = htmlContent
+			.replace(/<br\s*\/?>\s*$/gi, '')
+			.replace(/(<div>\s*<br\s*\/?>\s*<\/div>\s*)+$/gi, '')  // Chrome Enter 시 생성되는 말미 <div><br></div> 제거
+			.replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 		const padding = parseInt($textBox.css('padding')) || 8;
 
 		if (hasLineBreaks) {
-			// 줄바꿈이 있는 경우
-			let lines = [];
-			const tempDiv = $('<div>').html(htmlContent);
+			// 각 줄의 HTML 세그먼트 추출 (span 포함 실제 HTML 기준으로 측정)
+			let segments = [];
 
 			if (htmlContent.includes('<div>')) {
-				const firstLineText = tempDiv.contents().filter(function() {
-					return this.nodeType === 3;
-				}).text();
-				if (firstLineText.trim()) lines.push(firstLineText);
-				tempDiv.find('div').each(function() {
-					lines.push($(this).text() || '\u00A0');
+				// 첫 번째 줄: 첫 <div> 이전의 HTML 전체 (span 등 인라인 요소 포함)
+				const firstDivIdx = htmlContent.indexOf('<div>');
+				if (firstDivIdx > 0) {
+					const firstHtml = htmlContent.substring(0, firstDivIdx);
+					if ($('<div>').html(firstHtml).text().trim()) {
+						segments.push(firstHtml);
+					}
+				}
+				// 이후 줄: 최상위 <div>의 innerHTML (HTML 그대로 유지)
+				const $tempParse = $('<div>').html(htmlContent);
+				$tempParse.find('> div').each(function() {
+					const inner = $(this).html() || '';
+					// <br>만 있는 빈 줄은 공백 문자로 대체
+					segments.push((/^<br\s*\/?>$/i.test(inner.trim())) ? '\u00A0' : (inner || '\u00A0'));
 				});
 			} else if (htmlContent.includes('<br>')) {
-				const parts = htmlContent.split('<br>');
-				parts.forEach(part => {
-					const text = $('<div>').html(part).text();
-					lines.push(text || '\u00A0');
-				});
+				segments = htmlContent.split(/<br\s*\/?>/gi);
 			}
 
-			// 가장 긴 줄 너비 측정
+			// 각 줄의 너비 측정 — 실제 HTML(span 포함) 렌더링 기준
 			let maxWidth = 0;
-			lines.forEach(line => {
-				const $temp = $('<span>')
-					.text(line || '\u00A0')
+			segments.forEach(segHtml => {
+				const $seg = $('<div>')
+					.html(segHtml || '\u00A0')
 					.css({
 						'position': 'absolute',
 						'visibility': 'hidden',
 						'white-space': 'nowrap',
+						'width': 'auto',
 						'font-size': fontSize + 'px',
 						'font-family': $textBox.css('font-family'),
 						'font-weight': $textBox.css('font-weight'),
 						'letter-spacing': $textBox.css('letter-spacing')
 					});
-				$('body').append($temp);
-				maxWidth = Math.max(maxWidth, $temp.width());
-				$temp.remove();
+				$('body').append($seg);
+				maxWidth = Math.max(maxWidth, $seg.width());
+				$seg.remove();
 			});
 
 			// 높이 측정

@@ -1037,7 +1037,10 @@ class EventManager {
 		// 회전 핸들 div 제거하여 클린 HTML로 줄바꿈 감지
 		const rawHtml = $box.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
-		const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+		const strippedHtmlForCheck = htmlContent
+			.replace(/<br\s*\/?>\s*$/gi, '')
+			.replace(/(<div>\s*<br\s*\/?>\s*<\/div>\s*)+$/gi, '')  // Chrome Enter 시 생성되는 말미 <div><br></div> 제거
+			.replace(/<div>\s*<\/div>\s*$/gi, '');
 		const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
 		// measureTextBoxContentSize와 동일한 측정 사용 (버퍼 불일치 방지)
