@@ -60,9 +60,8 @@
 
 	<div class="content">
 		<input type="hidden" id="id" name="id"
-			value="${sessionScope.loginUser.id}" />
-		<input type="hidden" id="userSafeMargin"
-			value="${sessionScope.loginUser.safeMargin}" />
+			value="${sessionScope.loginUser.id}" /> <input type="hidden"
+			id="userSafeMargin" value="${sessionScope.loginUser.safeMargin}" />
 		<div class="top-bar">
 			<span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate
 					value="${deadline}" pattern="MMMM dd, yyyy" /> (D-${remainDays}
@@ -335,11 +334,13 @@
 											</button>
 											<!-- ✨ 정렬 버튼 추가 -->
 											<button id="element-align-h" class="control-btn align-btn"
-												title="Center horizontally" style="width: 25px; height: 25px;">
+												title="Center horizontally"
+												style="width: 25px; height: 25px;">
 												<img src="/images/icon/hor_center.png" alt="horCenter">
 											</button>
 											<button id="element-align-v" class="control-btn align-btn"
-												title="Vertically centered" style="width: 25px; height: 25px;">
+												title="Vertically centered"
+												style="width: 25px; height: 25px;">
 												<img src="/images/icon/ver_center.png" alt="verCenter">
 											</button>
 											<button id="btn-delete-element"
@@ -400,7 +401,8 @@
 											<!-- 균등 배분 -->
 											<div class="btn-group" role="group" aria-label="균등 배분">
 												<button id="multi-distribute-h"
-													class="control-btn align-btn" title="Distribute Horizontally">
+													class="control-btn align-btn"
+													title="Distribute Horizontally">
 													<img src="/images/icon/distribute_h.svg" alt="Distribute H"
 														style="width: 20px; height: 20px;">
 												</button>
@@ -416,6 +418,10 @@
 								</div>
 								<div id="main-actions" class="d-flex align-items-center gap-2"
 									style="margin-right: 15px;">
+									<button id="btn-safe-margin-fit" class="btn btn-warning btn-sm"
+										style="display: none;" title="모든 요소를 6mm 안전선 안으로 축소 맞춤">SafeFit</button>
+									<button id="btn-restore-backup" class="btn btn-info btn-sm"
+										style="display: none;" title="SafeFit 적용 전 원본 레이아웃으로 복원">Restore</button>
 									<button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
 									<button id="btn-save" class="btn btn-primary">Save</button>
 									<button id="btn-close-modal" class="btn btn-danger">Close</button>
