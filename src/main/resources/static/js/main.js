@@ -167,7 +167,10 @@ $(document).ready(function() {
 			// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
 			const rawHtml = $element.html();
 			const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
-			const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
+			const strippedHtmlForCheck = htmlContent
+				.replace(/<br\s*\/?>\s*$/gi, '')
+				.replace(/(<div>\s*<br\s*\/?>\s*<\/div>\s*)+$/gi, '')  // Chrome Enter 시 생성되는 말미 <div><br></div> 제거
+				.replace(/<div>\s*<\/div>\s*$/gi, '');
 			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 
 			// ✅ font + white-space 를 한 번에 적용 (중간 렌더링 1회 제거 → 브라우저 축소 시 줄바꿈 깜빡임 방지)
@@ -448,24 +451,31 @@ $(document).ready(function() {
 			};
 		} else {
 			// 단일 행
-			// ✅ letter-spacing, line-height 포함 → 실제 렌더링과 일치하는 너비 측정
-			const $temp = $('<div>')
-				.html(htmlContent || ' ')
-				.css({
-					'position': 'absolute',
-					'visibility': 'hidden',
-					'white-space': 'nowrap',
-					'font-size': fontSize + 'px',
-					'font-family': $textBox.css('font-family'),
-					'font-weight': $textBox.css('font-weight'),
-					'letter-spacing': $textBox.css('letter-spacing'),
-					'line-height': $textBox.css('line-height'),
-					'padding': padding + 'px'
-				});
-			$('body').append($temp);
-			const width = $temp.outerWidth();
-			const height = $temp.outerHeight();
-			$temp.remove();
+			// ✅ 너비: strippedHtmlForCheck 사용 → trailing <div><br></div> 제거 → 폭 오측정 방지
+			// ✅ 높이: htmlContent 사용 → trailing 빈 줄 포함 → Enter 후 커서 박스 밖으로 밀리는 현상 방지
+			const baseCSS = {
+				'position': 'absolute',
+				'visibility': 'hidden',
+				'white-space': 'nowrap',
+				'font-size': fontSize + 'px',
+				'font-family': $textBox.css('font-family'),
+				'font-weight': $textBox.css('font-weight'),
+				'letter-spacing': $textBox.css('letter-spacing'),
+				'line-height': $textBox.css('line-height'),
+				'padding': padding + 'px'
+			};
+
+			// 너비 측정: stripped HTML (trailing 빈 div 제외)
+			const $tempW = $('<div>').html(strippedHtmlForCheck || ' ').css(baseCSS);
+			$('body').append($tempW);
+			const width = $tempW.outerWidth();
+			$tempW.remove();
+
+			// 높이 측정: 원본 HTML (trailing 빈 div 포함 → 커서 위치 공간 확보)
+			const $tempH = $('<div>').html(htmlContent || ' ').css(baseCSS);
+			$('body').append($tempH);
+			const height = $tempH.outerHeight();
+			$tempH.remove();
 
 			// ✅ +15px 안전 버퍼: 서브픽셀 폰트 렌더링 반올림 오차 보정
 			// 브라우저 축소 시 실제 렌더링 너비가 측정값보다 미세하게 커서 줄바꿈되는 현상 방지
