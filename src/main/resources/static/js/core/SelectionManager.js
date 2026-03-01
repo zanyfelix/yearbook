@@ -295,6 +295,49 @@ class SelectionManager {
 		const safeMarginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
 		const safeMarginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
 
+		// 안전 영역 경계
+		const safeLeft = actualBgRect.left + safeMarginX;
+		const safeTop = actualBgRect.top + safeMarginY;
+		const safeRight = actualBgRect.left + actualBgRect.width - safeMarginX;
+		const safeBottom = actualBgRect.top + actualBgRect.height - safeMarginY;
+
+		// ✅ 텍스트박스: 방향별 독립 soft clamp
+		//    현재 위치가 해당 경계선 안쪽일 때만 그 방향 제약 적용.
+		//    element.css('left')는 오프셋 부모 좌표계 불일치·'auto' 반환 등 문제 있으므로
+		//    반드시 position()을 사용. eps로 float 정밀도 오차 흡수.
+		if (element.hasClass('text-box')) {
+			const savedTransform = element.css('transform');
+			element.css('transform', 'none');
+			const curPos = element.position();   // transform 제거 후 현재 레이아웃 위치
+			const elW    = element.outerWidth();
+			const elH    = element.outerHeight();
+			element.css('transform', savedTransform);
+
+			// 0.5px 오차 허용: 경계선에 딱 걸쳤을 때 float 반올림으로 오판 방지
+			const eps = 0.5;
+
+			let cL = newLeft;
+			let cT = newTop;
+
+			// 좌측: 현재 좌측이 safeLeft 안쪽(≥)이면 좌측 제약 적용
+			if (curPos.left >= safeLeft - eps)
+				cL = Math.max(safeLeft, cL);
+
+			// 우측: 현재 우측이 safeRight 안쪽(≤)이면 우측 제약 적용
+			if ((curPos.left + elW) <= safeRight + eps)
+				cL = Math.min(safeRight - elW, cL);
+
+			// 상단: 현재 상단이 safeTop 안쪽(≥)이면 상단 제약 적용
+			if (curPos.top >= safeTop - eps)
+				cT = Math.max(safeTop, cT);
+
+			// 하단: 현재 하단이 safeBottom 안쪽(≤)이면 하단 제약 적용
+			if ((curPos.top + elH) <= safeBottom + eps)
+				cT = Math.min(safeBottom - elH, cT);
+
+			return { left: cL, top: cT };
+		}
+
 		// 회전 각도 먼저 확인 (transform 제거 전)
 		const transform = element.css('transform');
 		let rotation = 0;
@@ -312,12 +355,6 @@ class SelectionManager {
 		const originalWidth = element.outerWidth();
 		const originalHeight = element.outerHeight();
 		element.css('transform', transform);
-
-		// 안전 영역 경계
-		const safeLeft = actualBgRect.left + safeMarginX;
-		const safeTop = actualBgRect.top + safeMarginY;
-		const safeRight = actualBgRect.left + actualBgRect.width - safeMarginX;
-		const safeBottom = actualBgRect.top + actualBgRect.height - safeMarginY;
 
 		let constrainedLeft = newLeft;
 		let constrainedTop = newTop;
