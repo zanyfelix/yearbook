@@ -273,7 +273,10 @@ class TextManager {
 		if (actualBgRect) {
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
-			scaledFontSize = Math.round(numericSize * scaleRatio);
+			// ✅ updateElementPosition과 동일한 공식 사용 (소수 1자리)
+			// Math.round(x)만 쓰면 정수로 반올림되어 updateElementPosition의 결과와 달라짐
+			// → 재선택 시 font-size가 미세하게 달라져 텍스트·박스가 축소되는 버그 발생
+			scaledFontSize = Math.round(numericSize * scaleRatio * 10) / 10;
 		} else {
 			scaledFontSize = numericSize;
 		}
