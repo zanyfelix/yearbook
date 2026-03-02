@@ -457,6 +457,52 @@ $(document).ready(function () {
         PageSelectModal.open(userId, schoolName);
     });
 
+    /* ── Download Originals 버튼 클릭 → 원본 사진 ZIP 다운로드 ── */
+    $(document).on('click', '.btn-dl-originals', function () {
+        const $btn       = $(this);
+        const userId     = $btn.data('userid');
+        const schoolName = $btn.data('schoolname') || 'originals';
+
+        $btn.prop('disabled', true).text('Loading...');
+        $('#loader-msg').text('Preparing download...');
+        $('#preview-loader').show();
+
+        const url = `${ctx}/admin/yearbook/downloadOriginals?userId=${userId}`;
+
+        fetch(url, { credentials: 'same-origin' })
+            .then(function(res) {
+                if (!res.ok) {
+                    return res.text().then(function(msg) {
+                        throw new Error('Server error ' + res.status + ': ' + msg);
+                    });
+                }
+                $('#loader-msg').text('Downloading ZIP...');
+                // Content-Disposition 헤더에서 파일명 추출
+                const disposition = res.headers.get('Content-Disposition') || '';
+                let filename = schoolName + '_originals.zip';
+                const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+                if (match) filename = decodeURIComponent(match[1].replace(/"/g, ''));
+                return res.blob().then(function(blob) { return { blob: blob, filename: filename }; });
+            })
+            .then(function(result) {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(result.blob);
+                a.download = result.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            })
+            .catch(function(err) {
+                alert('Download failed:\n' + err.message);
+            })
+            .finally(function() {
+                $('#preview-loader').hide();
+                $('#loader-msg').text('Preparing download...');
+                $btn.prop('disabled', false).text('Download Originals');
+            });
+    });
+
     /* ── 모달 닫기 ─────────────────────────────────────────── */
     $('#ps-modal-close-btn, #ps-cancel-btn').on('click', function () {
         PageSelectModal.close();

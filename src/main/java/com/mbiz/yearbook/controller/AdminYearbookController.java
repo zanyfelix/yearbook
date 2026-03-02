@@ -246,6 +246,49 @@ public class AdminYearbookController {
 	}
 
 	/**
+	 * 특정 사용자의 원본 사진 파일을 카테고리/그룹/페이지 계층 구조 ZIP으로 다운로드.
+	 * design_data JSON의 photos[].src 에서 /photo/originals/ 경로를 추출하여 묶음.
+	 *
+	 * @param userId 대상 사용자 ID
+	 */
+	@GetMapping("/admin/yearbook/downloadOriginals")
+	public void downloadOriginals(
+	        @RequestParam("userId") Long userId,
+	        HttpServletResponse response) throws IOException {
+
+	    Optional<User> userOpt = userRepository.findById(userId);
+	    if (userOpt.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found: " + userId);
+	        return;
+	    }
+
+	    File zipFile = null;
+	    try {
+	        zipFile = jpgRenderingService.zipOriginalPhotos(userId);
+
+	        if (zipFile == null || !zipFile.exists() || zipFile.length() == 0) {
+	            response.sendError(HttpServletResponse.SC_NOT_FOUND,
+	                    "No original photos found for this user.");
+	            return;
+	        }
+
+	        response.setContentType("application/zip");
+	        response.setContentLength((int) zipFile.length());
+	        response.setHeader("Content-Disposition", buildContentDisposition(zipFile.getName()));
+
+	        streamFileToResponse(zipFile, response);
+
+	    } catch (Exception e) {
+	        if (!response.isCommitted()) {
+	            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                    "Failed to create ZIP: " + e.getMessage());
+	        }
+	    } finally {
+	        if (zipFile != null && zipFile.exists()) zipFile.delete();
+	    }
+	}
+
+	/**
 	 * 연감 다운로드 엔드포인트 (진행률 SSE 지원)
 	 *
 	 * @param userIds 선택된 사용자 ID 목록

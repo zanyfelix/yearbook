@@ -104,6 +104,7 @@
 		      <th>SCHOOL NAME</th>
 		      <th>YEARBOOK</th>
 		      <th>PAGES</th>
+		      <th>ORIGINALS</th>
 		    </tr>
 	      </thead>
 	      <tbody>
@@ -129,6 +130,12 @@
 	                      data-userid="${item.id}"
 	                      data-schoolname="${item.schoolName}"
 	                      type="button">Select Pages</button>
+	            </td>
+	            <td>
+	              <button class="btn-dl-originals"
+	                      data-userid="${item.id}"
+	                      data-schoolname="${item.schoolName}"
+	                      type="button">Download Originals</button>
 	            </td>
 	          </tr>
 	          </c:if>
@@ -180,5 +187,13 @@ const loginUserRole = '${sessionScope.loginUser.role}';
 <script src="${pageContext.request.contextPath}/js/bootstrap.min.js" defer></script>
 <script src="<c:url value='/js/jquery-3.6.0.min.js'/>"></script>
 <script src="<c:url value='/js/admin/yearbook.js'/>"></script>
+<!-- ===== Preview Loader (originals download) ===== -->
+<div id="preview-loader" style="display:none;">
+  <div style="text-align:center;">
+    <div class="spinner"></div>
+    <p id="loader-msg" style="margin-top:14px; font-size:1rem; color:#555; font-weight:500;">Preparing download...</p>
+  </div>
+</div>
+
 </body>
 </html>

@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
@@ -26,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
@@ -530,6 +530,121 @@ public class JpgRenderingService {
 		cleanupTempDirectory(tempUserDir);
 
 		return zipFile;
+	}
+
+	/**
+	 * 사용자의 design_data JSON에서 원본 사진 파일을 추출하여 ZIP으로 반환.
+	 * <p>
+	 * ZIP 구조:
+	 * <pre>
+	 * {schoolName}_originals_{timestamp}.zip
+	 * ├── Group Photo/
+	 * │   └── {groupTitle}/
+	 * │       ├── p001.jpg          (사진 1장일 때)
+	 * │       ├── p002_1.jpg        (사진 여러 장일 때 _N 접미어)
+	 * │       └── p002_2.jpg
+	 * └── Event Photo/
+	 *     └── ...
+	 * </pre>
+	 *
+	 * @param userId 대상 사용자 ID
+	 * @return 생성된 ZIP 파일 (호출자가 삭제 책임)
+	 */
+	public File zipOriginalPhotos(Long userId) throws IOException {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+		List<Contents> contentsList = contentsRepository.findByUserId(userId);
+		logger.info("[zipOriginalPhotos] userId={}, contents 수={}, userPhotosPath={}", userId, contentsList.size(), userPhotosPath);
+		// category 정렬: group → event
+		contentsList.sort((a, b) -> {
+			int oa = "group".equalsIgnoreCase(a.getCategory()) ? 0 : 1;
+			int ob = "group".equalsIgnoreCase(b.getCategory()) ? 0 : 1;
+			if (oa != ob) return oa - ob;
+			return Long.compare(a.getId(), b.getId());
+		});
+
+		String schoolName = (user.getSchoolName() != null && !user.getSchoolName().isEmpty())
+				? user.getSchoolName().replace(" ", "") : "unknown";
+		String timestamp   = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+		String zipFileName = schoolName + "_originals_" + timestamp + ".zip";
+		File   zipFile     = new File(System.getProperty("java.io.tmpdir"), zipFileName);
+
+		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile))) {
+			for (Contents contents : contentsList) {
+				String categoryDir = "group".equalsIgnoreCase(contents.getCategory())
+						? "Group Photo" : "Event Photo";
+				String safeTitle   = contents.getTitle()
+						.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+
+				List<Yearbook> pages = yearbookRepository.findByContentsIdOrderByPageNoAsc(contents.getId());
+				for (Yearbook page : pages) {
+					if (page.getDesignData() == null || page.getDesignData().isEmpty()) continue;
+
+					try {
+						List<File> photoFiles = extractOriginalFiles(page.getDesignData());
+						for (int idx = 0; idx < photoFiles.size(); idx++) {
+							File f = photoFiles.get(idx);
+							String ext     = getOriginalFileExt(f.getName());
+							String suffix  = (photoFiles.size() == 1) ? "" : ("_" + (idx + 1));
+							String entryName = String.format("%s/%s/p%03d%s.%s",
+									categoryDir, safeTitle, page.getPageNo(), suffix, ext);
+
+							zos.putNextEntry(new ZipEntry(entryName));
+							Files.copy(f.toPath(), zos);
+							zos.closeEntry();
+						}
+					} catch (Exception e) {
+						logger.warn("원본 사진 추출 실패 — pageId={}: {}", page.getId(), e.getMessage());
+					}
+				}
+			}
+		}
+
+		logger.info("[zipOriginalPhotos] ZIP 생성 완료: {} ({}bytes)", zipFile.getAbsolutePath(), zipFile.length());
+		return zipFile;
+	}
+
+	/**
+	 * design_data JSON의 photos 배열에서 원본 파일 목록을 추출.
+	 * photos[i].src 경로를 /photo/ 기준으로 실제 파일 경로로 변환하며,
+	 * 편집(edits) 경로인 경우 대응하는 originals 파일로 우선 변환.
+	 */
+	private List<File> extractOriginalFiles(String designData) throws IOException {
+		List<File> result = new ArrayList<>();
+		JsonNode root   = objectMapper.readTree(designData);
+		JsonNode frames = root.get("frames");
+		if (frames == null || !frames.isArray()) return result;
+
+		for (JsonNode frame : frames) {
+			JsonNode photoNode = frame.get("photo");
+			if (photoNode == null || photoNode.isNull()) continue;
+
+			// src(originalPath) 우선, 없으면 editSrc
+			String src = null;
+			if (photoNode.has("src"))     src = photoNode.get("src").asText(null);
+			if (src == null && photoNode.has("editSrc")) src = photoNode.get("editSrc").asText(null);
+			if (src == null || src.isBlank() || src.startsWith("data:")) continue;
+
+			// originals 경로만 포함 — loadImageBytes와 동일한 방식으로 절대 경로 축책
+			if (!src.contains("/originals/")) continue;
+
+			String rel;
+			if (src.startsWith("/photo/"))   rel = src.substring("/photo/".length());
+			else if (src.startsWith("photo/")) rel = src.substring("photo/".length());
+			else continue;
+
+			File f = new File(userPhotosPath + rel);
+			logger.debug("[extractOriginalFiles] src={} -> path={} exists={}", src, f.getAbsolutePath(), f.exists());
+			if (f.exists() && f.isFile()) result.add(f);
+		}
+		return result;
+	}
+
+	/** 파일명에서 확장자 추출 (소문자 반환). */
+	private String getOriginalFileExt(String filename) {
+		int dot = filename.lastIndexOf('.');
+		return (dot >= 0) ? filename.substring(dot + 1).toLowerCase() : "jpg";
 	}
 
 	/**

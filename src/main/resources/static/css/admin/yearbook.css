@@ -502,8 +502,37 @@ html, body {
 }
 
 /* ===================================================
-   Select Pages 버튼 (테이블 셀 내)
+   로딩 오버레이 (편집화면과 동일)
    =================================================== */
+#preview-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Select Pages 버튼 */
 .btn-select-pages {
   padding: 5px 12px;
   font-size: 0.82rem;
@@ -518,6 +547,27 @@ html, body {
 }
 .btn-select-pages:hover {
   background-color: #0b5ed7;
+}
+
+/* Download Originals 버튼 */
+.btn-dl-originals {
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #198754;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+  white-space: nowrap;
+}
+.btn-dl-originals:hover:not(:disabled) {
+  background-color: #157347;
+}
+.btn-dl-originals:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* ===================================================
