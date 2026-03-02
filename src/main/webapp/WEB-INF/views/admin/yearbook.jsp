@@ -47,12 +47,51 @@
 		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 90% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
 	</form>
 </div>
-<!-- Loading -->
-<div id="loading-spinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; text-align: center; padding-top: 20%;">
-  <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-    <span class="visually-hidden">Loading...</span>
+<!-- ===== 다운로드 렌더링 진행 오버레이 ===== -->
+<div id="download-progress-overlay" style="display: none;">
+  <div class="dl-progress-card">
+
+    <!-- 상단 헤더: 아이콘 + 제목 -->
+    <div class="dl-progress-header">
+      <div class="dl-mini-spinner"></div>
+      <div>
+        <div class="dl-title">연감 렌더링 중</div>
+        <div id="dl-school-name" class="dl-subtitle">준비 중...</div>
+      </div>
+    </div>
+
+    <!-- 전체 진행바 -->
+    <div class="dl-section-label">전체 진행률</div>
+    <div class="dl-bar-track">
+      <div id="dl-overall-fill" class="dl-bar-fill"></div>
+    </div>
+    <div class="dl-bar-meta">
+      <span id="dl-overall-pct">0%</span>
+      <span id="dl-school-counter">0 / 0 학교</span>
+    </div>
+
+    <!-- 현재 단계 표시 -->
+    <div class="dl-section-label" style="margin-top:16px;">현재 단계</div>
+    <div class="dl-step-row">
+      <div class="dl-step-item" id="dl-step-render">
+        <div class="dl-step-dot"></div><span>렌더링</span>
+      </div>
+      <div class="dl-step-connector"></div>
+      <div class="dl-step-item" id="dl-step-zip">
+        <div class="dl-step-dot"></div><span>ZIP 생성</span>
+      </div>
+      <div class="dl-step-connector"></div>
+      <div class="dl-step-item" id="dl-step-download">
+        <div class="dl-step-dot"></div><span>다운로드</span>
+      </div>
+    </div>
+
+    <!-- 경과 시간 -->
+    <div class="dl-elapsed">
+      경과 시간: <span id="dl-elapsed-time">0s</span>
+    </div>
+
   </div>
-  <p style="margin-top: 1rem; font-size: 1.2rem;">Downloading and rendering yearbook... Please wait.</p>
 </div>
 
 <div class="content">
@@ -66,11 +105,12 @@
 		      </th>
 		      <th>SCHOOL NAME</th>
 		      <th>YEARBOOK</th>
+		      <th>PAGES</th>
 		    </tr>
 	      </thead>
 	      <tbody>
 	       <c:forEach var="item" items="${users}" varStatus="st">
-	       	  <c:if test="${item.role ne 'admin'}">	
+	       	  <c:if test="${item.role ne 'admin'}">
 	          <tr>
 	          	<td>
 		            <input type="checkbox" class="selectBox" name="ids" value="${item.id}" />
@@ -86,18 +126,51 @@
 	                    </c:otherwise>
 	            	</c:choose>
 	            </td>
+	            <td>
+	              <button class="btn-select-pages"
+	                      data-userid="${item.id}"
+	                      data-schoolname="${item.schoolName}"
+	                      type="button">Select Pages</button>
+	            </td>
 	          </tr>
 	          </c:if>
 	        </c:forEach>
 	      </tbody>
 	    </table>
-    
+
 	    <div class="btn-wrapper">
 		    <button id="btn-apply" type="button">DOWNLOAD</button>
 	    </div>
 
     </div><!-- /.container-fluid -->
   </div><!-- /.content -->
+<!-- ===== 개별 페이지 선택 모달 ===== -->
+<div id="page-select-modal" class="ps-modal-overlay" style="display:none;">
+  <div class="ps-modal-box">
+
+    <!-- 헤더 -->
+    <div class="ps-modal-header">
+      <span id="ps-modal-title">페이지 선택</span>
+      <button class="ps-modal-close" id="ps-modal-close-btn" type="button">&times;</button>
+    </div>
+
+    <!-- 본문: 카테고리 → 그룹 → 썸네일 그리드 (JS 동적 생성) -->
+    <div class="ps-modal-body" id="ps-modal-body">
+      <div class="ps-loading">페이지 정보를 불러오는 중...</div>
+    </div>
+
+    <!-- 푸터 -->
+    <div class="ps-modal-footer">
+      <span id="ps-selected-count" class="ps-sel-count">0개 선택됨</span>
+      <div class="ps-footer-btns">
+        <button id="ps-cancel-btn" class="ps-btn-cancel" type="button">취소</button>
+        <button id="ps-download-btn" class="ps-btn-download" type="button" disabled>선택 다운로드</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 const ctx  = '${pageContext.request.contextPath}';
 const id   = '${id}';

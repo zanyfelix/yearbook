@@ -500,6 +500,106 @@ public class JpgRenderingService {
 		return zipFile;
 	}
 
+	/**
+	 * 선택된 yearbookId 목록만 렌더링하여 ZIP 파일로 반환.
+	 * ZIP 구조: Group Photo/{title}/ 및 Event Photo/{title}/ (기존 동일 방식)
+	 * ZIP 파일명: {schoolName}_yearbook_files_{timestamp}.zip
+	 *
+	 * @param yearbookIds     렌더링할 Yearbook ID 목록
+	 * @param format          출력 포맷 ("jpg")
+	 * @param progressService SSE 진행 이벤트 전송용 서비스 (null 허용)
+	 * @param token           SSE progressToken (null 허용)
+	 */
+	public File renderAndZipSelectedPages(
+			List<Long> yearbookIds, String format,
+			DownloadProgressService progressService, String token) throws IOException {
+
+		List<Yearbook> pages = yearbookRepository.findByIdInOrderedByContentsAndPage(yearbookIds);
+		if (pages.isEmpty()) {
+			logger.warn("renderAndZipSelectedPages: 렌더링할 페이지가 없음");
+			return null;
+		}
+
+		Long userId = pages.get(0).getUserId();
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found: " + userId));
+		String schoolName = (user.getSchoolName() != null && !user.getSchoolName().isEmpty())
+				? user.getSchoolName() : "unknown";
+
+		Path tempDir = Files.createTempDirectory("sel_" + userId + "_");
+		Path groupPhotoDir = tempDir.resolve("Group Photo");
+		Path eventPhotoDir = tempDir.resolve("Event Photo");
+		Files.createDirectories(groupPhotoDir);
+		Files.createDirectories(eventPhotoDir);
+
+		Map<Long, Contents> contentsCache = new HashMap<>();
+		int total = pages.size();
+		int totalRendered = 0;
+
+		for (int i = 0; i < pages.size(); i++) {
+			Yearbook page = pages.get(i);
+			if (page.getDesignData() == null || page.getDesignData().isEmpty()) {
+				continue;
+			}
+
+			Contents contents = contentsCache.computeIfAbsent(page.getContentsId(),
+					cid -> contentsRepository.findById(cid).orElse(null));
+			if (contents == null) {
+				logger.warn("Contents not found for contentsId={}", page.getContentsId());
+				continue;
+			}
+
+			String contentsTitle = contents.getTitle();
+			boolean isGroup = "group".equalsIgnoreCase(contents.getCategory());
+
+			// SSE: pageStart 이벤트
+			if (progressService != null && token != null) {
+				Map<String, Object> evData = new HashMap<>();
+				evData.put("index", i);
+				evData.put("total", total);
+				evData.put("title", contentsTitle);
+				evData.put("pageNo", page.getPageNo());
+				progressService.sendEvent(token, "pageStart", evData);
+			}
+
+			// title별 서브디렉토리 생성 (파일 시스템 금지 문자 제거)
+			String safeTitle = contentsTitle.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+			Path titleDir = (isGroup ? groupPhotoDir : eventPhotoDir).resolve(safeTitle);
+			Files.createDirectories(titleDir);
+
+			String fileName = generateFileName(contentsTitle, page.getPageNo(), format);
+			File outputFile = titleDir.resolve(fileName).toFile();
+
+			try {
+				renderAndSaveSinglePageHighQuality(page.getDesignData(), outputFile, format);
+				totalRendered++;
+				logger.debug("선택 페이지 렌더링 완료: {}", fileName);
+			} catch (Exception e) {
+				logger.error("선택 페이지 렌더링 실패: Yearbook ID {}", page.getId(), e);
+			}
+
+			// SSE: pageDone 이벤트
+			if (progressService != null && token != null) {
+				Map<String, Object> evData = new HashMap<>();
+				evData.put("index", i);
+				evData.put("total", total);
+				progressService.sendEvent(token, "pageDone", evData);
+			}
+		}
+
+		logger.info("선택 페이지 렌더링 완료: {} / {} 페이지", totalRendered, total);
+
+		String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+		String safeName = schoolName.replace(" ", "");
+		String zipFileName = String.format("%s_yearbook_files_%s.zip", safeName, timestamp);
+		File zipFile = new File(System.getProperty("java.io.tmpdir"), zipFileName);
+
+		createZipFile(tempDir, zipFile);
+		cleanupTempDirectory(tempDir);
+
+		return zipFile;
+	}
+
 	private String generateFileName(String title, int pageNo, String format) {
 		return String.format("%s_%03d.%s", title.replaceAll("[^a-zA-Z0-9.-]", "_"), pageNo, format);
 	}

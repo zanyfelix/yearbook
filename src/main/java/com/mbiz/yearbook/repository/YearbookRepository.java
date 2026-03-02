@@ -28,7 +28,14 @@ public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
     Optional<Yearbook> findByContentsIdAndPageNo(Long contentsId, int pageNo);
     
     List<Yearbook> findByUserIdOrderByPageNoAsc(Long userId);
-    
+
+    /**
+     * 선택된 ID 목록을 contentsId ASC, pageNo ASC 순으로 조회.
+     * 개별 페이지 선택 렌더링에 사용.
+     */
+    @Query("SELECT y FROM Yearbook y WHERE y.id IN :ids ORDER BY y.contentsId ASC, y.pageNo ASC")
+    List<Yearbook> findByIdInOrderedByContentsAndPage(@Param("ids") List<Long> ids);
+
     /**
      * 특정 페이지(id)의 순서(pageNo)를 업데이트합니다.
      * @param id 업데이트할 YearbookPage의 ID

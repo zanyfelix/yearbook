@@ -11,20 +11,33 @@ import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.User;
+import com.mbiz.yearbook.model.Yearbook;
+import com.mbiz.yearbook.repository.ContentsRepository;
 import com.mbiz.yearbook.repository.UserRepository;
+import com.mbiz.yearbook.repository.YearbookRepository;
+import com.mbiz.yearbook.service.DownloadProgressService;
 import com.mbiz.yearbook.service.HomeService;
 import com.mbiz.yearbook.service.JpgRenderingService;
 import com.mbiz.yearbook.service.PdfRenderingService;
@@ -50,7 +63,16 @@ public class AdminYearbookController {
 	
 	@Autowired
 	private JpgRenderingService jpgRenderingService;
-	
+
+	@Autowired
+	private DownloadProgressService downloadProgressService;
+
+	@Autowired
+	private ContentsRepository contentsRepository;
+
+	@Autowired
+	private YearbookRepository yearbookRepository;
+
 	private final String UPLOAD_DIR = "upload/";
 
 	@GetMapping("/admin/yearbook")
@@ -99,59 +121,230 @@ public class AdminYearbookController {
 	    return "admin/yearbook";
 	}
 	
-	@GetMapping("/admin/yearbook/download")
-	public void downloadYearbooks(@RequestParam("ids") List<Long> userIds, 
-	                             @RequestParam(value = "format", defaultValue = "jpg") String format,
-	                             HttpServletResponse response) throws IOException {
+	/**
+	 * SSE 구독 엔드포인트 – 다운로드 진행률 실시간 전송
+	 * 프론트엔드가 progressToken 을 생성 후 이 URL 을 EventSource 로 구독
+	 */
+	@GetMapping(value = "/admin/yearbook/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public SseEmitter subscribeProgress(@RequestParam("token") String token) {
+	    return downloadProgressService.createEmitter(token);
+	}
+
+	/**
+	 * 특정 사용자의 카테고리-그룹-페이지 계층 조회 (모달용)
+	 * 반환 구조: category → groups → pages (thumbnailPath 포함)
+	 *
+	 * @param userId 조회할 사용자 ID
+	 * @return [ { category, categoryLabel, groups: [ { contentsId, title, pages: [ { id, pageNo, thumbnailPath } ] } ] } ]
+	 */
+	@GetMapping("/admin/yearbook/pages")
+	@ResponseBody
+	public ResponseEntity<List<Map<String, Object>>> getYearbookPages(@RequestParam("userId") Long userId) {
+
+		List<Contents> contentsList = contentsRepository.findByUserId(userId);
+
+		// category 순서: group 먼저, event 나중
+		contentsList.sort((a, b) -> {
+			int oa = "group".equalsIgnoreCase(a.getCategory()) ? 0 : 1;
+			int ob = "group".equalsIgnoreCase(b.getCategory()) ? 0 : 1;
+			if (oa != ob) return oa - ob;
+			return Long.compare(a.getId(), b.getId());
+		});
+
+		// category → groups 매핑
+		Map<String, List<Map<String, Object>>> categoryGroups = new LinkedHashMap<>();
+		for (Contents contents : contentsList) {
+			String cat = contents.getCategory() != null ? contents.getCategory().toLowerCase() : "event";
+			List<Map<String, Object>> groups = categoryGroups.computeIfAbsent(cat, k -> new ArrayList<>());
+
+			List<Yearbook> pages = yearbookRepository.findByContentsIdOrderByPageNoAsc(contents.getId());
+			if (pages.isEmpty()) continue;
+
+			List<Map<String, Object>> pageList = new ArrayList<>();
+			for (Yearbook yb : pages) {
+				Map<String, Object> pageMap = new LinkedHashMap<>();
+				pageMap.put("id", yb.getId());
+				pageMap.put("pageNo", yb.getPageNo());
+				pageMap.put("thumbnailPath", yb.getThumbnailPath());
+				pageList.add(pageMap);
+			}
+
+			Map<String, Object> groupMap = new LinkedHashMap<>();
+			groupMap.put("contentsId", contents.getId());
+			groupMap.put("title", contents.getTitle());
+			groupMap.put("pages", pageList);
+			groups.add(groupMap);
+		}
+
+		// 최종 결과 리스트 조합
+		List<Map<String, Object>> result = new ArrayList<>();
+		categoryGroups.forEach((cat, groups) -> {
+			Map<String, Object> catMap = new LinkedHashMap<>();
+			catMap.put("category", cat);
+			catMap.put("categoryLabel", "group".equals(cat) ? "Group Photo" : "Event Photo");
+			catMap.put("groups", groups);
+			result.add(catMap);
+		});
+
+		return ResponseEntity.ok(result);
+	}
+
+	/**
+	 * 선택된 페이지(Yearbook ID 목록)만 렌더링하여 ZIP 다운로드 (진행률 SSE 지원)
+	 *
+	 * @param pageIds 렌더링할 Yearbook ID 목록 (쉼표 구분)
+	 * @param format  이미지 포맷 (기본 jpg)
+	 * @param token   progressToken – SSE 이벤트 전송용 (optional)
+	 */
+	@GetMapping("/admin/yearbook/downloadSelected")
+	public void downloadSelected(
+	        @RequestParam("pageIds") List<Long> pageIds,
+	        @RequestParam(value = "format", defaultValue = "jpg") String format,
+	        @RequestParam(value = "token", required = false) String token,
+	        HttpServletResponse response) throws IOException {
+
 		String normalizedFormat = format.toLowerCase();
+		if (!"jpg".equals(normalizedFormat)) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "jpg 포맷만 지원합니다.");
+			downloadProgressService.completeWithError(token, "지원하지 않는 포맷입니다.");
+			return;
+		}
+
+		int total = pageIds.size();
+		Map<String, Object> initData = new LinkedHashMap<>();
+		initData.put("total", total);
+		downloadProgressService.sendEvent(token, "init", initData);
+
+		File zipFile = null;
+		try {
+			// packaging 이벤트 (렌더링 전 표시)
+			downloadProgressService.sendEvent(token, "packaging", "페이지 렌더링 중...");
+
+			zipFile = jpgRenderingService.renderAndZipSelectedPages(pageIds, normalizedFormat,
+			        downloadProgressService, token);
+
+			if (zipFile == null || !zipFile.exists()) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND, "렌더링할 페이지가 없습니다.");
+				downloadProgressService.completeWithError(token, "렌더링할 페이지가 없습니다.");
+				return;
+			}
+
+			response.setContentType("application/zip");
+			response.setHeader("Content-Disposition", buildContentDisposition(zipFile.getName()));
+
+			// SSE 완료 처리 후 스트리밍
+			downloadProgressService.complete(token);
+
+			streamFileToResponse(zipFile, response);
+
+		} catch (Exception e) {
+			downloadProgressService.completeWithError(token, "렌더링 중 오류: " + e.getMessage());
+			throw e;
+		} finally {
+			if (zipFile != null && zipFile.exists()) zipFile.delete();
+		}
+	}
+
+	/**
+	 * 연감 다운로드 엔드포인트 (진행률 SSE 지원)
+	 *
+	 * @param userIds 선택된 사용자 ID 목록
+	 * @param format  이미지 포맷 (현재 jpg 만 지원)
+	 * @param token   progressToken – SSE 진행 이벤트 전송용 (optional)
+	 */
+	@GetMapping("/admin/yearbook/download")
+	public void downloadYearbooks(
+	        @RequestParam("ids") List<Long> userIds,
+	        @RequestParam(value = "format", defaultValue = "jpg") String format,
+	        @RequestParam(value = "token", required = false) String token,
+	        HttpServletResponse response) throws IOException {
+
+	    String normalizedFormat = format.toLowerCase();
 	    if (!"jpg".equals(normalizedFormat)) {
 	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "지원하지 않는 형식입니다. jpg만 가능합니다.");
+	        downloadProgressService.completeWithError(token, "지원하지 않는 포맷입니다.");
 	        return;
 	    }
 
+	    int total = userIds.size();
+
+	    // ── 초기 이벤트: 총 학교 수 알림 ──────────────────────────────
+	    Map<String, Object> initData = new LinkedHashMap<>();
+	    initData.put("total", total);
+	    downloadProgressService.sendEvent(token, "init", initData);
+
 	    List<File> userZipFiles = new ArrayList<>();
-	    File masterZipFile = null; // 마스터 ZIP 파일도 finally에서 정리하기 위해 밖으로 뺍니다.
+	    File masterZipFile = null;
 
 	    try {
-	        for (Long userId : userIds) {
-	            // JpgRenderingService에서 사용자별로 폴더 구조화된 ZIP 파일을 생성합니다.
+	        for (int i = 0; i < userIds.size(); i++) {
+	            Long userId = userIds.get(i);
+
+	            // 학교 이름 조회 (없으면 ID 로 대체)
+	            String schoolName = userRepository.findById(userId)
+	                    .map(User::getSchoolName)
+	                    .orElse("사용자 #" + userId);
+
+	            // ── schoolStart 이벤트 ──────────────────────────────────
+	            Map<String, Object> startData = new LinkedHashMap<>();
+	            startData.put("index",      i);          // 0-based
+	            startData.put("total",      total);
+	            startData.put("schoolName", schoolName);
+	            downloadProgressService.sendEvent(token, "schoolStart", startData);
+
+	            // 실제 렌더링 수행
 	            File userZip = jpgRenderingService.renderAndZipUserYearbook(userId, normalizedFormat);
 	            if (userZip != null) {
 	                userZipFiles.add(userZip);
 	            }
+
+	            // ── schoolDone 이벤트 ──────────────────────────────────
+	            Map<String, Object> doneData = new LinkedHashMap<>();
+	            doneData.put("index",      i);
+	            doneData.put("total",      total);
+	            doneData.put("schoolName", schoolName);
+	            downloadProgressService.sendEvent(token, "schoolDone", doneData);
 	        }
 
 	        if (userZipFiles.isEmpty()) {
 	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "렌더링할 페이지가 없습니다.");
+	            downloadProgressService.completeWithError(token, "렌더링할 페이지가 없습니다.");
 	            return;
 	        }
 
+	        // ── packaging 이벤트 ─────────────────────────────────────
+	        downloadProgressService.sendEvent(token, "packaging", "ZIP 생성 중...");
+
 	        if (userZipFiles.size() == 1) {
-	            // 사용자가 한 명이면 해당 ZIP 파일을 바로 다운로드
 	            File fileToDownload = userZipFiles.get(0);
 	            response.setContentType("application/zip");
 	            response.setHeader("Content-Disposition", buildContentDisposition(fileToDownload.getName()));
+
+	            // ZIP 스트리밍 전 SSE 완료 처리
+	            downloadProgressService.complete(token);
+
 	            streamFileToResponse(fileToDownload, response);
 	        } else {
-	            // 사용자가 여러 명이면, 마스터 ZIP으로 묶어서 다운로드
 	            masterZipFile = createMasterZipFromZips(userZipFiles);
 	            String masterTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+	            String masterFileName  = "yearbook_files_" + masterTimestamp + ".zip";
 	            response.setContentType("application/zip");
-	            String masterFileName = "yearbook_files_" + masterTimestamp + ".zip";
 	            response.setHeader("Content-Disposition", buildContentDisposition(masterFileName));
+
+	            // ZIP 스트리밍 전 SSE 완료 처리
+	            downloadProgressService.complete(token);
+
 	            streamFileToResponse(masterZipFile, response);
 	        }
 
+	    } catch (Exception e) {
+	        downloadProgressService.completeWithError(token, "렌더링 중 오류: " + e.getMessage());
+	        throw e;
 	    } finally {
-	        // 모든 임시 파일들을 안전하게 삭제
 	        for (File zipFile : userZipFiles) {
-	            if (zipFile != null && zipFile.exists()) {
-	                zipFile.delete();
-	            }
+	            if (zipFile != null && zipFile.exists()) zipFile.delete();
 	        }
-	        if (masterZipFile != null && masterZipFile.exists()) {
-	            masterZipFile.delete();
-	        }
+	        if (masterZipFile != null && masterZipFile.exists()) masterZipFile.delete();
 	    }
 	}
 	
