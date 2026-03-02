@@ -47,49 +47,47 @@
 		<button type="submit" class="btn btn-secondary w-100" style="position: absolute; width: 90% !important; bottom: 1rem; left: 50%; transform: translateX(-50%);">Logout</button>
 	</form>
 </div>
-<!-- ===== 다운로드 렌더링 진행 오버레이 ===== -->
-<div id="download-progress-overlay" style="display: none;">
+<!-- ===== Download Rendering Progress Overlay ===== -->
+<div id="download-progress-overlay">
   <div class="dl-progress-card">
 
-    <!-- 상단 헤더: 아이콘 + 제목 -->
+    <!-- Header: spinner + title -->
     <div class="dl-progress-header">
       <div class="dl-mini-spinner"></div>
       <div>
-        <div class="dl-title">연감 렌더링 중</div>
-        <div id="dl-school-name" class="dl-subtitle">준비 중...</div>
+        <div class="dl-title">Rendering</div>
+        <div id="dl-school-name" class="dl-subtitle">Preparing...</div>
       </div>
     </div>
 
-    <!-- 전체 진행바 -->
-    <div class="dl-section-label">전체 진행률</div>
+    <!-- Overall progress bar -->
+    <div class="dl-section-label">Overall Progress</div>
     <div class="dl-bar-track">
       <div id="dl-overall-fill" class="dl-bar-fill"></div>
     </div>
     <div class="dl-bar-meta">
       <span id="dl-overall-pct">0%</span>
-      <span id="dl-school-counter">0 / 0 학교</span>
+      <span id="dl-school-counter">0 / 0</span>
     </div>
 
-    <!-- 현재 단계 표시 -->
-    <div class="dl-section-label" style="margin-top:16px;">현재 단계</div>
+    <!-- Stage indicator -->
+    <div class="dl-section-label" style="margin-top:16px;">Current Stage</div>
     <div class="dl-step-row">
       <div class="dl-step-item" id="dl-step-render">
-        <div class="dl-step-dot"></div><span>렌더링</span>
+        <div class="dl-step-dot"></div><span>Rendering</span>
       </div>
       <div class="dl-step-connector"></div>
       <div class="dl-step-item" id="dl-step-zip">
-        <div class="dl-step-dot"></div><span>ZIP 생성</span>
+        <div class="dl-step-dot"></div><span>ZIP</span>
       </div>
       <div class="dl-step-connector"></div>
       <div class="dl-step-item" id="dl-step-download">
-        <div class="dl-step-dot"></div><span>다운로드</span>
+        <div class="dl-step-dot"></div><span>Download</span>
       </div>
     </div>
 
-    <!-- 경과 시간 -->
-    <div class="dl-elapsed">
-      경과 시간: <span id="dl-elapsed-time">0s</span>
-    </div>
+    <!-- Elapsed time -->
+    <div class="dl-elapsed">Elapsed: <span id="dl-elapsed-time">0s</span></div>
 
   </div>
 </div>
@@ -144,27 +142,27 @@
 
     </div><!-- /.container-fluid -->
   </div><!-- /.content -->
-<!-- ===== 개별 페이지 선택 모달 ===== -->
+<!-- ===== Page Selection Modal ===== -->
 <div id="page-select-modal" class="ps-modal-overlay" style="display:none;">
   <div class="ps-modal-box">
 
-    <!-- 헤더 -->
+    <!-- Header -->
     <div class="ps-modal-header">
-      <span id="ps-modal-title">페이지 선택</span>
+      <span id="ps-modal-title">Page Selection</span>
       <button class="ps-modal-close" id="ps-modal-close-btn" type="button">&times;</button>
     </div>
 
-    <!-- 본문: 카테고리 → 그룹 → 썸네일 그리드 (JS 동적 생성) -->
+    <!-- Body: category → group → thumbnail grid (rendered by JS) -->
     <div class="ps-modal-body" id="ps-modal-body">
-      <div class="ps-loading">페이지 정보를 불러오는 중...</div>
+      <div class="ps-loading">Loading...</div>
     </div>
 
-    <!-- 푸터 -->
+    <!-- Footer -->
     <div class="ps-modal-footer">
-      <span id="ps-selected-count" class="ps-sel-count">0개 선택됨</span>
+      <span id="ps-selected-count" class="ps-sel-count">0 selected</span>
       <div class="ps-footer-btns">
-        <button id="ps-cancel-btn" class="ps-btn-cancel" type="button">취소</button>
-        <button id="ps-download-btn" class="ps-btn-download" type="button" disabled>선택 다운로드</button>
+        <button id="ps-cancel-btn" class="ps-btn-cancel" type="button">Cancel</button>
+        <button id="ps-download-btn" class="ps-btn-download" type="button" disabled>Download Selected</button>
       </div>
     </div>
 

@@ -446,9 +446,19 @@ public class JpgRenderingService {
 	}
 
 	/**
-	 * 사용자의 모든 페이지를 고해상도로 렌더링하여 압축
+	 * 사용자의 모든 페이지를 고해상도로 렌더링하여 압축.
+	 * SSE 파라미터를 전달하면 페이지 단위 진행 이벤트(pageStart / pageDone)를 실시간으로 전송한다.
+	 *
+	 * @param userId          렌더링할 사용자 ID
+	 * @param format          출력 포맷 ("jpg")
+	 * @param progressService SSE 진행 이벤트 전송 서비스 (null 허용 → 이벤트 미전송)
+	 * @param token           SSE progressToken (null 허용)
+	 * @param globalOffset    전체 다운로드에서 이 사용자의 첫 페이지가 갖는 전역 인덱스 오프셋
+	 * @param totalPages      전체 사용자를 합산한 총 페이지 수 (진행률 계산 기준)
 	 */
-	public File renderAndZipUserYearbook(Long userId, String format) throws IOException {
+	public File renderAndZipUserYearbook(Long userId, String format,
+			DownloadProgressService progressService, String token,
+			int globalOffset, int totalPages) throws IOException {
 		logger.info("Starting yearbook rendering for user: {}", userId);
 
 		User user = userRepository.findById(userId)
@@ -462,13 +472,27 @@ public class JpgRenderingService {
 
 		List<Contents> userContents = contentsRepository.findByUserId(user.getId());
 		int totalRendered = 0;
+		int pageIndex = 0;   // 이 사용자 내부의 페이지 순번 (빈 페이지 포함)
 
 		for (Contents content : userContents) {
 			List<Yearbook> pages = yearbookRepository.findByContentsIdOrderByPageNoAsc(content.getId());
 
 			for (Yearbook page : pages) {
+				int globalIdx = globalOffset + pageIndex;
+				pageIndex++;   // 빈 페이지도 포함하여 순번 증가 (globalOffset 일관성 유지)
+
 				if (page.getDesignData() == null || page.getDesignData().isEmpty()) {
 					continue;
+				}
+
+				// SSE: pageStart — 렌더링 시작 알림
+				if (progressService != null && token != null && totalPages > 0) {
+					Map<String, Object> evData = new HashMap<>();
+					evData.put("index",  globalIdx);
+					evData.put("total",  totalPages);
+					evData.put("title",  content.getTitle());
+					evData.put("pageNo", page.getPageNo());
+					progressService.sendEvent(token, "pageStart", evData);
 				}
 
 				String fileName = generateFileName(content.getTitle(), page.getPageNo(), format);
@@ -481,6 +505,14 @@ public class JpgRenderingService {
 					logger.debug("Successfully rendered page: {}", fileName);
 				} catch (Exception e) {
 					logger.error("페이지 렌더링 실패: Page ID {}", page.getId(), e);
+				}
+
+				// SSE: pageDone — 렌더링 완료 알림
+				if (progressService != null && token != null && totalPages > 0) {
+					Map<String, Object> evData = new HashMap<>();
+					evData.put("index", globalIdx);
+					evData.put("total", totalPages);
+					progressService.sendEvent(token, "pageDone", evData);
 				}
 			}
 		}

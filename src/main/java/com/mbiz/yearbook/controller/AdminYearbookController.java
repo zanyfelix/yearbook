@@ -268,15 +268,30 @@ public class AdminYearbookController {
 
 	    int total = userIds.size();
 
-	    // ── 초기 이벤트: 총 학교 수 알림 ──────────────────────────────
+	    // ── 사전 집계: 각 사용자의 전체 페이지 수 합산 ─────────────────
+	    Map<Long, Integer> userPageCounts = new LinkedHashMap<>();
+	    int totalPages = 0;
+	    for (Long uid : userIds) {
+	        List<Contents> contentsList = contentsRepository.findByUserId(uid);
+	        int cnt = 0;
+	        for (Contents c : contentsList) {
+	            cnt += yearbookRepository.countByContentsId(c.getId());
+	        }
+	        userPageCounts.put(uid, cnt);
+	        totalPages += cnt;
+	    }
+
+	    // ── 초기 이벤트: 총 학교 수 + 총 페이지 수 알림 ───────────────
 	    Map<String, Object> initData = new LinkedHashMap<>();
-	    initData.put("total", total);
+	    initData.put("total",      total);
+	    initData.put("totalPages", totalPages);
 	    downloadProgressService.sendEvent(token, "init", initData);
 
 	    List<File> userZipFiles = new ArrayList<>();
 	    File masterZipFile = null;
 
 	    try {
+	        int globalOffset = 0;
 	        for (int i = 0; i < userIds.size(); i++) {
 	            Long userId = userIds.get(i);
 
@@ -285,25 +300,24 @@ public class AdminYearbookController {
 	                    .map(User::getSchoolName)
 	                    .orElse("사용자 #" + userId);
 
-	            // ── schoolStart 이벤트 ──────────────────────────────────
+	            // ── schoolStart 이벤트 (학교 컨텍스트 표시용) ───────────
 	            Map<String, Object> startData = new LinkedHashMap<>();
-	            startData.put("index",      i);          // 0-based
+	            startData.put("index",      i);
 	            startData.put("total",      total);
 	            startData.put("schoolName", schoolName);
 	            downloadProgressService.sendEvent(token, "schoolStart", startData);
 
-	            // 실제 렌더링 수행
-	            File userZip = jpgRenderingService.renderAndZipUserYearbook(userId, normalizedFormat);
+	            // 실제 렌더링 수행 (페이지 단위 SSE 포함)
+	            File userZip = jpgRenderingService.renderAndZipUserYearbook(
+	                    userId, normalizedFormat,
+	                    downloadProgressService, token,
+	                    globalOffset, totalPages);
 	            if (userZip != null) {
 	                userZipFiles.add(userZip);
 	            }
 
-	            // ── schoolDone 이벤트 ──────────────────────────────────
-	            Map<String, Object> doneData = new LinkedHashMap<>();
-	            doneData.put("index",      i);
-	            doneData.put("total",      total);
-	            doneData.put("schoolName", schoolName);
-	            downloadProgressService.sendEvent(token, "schoolDone", doneData);
+	            // 다음 사용자를 위한 전역 오프셋 갱신
+	            globalOffset += userPageCounts.getOrDefault(userId, 0);
 	        }
 
 	        if (userZipFiles.isEmpty()) {

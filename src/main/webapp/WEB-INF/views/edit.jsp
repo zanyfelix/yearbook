@@ -110,7 +110,8 @@
 											src="${pageContext.request.contextPath}${page.thumbnailPath}"
 											class="page-thumb" data-yearbook-id="${yearbookId}"
 											data-contents-id="${contentsId}"
-											data-page-no="${page.pageNo}" />
+											data-page-no="${page.pageNo}"
+											loading="lazy" />
 									</c:when>
 									<c:otherwise>
 										<img src="/images/placeholder.png" class="page-thumb"
@@ -689,72 +690,48 @@
 			}
 		</script>
 		<script>
-			// ✅ 페이지 로딩 완료 처리
+			// 삼네일 로딩 오버레이 수정 정약
+			// loading="lazy" 적용으로 화면 밖 이미지는 load 이벤트가 발생하지 않으므로
+			// 최대 대기 시간(MAX_WAIT_MS)을 기준으로 오버레이를 해제한다.
 			$(document).ready(function() {
-				console.log('페이지 로드 시작 - 썸네일 이미지 로딩 대기');
-
-				// 모든 썸네일 이미지 수집
+				const $overlay    = $('#page-loading-overlay');
 				const $thumbnails = $('.page-thumb');
 				const totalImages = $thumbnails.length;
-				let loadedImages = 0;
-				let hasError = false;
+				let   loadedImages = 0;
+				let   overlayHidden = false;
 
-				console.log(`총 ${totalImages}개의 썸네일 이미지 로딩 시작`);
+				// 중복 실행 방지 가드
+				function hideOverlay() {
+					if (overlayHidden) return;
+					overlayHidden = true;
+					$overlay.fadeOut(300);
+				}
 
+				// 썸네일이 없으면 즉시 해제
 				if (totalImages === 0) {
-					// 이미지가 없으면 즉시 로딩바 숨김
-					$('#page-loading-overlay').fadeOut(300);
-					console.log('썸네일 이미지가 없어 로딩바 즉시 숨김');
+					hideOverlay();
 					return;
 				}
 
-				// 이미지 로딩 완료 체크 함수
-				function checkAllLoaded() {
-					loadedImages++;
-					console.log(`썸네일 로드 진행: ${loadedImages}/${totalImages}`);
+				// ① 최대 대기 1.5초 — lazy 이미지가 load 이벤트를 발생시키지 않아도 보장
+				setTimeout(hideOverlay, 1500);
 
+				// ② 화면에 있는(eager 로드되는) 이미지가 모두 로드되면 즉시 해제
+				function onImageSettled() {
+					loadedImages++;
 					if (loadedImages >= totalImages) {
-						// 모든 이미지 로딩 완료
-						console.log('모든 썸네일 로딩 완료 - 로딩바 숨김');
-						setTimeout(function() {
-							$('#page-loading-overlay').fadeOut(300);
-						}, 100);
+						hideOverlay();
 					}
 				}
 
-				// 각 썸네일 이미지에 로드 이벤트 리스너 추가
 				$thumbnails.each(function() {
-					const $img = $(this);
-
-					// 이미 로드된 이미지 (캐시)
+					// 이미 캐시된 이미지
 					if (this.complete && this.naturalWidth > 0) {
-						console.log('썸네일 캐시됨:', $img.attr('src'));
-						checkAllLoaded();
+						onImageSettled();
 					} else {
-						// 로드 이벤트 대기
-						$img.on('load', function() {
-							console.log('썸네일 로드 완료:', $img.attr('src'));
-							checkAllLoaded();
-						});
-
-						// 에러 처리 (로딩 실패해도 진행)
-						$img.on('error', function() {
-							console.error('썸네일 로드 실패:', $img.attr('src'));
-							if (!hasError) {
-								hasError = true;
-							}
-							checkAllLoaded();
-						});
+						$(this).on('load error', onImageSettled);
 					}
 				});
-
-				// 타임아웃: 10초 후에도 로딩바 강제 숨김
-				setTimeout(function() {
-					if ($('#page-loading-overlay').is(':visible')) {
-						console.warn('타임아웃: 10초 경과 - 로딩바 강제 숨김');
-						$('#page-loading-overlay').fadeOut(300);
-					}
-				}, 10000);
 			});
 		</script>
 </body>

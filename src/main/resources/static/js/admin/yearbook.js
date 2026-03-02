@@ -33,7 +33,7 @@ const PageSelectModal = (() => {
     // ── 선택 카운트 업데이트 ────────────────────────────────
     function _updateCount() {
         const n = _selectedIds.size;
-        $count().text(n + '개 선택됨');
+        $count().text(n + ' selected');
         $dlBtn().prop('disabled', n === 0);
     }
 
@@ -56,8 +56,8 @@ const PageSelectModal = (() => {
         _schoolName = schoolName;
         _selectedIds.clear();
 
-        $title().text(schoolName + ' — 페이지 선택');
-        $body().html('<div class="ps-loading">페이지 정보를 불러오는 중...</div>');
+        $title().text(schoolName + ' — Page Selection');
+        $body().html('<div class="ps-loading">Loading...</div>');
         _updateCount();
 
         $overlay().show();
@@ -65,7 +65,7 @@ const PageSelectModal = (() => {
         // API 호출
         $.getJSON(`${ctx}/admin/yearbook/pages?userId=${userId}`)
             .done(function (data) { _renderBody(data); })
-            .fail(function ()     { $body().html('<div class="ps-loading">불러오기 실패. 다시 시도해주세요.</div>'); });
+            .fail(function ()     { $body().html('<div class="ps-loading">Failed to load. Please try again.</div>'); });
     }
 
     // ── 모달 닫기 ────────────────────────────────────────────
@@ -77,7 +77,7 @@ const PageSelectModal = (() => {
     // ── 카테고리 → 그룹 → 썸네일 렌더링 ─────────────────────
     function _renderBody(categories) {
         if (!categories || categories.length === 0) {
-            $body().html('<div class="ps-loading">등록된 페이지가 없습니다.</div>');
+            $body().html('<div class="ps-loading">No pages available.</div>');
             return;
         }
 
@@ -94,7 +94,7 @@ const PageSelectModal = (() => {
                 html += `<div class="ps-group-section" data-contents-id="${group.contentsId}">
                            <div class="ps-group-header">
                              <span class="ps-group-title">${escHtml(group.title)}</span>
-                             <button class="ps-group-select-all" data-contents-id="${group.contentsId}">전체 선택</button>
+                             <button class="ps-group-select-all" data-contents-id="${group.contentsId}">Select All</button>
                            </div>
                            <div class="ps-thumb-grid">`;
 
@@ -152,7 +152,7 @@ const PageSelectModal = (() => {
         const token   = 'dl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 
         // 진행바 표시
-        DownloadProgress.start(pageIds.length);
+        DownloadProgress.start(pageIds.length, '페이지');
         close();    // 모달 닫기
 
         // SSE 구독
@@ -265,6 +265,7 @@ const DownloadProgress = (() => {
     let _timerInterval = null;
     let _totalSchools  = 0;
     let _doneSchools   = 0;
+    let _unit          = '페이지';   // 카운터 표시 단위 ('학교' | '페이지')
 
     const $overlay  = () => $('#download-progress-overlay');
     const $fill     = () => $('#dl-overall-fill');
@@ -272,10 +273,20 @@ const DownloadProgress = (() => {
     const $counter  = () => $('#dl-school-counter');
     const $name     = () => $('#dl-school-name');
     const $elapsed  = () => $('#dl-elapsed-time');
+    const $eta      = () => $('#dl-eta-time');
     const $spinner  = () => $('.dl-mini-spinner');
     const $stepRender   = () => $('#dl-step-render');
     const $stepZip      = () => $('#dl-step-zip');
     const $stepDownload = () => $('#dl-step-download');
+
+    /** ms → "Xs" 또는 "Xm Ys" 문자열 */
+    function _formatTime(ms) {
+        const sec = Math.round(ms / 1000);
+        if (sec < 60) return sec + 's';
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+    }
 
     function _setPercent(pct) {
         pct = Math.max(0, Math.min(100, Math.round(pct)));
@@ -285,13 +296,23 @@ const DownloadProgress = (() => {
 
     function _updateTimer() {
         if (!_startTime) return;
-        const sec = Math.floor((Date.now() - _startTime) / 1000);
+        const elapsed = Date.now() - _startTime;
+        const sec = Math.floor(elapsed / 1000);
         if (sec < 60) {
             $elapsed().text(sec + 's');
         } else {
             const m = Math.floor(sec / 60);
             const s = sec % 60;
-            $elapsed().text(m + 'm ' + s + 's');
+            $elapsed().text(m + 'm ' + (s < 10 ? '0' : '') + s + 's');
+        }
+
+        // ETA 실시간 갱신: 완료 항목이 1개 이상이고 아직 남아있을 때만
+        if (_doneSchools > 0 && _doneSchools < _totalSchools) {
+            const avgPerItem  = elapsed / _doneSchools;
+            const remaining   = (_totalSchools - _doneSchools) * avgPerItem;
+            if (remaining > 0) {
+                $eta().text(_formatTime(remaining));
+            }
         }
     }
 
@@ -314,18 +335,23 @@ const DownloadProgress = (() => {
     }
 
     return {
-        /** 진행바 초기화 + 오버레이 표시 */
-        start(totalSchools) {
+        /** 진행바 초기화 + 오버레이 표시
+         * @param {number} total - 항목 수 (학교 수 또는 페이지 수)
+         * @param {string} [unit='페이지'] - 카운터 표시 단위
+         */
+        start(total, unit = '페이지') {
+            _unit         = unit;
             _startTime    = Date.now();
-            _totalSchools = totalSchools;
+            _totalSchools = total;
             _doneSchools  = 0;
 
             $fill().css({ transition: 'none', width: '0%' });
             setTimeout(() => $fill().css('transition', 'width 0.5s cubic-bezier(0.4,0,0.2,1)'), 50);
             $pct().text('0%');
-            $counter().text('0 / ' + totalSchools + ' 학교');
-            $name().text('렌더링 시작 중...');
+            $counter().text('0 / ' + total);
+            $name().text('Initializing...');
             $elapsed().text('0s');
+            $eta().text('계산 중...');
             $spinner().css('opacity', '1');
 
             // 단계 초기화
@@ -342,33 +368,53 @@ const DownloadProgress = (() => {
             _timerInterval = setInterval(_updateTimer, 500);
         },
 
-        /** 학교 렌더링 시작 */
-        onSchoolStart(index, total, schoolName) {
-            _setStep('dl-step-render');
-            $name().text('렌더링 중: ' + schoolName);
-            _setPercent((index / total) * 90);   // 0~90% 구간을 학교 수로 분배
-            $counter().text(index + ' / ' + total + ' 학교');
+        /** 학교 이름만 자막에 업데이트 (schoolStart SSE → 학교 컨텍스트 표시용) */
+        onSchoolName(schoolName) {
+            $name().text('Rendering: ' + schoolName + '...');
         },
 
-        /** 학교 렌더링 완료 */
-        onSchoolDone(index, total, schoolName) {
+        /** 총 페이지 수를 init SSE 수신 후 재설정 */
+        reinit(totalPages, unit = '페이지') {
+            _unit         = unit;
+            _totalSchools = totalPages;
+            _doneSchools  = 0;
+            $counter().text('0 / ' + totalPages);
+            $eta().text('Calculating...');
+        },
+
+        /** 페이지(또는 학교) 렌더링 시작 → 진행바 + 이름 업데이트 */
+        onSchoolStart(index, total, name) {
+            _setStep('dl-step-render');
+            $name().text('Rendering: ' + name);
+            _setPercent((index / total) * 90);
+            $counter().text(index + ' / ' + total);
+        },
+
+        /** 페이지(또는 학교) 렌더링 완료 → 진행바 + 카운터 업데이트
+         *  ETA는 _updateTimer()가 500ms마다 자동 갱신하므로 여기서는 건드리지 않음 */
+        onSchoolDone(index, total, name) {
             _doneSchools = index + 1;
             _setPercent((_doneSchools / total) * 90);
-            $counter().text(_doneSchools + ' / ' + total + ' 학교');
+            $counter().text(_doneSchools + ' / ' + total);
+            if (_doneSchools >= _totalSchools) {
+                $eta().text('Almost done...');
+            }
         },
 
         /** ZIP 생성 단계 */
         onPackaging() {
             _setStep('dl-step-zip');
-            $name().text('ZIP 파일 생성 중...');
+            $name().text('Creating ZIP...');
             _setPercent(93);
+            $eta().text('-');
         },
 
         /** 다운로드 시작 단계 */
         onDownloading() {
             _setStep('dl-step-download');
-            $name().text('파일 다운로드 중...');
+            $name().text('Downloading...');
             _setPercent(97);
+            $eta().text('-');
         },
 
         /** 완료 */
@@ -376,7 +422,8 @@ const DownloadProgress = (() => {
             clearInterval(_timerInterval);
             _updateTimer();
             _setPercent(100);
-            $name().text('완료!');
+            $name().text('Done!');
+            $eta().text('Done');
             $spinner().css('opacity', '0');
 
             // 모든 단계를 완료로 표시
@@ -470,34 +517,41 @@ $(document).ready(function () {
         /* 2. progressToken 생성 */
         const token = 'dl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 
-        /* 3. 진행바 표시 */
-        DownloadProgress.start(selectedIds.length);
+        /* 3. 진행바 표시 (학교 수로 임시 초기화 → init SSE에서 페이지 수로 갱신) */
+        DownloadProgress.start(selectedIds.length, '학교');
 
         /* 4. SSE 구독 시작 */
         let sseSource = null;
         try {
             sseSource = new EventSource(`${ctx}/admin/yearbook/progress?token=${token}`);
 
-            sseSource.addEventListener('ping', () => {
-                // 연결 확인 - 별도 처리 없음
-            });
+            sseSource.addEventListener('ping', () => {});
 
+            // init: 총 페이지 수를 받아 진행바를 페이지 단위로 재초기화
             sseSource.addEventListener('init', (e) => {
                 const data = JSON.parse(e.data);
-                console.log('[SSE] init:', data);
-                // total 은 이미 start() 에서 설정됨
+                if (data.totalPages && data.totalPages > 0) {
+                    DownloadProgress.reinit(data.totalPages, '페이지');
+                }
             });
 
+            // schoolStart: 학교 이름만 자막에 표시 (진행바 이동 없음)
             sseSource.addEventListener('schoolStart', (e) => {
                 const data = JSON.parse(e.data);
-                console.log('[SSE] schoolStart:', data);
-                DownloadProgress.onSchoolStart(data.index, data.total, data.schoolName);
+                DownloadProgress.onSchoolName(data.schoolName);
             });
 
-            sseSource.addEventListener('schoolDone', (e) => {
+            // pageStart: 페이지별 렌더링 시작 → 진행바 + 이름 업데이트
+            sseSource.addEventListener('pageStart', (e) => {
                 const data = JSON.parse(e.data);
-                console.log('[SSE] schoolDone:', data);
-                DownloadProgress.onSchoolDone(data.index, data.total, data.schoolName);
+                DownloadProgress.onSchoolStart(data.index, data.total,
+                    data.title + ' p.' + data.pageNo);
+            });
+
+            // pageDone: 페이지별 렌더링 완료 → 카운터 + ETA 업데이트
+            sseSource.addEventListener('pageDone', (e) => {
+                const data = JSON.parse(e.data);
+                DownloadProgress.onSchoolDone(data.index, data.total, '');
             });
 
             sseSource.addEventListener('packaging', (e) => {
