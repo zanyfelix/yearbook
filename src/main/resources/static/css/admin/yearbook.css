@@ -802,3 +802,21 @@ html, body {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Originals 선택 모달 다운로드 버튼 (녹색) */
+.os-btn-download {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #198754;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+.os-btn-download:hover:not(:disabled) { background: #157347; }
+.os-btn-download:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

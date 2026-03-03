@@ -550,13 +550,18 @@ public class JpgRenderingService {
 	 * @param userId 대상 사용자 ID
 	 * @return 생성된 ZIP 파일 (호출자가 삭제 책임)
 	 */
+/** 모든 페이지 원본 사진 ZIP (편의 오버로드) */
 	public File zipOriginalPhotos(Long userId) throws IOException {
+		return zipOriginalPhotos(userId, null);
+	}
+
+	/** 선택된 페이지만 원본 사진 ZIP (pageIds == null 이면 전체) */
+	public File zipOriginalPhotos(Long userId, List<Long> pageIds) throws IOException {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
 		List<Contents> contentsList = contentsRepository.findByUserId(userId);
-		logger.info("[zipOriginalPhotos] userId={}, contents 수={}, userPhotosPath={}", userId, contentsList.size(), userPhotosPath);
-		// category 정렬: group → event
+		logger.info("[zipOriginalPhotos] userId={}, contents 수={}, pageIds={}, userPhotosPath={}", userId, contentsList.size(), pageIds, userPhotosPath);
 		contentsList.sort((a, b) -> {
 			int oa = "group".equalsIgnoreCase(a.getCategory()) ? 0 : 1;
 			int ob = "group".equalsIgnoreCase(b.getCategory()) ? 0 : 1;
@@ -579,6 +584,8 @@ public class JpgRenderingService {
 
 				List<Yearbook> pages = yearbookRepository.findByContentsIdOrderByPageNoAsc(contents.getId());
 				for (Yearbook page : pages) {
+					// pageIds 필터: null이면 전체, 아니면 선택된 페이지만
+					if (pageIds != null && !pageIds.contains(page.getId())) continue;
 					if (page.getDesignData() == null || page.getDesignData().isEmpty()) continue;
 
 					try {
@@ -587,8 +594,8 @@ public class JpgRenderingService {
 							File f = photoFiles.get(idx);
 							String ext     = getOriginalFileExt(f.getName());
 							String suffix  = (photoFiles.size() == 1) ? "" : ("_" + (idx + 1));
-							String entryName = String.format("%s/%s/p%03d%s.%s",
-									categoryDir, safeTitle, page.getPageNo(), suffix, ext);
+							String entryName = String.format("%s/%s/p%03d/p%03d%s.%s",
+									categoryDir, safeTitle, page.getPageNo(), page.getPageNo(), suffix, ext);
 
 							zos.putNextEntry(new ZipEntry(entryName));
 							Files.copy(f.toPath(), zos);
@@ -602,6 +609,63 @@ public class JpgRenderingService {
 		}
 
 		logger.info("[zipOriginalPhotos] ZIP 생성 완료: {} ({}bytes)", zipFile.getAbsolutePath(), zipFile.length());
+		return zipFile;
+	}
+
+	/** 여러 사용자의 원본 사진을 한 ZIP으로 합치는 다운로드.
+	 *  ZIP 구조: {schoolName}/{categoryDir}/{title}/p001.jpg
+	 */
+	public File zipOriginalPhotosMultiUser(List<Long> userIds) throws IOException {
+		String timestamp   = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmm"));
+		String zipFileName = "originals_" + timestamp + ".zip";
+		File   zipFile     = new File(System.getProperty("java.io.tmpdir"), zipFileName);
+
+		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile))) {
+			for (Long userId : userIds) {
+				User user = userRepository.findById(userId).orElse(null);
+				if (user == null) continue;
+
+				String schoolName = (user.getSchoolName() != null && !user.getSchoolName().isEmpty())
+						? user.getSchoolName().replace(" ", "") : "user" + userId;
+
+				List<Contents> contentsList = contentsRepository.findByUserId(userId);
+				contentsList.sort((a, b) -> {
+					int oa = "group".equalsIgnoreCase(a.getCategory()) ? 0 : 1;
+					int ob = "group".equalsIgnoreCase(b.getCategory()) ? 0 : 1;
+					if (oa != ob) return oa - ob;
+					return Long.compare(a.getId(), b.getId());
+				});
+
+				for (Contents contents : contentsList) {
+					String categoryDir = "group".equalsIgnoreCase(contents.getCategory())
+							? "Group Photo" : "Event Photo";
+					String safeTitle   = contents.getTitle()
+							.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+
+					List<Yearbook> pages = yearbookRepository.findByContentsIdOrderByPageNoAsc(contents.getId());
+					for (Yearbook page : pages) {
+						if (page.getDesignData() == null || page.getDesignData().isEmpty()) continue;
+						try {
+							List<File> photoFiles = extractOriginalFiles(page.getDesignData());
+							for (int idx = 0; idx < photoFiles.size(); idx++) {
+								File f = photoFiles.get(idx);
+								String ext     = getOriginalFileExt(f.getName());
+								String suffix  = (photoFiles.size() == 1) ? "" : ("_" + (idx + 1));
+								String entryName = String.format("%s/%s/%s/p%03d%s.%s",
+										schoolName, categoryDir, safeTitle, page.getPageNo(), suffix, ext);
+								zos.putNextEntry(new ZipEntry(entryName));
+								Files.copy(f.toPath(), zos);
+								zos.closeEntry();
+							}
+						} catch (Exception e) {
+							logger.warn("원본 사진 추출 실패 — pageId={}: {}", page.getId(), e.getMessage());
+						}
+					}
+				}
+			}
+		}
+
+		logger.info("[zipOriginalPhotosMultiUser] ZIP 완료: {} ({}bytes)", zipFile.getAbsolutePath(), zipFile.length());
 		return zipFile;
 	}
 

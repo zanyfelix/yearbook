@@ -145,6 +145,7 @@
 
 	    <div class="btn-wrapper">
 		    <button id="btn-apply" type="button">DOWNLOAD</button>
+		    <button id="btn-dl-originals-all" type="button">DOWNLOAD ORIGINALS</button>
 	    </div>
 
     </div><!-- /.container-fluid -->
@@ -170,6 +171,33 @@
       <div class="ps-footer-btns">
         <button id="ps-cancel-btn" class="ps-btn-cancel" type="button">Cancel</button>
         <button id="ps-download-btn" class="ps-btn-download" type="button" disabled>Download Selected</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== Originals Selection Modal ===== -->
+<div id="originals-select-modal" class="ps-modal-overlay" style="display:none;">
+  <div class="ps-modal-box">
+
+    <!-- Header -->
+    <div class="ps-modal-header">
+      <span id="os-modal-title">Originals Download</span>
+      <button class="ps-modal-close" id="os-modal-close-btn" type="button">&times;</button>
+    </div>
+
+    <!-- Body: category → group → thumbnail grid (rendered by JS) -->
+    <div class="ps-modal-body" id="os-modal-body">
+      <div class="ps-loading">Loading...</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="ps-modal-footer">
+      <span id="os-selected-count" class="ps-sel-count">0 selected</span>
+      <div class="ps-footer-btns">
+        <button id="os-cancel-btn" class="ps-btn-cancel" type="button">Cancel</button>
+        <button id="os-download-btn" class="os-btn-download" type="button" disabled>Download Originals</button>
       </div>
     </div>
 

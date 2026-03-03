@@ -254,6 +254,7 @@ public class AdminYearbookController {
 	@GetMapping("/admin/yearbook/downloadOriginals")
 	public void downloadOriginals(
 	        @RequestParam("userId") Long userId,
+	        @RequestParam(value = "pageIds", required = false) List<Long> pageIds,
 	        HttpServletResponse response) throws IOException {
 
 	    Optional<User> userOpt = userRepository.findById(userId);
@@ -264,7 +265,7 @@ public class AdminYearbookController {
 
 	    File zipFile = null;
 	    try {
-	        zipFile = jpgRenderingService.zipOriginalPhotos(userId);
+	        zipFile = jpgRenderingService.zipOriginalPhotos(userId, pageIds);
 
 	        if (zipFile == null || !zipFile.exists() || zipFile.length() == 0) {
 	            response.sendError(HttpServletResponse.SC_NOT_FOUND,
@@ -275,6 +276,58 @@ public class AdminYearbookController {
 	        response.setContentType("application/zip");
 	        response.setContentLength((int) zipFile.length());
 	        response.setHeader("Content-Disposition", buildContentDisposition(zipFile.getName()));
+
+	        streamFileToResponse(zipFile, response);
+
+	    } catch (Exception e) {
+	        if (!response.isCommitted()) {
+	            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                    "Failed to create ZIP: " + e.getMessage());
+	        }
+	    } finally {
+	        if (zipFile != null && zipFile.exists()) zipFile.delete();
+	    }
+	}
+
+	/**
+	 * 여러 사용자의 원본 사진을 한 ZIP으로 묶어 다운로드.
+	 * ZIP 구조: {schoolName}/{categoryDir}/{title}/p001.jpg
+	 *
+	 * @param userIds 선택된 사용자 ID 목록 (쉼표 구분)
+	 */
+	@GetMapping("/admin/yearbook/downloadOriginalsAll")
+	public void downloadOriginalsAll(
+	        @RequestParam("ids") List<Long> userIds,
+	        HttpServletResponse response) throws IOException {
+
+	    if (userIds == null || userIds.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No user IDs provided.");
+	        return;
+	    }
+
+	    File zipFile = null;
+	    try {
+	        zipFile = jpgRenderingService.zipOriginalPhotosMultiUser(userIds);
+
+	        if (zipFile == null || !zipFile.exists() || zipFile.length() == 0) {
+	            response.sendError(HttpServletResponse.SC_NOT_FOUND,
+	                    "No original photos found for the selected users.");
+	            return;
+	        }
+
+	        String timestamp = java.time.LocalDateTime.now()
+	                .format(java.time.format.DateTimeFormatter.ofPattern("yyMMddHHmm"));
+	        // 단일 사용자: {schoolName}_originals_{timestamp}.zip / 복수: originals_{timestamp}.zip
+	        String prefix = userIds.size() == 1
+	                ? userRepository.findById(userIds.get(0))
+	                        .map(u -> u.getSchoolName() != null ? u.getSchoolName().replace(" ", "") : "originals")
+	                        .orElse("originals") + "_"
+	                : "";
+	        String fileName = prefix + "originals_" + timestamp + ".zip";
+
+	        response.setContentType("application/zip");
+	        response.setContentLength((int) zipFile.length());
+	        response.setHeader("Content-Disposition", buildContentDisposition(fileName));
 
 	        streamFileToResponse(zipFile, response);
 

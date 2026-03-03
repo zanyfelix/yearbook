@@ -250,6 +250,166 @@ const PageSelectModal = (() => {
     return { open, close, downloadSelected };
 })();
 
+/* ─── 원본 사진 페이지 선택 모달 ────────────────────────── */
+const OriginalsSelectModal = (() => {
+    let _userId     = null;
+    let _schoolName = '';
+    let _selectedIds = new Set();   // 선택된 Yearbook ID
+
+    const $overlay  = () => $('#originals-select-modal');
+    const $title    = () => $('#os-modal-title');
+    const $body     = () => $('#os-modal-body');
+    const $count    = () => $('#os-selected-count');
+    const $dlBtn    = () => $('#os-download-btn');
+
+    function _updateCount() {
+        const n = _selectedIds.size;
+        $count().text(n + ' selected');
+        $dlBtn().prop('disabled', n === 0);
+    }
+
+    function _toggleItem($item) {
+        const id = parseInt($item.data('id'), 10);
+        if (_selectedIds.has(id)) {
+            _selectedIds.delete(id);
+            $item.removeClass('selected');
+        } else {
+            _selectedIds.add(id);
+            $item.addClass('selected');
+        }
+        _updateCount();
+    }
+
+    function open(userId, schoolName) {
+        _userId     = userId;
+        _schoolName = schoolName;
+        _selectedIds.clear();
+
+        $title().text(schoolName + ' — Originals Download');
+        $body().html('<div class="ps-loading">Loading...</div>');
+        _updateCount();
+
+        $overlay().show();
+
+        $.getJSON(`${ctx}/admin/yearbook/pages?userId=${userId}`)
+            .done(function (data) { _renderBody(data); })
+            .fail(function ()     { $body().html('<div class="ps-loading">Failed to load. Please try again.</div>'); });
+    }
+
+    function close() {
+        $overlay().hide();
+        _selectedIds.clear();
+    }
+
+    function _renderBody(categories) {
+        if (!categories || categories.length === 0) {
+            $body().html('<div class="ps-loading">No pages available.</div>');
+            return;
+        }
+
+        let html = '';
+        categories.forEach(cat => {
+            if (!cat.groups || cat.groups.length === 0) return;
+
+            html += `<div class="ps-category-section">
+                       <div class="ps-category-title">${cat.categoryLabel}</div>`;
+
+            cat.groups.forEach(group => {
+                if (!group.pages || group.pages.length === 0) return;
+
+                html += `<div class="ps-group-section" data-contents-id="${group.contentsId}">
+                           <div class="ps-group-header">
+                             <span class="ps-group-title">${escHtml(group.title)}</span>
+                             <button class="os-group-select-all ps-group-select-all" data-contents-id="${group.contentsId}">Select All</button>
+                           </div>
+                           <div class="ps-thumb-grid">`;
+
+                group.pages.forEach(page => {
+                    const imgTag = page.thumbnailPath
+                        ? `<img src="${ctx}${page.thumbnailPath}" loading="lazy" alt="p${page.pageNo}">`
+                        : `<div class="ps-no-img">No Image</div>`;
+                    html += `<div class="os-thumb-item ps-thumb-item" data-id="${page.id}" data-page="${page.pageNo}">
+                               ${imgTag}
+                               <div class="ps-check-overlay">✓</div>
+                               <div class="ps-thumb-label">p.${page.pageNo}</div>
+                             </div>`;
+                });
+
+                html += `    </div>
+                         </div>`;
+            });
+
+            html += `</div>`;
+        });
+
+        $body().html(html);
+
+        $body().off('click.os').on('click.os', '.os-thumb-item', function () {
+            _toggleItem($(this));
+        });
+
+        $body().on('click.os', '.os-group-select-all', function () {
+            const cid = $(this).data('contents-id');
+            const $group = $body().find(`.ps-group-section[data-contents-id="${cid}"]`);
+            const $items = $group.find('.os-thumb-item');
+            const allSelected = $items.length > 0 &&
+                                $items.toArray().every(el => _selectedIds.has(parseInt($(el).data('id'), 10)));
+
+            $items.each(function () {
+                const id = parseInt($(this).data('id'), 10);
+                if (allSelected) {
+                    _selectedIds.delete(id);
+                    $(this).removeClass('selected');
+                } else {
+                    _selectedIds.add(id);
+                    $(this).addClass('selected');
+                }
+            });
+            _updateCount();
+        });
+    }
+
+    async function downloadSelected() {
+        if (_selectedIds.size === 0) return;
+
+        const pageIds = [..._selectedIds];
+        close();
+
+        $('#loader-msg').text('Preparing originals download...');
+        $('#preview-loader').show();
+
+        const url = `${ctx}/admin/yearbook/downloadOriginals?userId=${_userId}&pageIds=${pageIds.join(',')}`;
+
+        try {
+            const res = await fetch(url, { credentials: 'same-origin' });
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error('Server error ' + res.status + ': ' + msg);
+            }
+            $('#loader-msg').text('Downloading ZIP...');
+            const disposition = res.headers.get('Content-Disposition') || '';
+            let filename = _schoolName.replace(/ /g, '') + '_originals.zip';
+            const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+            if (match) filename = decodeURIComponent(match[1].replace(/"/g, ''));
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        } catch (err) {
+            alert('Download failed:\n' + err.message);
+        } finally {
+            $('#preview-loader').hide();
+            $('#loader-msg').text('Preparing download...');
+        }
+    }
+
+    return { open, close, downloadSelected };
+})();
+
 /** HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(str) {
     return String(str)
@@ -457,70 +617,90 @@ $(document).ready(function () {
         PageSelectModal.open(userId, schoolName);
     });
 
-    /* ── Download Originals 버튼 클릭 → 원본 사진 ZIP 다운로드 ── */
+    /* ── Download Originals 버튼 클릭 → 원본 사진 페이지 선택 모달 열기 ── */
     $(document).on('click', '.btn-dl-originals', function () {
-        const $btn       = $(this);
-        const userId     = $btn.data('userid');
-        const schoolName = $btn.data('schoolname') || 'originals';
-
-        $btn.prop('disabled', true).text('Loading...');
-        $('#loader-msg').text('Preparing download...');
-        $('#preview-loader').show();
-
-        const url = `${ctx}/admin/yearbook/downloadOriginals?userId=${userId}`;
-
-        fetch(url, { credentials: 'same-origin' })
-            .then(function(res) {
-                if (!res.ok) {
-                    return res.text().then(function(msg) {
-                        throw new Error('Server error ' + res.status + ': ' + msg);
-                    });
-                }
-                $('#loader-msg').text('Downloading ZIP...');
-                // Content-Disposition 헤더에서 파일명 추출
-                const disposition = res.headers.get('Content-Disposition') || '';
-                let filename = schoolName + '_originals.zip';
-                const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
-                if (match) filename = decodeURIComponent(match[1].replace(/"/g, ''));
-                return res.blob().then(function(blob) { return { blob: blob, filename: filename }; });
-            })
-            .then(function(result) {
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(result.blob);
-                a.download = result.filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
-            })
-            .catch(function(err) {
-                alert('Download failed:\n' + err.message);
-            })
-            .finally(function() {
-                $('#preview-loader').hide();
-                $('#loader-msg').text('Preparing download...');
-                $btn.prop('disabled', false).text('Download Originals');
-            });
+        const userId     = $(this).data('userid');
+        const schoolName = $(this).data('schoolname') || 'originals';
+        OriginalsSelectModal.open(userId, schoolName);
     });
 
-    /* ── 모달 닫기 ─────────────────────────────────────────── */
+    /* ── PageSelectModal 닫기 ──────────────────────────────── */
     $('#ps-modal-close-btn, #ps-cancel-btn').on('click', function () {
         PageSelectModal.close();
     });
 
-    /* ESC 키로 닫기 */
     $(document).on('keydown.psmodal', function (e) {
-        if (e.key === 'Escape') PageSelectModal.close();
+        if (e.key === 'Escape') {
+            PageSelectModal.close();
+            OriginalsSelectModal.close();
+        }
     });
 
-    /* 오버레이 배경 클릭으로 닫기 */
     $('#page-select-modal').on('click', function (e) {
         if ($(e.target).is('#page-select-modal')) PageSelectModal.close();
     });
 
-    /* ── 선택 다운로드 버튼 ────────────────────────────────── */
+    /* ── PageSelectModal 선택 다운로드 ─────────────────────── */
     $('#ps-download-btn').on('click', function () {
         PageSelectModal.downloadSelected();
+    });
+
+    /* ── OriginalsSelectModal 닫기 ─────────────────────────── */
+    $('#os-modal-close-btn, #os-cancel-btn').on('click', function () {
+        OriginalsSelectModal.close();
+    });
+
+    $('#originals-select-modal').on('click', function (e) {
+        if ($(e.target).is('#originals-select-modal')) OriginalsSelectModal.close();
+    });
+
+    /* ── OriginalsSelectModal 선택 다운로드 ─────────────────── */
+    $('#os-download-btn').on('click', function () {
+        OriginalsSelectModal.downloadSelected();
+    });
+
+    /* ── 선택 사용자 원본 전체 다운로드 버튼 ──────────────── */
+    $('#btn-dl-originals-all').on('click', async function () {
+        const selectedIds = [];
+        $('.selectBox:checked').each(function () {
+            selectedIds.push($(this).val());
+        });
+
+        if (selectedIds.length === 0) {
+            alert('Please select at least one user.');
+            return;
+        }
+
+        $('#loader-msg').text('Preparing originals download...');
+        $('#preview-loader').show();
+
+        const url = `${ctx}/admin/yearbook/downloadOriginalsAll?ids=${selectedIds.join(',')}`;
+
+        try {
+            const res = await fetch(url, { credentials: 'same-origin' });
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error('Server error ' + res.status + ': ' + msg);
+            }
+            $('#loader-msg').text('Downloading ZIP...');
+            const disposition = res.headers.get('Content-Disposition') || '';
+            let filename = 'originals_all.zip';
+            const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+            if (match) filename = decodeURIComponent(match[1].replace(/"/g, ''));
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        } catch (err) {
+            alert('Download failed:\n' + err.message);
+        } finally {
+            $('#preview-loader').hide();
+            $('#loader-msg').text('Preparing download...');
+        }
     });
 
     /* ── 전체 다운로드 버튼 ────────────────────────────────── */
