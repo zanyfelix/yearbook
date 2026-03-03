@@ -50,6 +50,7 @@ import com.mbiz.yearbook.service.ThemeService;
 import com.mbiz.yearbook.service.ThumbnailRenderingService;
 import com.mbiz.yearbook.service.YearbookService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -1085,6 +1086,47 @@ public class EditController {
 			return "";
 		}
 		return filename.substring(filename.lastIndexOf("."));
+	}
+
+	/**
+	 * 편집 화면에서 선택한 원본 사진 1장 다운로드.
+	 * src 파라미터는 반드시 /photo/originals/ 경로여야 함 (보안 검증).
+	 */
+	@GetMapping("/edit/downloadOriginalPhoto")
+	public void downloadOriginalPhoto(
+	        @RequestParam("src") String src,
+	        HttpServletResponse response) throws IOException {
+
+	    // 보안: originals 경로만 허용
+	    if (src == null || !src.contains("/originals/")) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid path: only originals allowed");
+	        return;
+	    }
+
+	    // /photo/ 접두사 제거 → 상대 경로
+	    String rel;
+	    if (src.startsWith("/photo/"))      rel = src.substring("/photo/".length());
+	    else if (src.startsWith("photo/")) rel = src.substring("photo/".length());
+	    else { response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid path"); return; }
+
+	    // 경로 탐색(../) 방지
+	    Path filePath = Paths.get(userPhotosPath).resolve(rel).normalize();
+	    if (!filePath.startsWith(Paths.get(userPhotosPath).normalize()) || !Files.exists(filePath)) {
+	        response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found");
+	        return;
+	    }
+
+	    String filename  = filePath.getFileName().toString();
+	    String mime      = Files.probeContentType(filePath);
+	    if (mime == null) mime = "application/octet-stream";
+
+	    response.setContentType(mime);
+	    response.setContentLengthLong(Files.size(filePath));
+	    response.setHeader("Content-Disposition",
+	            "attachment; filename*=UTF-8''" + java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20"));
+
+	    Files.copy(filePath, response.getOutputStream());
+	    response.getOutputStream().flush();
 	}
 
 	public static class PageOrderDTO {

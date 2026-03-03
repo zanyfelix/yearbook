@@ -865,6 +865,24 @@ html, body {
     border-color: #dc3545;
 }
 
+/* 원본 사진 다운로드 버튼 */
+.download-btn {
+    background: linear-gradient(135deg, #f0f9ff 0%, #d0eaff 100%);
+    border: 1px solid #b6d9f7;
+    color: #0d6efd;
+}
+
+.download-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border-color: #0d6efd;
+}
+
+.download-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* 아이콘 스타일 */
 .rotate-icon-left,
 .rotate-icon-right,

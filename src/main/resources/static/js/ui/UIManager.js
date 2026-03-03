@@ -220,6 +220,25 @@ class UIManager {
 	static bindPhotoTooltipEvents(photo, frameGroup) {
 		this.bindPhotoRotationEvents(photo);
 
+		// ── 원본 사진 다운로드 버튼 ──────────────────────────────
+		const originalPath = photo.data('originalPath');
+		const $dlBtn = $('#btn-download-original');
+		if (originalPath && originalPath.includes('/originals/')) {
+			$dlBtn.prop('disabled', false);
+		} else {
+			$dlBtn.prop('disabled', true);
+		}
+
+		$dlBtn.off('click').on('click', () => {
+			const src = photo.data('originalPath');
+			if (!src || !src.includes('/originals/')) {
+				alert('No original photo available for download.');
+				return;
+			}
+			window.location.href = `${ctx}/edit/downloadOriginalPhoto?src=${encodeURIComponent(src)}`;
+		});
+
+		// ── 사진 삭제 버튼 ──────────────────────────────────────
 		$('#btn-delete-photo').off('click').on('click', () => {
 			this.showDeleteConfirmModal('Are you sure you want to delete the photo?', () => {
 				const placeholderLink = frameGroup.find('.place-image-here-link');
