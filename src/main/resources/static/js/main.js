@@ -2465,8 +2465,8 @@ $(document).ready(function() {
 		// 모달 내용 업데이트
 		$('#clearConfirmModalLabel').text('Reset Page Design');
 		$('#clearConfirmModal .modal-body').html(`
-	        <p>All designs on this page will be reset.</p>
-	        <p>This action cannot be undone. Are you sure you want to proceed?</p>
+	        <p>All designs on this page will be cleared.</p>
+	        <p>The changes will only be saved when you click the <strong>Save</strong> button.</p>
 	    `);
 
 		$('#clearConfirmModal').modal('show');
@@ -2570,57 +2570,15 @@ $(document).ready(function() {
 		const originalText = $btn.text();
 
 		if (modalActionType === 'clear') {
-			// 편집 중인 페이지도 서버의 데이터를 실제로 리셋
-			const yearbookId = activePageThumb?.attr('data-yearbook-id');
-
-			if (!yearbookId) {
-				// 저장된 적이 없는 새 페이지는 로컬 초기화만
-				$('#clearConfirmModal').modal('hide');
-				showLoader();
-				setTimeout(function() {
-					forceCompleteReset();
-					loadDefaultBackground();
-					hideLoader();
-				}, 300);
-				return;
-			}
-
-			// 저장된 페이지는 서버 데이터도 리셋
-			$btn.prop('disabled', true)
-				.html('<span class="spinner-border spinner-border-sm"></span>Resetting...');
-
-			$.ajax({
-				url: `${ctx}/edit/resetPage`,
-				method: 'POST',
-				data: { id: yearbookId },
-				success: function(response) {
-					$('#clearConfirmModal').modal('hide');
-
-					if (response.success) {
-						// 로컬 초기화
-						forceCompleteReset();
-						loadDefaultBackground();
-
-						// 썸네일 업데이트
-						if (activePageThumb) {
-							activePageThumb.attr('src', '/images/placeholder.png');
-							activePageThumb.removeAttr('data-yearbook-id');
-						}
-
-						/*showSuccessMessage("The page has been reset successfully.");*/
-					} else {
-						/*showErrorMessage("Failed to reset the page. " + (response.message || ""));*/
-					}
-				},
-				error: function() {
-					$('#clearConfirmModal').modal('hide');
-					/*showErrorMessage("An error occurred while communicating with the server.");*/
-				},
-				complete: function() {
-					$btn.prop('disabled', false).text(originalText);
-					hideLoader();
-				}
-			});
+			// 화면만 초기화 — 서버 저장은 하지 않음
+			// Save 버튼을 눌러야 실제 저장됨
+			$('#clearConfirmModal').modal('hide');
+			showLoader();
+			setTimeout(function() {
+				forceCompleteReset();
+				loadDefaultBackground();
+				hideLoader();
+			}, 300);
 
 		} else if (modalActionType === 'page' && pageIdToReset) {
 			// 저장된 페이지 리셋 (서버)
@@ -2663,8 +2621,8 @@ $(document).ready(function() {
 		// ⭐ 모달을 원본 상태로 복원
 		$('#clearConfirmModalLabel').text('Reset Page Design');
 		$('#clearConfirmModal .modal-body').html(`
-		        <p>All designs on this page will be reset.</p>
-		        <p>This action cannot be undone. Are you sure you want to proceed?</p>
+		        <p>All designs on this page will be cleared.</p>
+		        <p>The changes will only be saved when you click the <strong>Save</strong> button.</p>
 		    `);
 		$('#clearConfirmModal .modal-footer').html(`
 		        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
