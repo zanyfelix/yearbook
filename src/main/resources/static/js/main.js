@@ -1576,6 +1576,11 @@ $(document).ready(function() {
 		const bgImg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
 
+		// ✅ 빈 페이지 여부 — frames/textBoxes 수집 후 최종 판단하므로 여기서는 예비 체크만
+		// (designData.frames, textBoxes 는 아래 루프 후 채워지므로 썸네일 분기는 캡처 직전에 판단)
+		const _bgSrc = designData.background || '';
+		const _isDefaultBg = _bgSrc.includes('background.png') || _bgSrc === '' || _bgSrc === 'undefined';
+
 		if (!actualBgRect) {
 			alert("Could not save because background information could not be found.");
 			hideLoader();
@@ -2088,30 +2093,43 @@ $(document).ready(function() {
 			});
 		}
 
-		// ========== 기존 썸네일 캡처 코드 수정 ==========
-		// 마스크 적용 (캡처 전)
-		await applyRealMaskBeforeCapture();
+		// ✅ 빈 페이지 최종 판단 (frames/textBoxes 루프가 모두 끝난 후)
+		const isEmptyPage = designData.frames.length === 0 &&
+							designData.textBoxes.length === 0 &&
+							_isDefaultBg;
 
-		// 전체 페이지 썸네일 캡처
-		const captureTarget = document.getElementById('page-preview');
-		const thumbnailCanvas = await html2canvas(captureTarget, {
-			useCORS: true,
-			backgroundColor: null,
-			scale: 1,
-			x: actualBgRect.left,
-			y: actualBgRect.top,
-			width: actualBgRect.width,
-			height: actualBgRect.height,
-			scrollX: 0,
-			scrollY: 0
-		});
+		// ========== 썸네일 캡처 ==========
+		let thumbnailBlob = null;
 
-		// 원상 복구 (캡처 후)
-		restoreAfterCapture();
+		if (isEmptyPage) {
+			// 빈 페이지: html2canvas 생략, placeholder 1×1 더미 blob 전송
+			// 서버에서 thumbnailFile 없으면 기존 썸네일 유지하므로 null 전송
+			thumbnailBlob = null;
+		} else {
+			// 마스크 적용 (캡처 전)
+			await applyRealMaskBeforeCapture();
 
-		const thumbnailBlob = await new Promise(resolve => {
-			thumbnailCanvas.toBlob(resolve, 'image/png');
-		});
+			// 전체 페이지 썸네일 캡처
+			const captureTarget = document.getElementById('page-preview');
+			const thumbnailCanvas = await html2canvas(captureTarget, {
+				useCORS: true,
+				backgroundColor: null,
+				scale: 1,
+				x: actualBgRect.left,
+				y: actualBgRect.top,
+				width: actualBgRect.width,
+				height: actualBgRect.height,
+				scrollX: 0,
+				scrollY: 0
+			});
+
+			// 원상 복구 (캡처 후)
+			restoreAfterCapture();
+
+			thumbnailBlob = await new Promise(resolve => {
+				thumbnailCanvas.toBlob(resolve, 'image/png');
+			});
+		}
 
 		// FormData 생성
 		const formData = new FormData();
@@ -2120,11 +2138,15 @@ $(document).ready(function() {
 			yearbookId: activePageThumb?.attr('data-yearbook-id'),
 			contentsId: activePageThumb?.attr('data-contents-id'),
 			pageNo: activePageThumb?.attr('data-page-no'),
-			designData: JSON.stringify(designData)
+			designData: JSON.stringify(designData),
+			isEmptyPage: isEmptyPage
 		};
 
 		formData.append('payload', JSON.stringify(payload));
-		formData.append('thumbnailFile', thumbnailBlob, 'thumbnail.png');
+		// ✅ 빈 페이지는 thumbnailFile 미전송 (서버에서 thumbnailFile 없으면 기존 경로 유지)
+		if (thumbnailBlob) {
+			formData.append('thumbnailFile', thumbnailBlob, 'thumbnail.png');
+		}
 
 		// 텍스트박스 이미지들 추가
 		textBoxImages.forEach(item => {
@@ -2152,7 +2174,10 @@ $(document).ready(function() {
 					displayLastSaveTime(new Date().toISOString());
 
 					// 썸네일 업데이트
-					if (response.newImagePath) {
+					if (isEmptyPage) {
+						// ✅ 빈 페이지(Clear 후)는 placeholder 이미지로 표시
+						activePageThumb.attr('src', '/images/placeholder.png');
+					} else if (response.newImagePath) {
 						activePageThumb.attr('src', `${ctx}${response.newImagePath}?t=${new Date().getTime()}`);
 					}
 
@@ -2523,22 +2548,8 @@ $(document).ready(function() {
 
 	// Save & Close 버튼 클릭 이벤트
 	$(document).on('click', '#btn-save-close', function() {
-		// Clear 직후 빈 페이지인지 확인
-		const bgImg = $('#page-preview-img').attr('src');
-		const hasFrames = $('#frame-container .frame-group').length > 0;
-		const hasTextBoxes = $('#frame-container .text-box').length > 0;
-
-		if (!hasFrames && !hasTextBoxes && bgImg.includes('background.png')) {
-			// 빈 페이지인 경우 placeholder 설정 후 바로 닫기
-			if (activePageThumb) {
-				activePageThumb.attr('src', '/images/placeholder.png');
-			}
-			$('#clearConfirmModal').modal('hide');
-			$('#editModal').modal('hide');
-			/*showSuccessMessage('Page has been reset to empty state.');*/
-			return;
-		}
-
+		// Clear 후 빈 페이지 여부와 관계없이 항상 executeSave 호출
+		// (Clear 후 빈 상태도 서버에 저장해야 다음 열 때 빈 페이지로 복원됨)
 		$('#clearConfirmModal').modal('hide');
 		executeSave(true); // true = close after save
 	});

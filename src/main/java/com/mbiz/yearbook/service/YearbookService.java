@@ -97,6 +97,10 @@ public class YearbookService {
         yearbook.setDesignData(payload.getDesignData()); // 디자인 JSON 데이터 설정
         if (thumbnailRelativePath != null) {
             yearbook.setThumbnailPath(thumbnailRelativePath); // 새 썸네일 경로 설정
+        } else if (payload.isEmptyPage()) {
+            // ✅ 빈 페이지(Clear 후 저장): 기존 썸네일 경로를 null로 초기화
+            // 클라이언트에서 placeholder.png로 표시되며, DB에도 null을 유지해야 재접속 시에도 일관성 유지
+            yearbook.setThumbnailPath(null);
         }
         yearbook.setLastSaved(new Date()); // 마지막 저장 시간을 현재 시간으로 설정
         
