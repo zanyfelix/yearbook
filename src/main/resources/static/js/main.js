@@ -1932,12 +1932,10 @@ $(document).ready(function() {
 					const maskImg = new Image();
 					maskImg.crossOrigin = 'anonymous';
 
-					maskImg.onload = function() {
+					maskImg.onload = async function() {
 						try {
-							// ✅ getBoundingClientRect로 소수점 픽셀 정확히 읽어 Math.ceil로 올림 처리 (갭 방지)
-							const maskRect = $maskContainer[0].getBoundingClientRect();
-							const containerWidth = Math.ceil(maskRect.width);
-							const containerHeight = Math.ceil(maskRect.height);
+							const containerWidth = $maskContainer.width();
+							const containerHeight = $maskContainer.height();
 
 							const canvas = document.createElement('canvas');
 							canvas.width = containerWidth;
@@ -1951,10 +1949,10 @@ $(document).ready(function() {
 							ctx2d.globalCompositeOperation = 'source-in';
 
 							const photoImg = $photo[0];
-							// ✅ CSS width/height 속성에서 소수점 픽셀 읽어 Math.ceil 처리
-							// (getBoundingClientRect는 회전 요소에서 bounding box 크기를 반환하믴로 CSS 속성을 직접 읽어야 함)
-							const photoWidth = Math.ceil(parseFloat($photo.css('width')));
-							const photoHeight = Math.ceil(parseFloat($photo.css('height')));
+							// ✅ 이미지 디코딩 완료 대기 (decode 미완료 시 drawImage가 조용히 스킵되어 갭 방지)
+							try { await photoImg.decode(); } catch (e) { /* already decoded or unsupported */ }
+							const photoWidth = $photo.width();
+							const photoHeight = $photo.height();
 
 							// transform에서 translate 추출
 							const transform = $photo.css('transform');
