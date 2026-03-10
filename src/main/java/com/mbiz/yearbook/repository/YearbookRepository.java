@@ -44,7 +44,9 @@ public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
      * @param id 업데이트할 YearbookPage의 ID
      * @param pageNo 새로 지정할 페이지 순서
      */
-    @Modifying
+    // clearAutomatically = true: 벌크 UPDATE 후 Hibernate 1st-level 캐시를 즉시 비워
+    // stale 엔티티가 트랜잭션 커밋 시 flush되어 UNIQUE 제약을 위반하는 현상 방지
+    @Modifying(clearAutomatically = true)
     @Transactional
     @Query("UPDATE Yearbook yp SET yp.pageNo = :pageNo WHERE yp.id = :id")
     void updatePageOrder(@Param("id") Long id, @Param("pageNo") int pageNo);
@@ -55,7 +57,7 @@ public interface YearbookRepository extends JpaRepository<Yearbook, Long> {
      * @param id 업데이트할 Yearbook의 ID
      * @param tempPageNo 임시로 설정할 음수 pageNo 값
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Transactional
     @Query("UPDATE Yearbook yp SET yp.pageNo = :tempPageNo WHERE yp.id = :id")
     void updatePageOrderToTemp(@Param("id") Long id, @Param("tempPageNo") int tempPageNo);

@@ -1240,6 +1240,7 @@ $(document).ready(function() {
 	// ✅ [핵심 수정] 페이지 순서 관리 함수들을 전역으로 이동
 	let isMoveModeActive = false;
 	let draggedCardId = null;
+	let draggedContainerId = null; // 드래그 시작 slide-container ID
 
 	// 드롭 위치 계산 헬퍼 함수
 	function getDragAfterElement(container, x) {
@@ -1288,11 +1289,13 @@ $(document).ready(function() {
 				if (response.success) {
 					console.log("The page order has been successfully auto-saved.");
 				} else {
-					alert("Error: Failed to save page order.");
+					console.error("Failed to save page order:", response.message);
+					alert("Error: Failed to save page order.\n" + (response.message || ""));
 				}
 			},
-			error: function() {
-				alert("Error: Failed to save page order during server communication.");
+			error: function(xhr) {
+				console.error("Failed to save page order (HTTP):", xhr.status, xhr.responseText);
+				alert("Error: Failed to save page order during server communication. (" + xhr.status + ")");
 			}
 		});
 	}
@@ -2713,6 +2716,7 @@ $(document).ready(function() {
 	$('.content').on('dragstart', '.page-card', function(e) {
 		if (!isMoveModeActive) return;
 		draggedCardId = this.id;
+		draggedContainerId = $(this).closest('.slide-container').attr('id'); // ✅ 드래그 시작 container 기록
 		$(this).addClass('dragging');
 		e.originalEvent.dataTransfer.setData('text/plain', this.id);
 		e.originalEvent.dataTransfer.effectAllowed = 'move';
@@ -2723,12 +2727,14 @@ $(document).ready(function() {
 		$(this).removeClass('dragging');
 		$('.drop-placeholder').remove();
 		draggedCardId = null;
+		draggedContainerId = null;
 	});
 
 	// dragover 이벤트를 .slide-container에서 처리
 	$('.content').on('dragover', '.slide-container', function(e) {
 		e.preventDefault();
 		if (!isMoveModeActive) return;
+		if ($(this).attr('id') !== draggedContainerId) return; // ✅ 다른 container로의 드래그 차단 (cross-container → UNIQUE 충돌 방지)
 
 		const afterElement = getDragAfterElement(this, e.originalEvent.clientX);
 		const placeholder = $(this).find('.drop-placeholder');

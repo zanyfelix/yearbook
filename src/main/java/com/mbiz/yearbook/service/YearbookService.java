@@ -2,10 +2,14 @@ package com.mbiz.yearbook.service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,18 +47,50 @@ public class YearbookService {
     @Transactional
     public void updatePageOrder(List<EditController.PageOrderDTO> pageOrders) {
         if (pageOrders == null || pageOrders.isEmpty()) {
-            return; // 업데이트할 데이터가 없으면 종료
+            return;
         }
 
-        // ✅ 2-phase update: (contentsId, pageNo) UNIQUE 제약 충돌 방지
-        // Phase 1: 음수 임시값으로 변경 → 기존 pageNo 값이 모두 비워져 UNIQUE 충돌 없음
+        // orderData의 ID → 새 pageNo 매핑
+        Map<Long, Integer> orderDataMap = new LinkedHashMap<>();
         for (EditController.PageOrderDTO order : pageOrders) {
-            yearbookRepository.updatePageOrderToTemp(order.getId(), -order.getId().intValue());
+            orderDataMap.put(order.getId(), order.getPageNo());
         }
 
-        // Phase 2: 실제 새 pageNo 값으로 변경
-        for (EditController.PageOrderDTO order : pageOrders) {
-            yearbookRepository.updatePageOrder(order.getId(), order.getPageNo());
+        // orderData 페이지들의 contentsId 수집 (DB 조회)
+        List<Yearbook> orderDataYearbooks = yearbookRepository.findAllById(orderDataMap.keySet());
+        Set<Long> contentsIds = new HashSet<>();
+        for (Yearbook yb : orderDataYearbooks) {
+            contentsIds.add(yb.getContentsId());
+        }
+
+        // 해당 contentsId의 ALL DB 페이지 조회 (DOM에 없는 orphaned 페이지 포함)
+        List<Yearbook> allPages = new ArrayList<>();
+        for (Long contentsId : contentsIds) {
+            allPages.addAll(yearbookRepository.findByContentsIdOrderByPageNoAsc(contentsId));
+        }
+
+        // orderData에 없는 페이지(orphaned)의 원본 pageNo 기록 → Phase 3에서 복원용
+        Map<Long, Integer> orphanedOriginalPageNos = new LinkedHashMap<>();
+        for (Yearbook page : allPages) {
+            if (!orderDataMap.containsKey(page.getId())) {
+                orphanedOriginalPageNos.put(page.getId(), page.getPageNo());
+            }
+        }
+
+        // ✅ Phase 1: 해당 contentsId의 ALL 페이지 → 음수 임시값
+        //    (orphaned 페이지 포함하여 UNIQUE 충돌 원천 차단)
+        for (Yearbook page : allPages) {
+            yearbookRepository.updatePageOrderToTemp(page.getId(), -page.getId().intValue());
+        }
+
+        // ✅ Phase 2: orderData 페이지 → 새 pageNo 적용
+        for (Map.Entry<Long, Integer> entry : orderDataMap.entrySet()) {
+            yearbookRepository.updatePageOrder(entry.getKey(), entry.getValue());
+        }
+
+        // ✅ Phase 3: orphaned 페이지 → 원래 pageNo 복원
+        for (Map.Entry<Long, Integer> entry : orphanedOriginalPageNos.entrySet()) {
+            yearbookRepository.updatePageOrder(entry.getKey(), entry.getValue());
         }
     }
     
