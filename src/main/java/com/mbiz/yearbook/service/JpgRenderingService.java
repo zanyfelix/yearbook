@@ -1055,6 +1055,21 @@ public class JpgRenderingService {
 				frameY += bgArea[3] * (translateYPercent / 100.0);
 			}
 
+			// ✅ 구버전 포맷(rotation 필드 없음): transform 문자열의 tx/ty를 직접 적용
+			// 신버전은 translateX/Y를 별도 백분율로 저장하지만,
+			// 구버전은 CSS matrix(a,b,c,d,tx,ty)의 tx/ty(브라우저 픽셀)만 가지고 있음
+			if (!frameNode.has("rotation")) {
+				String legacyTransform = frameNode.path("transform").asText("none");
+				if (!"none".equals(legacyTransform) && !legacyTransform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
+					TransformParser legacyParser = TransformParser.parse(legacyTransform);
+					if (legacyParser.tx != 0 || legacyParser.ty != 0) {
+						double drawScale = (double) bgArea[2] / EDIT_WIDTH;
+						frameX += legacyParser.tx * drawScale;
+						frameY += legacyParser.ty * drawScale;
+					}
+				}
+			}
+
 			// ✅ Math.round()로 변경 — 브라우저의 서브픽셀 반올림과 일치시킴
 			int frameWidthPx = (int) Math.round(frameWidth);
 			int frameHeightPx = (int) Math.round(frameHeight);
@@ -2816,6 +2831,13 @@ public class JpgRenderingService {
 
 			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
 				TransformParser parser = TransformParser.parse(transform);
+
+				// ✅ 구버전 포맷: absolutePixels.x/y는 transform 미적용 CSS 위치이므로
+				// CSS matrix의 tx/ty(브라우저 픽셀)를 렌더링 스케일로 변환하여 보정
+				if (parser.tx != 0 || parser.ty != 0) {
+					finalX += parser.tx * drawScale;
+					finalY += parser.ty * drawScale;
+				}
 
 				if (Math.abs(parser.rotation) > 0.001) {
 					String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
