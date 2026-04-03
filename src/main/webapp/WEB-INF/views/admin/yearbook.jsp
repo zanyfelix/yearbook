@@ -144,6 +144,13 @@
 	    </table>
 
 	    <div class="btn-wrapper">
+	    	<div class="render-format-control">
+	    		<label for="render-format">Format</label>
+	    		<select id="render-format" class="form-select form-select-sm">
+	    			<option value="png" selected>PNG</option>
+	    			<option value="jpg">JPG</option>
+	    		</select>
+	    	</div>
 		    <button id="btn-apply" type="button">DOWNLOAD</button>
 		    <button id="btn-dl-originals-all" type="button">DOWNLOAD ORIGINALS</button>
 	    </div>

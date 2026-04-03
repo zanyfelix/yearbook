@@ -27,6 +27,10 @@ public interface ThemeRepository extends JpaRepository<Theme, Long> {
      * findByParentId 대신 이 메소드를 사용하도록 Controller를 수정해야 합니다.
      */
     List<Theme> findByParentIdOrderByFilenameAsc(Long parentId);
+
+    Optional<Theme> findFirstByEditPath(String editPath);
+
+    Optional<Theme> findFirstByOriginalPath(String originalPath);
     
     @Query("SELECT new com.mbiz.yearbook.model.FontDto(t.id, t.filename, t.fontPath) " +
             "FROM Theme t WHERE t.themeNo = :themeNo AND t.category = 'font' ORDER BY t.filename ASC")

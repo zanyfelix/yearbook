@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Base64;
 
 import javax.imageio.ImageIO;
@@ -48,6 +49,8 @@ public class ThumbnailRenderingService {
 
     private static final int THUMB_WIDTH = 314;
     private static final int THUMB_HEIGHT = 404;
+    private static final int RENDER_CAPTURE_WIDTH = 2621;
+    private static final int RENDER_CAPTURE_HEIGHT = 3371;
 
     public String generateThumbnail(String designDataJson, Long yearbookId) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -466,5 +469,100 @@ public class ThumbnailRenderingService {
         Files.copy(thumbnailFile.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
 
         return "/thumbnail/" + filename;
+    }
+
+    public Path saveRenderCapture(MultipartFile renderCaptureFile, Long yearbookId) throws IOException {
+        if (renderCaptureFile == null || renderCaptureFile.isEmpty() || yearbookId == null) {
+            return null;
+        }
+
+        Path destinationDir = Paths.get(thumbnailPath, "render-captures");
+        Files.createDirectories(destinationDir);
+        Path destinationFile = destinationDir.resolve("render_" + yearbookId + ".png");
+
+        BufferedImage renderCapture = ImageIO.read(renderCaptureFile.getInputStream());
+        if (renderCapture != null) {
+            BufferedImage normalized = normalizeRenderCapture(renderCapture);
+            ImageIO.write(normalized, "png", destinationFile.toFile());
+            return destinationFile;
+        }
+
+        Files.copy(renderCaptureFile.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
+        return destinationFile;
+    }
+
+    public Path saveTextOverlayCapture(MultipartFile overlayCaptureFile, Long yearbookId) throws IOException {
+        if (overlayCaptureFile == null || overlayCaptureFile.isEmpty() || yearbookId == null) {
+            return null;
+        }
+
+        Path destinationDir = Paths.get(thumbnailPath, "render-overlays");
+        Files.createDirectories(destinationDir);
+        Path destinationFile = destinationDir.resolve("overlay_" + yearbookId + ".png");
+
+        BufferedImage overlayCapture = ImageIO.read(overlayCaptureFile.getInputStream());
+        if (overlayCapture != null) {
+            BufferedImage normalized = normalizeRenderCapture(overlayCapture);
+            ImageIO.write(normalized, "png", destinationFile.toFile());
+            return destinationFile;
+        }
+
+        Files.copy(overlayCaptureFile.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
+        return destinationFile;
+    }
+
+    public Path resolveRenderCapturePath(Long yearbookId) {
+        if (yearbookId == null) {
+            return null;
+        }
+
+        return Paths.get(thumbnailPath, "render-captures", "render_" + yearbookId + ".png");
+    }
+
+    public Path resolveTextOverlayPath(Long yearbookId) {
+        if (yearbookId == null) {
+            return null;
+        }
+
+        return Paths.get(thumbnailPath, "render-overlays", "overlay_" + yearbookId + ".png");
+    }
+
+    public Path resolveThumbnailPath(String thumbnailRelativePath) {
+        if (thumbnailRelativePath == null || thumbnailRelativePath.isBlank()) {
+            return null;
+        }
+
+        String normalized = thumbnailRelativePath.replace('\\', '/');
+        String fileName = normalized.substring(normalized.lastIndexOf('/') + 1);
+
+        List<Path> candidates = List.of(
+                Paths.get(normalized),
+                Paths.get(thumbnailPath).resolve(fileName),
+                Paths.get(thumbnailPath).resolve(normalized.startsWith("/") ? normalized.substring(1) : normalized),
+                Paths.get(thumbnailPath).resolve("thumbnail").resolve(fileName));
+
+        return candidates.stream()
+                .map(Path::normalize)
+                .filter(Files::exists)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private BufferedImage normalizeRenderCapture(BufferedImage source) {
+        if (source.getWidth() == RENDER_CAPTURE_WIDTH && source.getHeight() == RENDER_CAPTURE_HEIGHT) {
+            return source;
+        }
+
+        BufferedImage normalized = new BufferedImage(RENDER_CAPTURE_WIDTH, RENDER_CAPTURE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = normalized.createGraphics();
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2d.setColor(new Color(255, 255, 255, 0));
+        g2d.fillRect(0, 0, RENDER_CAPTURE_WIDTH, RENDER_CAPTURE_HEIGHT);
+        g2d.drawImage(source, 0, 0, RENDER_CAPTURE_WIDTH, RENDER_CAPTURE_HEIGHT, null);
+        g2d.dispose();
+        return normalized;
     }
 }

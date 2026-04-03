@@ -17,6 +17,11 @@ function toggleAll(source) {
             .forEach(cb => cb.checked = source.checked);
 }
 
+function getSelectedRenderFormat() {
+    const format = ($('#render-format').val() || 'png').toLowerCase();
+    return format === 'jpg' ? 'jpg' : 'png';
+}
+
 /* ─── 개별 페이지 선택 모달 ─────────────────────────────── */
 const PageSelectModal = (() => {
     let _userId     = null;
@@ -203,7 +208,8 @@ const PageSelectModal = (() => {
         const timeoutId  = setTimeout(() => controller.abort(), 1_800_000);
 
         try {
-            const url      = `${ctx}/admin/yearbook/downloadSelected?pageIds=${pageIds.join(',')}&token=${token}`;
+            const format   = getSelectedRenderFormat();
+            const url      = `${ctx}/admin/yearbook/downloadSelected?pageIds=${pageIds.join(',')}&format=${encodeURIComponent(format)}&token=${token}`;
             const response = await fetch(url, { signal: controller.signal });
             clearTimeout(timeoutId);
 
@@ -817,7 +823,8 @@ $(document).ready(function () {
         const timeoutId  = setTimeout(() => controller.abort(), 1_800_000); // 30분
 
         try {
-            const downloadUrl = `${ctx}/admin/yearbook/download?ids=${selectedIds.join(',')}&token=${token}`;
+            const format      = getSelectedRenderFormat();
+            const downloadUrl = `${ctx}/admin/yearbook/download?ids=${selectedIds.join(',')}&format=${encodeURIComponent(format)}&token=${token}`;
             const response    = await fetch(downloadUrl, { signal: controller.signal });
 
             clearTimeout(timeoutId);

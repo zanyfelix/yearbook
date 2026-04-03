@@ -9,6 +9,23 @@ class FrameManager {
 		templateWidth: 786
 	};
 
+	static resolveThemeAssetPath(frameTheme, assetType = 'image') {
+		if (!frameTheme) {
+			return null;
+		}
+
+		if (assetType === 'mask') {
+			return frameTheme.editMaskPath || frameTheme.originalMaskPath || null;
+		}
+
+		const prefersOriginalThemeAssets = window.__USE_ORIGINAL_THEME_ASSETS_FOR_RENDER === true;
+		if (prefersOriginalThemeAssets) {
+			return frameTheme.originalPath || frameTheme.editPath || null;
+		}
+
+		return frameTheme.editPath || frameTheme.originalPath || null;
+	}
+
 	static applyFrame(frameTheme, savedState = null) {
 		const frameContainer = $('#frame-container');
 		const frameType = this.getFrameType(frameTheme);
@@ -25,12 +42,20 @@ class FrameManager {
 		frameContainer.append(frameGroup);
 		frameGroup.data('frameTheme', frameTheme);
 
-		if (frameTheme.editPath) {
-			frameOverlay.attr('src', frameTheme.editPath);
+		const frameAssetPath = this.resolveThemeAssetPath(frameTheme, 'image');
+		if (frameAssetPath) {
+			const overlaySrc = window.resolveRenderAssetPath
+				? window.resolveRenderAssetPath(frameAssetPath)
+				: frameAssetPath;
+			frameOverlay.attr('src', overlaySrc);
 		}
 
-		if (!frameType.isSimple && frameTheme.editMaskPath) {
-			const boundsPromise = MaskBoundsCalculator.getBounds(`${ctx}${frameTheme.editMaskPath}`)
+		const maskAssetPath = this.resolveThemeAssetPath(frameTheme, 'mask');
+		if (!frameType.isSimple && maskAssetPath) {
+			const resolvedMaskPath = window.resolveRenderAssetPath
+				? window.resolveRenderAssetPath(maskAssetPath)
+				: `${ctx}${maskAssetPath}`;
+			const boundsPromise = MaskBoundsCalculator.getBounds(resolvedMaskPath)
 				.then(bounds => {
 					// 계산된 영역 정보를 프레임 요소의 데이터로 저장
 					frameGroup.data('maskBounds', bounds);
@@ -130,7 +155,7 @@ class FrameManager {
 		maskContainer.append(photoContainer);
 		frameGroup.append(maskContainer).append(frameOverlay);
 
-		if (frameTheme.editMaskPath) {
+		if (this.resolveThemeAssetPath(frameTheme, 'mask')) {
 			this.applyMasking(maskContainer, frameTheme);
 		}
 
@@ -197,8 +222,31 @@ class FrameManager {
 		});
 	}
 
+	static isMaskBoundsRelativePhotoState(photoState) {
+		return photoState?.isMaskBoundsRelative === true || photoState?.isFrameRelative === true;
+	}
+
+	static hasVisibleMaskGap(maskBounds, pixelWidth, pixelHeight, translateX, translateY, rotation = 0) {
+		if (!maskBounds || Math.abs(rotation) > 0.001) {
+			return false;
+		}
+
+		const epsilon = 0.5;
+		return translateX > maskBounds.x + epsilon ||
+			translateY > maskBounds.y + epsilon ||
+			translateX + pixelWidth < maskBounds.x + maskBounds.width - epsilon ||
+			translateY + pixelHeight < maskBounds.y + maskBounds.height - epsilon;
+	}
+
 	static applyMasking(container, frameTheme) {
-		const maskUrl = `${ctx}${frameTheme.editMaskPath}`;
+		const maskAssetPath = this.resolveThemeAssetPath(frameTheme, 'mask');
+		if (!maskAssetPath) {
+			return;
+		}
+
+		const maskUrl = window.resolveRenderAssetPath
+			? window.resolveRenderAssetPath(maskAssetPath)
+			: `${ctx}${maskAssetPath}`;
 		const img = new Image();
 		img.onload = () => {
 			container.css({
@@ -335,7 +383,19 @@ class FrameManager {
 
 	    const resolvedEditSrc = photoState.editSrc || inferEditSrc(photoState.src);
 	    const displaySrc = resolvedEditSrc || photoState.src;
-	    let imageSrc = displaySrc.startsWith('data:') ? displaySrc : `${ctx}${displaySrc}`;
+	    const resolveDisplayPath = (path) => {
+	        if (!path) {
+	            return path;
+	        }
+	        const renderAwarePath = window.resolveRenderAssetPath
+	            ? window.resolveRenderAssetPath(path)
+	            : path;
+	        if (renderAwarePath.startsWith('data:') || /^https?:\/\//i.test(renderAwarePath)) {
+	            return renderAwarePath;
+	        }
+	        return `${ctx}${renderAwarePath}`;
+	    };
+	    let imageSrc = resolveDisplayPath(displaySrc);
 
 	    // originalPath / editPath / filePath 모두 저장 (저장·캐시 시 올바른 경로 사용)
 	    if (photoState.src && !photoState.src.startsWith('data:')) {
@@ -370,13 +430,16 @@ class FrameManager {
 	        let pixelWidth, pixelHeight, translateX, translateY;
 
 	        // ✨ 프레임 기준 백분율 데이터가 있는 경우 (새 형식)
-	        if (photoState.sizePercent && (photoState.isFrameRelative || photoState.translateX !== undefined)) {
+	        const usesMaskBoundsState =
+				photoState.sizePercent &&
+				(photoState.isFrameRelative || photoState.translateX !== undefined);
+	        if (usesMaskBoundsState) {
 				// 마스크 bounds 기준 백분율 -> 픽셀 (저장 시와 동일한 기준)
 				const maskBounds = PhotoManager.getMaskBoundsPixels(frameGroup);
 				pixelWidth = (photoState.sizePercent.width / 100) * maskBounds.width;
 				pixelHeight = (photoState.sizePercent.height / 100) * maskBounds.height;
-				translateX = (photoState.translateX / 100) * maskBounds.width + maskBounds.x;
-				translateY = (photoState.translateY / 100) * maskBounds.height + maskBounds.y;
+				translateX = ((photoState.translateX || 0) / 100) * maskBounds.width + maskBounds.x;
+				translateY = ((photoState.translateY || 0) / 100) * maskBounds.height + maskBounds.y;
 
 	            console.log('Using frame-relative calculation:', {
 	                frameSize: { width: frameWidth, height: frameHeight },
@@ -486,10 +549,10 @@ class FrameManager {
 	        console.error('Photo load error:', imageSrc);
 	        // 추론된 editSrc 로드 실패 시 original로 폴백
 	        const originalSrc = photoState.src;
-	        if (resolvedEditSrc && !photoState.editSrc && originalSrc && !originalSrc.startsWith('data:') && imageSrc !== `${ctx}${originalSrc}`) {
+	        if (resolvedEditSrc && !photoState.editSrc && originalSrc && !originalSrc.startsWith('data:') && imageSrc !== resolveDisplayPath(originalSrc)) {
 	            console.warn('Inferred edit file not found, falling back to original:', originalSrc);
 	            uploadedPhoto.data('editPath', null);
-	            imageSrc = `${ctx}${originalSrc}`;
+	            imageSrc = resolveDisplayPath(originalSrc);
 	            uploadedPhoto.off('error.restore');
 	            uploadedPhoto.on('error.restore', function() {
 	                console.error('Original photo load error:', imageSrc);

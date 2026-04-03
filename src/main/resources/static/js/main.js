@@ -124,6 +124,34 @@ $(document).ready(function() {
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
 
+	function resolveTextBoxCaptureLayout(captureInfo, actualBgRect) {
+		if (!captureInfo || !captureInfo.absolutePixels || !actualBgRect) {
+			return null;
+		}
+
+		const absolutePixels = captureInfo.absolutePixels;
+		const editorBgWidth = Number(captureInfo.editorBgWidth) || 786;
+		const editorBgHeight = Number(captureInfo.editorBgHeight) || 1011;
+		const editorX = Number(absolutePixels.x);
+		const editorY = Number(absolutePixels.y);
+		const editorWidth = Number(absolutePixels.w);
+		const editorHeight = Number(absolutePixels.h);
+
+		if (![editorX, editorY, editorWidth, editorHeight].every(Number.isFinite)) {
+			return null;
+		}
+
+		const scaleX = actualBgRect.width / Math.max(editorBgWidth, 1);
+		const scaleY = actualBgRect.height / Math.max(editorBgHeight, 1);
+
+		return {
+			left: actualBgRect.left + editorX * scaleX,
+			top: actualBgRect.top + editorY * scaleY,
+			width: Math.max(1, editorWidth * scaleX),
+			height: Math.max(1, editorHeight * scaleY)
+		};
+	}
+
 	window.updateElementPosition = function($element, state) {
 		const relativeState = $element.data('relativeState');
 		if (!relativeState) return;
@@ -153,6 +181,10 @@ $(document).ready(function() {
 		}
 
 		const transformOrigin = `${relativeState.transformOriginX || 50}% ${relativeState.transformOriginY || 50}%`;
+		const isRenderTextBox = $element.hasClass('text-box') && window.__IS_BROWSER_RENDER === true;
+		const captureLayout = isRenderTextBox
+			? resolveTextBoxCaptureLayout($element.data('captureInfo'), actualBgRect)
+			: null;
 
 		// ✅ 요소 크기 먼저 계산 (정렬 계산에 필요)
 		let elementWidth, elementHeight;
@@ -185,7 +217,10 @@ $(document).ready(function() {
 			const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
 
 			// ✅ 회전이 있으면 저장된 크기 사용 (위치 일관성 우선)
-			if (relativeState.rotation && relativeState.rotation !== 0) {
+			if (captureLayout) {
+				elementWidth = captureLayout.width;
+				elementHeight = captureLayout.height;
+			} else if (relativeState.rotation && relativeState.rotation !== 0) {
 				elementWidth = savedWidth;
 				elementHeight = savedHeight;
 			} else if (hasLineBreaks) {
@@ -231,7 +266,9 @@ $(document).ready(function() {
 		const hAlign = relativeState.alignment?.horizontal;
 		const hasHAlignBounds = relativeState.alignmentBounds !== undefined;
 		
-		if (hAlign === 'left' && hasHAlignBounds) {
+		if (captureLayout) {
+			newLeft = captureLayout.left;
+		} else if (hAlign === 'left' && hasHAlignBounds) {
 			// ✅ 좌측 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.left !== undefined) {
 				newLeft = (relativeState.alignmentBounds.left / 100) * actualBgRect.width + actualBgRect.left;
@@ -268,7 +305,9 @@ $(document).ready(function() {
 		const vAlign = relativeState.alignment?.vertical;
 		const hasVAlignBounds = relativeState.alignmentBounds !== undefined;
 		
-		if (vAlign === 'top' && hasVAlignBounds) {
+		if (captureLayout) {
+			newTop = captureLayout.top;
+		} else if (vAlign === 'top' && hasVAlignBounds) {
 			// ✅ 상단 정렬 - 저장된 기준 좌표 사용
 			if (relativeState.alignmentBounds?.top !== undefined) {
 				newTop = (relativeState.alignmentBounds.top / 100) * actualBgRect.height + actualBgRect.top;
@@ -305,7 +344,10 @@ $(document).ready(function() {
 		// 회전된 텍스트는 저장된 크기 사용 (해상도 독립적)
 		let cssWidth = elementWidth;
 		let cssHeight = elementHeight;
-		if ($element.hasClass('text-box') && relativeState.rotation && relativeState.rotation !== 0) {
+		if (captureLayout) {
+			cssWidth = captureLayout.width;
+			cssHeight = captureLayout.height;
+		} else if ($element.hasClass('text-box') && relativeState.rotation && relativeState.rotation !== 0) {
 			cssWidth = savedWidth;
 			cssHeight = savedHeight;
 		}
@@ -801,7 +843,11 @@ $(document).ready(function() {
 			}, 150);
 		});
 
-		bgImg.attr('src', defaultBgPath);
+		bgImg
+			.attr('src', defaultBgPath)
+			.data('backgroundEditPath', defaultBgPath)
+			.data('backgroundOriginalPath', defaultBgPath)
+			.data('backgroundThemeId', null);
 
 		if (bgImg[0].complete) {
 			bgImg.trigger('load');
@@ -1046,8 +1092,15 @@ $(document).ready(function() {
 						const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
 
 						// 위치 계산
-						const pixelLeft = Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
-						const pixelTop = Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
+						const captureLayout = window.__IS_BROWSER_RENDER === true
+							? resolveTextBoxCaptureLayout(boxData.captureInfo, actualBgRect)
+							: null;
+						const pixelLeft = captureLayout
+							? captureLayout.left
+							: Math.max(0, (boxData.position?.left || 10) / 100 * actualBgRect.width + actualBgRect.left);
+						const pixelTop = captureLayout
+							? captureLayout.top
+							: Math.max(0, (boxData.position?.top || 10) / 100 * actualBgRect.height + actualBgRect.top);
 
 						// ⭐ 핵심: 스타일을 먼저 적용 (HTML 설정 전)
 						$box.css({
@@ -1077,11 +1130,18 @@ $(document).ready(function() {
 
 						// 내용 기반 크기 측정 및 적용
 						// measureTextBoxContentSize에 +15px 버퍼 포함되어 서브픽셀 오차 보정됨
-						const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
-						$box.css({
-							'width': measuredSize.width + 'px',
-							'height': measuredSize.height + 'px'
-						});
+						if (captureLayout) {
+							$box.css({
+								'width': captureLayout.width + 'px',
+								'height': captureLayout.height + 'px'
+							});
+						} else {
+							const measuredSize = measureTextBoxContentSize($box, scaledFontSize);
+							$box.css({
+								'width': measuredSize.width + 'px',
+								'height': measuredSize.height + 'px'
+							});
+						}
 
 						// Transform 적용
 						if (boxData.transform && boxData.transform !== 'none') {
@@ -1106,6 +1166,8 @@ $(document).ready(function() {
 							translateX: boxData.translateX || 0,  // 추가
 							translateY: boxData.translateY || 0,  // 추가
 							transform: boxData.transform || 'none',
+							transformOriginX: boxData.transformOriginX || 50,
+							transformOriginY: boxData.transformOriginY || 50,
 							transformOrigin: boxData.transformOrigin || '50% 50%',
 							// ✅ 정렬 플래그 복원
 							alignment: boxData.alignment || { horizontal: null, vertical: null },
@@ -1117,6 +1179,7 @@ $(document).ready(function() {
 						$box.data('base-font-size', baseFontSize);
 						$box.data('text-type', textType);
 						$box.data('savedFontFamily', boxData.styles?.fontFamily || 'Arial');
+						$box.data('captureInfo', boxData.captureInfo || null);
 
 						EventManager.setupTextEvents($box);
 
@@ -1130,8 +1193,20 @@ $(document).ready(function() {
 			}
 		}
 
+		const prefersOriginalThemeAssets = window.__USE_ORIGINAL_THEME_ASSETS_FOR_RENDER === true;
+		const selectedBackground = prefersOriginalThemeAssets
+			? (design.backgroundOriginal || design.background)
+			: (design.background || design.backgroundOriginal);
+		const resolvedBackground = window.resolveRenderAssetPath
+			? window.resolveRenderAssetPath(selectedBackground)
+			: selectedBackground;
+		bgImg
+			.data('backgroundEditPath', design.background || selectedBackground || null)
+			.data('backgroundOriginalPath', design.backgroundOriginal || design.background || null)
+			.data('backgroundThemeId', design.backgroundThemeId || null);
+
 		// 배경 이미지 처리 후 요소 렌더링
-		if (design.background && bgImg.attr('src') !== design.background) {
+		if (resolvedBackground && bgImg.attr('src') !== resolvedBackground) {
 			let bgLoadHandled = false;
 			
 			bgImg.off('load.render error.render');
@@ -1158,7 +1233,7 @@ $(document).ready(function() {
 				renderElements();  // 실패해도 요소는 렌더링
 			});
 			
-			bgImg.attr('src', design.background);
+			bgImg.attr('src', resolvedBackground);
 			
 			// ✅ src 설정 후 캐시된 경우 체크
 			if (bgImg[0].complete && bgImg[0].naturalWidth > 0) {
@@ -1571,12 +1646,19 @@ $(document).ready(function() {
 			window.multiSelectionManager.clearSelection();
 		}
 
+		const bgImg = $('#page-preview-img');
+		const backgroundEditPath = bgImg.data('backgroundEditPath') || bgImg.attr('src');
+		const backgroundOriginalPath = bgImg.data('backgroundOriginalPath') || backgroundEditPath;
+		const backgroundThemeId = bgImg.data('backgroundThemeId') || null;
 		const designData = {
 			frames: [],
 			textBoxes: [],
-			background: $('#page-preview-img').attr('src')
+			background: backgroundEditPath,
+			backgroundOriginal: backgroundOriginalPath
 		};
-		const bgImg = $('#page-preview-img');
+		if (backgroundThemeId) {
+			designData.backgroundThemeId = backgroundThemeId;
+		}
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bgImg);
 
 		// ✅ 빈 페이지 여부 — frames/textBoxes 수집 후 최종 판단하므로 여기서는 예비 체크만
@@ -1746,6 +1828,8 @@ $(document).ready(function() {
 			let rotation = 0;
 			let translateX = 0;
 			let translateY = 0;
+			let transformOriginX = 50;
+			let transformOriginY = 50;
 
 			if (boxTransform && boxTransform !== 'none') {
 				const matrix = boxTransform.match(/matrix\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/);
@@ -1757,6 +1841,9 @@ $(document).ready(function() {
 					rotation = Math.atan2(b, a); // 라디안 단위
 				}
 			}
+
+			const transformOriginMatch = boxTransformOrigin
+				&& boxTransformOrigin.match(/([-\d.]+)(px|%)\s+([-\d.]+)(px|%)/);
 
 			$box.css({ 'transform': 'none' });
 			const boxPos = $box.position();
@@ -1777,6 +1864,15 @@ $(document).ready(function() {
 				const lines = $box.html().split(/<br>|<div>/).length;
 				boxH = lineHeight * lines + 20; // padding 추가
 				console.warn('높이 계산 실패, 예상값 사용:', boxH);
+			}
+
+			if (transformOriginMatch) {
+				transformOriginX = transformOriginMatch[2] === 'px'
+					? (parseFloat(transformOriginMatch[1]) / Math.max(boxW, 1)) * 100
+					: parseFloat(transformOriginMatch[1]);
+				transformOriginY = transformOriginMatch[4] === 'px'
+					? (parseFloat(transformOriginMatch[3]) / Math.max(boxH, 1)) * 100
+					: parseFloat(transformOriginMatch[3]);
 			}
 
 			const baseFontSize = $box.data('base-font-size') || 12;
@@ -1806,6 +1902,8 @@ $(document).ready(function() {
 				rotation: rotation,  // 추가
 				translateX: (translateX / actualBgRect.width) * 100,  // 추가
 				translateY: (translateY / actualBgRect.height) * 100,  // 추가
+				transformOriginX: transformOriginX,
+				transformOriginY: transformOriginY,
 				transform: boxTransform || 'none',
 				transformOrigin: boxTransformOrigin || '50% 50%',
 				// ✅ 정렬 플래그 저장
@@ -1879,6 +1977,20 @@ $(document).ready(function() {
 				// DOM 업데이트 대기
 				await new Promise(resolve => setTimeout(resolve, 100));
 
+				// ✅ 커스텀 폰트 강제 로드 (html2canvas 캡처 전 폰트가 반드시 로드되어야 함)
+				const savedFontFamily = $box.data('savedFontFamily') || ($box.css('font-family') || '').split(',')[0].trim().replace(/["']/g, '');
+				if (savedFontFamily) {
+					try {
+						await Promise.all([
+							document.fonts.load(`12px "${savedFontFamily}"`),
+							document.fonts.load(`bold 12px "${savedFontFamily}"`),
+							document.fonts.load(`italic 12px "${savedFontFamily}"`)
+						]);
+					} catch(e) {
+						console.warn('폰트 로드 대기 실패:', savedFontFamily, e);
+					}
+				}
+
 				// ✅ 렌더링과 동일한 스케일로 캡처 (실제 배경 너비 기반)
 				// 이미 상위 스코프에서 RENDER_SCALE = 2621 / actualBgRect.width 로 정의됨
 
@@ -1890,7 +2002,18 @@ $(document).ready(function() {
 					letterRendering: true,
 					allowTaint: true,  // 추가
 					height: actualHeight + 5,
-					width: actualWidth + 5
+					width: actualWidth + 5,
+					onclone: (clonedDoc) => {
+						// ✅ clone된 문서에도 커스텀 폰트 @font-face 규칙 주입
+						// html2canvas는 clone 문서에서 렌더링하므로 폰트 정의가 없으면 fallback 폰트 사용됨
+						const fontStyles = document.getElementById('dynamic-font-styles');
+						if (fontStyles && fontStyles.textContent) {
+							const clonedStyle = clonedDoc.createElement('style');
+							// font-display: block으로 변경하여 clone에서 폰트 로드 완료 전 숨김 처리
+							clonedStyle.textContent = fontStyles.textContent.replace(/font-display\s*:\s*swap/g, 'font-display: block');
+							clonedDoc.head.appendChild(clonedStyle);
+						}
+					}
 				});
 
 				// 원본 스타일 복원
@@ -1914,6 +2037,103 @@ $(document).ready(function() {
 		}
 
 		// ========== 마스크 처리 헬퍼 함수 추가 ==========
+		async function waitForPageCaptureFonts() {
+			if (!document.fonts || typeof document.fonts.load !== 'function') {
+				return;
+			}
+
+			const fontFamilies = new Set();
+			$('#frame-container .text-box').each(function() {
+				const $box = $(this);
+				const savedFontFamily = $box.data('savedFontFamily')
+					|| (($box.css('font-family') || '').split(',')[0].trim().replace(/["']/g, ''));
+				if (savedFontFamily) {
+					fontFamilies.add(savedFontFamily);
+				}
+			});
+
+			const fontLoads = [];
+			fontFamilies.forEach(fontFamily => {
+				fontLoads.push(document.fonts.load(`12px "${fontFamily}"`));
+				fontLoads.push(document.fonts.load(`bold 12px "${fontFamily}"`));
+				fontLoads.push(document.fonts.load(`italic 12px "${fontFamily}"`));
+			});
+
+			if (fontLoads.length > 0) {
+				await Promise.allSettled(fontLoads);
+			}
+
+			try {
+				await document.fonts.ready;
+			} catch (e) {
+				console.warn('Page capture font wait failed:', e);
+			}
+
+			await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		}
+
+		function buildPageCaptureOptions(actualBgRect, scale, transparentBackground = false) {
+			return {
+				useCORS: true,
+				backgroundColor: null,
+				scale: scale,
+				x: actualBgRect.left,
+				y: actualBgRect.top,
+				width: actualBgRect.width,
+				height: actualBgRect.height,
+				scrollX: 0,
+				scrollY: 0,
+				logging: false,
+				letterRendering: true,
+				allowTaint: true,
+				imageTimeout: 0,
+				onclone: (clonedDoc) => {
+					const fontStyles = document.getElementById('dynamic-font-styles');
+					if (fontStyles && fontStyles.textContent) {
+						const clonedStyle = clonedDoc.createElement('style');
+						clonedStyle.textContent = fontStyles.textContent.replace(/font-display\s*:\s*swap/g, 'font-display: block');
+						clonedDoc.head.appendChild(clonedStyle);
+					}
+
+					const captureCleanupStyle = clonedDoc.createElement('style');
+					captureCleanupStyle.textContent = `
+						#safe-line-overlay,
+						#safe-line-overlay .safe-area-hatched,
+						.safe-area-hatched,
+						#save-confirmation-message,
+						#preview-loader {
+							display: none !important;
+							opacity: 0 !important;
+							visibility: hidden !important;
+						}
+					`;
+					clonedDoc.head.appendChild(captureCleanupStyle);
+
+					clonedDoc.querySelectorAll('#frame-container .text-box').forEach(node => {
+						node.classList.remove('editing');
+						node.setAttribute('contenteditable', 'false');
+					});
+
+					if (transparentBackground) {
+						const clonedPreview = clonedDoc.getElementById('page-preview');
+						const clonedFrameContainer = clonedDoc.getElementById('frame-container');
+						if (clonedDoc.body) {
+							clonedDoc.body.style.background = 'transparent';
+							clonedDoc.body.style.backgroundColor = 'transparent';
+						}
+						if (clonedPreview) {
+							clonedPreview.style.background = 'transparent';
+							clonedPreview.style.backgroundColor = 'transparent';
+						}
+						if (clonedFrameContainer) {
+							clonedFrameContainer.style.background = 'transparent';
+							clonedFrameContainer.style.backgroundColor = 'transparent';
+						}
+					}
+				}
+			};
+		}
+
 		async function applyRealMaskBeforeCapture() {
 			const promises = [];
 
@@ -1981,11 +2201,35 @@ $(document).ready(function() {
 
 							// ✅ 회전 각도 추출 (라디안)
 							const rotation = Math.atan2(b, a);
+							const relativeState = $photo.data('relativeState') || {};
+							const maskBounds = PhotoManager.getMaskBoundsPixels($frame);
+							const hasVisibleGap =
+								Math.abs(rotation) < 0.001 &&
+								(tx > maskBounds.x + 0.5 ||
+								 ty > maskBounds.y + 0.5 ||
+								 tx + photoWidth < maskBounds.x + maskBounds.width - 0.5 ||
+								 ty + photoHeight < maskBounds.y + maskBounds.height - 0.5);
+							const shouldUseRenderCoverFallback =
+								!relativeState.isManuallyAdjusted &&
+								!isMaskBoundsRelativePhotoState(relativeState) &&
+								hasVisibleGap &&
+								photoImg.naturalWidth > 0 &&
+								photoImg.naturalHeight > 0;
 
 							// ✅ Canvas에 transform 적용 후 사진 그리기
 							ctx2d.save();
 
-							if (rotation !== 0) {
+							if (shouldUseRenderCoverFallback) {
+								const scale = Math.max(
+									maskBounds.width / photoImg.naturalWidth,
+									maskBounds.height / photoImg.naturalHeight
+								);
+								const drawWidth = photoImg.naturalWidth * scale;
+								const drawHeight = photoImg.naturalHeight * scale;
+								const drawX = maskBounds.x + (maskBounds.width - drawWidth) / 2;
+								const drawY = maskBounds.y + (maskBounds.height - drawHeight) / 2;
+								ctx2d.drawImage(photoImg, drawX, drawY, drawWidth, drawHeight);
+							} else if (rotation !== 0) {
 								// ✅ 회전이 있는 경우: transform-origin (50% 50%) 적용
 
 								// 사진 중심 좌표 계산 (translate 적용 후의 중심)
@@ -2103,35 +2347,52 @@ $(document).ready(function() {
 
 		// ========== 썸네일 캡처 ==========
 		let thumbnailBlob = null;
+		let renderCaptureBlob = null;
+		let overlayCaptureBlob = null;
 
 		if (isEmptyPage) {
 			// 빈 페이지: html2canvas 생략, placeholder 1×1 더미 blob 전송
 			// 서버에서 thumbnailFile 없으면 기존 썸네일 유지하므로 null 전송
 			thumbnailBlob = null;
 		} else {
-			// 마스크 적용 (캡처 전)
+			const captureTarget = document.getElementById('page-preview');
+			await waitForPageCaptureFonts();
 			await applyRealMaskBeforeCapture();
 
-			// 전체 페이지 썸네일 캡처
-			const captureTarget = document.getElementById('page-preview');
-			const thumbnailCanvas = await html2canvas(captureTarget, {
-				useCORS: true,
-				backgroundColor: null,
-				scale: 1,
-				x: actualBgRect.left,
-				y: actualBgRect.top,
-				width: actualBgRect.width,
-				height: actualBgRect.height,
-				scrollX: 0,
-				scrollY: 0
-			});
+			try {
+				const thumbnailCanvas = await html2canvas(captureTarget, buildPageCaptureOptions(actualBgRect, 1));
 
-			// 원상 복구 (캡처 후)
-			restoreAfterCapture();
+				thumbnailBlob = await new Promise(resolve => {
+					thumbnailCanvas.toBlob(resolve, 'image/png');
+				});
 
-			thumbnailBlob = await new Promise(resolve => {
-				thumbnailCanvas.toBlob(resolve, 'image/png');
-			});
+			} finally {
+				restoreAfterCapture();
+			}
+
+			if (designData.textBoxes.length > 0) {
+				const hiddenNodes = [];
+				$('#page-preview-img, #frame-container .frame-group, #frame-container .element-frame').each(function() {
+					hiddenNodes.push({
+						element: this,
+						display: this.style.display
+					});
+					this.style.display = 'none';
+				});
+
+				try {
+					await waitForPageCaptureFonts();
+					const overlayCanvas = await html2canvas(captureTarget, buildPageCaptureOptions(actualBgRect, RENDER_SCALE, true));
+
+					overlayCaptureBlob = await new Promise(resolve => {
+						overlayCanvas.toBlob(resolve, 'image/png');
+					});
+				} finally {
+					hiddenNodes.forEach(item => {
+						item.element.style.display = item.display;
+					});
+				}
+			}
 		}
 
 		// FormData 생성
@@ -2149,6 +2410,12 @@ $(document).ready(function() {
 		// ✅ 빈 페이지는 thumbnailFile 미전송 (서버에서 thumbnailFile 없으면 기존 경로 유지)
 		if (thumbnailBlob) {
 			formData.append('thumbnailFile', thumbnailBlob, 'thumbnail.png');
+		}
+		if (renderCaptureBlob) {
+			formData.append('renderCaptureFile', renderCaptureBlob, 'render-capture.png');
+		}
+		if (overlayCaptureBlob) {
+			formData.append('overlayCaptureFile', overlayCaptureBlob, 'overlay-capture.png');
 		}
 
 		// 텍스트박스 이미지들 추가
@@ -2769,6 +3036,12 @@ $(document).ready(function() {
 		console.log('Setting page category to:', pageCategory);
 	});
 
+	// Expose core render helpers for the headless browser render page.
+	window.renderPage = renderPage;
+	window.forceCompleteReset = forceCompleteReset;
+	window.loadDefaultBackground = loadDefaultBackground;
+	window.waitForAllPhotosLoaded = waitForAllPhotosLoaded;
+
 });
 
 // ============================================================================
@@ -3152,6 +3425,66 @@ function displayImageWithVersions(editPath, originalPath, frameGroup, photo, pla
 }
 
 // 성능 측정 (디버깅용)
+function displayImageWithVersions(editPath, originalPath, frameGroup, photo, placeholder) {
+	const shouldUseOriginal = window.__USE_ORIGINAL_PHOTOS_FOR_RENDER === true && !!originalPath;
+	const selectedPath = shouldUseOriginal ? originalPath : (editPath || originalPath);
+
+	if (!selectedPath) {
+		console.error('No photo source available for frame render.');
+		photo.hide();
+		placeholder.show();
+		return;
+	}
+
+	const resolveDisplayPath = (path) => {
+		const renderAwarePath = window.resolveRenderAssetPath
+			? window.resolveRenderAssetPath(path)
+			: path;
+		return /^https?:\/\//i.test(renderAwarePath) ? renderAwarePath : `${ctx}${renderAwarePath}`;
+	};
+	const activeDisplay = shouldUseOriginal ? 'original' : (editPath ? 'edit' : 'original');
+	const activeSrc = resolveDisplayPath(selectedPath);
+
+	photo.attr('src', activeSrc).css('display', 'block');
+
+	photo.data({
+		'editPath': editPath,
+		'originalPath': originalPath,
+		'filePath': originalPath,
+		'currentDisplay': activeDisplay
+	});
+
+	photo.on('load', function() {
+		const maskContainer = frameGroup.find('.mask-container');
+		if (maskContainer.length) {
+			positionImageInMaskAdvanced(photo, maskContainer, {
+				fit: 'cover',
+				position: 'center'
+			});
+		} else {
+			positionImageInMask(photo, frameGroup);
+		}
+
+		placeholder.hide();
+		window.selectionManager.clearSelection();
+	});
+
+	photo.on('error', function() {
+		if (shouldUseOriginal && editPath && photo.data('currentDisplay') !== 'edit') {
+			const fallbackSrc = resolveDisplayPath(editPath);
+			console.warn('Original photo load failed during browser render, falling back to edit image:', activeSrc);
+			photo.data('currentDisplay', 'edit');
+			photo.attr('src', fallbackSrc);
+			return;
+		}
+
+		console.error('Image load failed:', activeSrc);
+		alert('The image cannot be displayed.');
+		photo.hide();
+		placeholder.show();
+	});
+}
+
 function measurePerformance(operation, callback) {
 	const startTime = performance.now();
 
@@ -3276,6 +3609,157 @@ function positionImageInMaskAdvanced(photo, maskContainer, options = {}) {
 }
 
 // 이미지 상태 저장 헬퍼
+function isMaskBoundsRelativePhotoState(state) {
+	return !!state && (state.isMaskBoundsRelative === true || state.isFrameRelative === true);
+}
+
+function buildPhotoLayoutFromState($frame, relativeState) {
+	if (!relativeState || !relativeState.sizePercent) {
+		return null;
+	}
+
+	const maskBounds = PhotoManager.getMaskBoundsPixels($frame);
+	const rotation = relativeState.rotation || 0;
+
+	if (isMaskBoundsRelativePhotoState(relativeState)) {
+		return {
+			maskBounds,
+			pixelWidth: (relativeState.sizePercent.width / 100) * maskBounds.width,
+			pixelHeight: (relativeState.sizePercent.height / 100) * maskBounds.height,
+			translateX: ((relativeState.translateX || 0) / 100) * maskBounds.width + maskBounds.x,
+			translateY: ((relativeState.translateY || 0) / 100) * maskBounds.height + maskBounds.y,
+			rotation
+		};
+	}
+
+	const bg = $('#page-preview-img');
+	const actualBgRect = window.safeLineManager?.getActualImagePosition(bg);
+	if (!actualBgRect) {
+		return null;
+	}
+
+	return {
+		maskBounds,
+		pixelWidth: (relativeState.sizePercent.width / 100) * actualBgRect.width,
+		pixelHeight: (relativeState.sizePercent.height / 100) * actualBgRect.height,
+		translateX: (relativeState.translateX || 0) / 100 * actualBgRect.width,
+		translateY: (relativeState.translateY || 0) / 100 * actualBgRect.height,
+		rotation
+	};
+}
+
+function photoLayoutLeavesMaskGap(layout) {
+	if (!layout || Math.abs(layout.rotation) > 0.001) {
+		return false;
+	}
+
+	const epsilon = 0.5;
+	return layout.translateX > layout.maskBounds.x + epsilon ||
+		layout.translateY > layout.maskBounds.y + epsilon ||
+		layout.translateX + layout.pixelWidth < layout.maskBounds.x + layout.maskBounds.width - epsilon ||
+		layout.translateY + layout.pixelHeight < layout.maskBounds.y + layout.maskBounds.height - epsilon;
+}
+
+function applyPhotoLayout($photo, layout) {
+	let finalTransform;
+	if (layout.rotation !== 0) {
+		const cos = Math.cos(layout.rotation);
+		const sin = Math.sin(layout.rotation);
+		finalTransform = `matrix(${cos}, ${sin}, ${-sin}, ${cos}, ${layout.translateX}, ${layout.translateY})`;
+	} else {
+		finalTransform = `matrix(1, 0, 0, 1, ${layout.translateX}, ${layout.translateY})`;
+	}
+
+	$photo.css({
+		display: 'block',
+		visibility: 'visible',
+		width: layout.pixelWidth + 'px',
+		height: layout.pixelHeight + 'px',
+		left: '0px',
+		top: '0px',
+		transform: finalTransform,
+		transformOrigin: '50% 50%'
+	});
+}
+
+function fallbackPhotoToCover($frame, $photo, reason) {
+	const maskContainer = $frame.find('.mask-container');
+	if (!(maskContainer.length && $photo[0].naturalWidth > 0)) {
+		return false;
+	}
+
+	positionImageInMaskAdvanced($photo, maskContainer, {
+		fit: 'cover',
+		position: 'center'
+	});
+	$photo.css('visibility', 'visible');
+	console.log(`[photo-cover-fallback] reason=${reason}`);
+	return true;
+}
+
+function applyPhotoPositionAfterLoadRenderHelper($frame, $photo) {
+	const relativeState = $photo.data('relativeState');
+
+	if (!relativeState || !relativeState.sizePercent) {
+		fallbackPhotoToCover($frame, $photo, 'missing-state');
+		return;
+	}
+
+	const layout = buildPhotoLayoutFromState($frame, relativeState);
+	if (!layout) {
+		fallbackPhotoToCover($frame, $photo, 'unusable-state');
+		return;
+	}
+
+	if (!relativeState.isManuallyAdjusted && photoLayoutLeavesMaskGap(layout)) {
+		fallbackPhotoToCover($frame, $photo, 'gap-detected');
+		return;
+	}
+
+	applyPhotoLayout($photo, layout);
+}
+
+function updateAllPhotosPositionRenderHelper() {
+	$('#frame-container .frame-group').each(function() {
+		const $frame = $(this);
+		const $photo = $frame.find('.uploaded-photo');
+		const $placeholder = $frame.find('.place-image-here-link');
+		const photoSrc = $photo.attr('src');
+
+		if (photoSrc && photoSrc !== '#') {
+			$placeholder.hide();
+
+			if (!$frame.data('maskBounds') && $frame.data('maskBoundsPromise')) {
+				return;
+			}
+
+			const relativeState = $photo.data('relativeState');
+			const layout = buildPhotoLayoutFromState($frame, relativeState);
+
+			if (layout) {
+				if (!relativeState?.isManuallyAdjusted && photoLayoutLeavesMaskGap(layout)) {
+					fallbackPhotoToCover($frame, $photo, 'gap-detected');
+				} else {
+					applyPhotoLayout($photo, layout);
+				}
+			} else if (!fallbackPhotoToCover($frame, $photo, 'missing-layout') && $photo[0].naturalWidth > 0) {
+				$photo.css({
+					display: 'block',
+					visibility: 'visible'
+				});
+			}
+
+			if ($photo.hasClass('selected-photo')) {
+				PhotoManager.updateSilhouetteSize($photo);
+				PhotoManager.updateSelectionUI($photo);
+			}
+		} else {
+			$placeholder.show();
+			$photo.hide();
+		}
+	});
+}
+
 function saveImageState(photo, state) {
 	const currentState = photo.data('relativeState') || {};
 

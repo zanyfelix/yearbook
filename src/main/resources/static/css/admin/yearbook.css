@@ -164,6 +164,25 @@ html, body {
   margin-right: 10px;
   margin: 0.75rem 0;
 }
+.btn-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.render-format-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0.75rem 0;
+}
+.render-format-control label {
+  font-weight: 600;
+  color: #495057;
+}
+.render-format-control select {
+  min-width: 110px;
+}
 .container-fluid .btn-wrapper > button:nth-of-type(1) {
   background-color: #28a745;
   color: #fff;

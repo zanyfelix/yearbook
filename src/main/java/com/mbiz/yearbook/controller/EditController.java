@@ -883,7 +883,7 @@ public class EditController {
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
 
-			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile);
+			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile, null, null);
 
 			return result;
 
@@ -901,6 +901,8 @@ public class EditController {
 	@ResponseBody
 	public Map<String, Object> savePageWithTextImages(@RequestParam("payload") String payloadJson,
 			@RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
+			@RequestParam(value = "renderCaptureFile", required = false) MultipartFile renderCaptureFile,
+			@RequestParam(value = "overlayCaptureFile", required = false) MultipartFile overlayCaptureFile,
 			@RequestParam Map<String, MultipartFile> files, HttpSession session) {
 
 		try {
@@ -947,7 +949,7 @@ public class EditController {
 
 			payload.setDesignData(mapper.writeValueAsString(designData));
 
-			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile);
+			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile, renderCaptureFile, overlayCaptureFile);
 			result.put("textImagePaths", savedTextImagePaths);
 
 			return result;

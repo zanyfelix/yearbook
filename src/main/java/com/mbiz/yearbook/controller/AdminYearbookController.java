@@ -199,12 +199,12 @@ public class AdminYearbookController {
 	@GetMapping("/admin/yearbook/downloadSelected")
 	public void downloadSelected(
 	        @RequestParam("pageIds") List<Long> pageIds,
-	        @RequestParam(value = "format", defaultValue = "jpg") String format,
+	        @RequestParam(value = "format", defaultValue = "png") String format,
 	        @RequestParam(value = "token", required = false) String token,
 	        HttpServletResponse response) throws IOException {
 
-		String normalizedFormat = format.toLowerCase();
-		if (!"jpg".equals(normalizedFormat)) {
+		String normalizedFormat = normalizeDownloadFormat(format);
+		if (!isValidFormat(normalizedFormat)) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "jpg 포맷만 지원합니다.");
 			downloadProgressService.completeWithError(token, "지원하지 않는 포맷입니다.");
 			return;
@@ -351,12 +351,12 @@ public class AdminYearbookController {
 	@GetMapping("/admin/yearbook/download")
 	public void downloadYearbooks(
 	        @RequestParam("ids") List<Long> userIds,
-	        @RequestParam(value = "format", defaultValue = "jpg") String format,
+	        @RequestParam(value = "format", defaultValue = "png") String format,
 	        @RequestParam(value = "token", required = false) String token,
 	        HttpServletResponse response) throws IOException {
 
-	    String normalizedFormat = format.toLowerCase();
-	    if (!"jpg".equals(normalizedFormat)) {
+	    String normalizedFormat = normalizeDownloadFormat(format);
+	    if (!isValidFormat(normalizedFormat)) {
 	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "지원하지 않는 형식입니다. jpg만 가능합니다.");
 	        downloadProgressService.completeWithError(token, "지원하지 않는 포맷입니다.");
 	        return;
@@ -472,8 +472,20 @@ public class AdminYearbookController {
 	}
 
 	private boolean isValidFormat(String format) {
-	    return "jpg".equals(format) || "jpeg".equals(format) || 
-	           "png".equals(format) || "tiff".equals(format) || "tif".equals(format);
+	    return "jpg".equals(format) || "png".equals(format);
+	}
+
+	private String normalizeDownloadFormat(String format) {
+	    if (format == null || format.isBlank()) {
+	        return "png";
+	    }
+
+	    String normalized = format.trim().toLowerCase();
+	    if ("jpeg".equals(normalized)) {
+	        return "jpg";
+	    }
+
+	    return normalized;
 	}
 	
 	/**

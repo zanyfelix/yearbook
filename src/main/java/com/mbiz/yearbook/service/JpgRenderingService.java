@@ -59,6 +59,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mbiz.yearbook.model.Contents;
 import com.mbiz.yearbook.model.Theme;
 import com.mbiz.yearbook.model.User;
@@ -86,7 +88,7 @@ public class JpgRenderingService {
 	private static final double EDIT_HEIGHT = 1011.0; // 편집기 기준 높이
 
 	// 스케일 비율 (편집기 -> 렌더링)
-	private static final double PRECISE_SCALE_RATIO = 2621.0 / 786.0;
+	private static final double PRECISE_SCALE_RATIO = (double) RENDER_WIDTH / EDIT_WIDTH;
 	private static final double SCALE_RATIO = PRECISE_SCALE_RATIO;
 	// private static final double SCALE_RATIO = RENDER_WIDTH / EDIT_WIDTH; // 약
 	// 3.33
@@ -111,6 +113,12 @@ public class JpgRenderingService {
 
 	@Autowired
 	private ContentsRepository contentsRepository;
+
+	@Autowired
+	private ThumbnailRenderingService thumbnailRenderingService;
+
+	@Autowired
+	private HeadlessBrowserRenderService headlessBrowserRenderService;
 
 	@Value("${file.path.theme}")
 	private String themePath;
@@ -500,7 +508,7 @@ public class JpgRenderingService {
 				Path finalOutputFile = targetDir.resolve(fileName);
 
 				try {
-					renderAndSaveSinglePageHighQuality(page.getDesignData(), finalOutputFile.toFile(), format);
+					renderAndSaveSinglePageHighQuality(page, finalOutputFile.toFile(), format);
 					totalRendered++;
 					logger.debug("Successfully rendered page: {}", fileName);
 				} catch (Exception e) {
@@ -782,7 +790,7 @@ public class JpgRenderingService {
 			File outputFile = titleDir.resolve(fileName).toFile();
 
 			try {
-				renderAndSaveSinglePageHighQuality(page.getDesignData(), outputFile, format);
+				renderAndSaveSinglePageHighQuality(page, outputFile, format);
 				totalRendered++;
 				logger.debug("선택 페이지 렌더링 완료: {}", fileName);
 			} catch (Exception e) {
@@ -846,19 +854,405 @@ public class JpgRenderingService {
 	}
 
 	/**
-	 * 초고품질 300 DPI로 이미지를 생성하여 저장
+	 * 고품질 300 DPI로 이미지를 생성하여 저장
 	 */
 	private void renderAndSaveSinglePageHighQuality(String designDataJson, File outputFile, String format)
 			throws IOException {
 
 		BufferedImage renderedImage = renderSinglePageHighQuality(designDataJson);
-		saveHighQualityJpegWith300DPI(renderedImage, outputFile);
+		saveRenderedImageWithTargetFormat(renderedImage, outputFile, format);
+	}
+
+	private void renderAndSaveSinglePageHighQuality(Yearbook page, File outputFile, String format)
+			throws IOException {
+		BufferedImage preferredRendered = renderPreferredFinalPageImage(page);
+		if (preferredRendered != null) {
+			saveRenderedImageWithTargetFormat(preferredRendered, outputFile, format);
+			return;
+		}
+
+		BufferedImage savedRenderCapture = loadSavedRenderCapture(page.getId());
+		if (isUsableSavedRenderCapture(savedRenderCapture, page)) {
+			saveRenderedImageWithTargetFormat(scaleToRenderCanvas(savedRenderCapture), outputFile, format);
+			return;
+		}
+
+		BufferedImage thumbnailPreview = loadSavedThumbnailPreview(page);
+		if (thumbnailPreview != null) {
+			saveRenderedImageWithTargetFormat(scaleToRenderCanvas(thumbnailPreview), outputFile, format);
+			return;
+		}
+
+		renderAndSaveSinglePageHighQuality(page.getDesignData(), outputFile, format);
+	}
+
+	BufferedImage renderForVerification(String designDataJson) throws IOException {
+		return renderSinglePageHighQuality(designDataJson);
+	}
+
+	BufferedImage renderForVerification(Yearbook page) throws IOException {
+		BufferedImage preferredRendered = renderPreferredFinalPageImage(page);
+		if (preferredRendered != null) {
+			return preferredRendered;
+		}
+
+		BufferedImage savedRenderCapture = loadSavedRenderCapture(page.getId());
+		if (isUsableSavedRenderCapture(savedRenderCapture, page)) {
+			return scaleToRenderCanvas(savedRenderCapture);
+		}
+
+		BufferedImage canonicalCapture = loadCanonicalPageImage(page);
+		if (canonicalCapture != null) {
+			return scaleToRenderCanvas(canonicalCapture);
+		}
+
+		return renderSinglePageHighQuality(page.getDesignData());
+	}
+
+	private BufferedImage renderPreferredFinalPageImage(Yearbook page) throws IOException {
+		if (page != null && page.getDesignData() != null && !page.getDesignData().isBlank()) {
+			BufferedImage browserRendered = tryHeadlessBrowserRender(page);
+			if (browserRendered != null) {
+				logger.info("Preferred final render: headless browser original-asset render for pageId={}", page.getId());
+				return browserRendered;
+			}
+
+			boolean hasTextBoxes = designHasTextBoxes(page.getDesignData());
+			String baseDesignData = hasTextBoxes ? stripTextBoxes(page.getDesignData()) : page.getDesignData();
+			BufferedImage serverBaseRendered = renderSinglePageHighQuality(baseDesignData);
+
+			if (!isLikelyBlankBase(serverBaseRendered, baseDesignData)) {
+				if (!hasTextBoxes) {
+					logger.info("Preferred final render: server original-asset render for pageId={}", page.getId());
+					return serverBaseRendered;
+				}
+
+				BufferedImage textOverlay = loadTextOverlayImage(page);
+				if (textOverlay != null) {
+					logger.info("Preferred final render: hybrid original-base + text overlay for pageId={}",
+							page.getId());
+					return applyTextOverlayToBase(serverBaseRendered, textOverlay);
+				}
+
+				BufferedImage serverRendered = renderSinglePageHighQuality(page.getDesignData());
+				if (!isLikelyBlankBase(serverRendered, baseDesignData)) {
+					logger.warn(
+							"Text overlay was missing for pageId={}, so using full server original-asset render after validating non-text base.",
+							page.getId());
+					return serverRendered;
+				}
+
+				logger.warn(
+						"Server original-asset render for pageId={} still looked like text-only output. Falling back to headless browser render.",
+						page.getId());
+			} else {
+				logger.warn(
+						"Server original-asset base render looked blank for pageId={}, falling back to headless browser render.",
+						page.getId());
+			}
+		}
+
+		logger.info("Preferred final render: headless browser fallback for pageId={}", page != null ? page.getId() : null);
+		return tryHeadlessBrowserRender(page);
+	}
+
+	private BufferedImage tryHeadlessBrowserRender(Yearbook page) {
+		if (page == null || page.getId() == null) {
+			return null;
+		}
+
+		BufferedImage browserRendered = headlessBrowserRenderService.renderPage(page.getId());
+		if (browserRendered == null) {
+			return null;
+		}
+
+		BufferedImage scaled = scaleToRenderCanvas(browserRendered);
+		try {
+			if (page.getDesignData() != null
+					&& !page.getDesignData().isBlank()
+					&& isLikelyBlankBase(scaled, page.getDesignData())) {
+				logger.warn("Headless browser render looked blank for pageId={}, falling back to hybrid render.", page.getId());
+				return null;
+			}
+		} catch (IOException e) {
+			logger.warn("Failed to validate headless browser render for pageId={}, falling back.", page.getId(), e);
+			return null;
+		}
+
+		return scaled;
+	}
+
+	private BufferedImage renderHybridPageImage(Yearbook page) throws IOException {
+		if (page == null || page.getDesignData() == null || page.getDesignData().isBlank()) {
+			return null;
+		}
+
+		boolean hasTextBoxes = designHasTextBoxes(page.getDesignData());
+		BufferedImage textOverlay = loadTextOverlayImage(page);
+		if (hasTextBoxes && textOverlay == null) {
+			return null;
+		}
+
+		String baseDesignData = hasTextBoxes ? stripTextBoxes(page.getDesignData()) : page.getDesignData();
+		BufferedImage base = renderSinglePageHighQuality(baseDesignData);
+		if (isLikelyBlankBase(base, baseDesignData)) {
+			logger.warn("Hybrid base render looked blank for pageId={}, falling back to canonical capture.", page.getId());
+			return null;
+		}
+
+		if (!hasTextBoxes) {
+			return base;
+		}
+
+		return applyTextOverlayToBase(base, textOverlay);
+	}
+
+	private BufferedImage applyTextOverlayToBase(BufferedImage base, BufferedImage textOverlay) {
+		if (base == null) {
+			return null;
+		}
+		if (textOverlay == null) {
+			return base;
+		}
+
+		BufferedImage overlay = prepareTextOverlayForComposition(scaleToRenderCanvas(textOverlay));
+		Graphics2D g2d = base.createGraphics();
+		setHighQualityRenderingHints(g2d);
+		g2d.drawImage(overlay, 0, 0, null);
+		g2d.dispose();
+		return base;
+	}
+
+	private BufferedImage prepareTextOverlayForComposition(BufferedImage overlay) {
+		if (overlay == null) {
+			return null;
+		}
+		if (!hasOpaqueWhiteBackground(overlay)) {
+			return overlay;
+		}
+
+		BufferedImage sanitized = new BufferedImage(overlay.getWidth(), overlay.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < overlay.getHeight(); y++) {
+			for (int x = 0; x < overlay.getWidth(); x++) {
+				int argb = overlay.getRGB(x, y);
+				int alpha = (argb >>> 24) & 0xFF;
+				if (alpha == 0) {
+					sanitized.setRGB(x, y, 0x00000000);
+					continue;
+				}
+
+				int r = (argb >>> 16) & 0xFF;
+				int g = (argb >>> 8) & 0xFF;
+				int b = argb & 0xFF;
+				if (r >= 250 && g >= 250 && b >= 250) {
+					sanitized.setRGB(x, y, 0x00000000);
+				} else {
+					sanitized.setRGB(x, y, removeWhiteMatte(r, g, b, alpha));
+				}
+			}
+		}
+		return sanitized;
+	}
+
+	private int removeWhiteMatte(int r, int g, int b, int alpha) {
+		int matteAlpha = 255 - Math.min(r, Math.min(g, b));
+		int effectiveAlpha = Math.max(alpha, matteAlpha);
+		if (effectiveAlpha <= 0) {
+			return 0x00000000;
+		}
+
+		int restoredR = unblendWhiteChannel(r, effectiveAlpha);
+		int restoredG = unblendWhiteChannel(g, effectiveAlpha);
+		int restoredB = unblendWhiteChannel(b, effectiveAlpha);
+		return ((effectiveAlpha & 0xFF) << 24)
+				| ((restoredR & 0xFF) << 16)
+				| ((restoredG & 0xFF) << 8)
+				| (restoredB & 0xFF);
+	}
+
+	private int unblendWhiteChannel(int channel, int alpha) {
+		if (alpha >= 255) {
+			return channel;
+		}
+
+		double normalizedAlpha = alpha / 255.0;
+		double restored = (channel - 255.0 * (1.0 - normalizedAlpha)) / normalizedAlpha;
+		return Math.max(0, Math.min(255, (int) Math.round(restored)));
+	}
+
+	private boolean hasOpaqueWhiteBackground(BufferedImage image) {
+		if (image == null || image.getWidth() == 0 || image.getHeight() == 0) {
+			return false;
+		}
+
+		int insetX = Math.max(1, image.getWidth() / 20);
+		int insetY = Math.max(1, image.getHeight() / 20);
+		int[][] samplePoints = new int[][] {
+				{ insetX, insetY },
+				{ image.getWidth() / 2, insetY },
+				{ image.getWidth() - insetX - 1, insetY },
+				{ insetX, image.getHeight() / 2 },
+				{ image.getWidth() - insetX - 1, image.getHeight() / 2 },
+				{ insetX, image.getHeight() - insetY - 1 },
+				{ image.getWidth() / 2, image.getHeight() - insetY - 1 },
+				{ image.getWidth() - insetX - 1, image.getHeight() - insetY - 1 }
+		};
+
+		int opaqueWhiteSamples = 0;
+		for (int[] point : samplePoints) {
+			int argb = image.getRGB(point[0], point[1]);
+			int alpha = (argb >>> 24) & 0xFF;
+			int r = (argb >>> 16) & 0xFF;
+			int g = (argb >>> 8) & 0xFF;
+			int b = argb & 0xFF;
+			if (alpha >= 250 && r >= 250 && g >= 250 && b >= 250) {
+				opaqueWhiteSamples++;
+			}
+		}
+
+		return opaqueWhiteSamples >= Math.max(6, samplePoints.length - 1);
+	}
+
+	private BufferedImage loadCanonicalPageImage(Yearbook page) throws IOException {
+		if (page == null) {
+			return null;
+		}
+
+		BufferedImage renderCapture = loadSavedRenderCapture(page.getId());
+		if (renderCapture != null) {
+			return renderCapture;
+		}
+
+		Path thumbnail = thumbnailRenderingService.resolveThumbnailPath(page.getThumbnailPath());
+		if (thumbnail != null && Files.exists(thumbnail)) {
+			return ImageIO.read(thumbnail.toFile());
+		}
+
+		return null;
+	}
+
+	private BufferedImage loadSavedThumbnailPreview(Yearbook page) throws IOException {
+		if (page == null || page.getThumbnailPath() == null || page.getThumbnailPath().isBlank()) {
+			return null;
+		}
+
+		Path thumbnail = thumbnailRenderingService.resolveThumbnailPath(page.getThumbnailPath());
+		if (thumbnail == null || !Files.exists(thumbnail)) {
+			return null;
+		}
+
+		return ImageIO.read(thumbnail.toFile());
+	}
+
+	private boolean isUsableSavedRenderCapture(BufferedImage renderCapture, Yearbook page) throws IOException {
+		if (renderCapture == null) {
+			return false;
+		}
+
+		if (page == null || page.getDesignData() == null || page.getDesignData().isBlank()) {
+			return true;
+		}
+
+		return !isLikelyBlankBase(scaleToRenderCanvas(renderCapture), page.getDesignData());
+	}
+
+	private BufferedImage loadSavedRenderCapture(Long yearbookId) throws IOException {
+		Path capturePath = thumbnailRenderingService.resolveRenderCapturePath(yearbookId);
+		if (capturePath == null || !Files.exists(capturePath)) {
+			return null;
+		}
+
+		return ImageIO.read(capturePath.toFile());
+	}
+
+	private BufferedImage loadTextOverlayImage(Yearbook page) throws IOException {
+		if (page == null || page.getId() == null) {
+			return null;
+		}
+
+		Path overlayPath = thumbnailRenderingService.resolveTextOverlayPath(page.getId());
+		if (overlayPath == null || !Files.exists(overlayPath)) {
+			return null;
+		}
+
+		return ImageIO.read(overlayPath.toFile());
+	}
+
+	private String stripTextBoxes(String designDataJson) throws IOException {
+		JsonNode root = objectMapper.readTree(designDataJson);
+		if (root.isObject() && root.has("textBoxes")) {
+			((com.fasterxml.jackson.databind.node.ObjectNode) root)
+					.set("textBoxes", objectMapper.createArrayNode());
+		}
+		return objectMapper.writeValueAsString(root);
+	}
+
+	private boolean designHasTextBoxes(String designDataJson) throws IOException {
+		if (designDataJson == null || designDataJson.isBlank()) {
+			return false;
+		}
+
+		JsonNode root = objectMapper.readTree(designDataJson);
+		return root.path("textBoxes").isArray() && root.path("textBoxes").size() > 0;
+	}
+
+	private boolean isLikelyBlankBase(BufferedImage image, String designDataJson) throws IOException {
+		if (image == null) {
+			return true;
+		}
+
+		JsonNode root = objectMapper.readTree(optimizeDesignDataForOriginalAssets(designDataJson));
+		boolean expectsVisualContent = !root.path("background").asText("").isBlank() || root.path("frames").size() > 0;
+		if (!expectsVisualContent) {
+			return false;
+		}
+
+		int sampleStepX = Math.max(1, image.getWidth() / 120);
+		int sampleStepY = Math.max(1, image.getHeight() / 120);
+		int nonWhiteSamples = 0;
+		int totalSamples = 0;
+
+		for (int y = 0; y < image.getHeight(); y += sampleStepY) {
+			for (int x = 0; x < image.getWidth(); x += sampleStepX) {
+				totalSamples++;
+				int rgb = image.getRGB(x, y);
+				int a = (rgb >>> 24) & 0xFF;
+				int r = (rgb >>> 16) & 0xFF;
+				int g = (rgb >>> 8) & 0xFF;
+				int b = rgb & 0xFF;
+				if (a > 0 && (r < 245 || g < 245 || b < 245)) {
+					nonWhiteSamples++;
+				}
+			}
+		}
+
+		return totalSamples > 0 && (nonWhiteSamples / (double) totalSamples) < 0.01;
+	}
+
+	private BufferedImage scaleToRenderCanvas(BufferedImage source) {
+		if (source == null) {
+			return null;
+		}
+
+		if (source.getWidth() == RENDER_WIDTH && source.getHeight() == RENDER_HEIGHT) {
+			return source;
+		}
+
+		BufferedImage scaled = new BufferedImage(RENDER_WIDTH, RENDER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2d = scaled.createGraphics();
+		setHighQualityRenderingHints(g2d);
+		g2d.setColor(Color.WHITE);
+		g2d.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+		g2d.drawImage(source, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
+		g2d.dispose();
+		return scaled;
 	}
 
 	/**
 	 * 한 페이지를 초고해상도로 렌더링하는 핵심 메소드
 	 */
 	private BufferedImage renderSinglePageHighQuality(String designDataJson) throws IOException {
+		String optimizedDesignDataJson = optimizeDesignDataForOriginalAssets(designDataJson);
 		BufferedImage canvas = new BufferedImage(RENDER_WIDTH, RENDER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2d = canvas.createGraphics();
 
@@ -868,7 +1262,7 @@ public class JpgRenderingService {
 		g2d.setColor(Color.WHITE);
 		g2d.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
 
-		JsonNode root = objectMapper.readTree(designDataJson);
+		JsonNode root = objectMapper.readTree(optimizedDesignDataJson);
 
 		// JSON 구조 확인
 		logger.info("=== 렌더링 데이터 구조 ===");
@@ -899,7 +1293,113 @@ public class JpgRenderingService {
 
 		g2d.dispose();
 
-		return convertToRGB(canvas);
+		BufferedImage normalizedCanvas = normalizeToEditorViewport(canvas, bgArea);
+		return convertToRGB(normalizedCanvas);
+	}
+
+	private String optimizeDesignDataForOriginalAssets(String designDataJson) {
+		if (designDataJson == null || designDataJson.isBlank()) {
+			return designDataJson;
+		}
+
+		try {
+			JsonNode rootNode = objectMapper.readTree(designDataJson);
+			if (!(rootNode instanceof ObjectNode root)) {
+				return designDataJson;
+			}
+
+			upgradeBackgroundAsset(root);
+			upgradeFrameThemeAssets(root.withArray("frames"));
+			return objectMapper.writeValueAsString(root);
+		} catch (Exception ex) {
+			logger.warn("Failed to optimize design JSON for original assets. Falling back to saved design JSON.", ex);
+			return designDataJson;
+		}
+	}
+
+	private void upgradeBackgroundAsset(ObjectNode root) {
+		String currentBackground = getTextValue(root.path("background"));
+		String savedOriginalBackground = getTextValue(root.path("backgroundOriginal"));
+		Long backgroundThemeId = root.path("backgroundThemeId").canConvertToLong()
+				? root.path("backgroundThemeId").asLong()
+				: null;
+
+		Theme backgroundTheme = null;
+		if (backgroundThemeId != null) {
+			backgroundTheme = themeRepository.findById(backgroundThemeId).orElse(null);
+		}
+		if (backgroundTheme == null && currentBackground != null) {
+			backgroundTheme = themeRepository.findFirstByEditPath(currentBackground)
+					.or(() -> themeRepository.findFirstByOriginalPath(currentBackground))
+					.orElse(null);
+		}
+
+		String preferredBackground = firstNonBlank(
+				backgroundTheme != null ? backgroundTheme.getOriginalPath() : null,
+				savedOriginalBackground,
+				currentBackground);
+
+		if (preferredBackground != null) {
+			root.put("backgroundOriginal", preferredBackground);
+		}
+	}
+
+	private void upgradeFrameThemeAssets(ArrayNode frames) {
+		for (JsonNode frameNode : frames) {
+			if (!(frameNode instanceof ObjectNode frameObject)) {
+				continue;
+			}
+
+			JsonNode rawThemeNode = frameObject.get("theme");
+			if (!(rawThemeNode instanceof ObjectNode themeObject)) {
+				continue;
+			}
+
+			Theme theme = null;
+			if (themeObject.path("id").canConvertToLong()) {
+				theme = themeRepository.findById(themeObject.path("id").asLong()).orElse(null);
+			}
+
+			String preferredImagePath = firstNonBlank(
+					theme != null ? theme.getOriginalPath() : null,
+					getTextValue(themeObject.path("originalPath")),
+					theme != null ? theme.getEditPath() : null,
+					getTextValue(themeObject.path("editPath")));
+			if (preferredImagePath != null) {
+				themeObject.put("originalPath", preferredImagePath);
+			}
+
+			String preferredMaskPath = firstNonBlank(
+					theme != null ? theme.getOriginalMaskPath() : null,
+					getTextValue(themeObject.path("originalMaskPath")),
+					theme != null ? theme.getEditMaskPath() : null,
+					getTextValue(themeObject.path("editMaskPath")));
+			if (preferredMaskPath != null) {
+				themeObject.put("originalMaskPath", preferredMaskPath);
+			}
+		}
+	}
+
+	private String getTextValue(JsonNode node) {
+		if (node == null || node.isMissingNode() || node.isNull()) {
+			return null;
+		}
+
+		String value = node.asText(null);
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+
+		return value;
+	}
+
+	private String firstNonBlank(String... values) {
+		for (String value : values) {
+			if (value != null && !value.isBlank()) {
+				return value;
+			}
+		}
+		return null;
 	}
 
 	private void setHighQualityRenderingHints(Graphics2D g2d) {
@@ -913,11 +1413,40 @@ public class JpgRenderingService {
 		g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
 	}
 
+	private BufferedImage normalizeToEditorViewport(BufferedImage canvas, int[] bgArea) {
+		if (bgArea == null || bgArea.length < 4) {
+			return canvas;
+		}
+
+		int cropX = Math.max(0, bgArea[0]);
+		int cropY = Math.max(0, bgArea[1]);
+		int cropWidth = Math.min(bgArea[2], canvas.getWidth() - cropX);
+		int cropHeight = Math.min(bgArea[3], canvas.getHeight() - cropY);
+
+		if (cropWidth <= 0 || cropHeight <= 0) {
+			return canvas;
+		}
+
+		if (cropX == 0 && cropY == 0 && cropWidth == canvas.getWidth() && cropHeight == canvas.getHeight()) {
+			return canvas;
+		}
+
+		BufferedImage cropped = canvas.getSubimage(cropX, cropY, cropWidth, cropHeight);
+		BufferedImage normalized = new BufferedImage(RENDER_WIDTH, RENDER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2d = normalized.createGraphics();
+		setHighQualityRenderingHints(g2d);
+		g2d.setColor(Color.WHITE);
+		g2d.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+		g2d.drawImage(cropped, 0, 0, RENDER_WIDTH, RENDER_HEIGHT, null);
+		g2d.dispose();
+		return normalized;
+	}
+
 	/**
 	 * 배경 이미지 렌더링
 	 */
 	private int[] renderBackground(Graphics2D g2d, JsonNode root) throws IOException {
-		String bgEditPath = root.path("background").asText();
+		String bgEditPath = root.path("backgroundOriginal").asText(root.path("background").asText());
 
 		logger.info("=== 배경 렌더링 시작 ===");
 		logger.info("background 필드값: {}", bgEditPath);
@@ -929,7 +1458,7 @@ public class JpgRenderingService {
 		}
 
 		// _M.png를 _B.png로 교체
-		String bgOriginalPath = bgEditPath.replace(SUFFIX_EDIT, SUFFIX_ORIGINAL);
+		String bgOriginalPath = bgEditPath;
 		logger.info("편집용 경로: {}", bgEditPath);
 		logger.info("원본 경로로 변환: {}", bgOriginalPath);
 
@@ -1091,8 +1620,12 @@ public class JpgRenderingService {
 			}
 
 			// 프레임 장식 이미지
-			if (theme.getOriginalPath() != null && !theme.getOriginalPath().isEmpty()) {
-				BufferedImage frameImage = loadThemeImage(theme.getOriginalPath());
+			String frameImagePath = theme.getOriginalPath();
+			if (frameImagePath == null || frameImagePath.isEmpty()) {
+				frameImagePath = theme.getEditPath();
+			}
+			if (frameImagePath != null && !frameImagePath.isEmpty()) {
+				BufferedImage frameImage = loadThemeImage(frameImagePath);
 				if (frameImage != null) {
 					g2dFrame.setComposite(AlphaComposite.SrcOver);
 					g2dFrame.drawImage(frameImage, 0, 0, frameComposite.getWidth(), frameComposite.getHeight(), null);
@@ -1113,8 +1646,8 @@ public class JpgRenderingService {
 			return;
 
 		// 이미지 로드
-		String originalSrc = convertToOriginalPath(src);
-		byte[] imageBytes = loadImageBytes(originalSrc);
+		String preferredSrc = resolvePreferredPhotoSource(photoNode);
+		byte[] imageBytes = loadImageBytes(preferredSrc);
 		if (imageBytes == null) {
 			imageBytes = loadImageBytes(src);
 		}
@@ -1142,7 +1675,7 @@ public class JpgRenderingService {
 	        	// ✅ 마스크 bounds 계산 — 프론트엔드와 동일하게 editMaskPath 사용
 	        	// 프론트엔드 MaskBoundsCalculator는 editMaskPath(_M.png)를 사용하므로 동일한 이미지 기준
 	            BufferedImage maskImg = null;
-	            String maskPathForBounds = theme.getEditMaskPath();
+	            String maskPathForBounds = resolveEditorMaskPath(theme);
 	            if (maskPathForBounds == null || maskPathForBounds.isEmpty()) {
 	                maskPathForBounds = theme.getOriginalMaskPath(); // editMask 없으면 원본 사용
 	            }
@@ -1211,8 +1744,9 @@ public class JpgRenderingService {
 
 // 마스크 처리
 		BufferedImage maskImage = null;
-		if (theme.getOriginalMaskPath() != null && !theme.getOriginalMaskPath().isEmpty()) {
-			maskImage = loadMaskImage(theme.getOriginalMaskPath());
+		String maskPath = resolveEditorMaskPath(theme);
+		if (maskPath != null && !maskPath.isEmpty()) {
+			maskImage = loadMaskImage(maskPath);
 		}
 
 		// ✅ 사진 좌표를 Math.round로 정수 변환 (일관된 반올림)
@@ -1258,6 +1792,25 @@ public class JpgRenderingService {
 				g2d.drawImage(photoImage, photoXi, photoYi, photoWi, photoHi, null);
 			}
 		}
+	}
+
+	private String resolvePreferredPhotoSource(JsonNode photoNode) {
+		String src = photoNode.path("src").asText("");
+		if (!src.isBlank()) {
+			return src;
+		}
+
+		String editSrc = photoNode.path("editSrc").asText("");
+		if (!editSrc.isBlank()) {
+			return editSrc;
+		}
+
+		if (src.contains("/photo/originals/") && src.matches(".*_original\\.[^.]+$")) {
+			return src.replace("/photo/originals/", "/photo/edits/")
+					.replaceFirst("_original\\.[^.]+$", "_edit.jpg");
+		}
+
+		return src;
 	}
 
 	private void drawFrameWithRotation(Graphics2D g2d, BufferedImage frameComposite, JsonNode frameNode, double frameX,
@@ -1549,15 +2102,18 @@ public class JpgRenderingService {
 		// 픽셀 단위로 저장된 경우 - 스케일 적용 필요!
 		if (position.has("leftPx")) {
 			// 편집기 픽셀값을 렌더링 크기로 스케일링
-			double frameScaleX = (double) frameWidth / (EDIT_WIDTH * (frameWidth / RENDER_WIDTH * 100) / 100);
-			double frameScaleY = (double) frameHeight / (EDIT_HEIGHT * (frameHeight / RENDER_HEIGHT * 100) / 100);
+			// screenWidth: 저장 시점의 실제 편집기 배경 너비 (Event 페이지 등에서 645px 등으로 다를 수 있음)
+			double screenWidth = photoNode.path("screenWidth").asDouble(EDIT_WIDTH);
+			double frameScaleX = RENDER_WIDTH / screenWidth;
+			double frameScaleY = RENDER_WIDTH / screenWidth; // 배경 비율이 고정이므로 X와 동일
 
 			photoX = position.path("leftPx").asDouble() * frameScaleX;
 			photoY = position.path("topPx").asDouble() * frameScaleY;
 			photoWidth = size.path("widthPx").asDouble() * frameScaleX;
 			photoHeight = size.path("heightPx").asDouble() * frameScaleY;
 
-			logger.debug("사진 위치(픽셀->스케일): 원본({}, {}) -> 스케일({}, {})", position.path("leftPx").asDouble(),
+			logger.debug("사진 위치(픽셀->스케일): screenWidth={}, frameScale={}, 원본({}, {}) -> 스케일({}, {})",
+					screenWidth, frameScaleX, position.path("leftPx").asDouble(),
 					position.path("topPx").asDouble(), photoX, photoY);
 		} else {
 			// 퍼센트로 저장된 경우
@@ -1830,8 +2386,33 @@ public class JpgRenderingService {
 		return rgbImage;
 	}
 
+	private void saveRenderedImageWithTargetFormat(BufferedImage image, File file, String format) throws IOException {
+		String normalizedFormat = normalizeRenderOutputFormat(format);
+		if ("png".equals(normalizedFormat)) {
+			savePngWithDPI(image, file, TARGET_DPI);
+			logger.info("PNG 저장 완료: {} (크기: {}MB, DPI: {})",
+					file.getName(), file.length() / 1024 / 1024, TARGET_DPI);
+			return;
+		}
+
+		saveHighQualityJpegWith300DPI(image, file);
+	}
+
+	private String normalizeRenderOutputFormat(String format) {
+		if (format == null || format.isBlank()) {
+			return "jpg";
+		}
+
+		String normalized = format.trim().toLowerCase();
+		if ("jpeg".equals(normalized)) {
+			return "jpg";
+		}
+
+		return normalized;
+	}
+
 	/**
-	 * 초고품질 JPEG 파일을 300 DPI로 저장
+	 * 고품질 JPEG 파일을 300 DPI로 저장
 	 */
 	private void saveHighQualityJpegWith300DPI(BufferedImage image, File file) throws IOException {
 		long startTime = System.currentTimeMillis();
@@ -1839,9 +2420,9 @@ public class JpgRenderingService {
 		File tempPngFile = new File(file.getParentFile(), "temp_png_" + System.currentTimeMillis() + ".png");
 
 		try {
-			savePngWithDPI(image, tempPngFile, 300);
+			savePngWithDPI(image, tempPngFile, TARGET_DPI);
 			BufferedImage pngImage = ImageIO.read(tempPngFile);
-			saveJpegWithManualDPI(pngImage, file);
+			saveJpegWithManualDPI(convertToRgbForJpeg(pngImage), file);
 
 			long renderTime = System.currentTimeMillis() - startTime;
 
@@ -1850,14 +2431,32 @@ public class JpgRenderingService {
 			logger.info("파일명: {}", file.getName());
 			logger.info("이미지 크기: {}x{} pixels", image.getWidth(), image.getHeight());
 			logger.info("파일 크기: {:.2f}MB", file.length() / (1024.0 * 1024.0));
-			logger.info("DPI: 300");
+			logger.info("DPI: {}", TARGET_DPI);
 			logger.info("렌더링 시간: {}ms", renderTime);
-			logger.info("예상 인쇄 크기: {:.1f}x{:.1f}cm (A4)", image.getWidth() * 2.54 / 300,
-					image.getHeight() * 2.54 / 300);
+			logger.info("예상 인쇄 크기: {:.1f}x{:.1f}cm (A4)", image.getWidth() * 2.54 / TARGET_DPI,
+					image.getHeight() * 2.54 / TARGET_DPI);
 
 		} finally {
 			Files.deleteIfExists(tempPngFile.toPath());
 		}
+	}
+
+	private BufferedImage convertToRgbForJpeg(BufferedImage image) {
+		if (image == null) {
+			return null;
+		}
+
+		if (image.getType() == BufferedImage.TYPE_INT_RGB) {
+			return image;
+		}
+
+		BufferedImage rgbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2d = rgbImage.createGraphics();
+		g2d.setColor(Color.WHITE);
+		g2d.fillRect(0, 0, image.getWidth(), image.getHeight());
+		g2d.drawImage(image, 0, 0, null);
+		g2d.dispose();
+		return rgbImage;
 	}
 
 	/**
@@ -1927,16 +2526,16 @@ public class JpgRenderingService {
 		}
 
 		byte[] jpegData = baos.toByteArray();
-		byte[] modifiedJpeg = insertDPIIntoJpeg(jpegData, 300);
+		byte[] modifiedJpeg = insertDPIIntoJpeg(jpegData, TARGET_DPI);
 		Files.write(file.toPath(), modifiedJpeg);
 
 		try {
-			addExifDpiToFile(file, 300);
+			addExifDpiToFile(file, TARGET_DPI);
 		} catch (Exception e) {
 			logger.warn("EXIF DPI 추가 실패 (무시): {}", e.getMessage());
 		}
 
-		logger.info("JPEG 저장 완료: {} (크기: {}MB, DPI: 300)", file.getName(), file.length() / 1024 / 1024);
+		logger.info("JPEG 저장 완료: {} (크기: {}MB, DPI: {})", file.getName(), file.length() / 1024 / 1024, TARGET_DPI);
 	}
 
 	/**
@@ -2613,6 +3212,18 @@ public class JpgRenderingService {
 	}
 
 	// 테마 이미지 로드 헬퍼
+	private String resolveEditorMaskPath(Theme theme) {
+		if (theme == null) {
+			return null;
+		}
+
+		if (theme.getEditMaskPath() != null && !theme.getEditMaskPath().isEmpty()) {
+			return theme.getEditMaskPath();
+		}
+
+		return theme.getOriginalMaskPath();
+	}
+
 	private BufferedImage loadThemeImage(String imagePath) {
 		if (imagePath == null || imagePath.isEmpty())
 			return null;
@@ -2689,13 +3300,7 @@ public class JpgRenderingService {
 			}
 
 			// main.js의 updateElementPosition과 동일한 로직 적용
-			boolean hasNewStructure = textBox.has("rotation");
-
-			if (hasNewStructure) {
-				renderTextBoxWithNewStructure(g2d, textBox, textImage, bgArea);
-			} else {
-				renderTextBoxWithCaptureInfo(g2d, textBox, textImage, bgArea);
-			}
+			renderTextBoxWithCaptureInfo(g2d, textBox, textImage, bgArea);
 
 		} catch (Exception e) {
 			logger.error("텍스트 이미지 렌더링 실패: {}", e.getMessage());
@@ -2791,12 +3396,9 @@ public class JpgRenderingService {
 	            return;
 	        }
 	        
-	        boolean hasNewStructure = textBox.has("rotation");
-	        
-	        if (hasNewStructure) {
-	            renderTextBoxWithNewStructure(g2d, textBox, textImage, bgArea);
-	            return;
-	        }
+	        double rotation = readTextBoxRotation(textBox);
+	        double translateXPercent = readTextBoxTranslate(textBox, "translateX");
+	        double translateYPercent = readTextBoxTranslate(textBox, "translateY");
 
 			// captureInfo의 absolutePixels는 이미 정확한 위치이므로 스케일만 적용
 			double editorX = absolutePixels.path("x").asDouble();
@@ -2824,10 +3426,19 @@ public class JpgRenderingService {
 			double finalHeight = useNativeResolution ? textImage.getHeight() : textImage.getHeight() * scaleAdjust;
 
 			// 기존 transform 처리 (구버전 호환)
-			String transform = textBox.path("transform").asText("none");
+			String transform = textBox.has("rotation") ? "none" : textBox.path("transform").asText("none");
 
 			Graphics2D g2dImage = (Graphics2D) g2d.create();
 			setHighQualityRenderingHints(g2dImage);
+			finalX += bgArea[2] * (translateXPercent / 100.0);
+			finalY += bgArea[3] * (translateYPercent / 100.0);
+
+			if (textBox.has("rotation") && Math.abs(rotation) > 0.001) {
+				double[] origin = resolveTextBoxTransformOrigin(textBox, finalWidth, finalHeight);
+				double pivotX = finalX + origin[0];
+				double pivotY = finalY + origin[1];
+				g2dImage.rotate(rotation, pivotX, pivotY);
+			}
 
 			if (!"none".equals(transform) && !transform.equals("matrix(1, 0, 0, 1, 0, 0)")) {
 				TransformParser parser = TransformParser.parse(transform);
@@ -2879,6 +3490,39 @@ public class JpgRenderingService {
 	}
 
 	// 헬퍼 메서드: transform origin 파싱 (기존 메서드가 없다면 추가)
+	private double readTextBoxRotation(JsonNode textBox) {
+		if (textBox.has("rotation")) {
+			return textBox.path("rotation").asDouble(0);
+		}
+
+		String transform = textBox.path("transform").asText("none");
+		if (!"none".equals(transform)) {
+			return TransformParser.parse(transform).rotation;
+		}
+
+		return 0;
+	}
+
+	private double readTextBoxTranslate(JsonNode textBox, String fieldName) {
+		if (textBox.has(fieldName)) {
+			return textBox.path(fieldName).asDouble(0);
+		}
+
+		return 0;
+	}
+
+	private double[] resolveTextBoxTransformOrigin(JsonNode textBox, double width, double height) {
+		if (textBox.has("transformOriginX") || textBox.has("transformOriginY")) {
+			return new double[] {
+				width * (textBox.path("transformOriginX").asDouble(50) / 100.0),
+				height * (textBox.path("transformOriginY").asDouble(50) / 100.0)
+			};
+		}
+
+		String transformOrigin = textBox.path("transformOrigin").asText("50% 50%");
+		return parseTransformOrigin(transformOrigin, width, height);
+	}
+
 	private double[] parseTransformOrigin(String origin, double width, double height) {
 		double[] result = new double[2];
 		String[] parts = origin.split("\\s+");

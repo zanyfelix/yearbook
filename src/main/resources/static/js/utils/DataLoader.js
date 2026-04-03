@@ -198,7 +198,11 @@ class DataLoader {
     
     static loadBackgroundModal(data, selectedIndex = 0) {
         this.loadModal(data, selectedIndex, $('#modalBackgroundList'), (result) => {
-            $('#page-preview-img').attr('src', result.editPath);
+            $('#page-preview-img')
+                .attr('src', result.editPath)
+                .data('backgroundEditPath', result.editPath || null)
+                .data('backgroundOriginalPath', result.originalPath || result.editPath || null)
+                .data('backgroundThemeId', result.id || null);
             $('#backgroundModal').modal('hide');
         });
     }
@@ -216,8 +220,9 @@ class DataLoader {
         if (this.fontsLoaded) return;
         
         return new Promise((resolve, reject) => {
+            const fontsUrl = window.renderFontsUrl || `${ctx}/edit/fonts`;
             $.ajax({
-                url: `${ctx}/edit/fonts`,
+                url: fontsUrl,
                 method: 'GET',
                 success: (fonts) => {
                     try {
@@ -248,7 +253,12 @@ class DataLoader {
         
         fonts.forEach(font => {
             const fontFamily = this.cleanFontName(font.filename);
-            const fontUrl = `${ctx}${font.fontPath}`;
+            const resolvedFontPath = window.resolveRenderAssetPath
+                ? window.resolveRenderAssetPath(font.fontPath)
+                : font.fontPath;
+            const fontUrl = resolvedFontPath && /^https?:\/\//i.test(resolvedFontPath)
+                ? resolvedFontPath
+                : `${ctx}${resolvedFontPath}`;
             
             fontFaceRules += `
                 @font-face {

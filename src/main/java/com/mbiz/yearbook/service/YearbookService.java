@@ -95,7 +95,8 @@ public class YearbookService {
     }
     
     @Transactional
-    public Map<String, Object> savePageAndThumbnail(PayloadDto payload, MultipartFile thumbnailFile) throws IOException {
+    public Map<String, Object> savePageAndThumbnail(PayloadDto payload, MultipartFile thumbnailFile,
+            MultipartFile renderCaptureFile, MultipartFile overlayCaptureFile) throws IOException {
         
         // 1. Yearbook 엔티티 준비 (기존 페이지 or 새 페이지)
         Yearbook yearbook;
@@ -142,6 +143,12 @@ public class YearbookService {
         
         // 4. DB에 최종 저장 (새 페이지면 insert, 기존 페이지면 update)
         Yearbook savedYearbook = yearbookRepository.save(yearbook);
+        if (renderCaptureFile != null && !renderCaptureFile.isEmpty()) {
+            thumbnailService.saveRenderCapture(renderCaptureFile, savedYearbook.getId());
+        }
+        if (overlayCaptureFile != null && !overlayCaptureFile.isEmpty()) {
+            thumbnailService.saveTextOverlayCapture(overlayCaptureFile, savedYearbook.getId());
+        }
 
         // 5. 프런트엔드로 보낼 응답 데이터 구성
         Map<String, Object> response = new HashMap<>();
