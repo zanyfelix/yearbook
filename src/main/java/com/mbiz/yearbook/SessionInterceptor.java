@@ -26,6 +26,10 @@ public class SessionInterceptor implements HandlerInterceptor {
 				|| normalizedPath.startsWith("/css/")
 				|| normalizedPath.startsWith("/js/")
 				|| normalizedPath.startsWith("/images/")
+				|| normalizedPath.startsWith("/thumbnail/")
+				|| normalizedPath.startsWith("/theme/")
+				|| normalizedPath.startsWith("/upload/")
+				|| normalizedPath.startsWith("/photo/")
 				|| normalizedPath.equals("/payment")
 				|| normalizedPath.startsWith("/static/")) {
 			return true;

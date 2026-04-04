@@ -19,6 +19,22 @@ function asNumber(value, fallback) {
 	return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function getPositiveRect(value) {
+	if (!value || typeof value !== 'object') {
+		return null;
+	}
+
+	const x = Number(value.x);
+	const y = Number(value.y);
+	const width = Number(value.width);
+	const height = Number(value.height);
+	if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
+		return null;
+	}
+
+	return { x, y, width, height };
+}
+
 class CdpClient {
 	constructor(webSocketUrl) {
 		this.webSocketUrl = webSocketUrl;
@@ -225,7 +241,9 @@ async function captureScreenshot({
 	width,
 	height,
 	deviceScale,
-	timeoutMs
+	timeoutMs,
+	clipSelector,
+	metricsOutput
 }) {
 	if (!existsSync(browserPath) && !['msedge', 'chrome'].includes(browserPath)) {
 		throw new Error(`Browser executable not found: ${browserPath}`);
@@ -329,11 +347,80 @@ async function captureScreenshot({
 		await client.send('Emulation.setEmulatedMedia', { media: 'screen' }, sessionId);
 		pushEvent('stage', 'screen-media-ready');
 
+		let clipRect = null;
+		let renderMetrics = null;
+		if (clipSelector) {
+			const clipEvaluation = await client.send(
+				'Runtime.evaluate',
+				{
+					expression: `(() => {
+						const selector = ${JSON.stringify(clipSelector)};
+						const element = document.querySelector(selector);
+						if (!element) {
+							return { error: 'clip selector not found', selector };
+						}
+
+						const rect = element.getBoundingClientRect();
+						return {
+							selector,
+							rect: {
+								x: rect.x,
+								y: rect.y,
+								width: rect.width,
+								height: rect.height
+							},
+							renderCrop: document.body?.dataset?.renderCrop || null,
+							renderReady: document.body?.dataset?.renderReady || null,
+							pagePreviewRect: (() => {
+								const preview = document.getElementById('page-preview');
+								if (!preview) return null;
+								const previewRect = preview.getBoundingClientRect();
+								return {
+									x: previewRect.x,
+									y: previewRect.y,
+									width: previewRect.width,
+									height: previewRect.height
+								};
+							})(),
+							backgroundRect: (() => {
+								const bg = document.getElementById('page-preview-img');
+								if (!bg) return null;
+								const bgRect = bg.getBoundingClientRect();
+								return {
+									x: bgRect.x,
+									y: bgRect.y,
+									width: bgRect.width,
+									height: bgRect.height
+								};
+							})()
+						};
+					})()`,
+					returnByValue: true
+				},
+				sessionId
+			);
+
+			renderMetrics = clipEvaluation?.result?.value ?? null;
+			clipRect = getPositiveRect(renderMetrics?.rect);
+			if (!clipRect) {
+				pushEvent('clip-selector-metrics', renderMetrics ?? 'unavailable');
+			}
+		}
+
 		const screenshot = await client.send(
 			'Page.captureScreenshot',
 			{
 				format: 'png',
-				fromSurface: true
+				fromSurface: true,
+				...(clipRect ? {
+					clip: {
+						x: clipRect.x,
+						y: clipRect.y,
+						width: clipRect.width,
+						height: clipRect.height,
+						scale: 1
+					}
+				} : {})
 			},
 			sessionId
 		);
@@ -346,6 +433,11 @@ async function captureScreenshot({
 
 		await writeFile(output, screenshotBuffer);
 		pushEvent('stage', 'file-written');
+
+		if (metricsOutput && renderMetrics) {
+			await writeFile(metricsOutput, JSON.stringify(renderMetrics, null, 2), 'utf8');
+			pushEvent('stage', 'metrics-written');
+		}
 	} catch (error) {
 		const diagnosticParts = [error?.stack || String(error)];
 		if (eventLog.length > 0) {
@@ -383,6 +475,8 @@ async function main() {
 	const height = asNumber(getArg('height'), 3371);
 	const deviceScale = asNumber(getArg('device-scale'), 2);
 	const timeoutMs = asNumber(getArg('timeout-ms'), 45000);
+	const clipSelector = getArg('clip-selector', '#page-preview');
+	const metricsOutput = getArg('metrics-output', undefined);
 
 	if (!browserPath || !url || !output) {
 		throw new Error('Missing required arguments: --browser-path, --url, --output');
@@ -395,7 +489,9 @@ async function main() {
 		width,
 		height,
 		deviceScale,
-		timeoutMs
+		timeoutMs,
+		clipSelector,
+		metricsOutput
 	});
 }
 

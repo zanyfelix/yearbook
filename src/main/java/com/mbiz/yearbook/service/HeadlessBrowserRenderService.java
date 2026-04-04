@@ -45,17 +45,38 @@ public class HeadlessBrowserRenderService {
 	@Value("${headless.render.enabled:true}")
 	private boolean enabled;
 
-	@Value("${headless.render.timeout-ms:45000}")
+	@Value("${headless.render.timeout-ms:120000}")
 	private long timeoutMs;
 
-	@Value("${headless.render.health-timeout-ms:1500}")
+	@Value("${headless.render.virtual-time-budget-ms:60000}")
+	private long configuredVirtualTimeBudgetMs;
+
+	@Value("${headless.render.virtual-time-budget-min-ms:10000}")
+	private long virtualTimeBudgetMinMs;
+
+	@Value("${headless.render.process-grace-ms:5000}")
+	private long processGraceMs;
+
+	@Value("${headless.render.health-timeout-ms:3000}")
 	private int healthTimeoutMs;
+
+	@Value("${headless.render.trim-outer-white-margins:false}")
+	private boolean trimOuterWhiteMarginsEnabled;
 
 	@Value("${headless.render.base-url:}")
 	private String configuredBaseUrl;
 
 	@Value("${headless.render.browser-path:}")
 	private String configuredBrowserPath;
+
+	@Value("${headless.render.node-path:}")
+	private String configuredNodePath;
+
+	@Value("${headless.render.browser-window-inset-width:0}")
+	private int browserWindowInsetWidth;
+
+	@Value("${headless.render.browser-window-inset-height:0}")
+	private int browserWindowInsetHeight;
 
 	private volatile Path extractedScriptPath;
 
@@ -86,9 +107,18 @@ public class HeadlessBrowserRenderService {
 				return null;
 			}
 			String renderUrl = buildRenderUrl(yearbookId, token);
+			BufferedImage scriptRendered = renderPageWithBrowserScript(yearbookId, browserPath, renderUrl);
+			if (scriptRendered != null) {
+				return scriptRendered;
+			}
 			browserProfileDir = Files.createTempDirectory("yearbook-browser-profile-");
 			outputPath = browserProfileDir.resolve("render.png");
-			long virtualTimeBudgetMs = Math.max(6000L, Math.min(timeoutMs - 3000L, 15000L));
+			long virtualTimeBudgetMs = resolveVirtualTimeBudgetMs();
+			long effectiveWaitMs = resolveEffectiveWaitMs(virtualTimeBudgetMs);
+
+			logger.debug(
+					"Starting headless browser render for pageId={} with timeoutMs={}, virtualTimeBudgetMs={}, processGraceMs={}",
+					yearbookId, timeoutMs, virtualTimeBudgetMs, processGraceMs);
 
 			List<String> command = new ArrayList<>();
 			command.add(browserPath);
@@ -99,7 +129,7 @@ public class HeadlessBrowserRenderService {
 			command.add("--no-first-run");
 			command.add("--no-default-browser-check");
 			command.add("--run-all-compositor-stages-before-draw");
-			command.add("--window-size=" + CSS_WIDTH + "," + CSS_HEIGHT);
+			command.add("--window-size=" + resolveBrowserWindowWidth() + "," + resolveBrowserWindowHeight());
 			command.add("--force-device-scale-factor=" + DEVICE_SCALE);
 			command.add("--virtual-time-budget=" + virtualTimeBudgetMs);
 			command.add("--screenshot=" + outputPath.toString());
@@ -116,10 +146,12 @@ public class HeadlessBrowserRenderService {
 			logThread.setDaemon(true);
 			logThread.start();
 
-			boolean finished = process.waitFor(timeoutMs + 5000, TimeUnit.MILLISECONDS);
+			boolean finished = process.waitFor(effectiveWaitMs, TimeUnit.MILLISECONDS);
 			if (!finished) {
 				process.destroyForcibly();
-				logger.warn("Headless browser render timed out for pageId={}", yearbookId);
+				logger.warn(
+						"Headless browser render timed out for pageId={} (timeoutMs={}, virtualTimeBudgetMs={}, processGraceMs={})",
+						yearbookId, timeoutMs, virtualTimeBudgetMs, processGraceMs);
 				return null;
 			}
 
@@ -176,9 +208,13 @@ public class HeadlessBrowserRenderService {
 			return null;
 		}
 
-		BufferedImage trimmed = trimOuterWhiteMargins(rendered);
-		if (trimmed != null) {
-			rendered = trimmed;
+		rendered = cropRenderedViewportInsets(rendered);
+
+		if (trimOuterWhiteMarginsEnabled) {
+			BufferedImage trimmed = trimOuterWhiteMargins(rendered);
+			if (trimmed != null) {
+				rendered = trimmed;
+			}
 		}
 
 		if (rendered.getWidth() == OUTPUT_WIDTH && rendered.getHeight() == OUTPUT_HEIGHT) {
@@ -202,6 +238,151 @@ public class HeadlessBrowserRenderService {
 			g2d.dispose();
 		}
 		return normalized;
+	}
+
+	private BufferedImage cropRenderedViewportInsets(BufferedImage rendered) {
+		if (rendered == null) {
+			return null;
+		}
+
+		if (rendered.getWidth() == OUTPUT_WIDTH && rendered.getHeight() == OUTPUT_HEIGHT) {
+			return rendered;
+		}
+
+		if (rendered.getWidth() < OUTPUT_WIDTH || rendered.getHeight() < OUTPUT_HEIGHT) {
+			return rendered;
+		}
+
+		BufferedImage cropped = new BufferedImage(
+				OUTPUT_WIDTH,
+				OUTPUT_HEIGHT,
+				rendered.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB);
+		java.awt.Graphics2D g2d = cropped.createGraphics();
+		try {
+			g2d.drawImage(rendered, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT, null);
+		} finally {
+			g2d.dispose();
+		}
+		return cropped;
+	}
+
+	private BufferedImage renderPageWithBrowserScript(Long yearbookId, String browserPath, String renderUrl) {
+		String nodePath = resolveNodePath();
+		if (nodePath == null || nodePath.isBlank()) {
+			logger.debug("Skipping script-based headless render because Node.js executable was not found.");
+			return null;
+		}
+
+		Path tempDir = null;
+		Process process = null;
+		StringBuilder commandOutput = new StringBuilder();
+		Thread logThread = null;
+
+		try {
+			Path scriptPath = ensureScriptExtracted();
+			tempDir = Files.createTempDirectory("yearbook-browser-script-");
+			Path outputPath = tempDir.resolve("render.png");
+			long virtualTimeBudgetMs = resolveVirtualTimeBudgetMs();
+			long effectiveWaitMs = resolveEffectiveWaitMs(virtualTimeBudgetMs);
+
+			List<String> command = new ArrayList<>();
+			command.add(nodePath);
+			command.add(scriptPath.toString());
+			command.add("--browser-path");
+			command.add(browserPath);
+			command.add("--url");
+			command.add(renderUrl);
+			command.add("--output");
+			command.add(outputPath.toString());
+			command.add("--width");
+			command.add(String.valueOf(CSS_WIDTH));
+			command.add("--height");
+			command.add(String.valueOf(CSS_HEIGHT));
+			command.add("--device-scale");
+			command.add(String.valueOf(DEVICE_SCALE));
+			command.add("--timeout-ms");
+			command.add(String.valueOf(effectiveWaitMs));
+			command.add("--clip-selector");
+			command.add("#page-preview");
+
+			ProcessBuilder processBuilder = new ProcessBuilder(command);
+			processBuilder.redirectErrorStream(true);
+			process = processBuilder.start();
+
+			Process currentProcess = process;
+			logThread = new Thread(() -> consumeProcessOutput(currentProcess.getInputStream(), commandOutput),
+					"browser-render-script-output");
+			logThread.setDaemon(true);
+			logThread.start();
+
+			boolean finished = process.waitFor(effectiveWaitMs + 2000L, TimeUnit.MILLISECONDS);
+			if (!finished) {
+				process.destroyForcibly();
+				logger.warn("Script-based headless render timed out for pageId={} output={}",
+						yearbookId, summarizeOutput(commandOutput));
+				return null;
+			}
+
+			if (logThread != null) {
+				logThread.join(1000);
+			}
+
+			if (process.exitValue() != 0) {
+				logger.warn("Script-based headless render failed for pageId={} exitCode={} output={}",
+						yearbookId, process.exitValue(), summarizeOutput(commandOutput));
+				return null;
+			}
+
+			if (!Files.exists(outputPath) || Files.size(outputPath) == 0) {
+				logger.warn("Script-based headless render finished without an output file for pageId={}", yearbookId);
+				return null;
+			}
+
+			logger.info("Preferred final render: headless browser original-asset render for pageId={}", yearbookId);
+			return renderImageOutput(outputPath);
+		} catch (Exception e) {
+			logger.warn("Script-based headless render could not be completed for pageId={}", yearbookId, e);
+			return null;
+		} finally {
+			if (process != null && process.isAlive()) {
+				process.destroyForcibly();
+			}
+			if (tempDir != null) {
+				try {
+					Files.walk(tempDir)
+							.sorted(java.util.Comparator.reverseOrder())
+							.forEach(path -> {
+								try {
+									Files.deleteIfExists(path);
+								} catch (IOException e) {
+									logger.debug("Failed to delete temporary browser script render path: {}", path, e);
+								}
+							});
+				} catch (IOException e) {
+					logger.debug("Failed to clean temporary browser script render directory: {}", tempDir, e);
+				}
+			}
+		}
+	}
+
+	private long resolveVirtualTimeBudgetMs() {
+		long safeTimeoutMs = Math.max(virtualTimeBudgetMinMs + processGraceMs + 1000L, timeoutMs);
+		long availableBudgetMs = Math.max(virtualTimeBudgetMinMs, safeTimeoutMs - processGraceMs);
+		long requestedBudgetMs = Math.max(virtualTimeBudgetMinMs, configuredVirtualTimeBudgetMs);
+		long effectiveBudgetMs = Math.min(requestedBudgetMs, availableBudgetMs);
+
+		if (effectiveBudgetMs != requestedBudgetMs) {
+			logger.debug(
+					"Clamped headless virtual time budget from {}ms to {}ms to fit timeoutMs={} and processGraceMs={}",
+					requestedBudgetMs, effectiveBudgetMs, timeoutMs, processGraceMs);
+		}
+
+		return effectiveBudgetMs;
+	}
+
+	private long resolveEffectiveWaitMs(long virtualTimeBudgetMs) {
+		long minimumWaitMs = virtualTimeBudgetMs + Math.max(1000L, processGraceMs);
+		return Math.max(timeoutMs, minimumWaitMs);
 	}
 
 	private BufferedImage trimOuterWhiteMargins(BufferedImage image) {
@@ -256,13 +437,9 @@ public class HeadlessBrowserRenderService {
 
 	private boolean isMostlyWhiteColumn(BufferedImage image, int x) {
 		int step = Math.max(1, image.getHeight() / 300);
-		int nonWhiteSamples = 0;
 		for (int y = 0; y < image.getHeight(); y += step) {
 			if (!isNearWhite(image.getRGB(x, y))) {
-				nonWhiteSamples++;
-				if (nonWhiteSamples >= 3) {
-					return false;
-				}
+				return false;
 			}
 		}
 		return true;
@@ -270,13 +447,9 @@ public class HeadlessBrowserRenderService {
 
 	private boolean isMostlyWhiteRow(BufferedImage image, int y) {
 		int step = Math.max(1, image.getWidth() / 300);
-		int nonWhiteSamples = 0;
 		for (int x = 0; x < image.getWidth(); x += step) {
 			if (!isNearWhite(image.getRGB(x, y))) {
-				nonWhiteSamples++;
-				if (nonWhiteSamples >= 3) {
-					return false;
-				}
+				return false;
 			}
 		}
 		return true;
@@ -291,7 +464,7 @@ public class HeadlessBrowserRenderService {
 		int red = (argb >>> 16) & 0xFF;
 		int green = (argb >>> 8) & 0xFF;
 		int blue = argb & 0xFF;
-		return red >= 245 && green >= 245 && blue >= 245;
+		return red >= 250 && green >= 250 && blue >= 250;
 	}
 
 	private void consumeProcessOutput(InputStream inputStream, StringBuilder buffer) {
@@ -355,6 +528,32 @@ public class HeadlessBrowserRenderService {
 		}
 
 		return "http://127.0.0.1:" + serverPort + normalizedContextPath;
+	}
+
+	private String resolveNodePath() {
+		if (configuredNodePath != null && !configuredNodePath.isBlank()) {
+			return configuredNodePath.trim();
+		}
+
+		String[] envCandidates = {
+				System.getenv("NODE_BIN"),
+				System.getenv("NODE_PATH")
+		};
+		for (String candidate : envCandidates) {
+			if (candidate != null && !candidate.isBlank() && Files.exists(Path.of(candidate))) {
+				return candidate;
+			}
+		}
+
+		return "node";
+	}
+
+	private int resolveBrowserWindowWidth() {
+		return CSS_WIDTH + Math.max(0, browserWindowInsetWidth);
+	}
+
+	private int resolveBrowserWindowHeight() {
+		return CSS_HEIGHT + Math.max(0, browserWindowInsetHeight);
 	}
 
 	private String resolveBrowserPath() {

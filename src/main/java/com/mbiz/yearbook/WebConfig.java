@@ -60,6 +60,10 @@ public class WebConfig implements WebMvcConfigurer {
 						"/css/**",
 						"/js/**",
 						"/images/**",
+						"/thumbnail/**",
+						"/theme/**",
+						"/upload/**",
+						"/photo/**",
 						"/static/**",
 						"/favicon.ico");
 
@@ -97,7 +101,9 @@ public class WebConfig implements WebMvcConfigurer {
 				.setCachePeriod(3600);
 
 		registry.addResourceHandler("/thumbnail/**")
-				.addResourceLocations("file:" + thumbnailPath)
+				.addResourceLocations(
+						"file:" + thumbnailPath,
+						"file:" + thumbnailPath + "thumbnail/")
 				.setCachePeriod(3600);
 
 		registry.addResourceHandler("/photo/**")

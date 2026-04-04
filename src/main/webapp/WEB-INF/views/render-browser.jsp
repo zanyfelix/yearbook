@@ -64,11 +64,11 @@ body {
 }
 
 #page-preview-img {
-	max-width: 100%;
-	max-height: 100%;
-	width: auto;
-	height: auto;
-	object-fit: contain;
+	max-width: none !important;
+	max-height: none !important;
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: fill !important;
 	display: block;
 }
 
@@ -184,48 +184,103 @@ body {
 			return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 		}
 
-		function alignViewportToBackgroundBounds() {
-			if (!window.safeLineManager) {
-				return false;
-			}
-
+		function getVisibleBackgroundBounds() {
 			const $bgImg = $('#page-preview-img');
 			if ($bgImg.length === 0) {
-				return false;
+				return null;
 			}
 
-			const actualBgRect = window.safeLineManager.getActualImagePosition($bgImg);
-			if (!actualBgRect || actualBgRect.width <= 0 || actualBgRect.height <= 0) {
-				return false;
+			const width = $bgImg.width();
+			const height = $bgImg.height();
+			const position = $bgImg.position();
+			if (!position || width <= 0 || height <= 0) {
+				return null;
 			}
 
-			const baseRenderScale = parseRenderCssSize('--render-scale', 1);
+			return {
+				left: position.left,
+				top: position.top,
+				width: width,
+				height: height
+			};
+		}
+
+		function expandBounds(baseBounds, candidateBounds) {
+			if (!candidateBounds || candidateBounds.width <= 0 || candidateBounds.height <= 0) {
+				return baseBounds;
+			}
+			if (!baseBounds) {
+				return {
+					left: candidateBounds.left,
+					top: candidateBounds.top,
+					width: candidateBounds.width,
+					height: candidateBounds.height
+				};
+			}
+
+			const left = Math.min(baseBounds.left, candidateBounds.left);
+			const top = Math.min(baseBounds.top, candidateBounds.top);
+			const right = Math.max(baseBounds.left + baseBounds.width, candidateBounds.left + candidateBounds.width);
+			const bottom = Math.max(baseBounds.top + baseBounds.height, candidateBounds.top + candidateBounds.height);
+			return {
+				left,
+				top,
+				width: right - left,
+				height: bottom - top
+			};
+		}
+
+		function getVisibleContentBounds() {
+			let bounds = getVisibleBackgroundBounds();
+			$('#frame-container .frame-group, #frame-container .text-box, #frame-container .element-frame').each(function() {
+				const $element = $(this);
+				if (!$element.is(':visible')) {
+					return;
+				}
+
+				const position = $element.position();
+				const width = $element.outerWidth();
+				const height = $element.outerHeight();
+				if (!position || width <= 0 || height <= 0) {
+					return;
+				}
+
+				bounds = expandBounds(bounds, {
+					left: position.left,
+					top: position.top,
+					width: width,
+					height: height
+				});
+			});
+
+			return bounds;
+		}
+
+		function alignViewportToBackgroundBounds() {
+			const editorWidth = parseRenderCssSize('--editor-width', 786);
+			const editorHeight = parseRenderCssSize('--editor-height', 1011);
 			const renderWidth = parseRenderCssSize('--render-width', 2621);
 			const renderHeight = parseRenderCssSize('--render-height', 3371);
-			const scaledBgWidth = actualBgRect.width * baseRenderScale;
-			const scaledBgHeight = actualBgRect.height * baseRenderScale;
-			if (scaledBgWidth <= 0 || scaledBgHeight <= 0) {
+			const scaleX = renderWidth / editorWidth;
+			const scaleY = renderHeight / editorHeight;
+			if (![scaleX, scaleY].every((value) => Number.isFinite(value) && value > 0)) {
 				return false;
 			}
 
-			const cropFitScale = Math.max(renderWidth / scaledBgWidth, renderHeight / scaledBgHeight);
-			const effectiveScale = baseRenderScale * cropFitScale;
-			const offsetLeft = actualBgRect.left * effectiveScale;
-			const offsetTop = actualBgRect.top * effectiveScale;
-
 			$('#page-preview').css({
-				left: `${-offsetLeft}px`,
-				top: `${-offsetTop}px`,
-				transform: `scale(${effectiveScale})`,
+				left: '0px',
+				top: '0px',
+				transform: `scale(${scaleX}, ${scaleY})`,
 				transformOrigin: 'top left'
 			});
 
 			document.body.dataset.renderCrop = JSON.stringify({
-				left: actualBgRect.left,
-				top: actualBgRect.top,
-				width: actualBgRect.width,
-				height: actualBgRect.height,
-				effectiveScale: effectiveScale
+				left: 0,
+				top: 0,
+				width: editorWidth,
+				height: editorHeight,
+				scaleX: scaleX,
+				scaleY: scaleY
 			});
 			return true;
 		}

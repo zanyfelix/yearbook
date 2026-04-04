@@ -191,9 +191,18 @@ class SafeLineManager {
         const containerWidth = $imgElement.width();
         const containerHeight = $imgElement.height();
         const containerPosition = $imgElement.position();
-        
+
         if (!img.naturalWidth || !img.naturalHeight) return null;
-        
+
+        if (window.__IS_BROWSER_RENDER === true) {
+            return {
+                left: containerPosition?.left || 0,
+                top: containerPosition?.top || 0,
+                width: containerWidth,
+                height: containerHeight
+            };
+        }
+
         const naturalRatio = img.naturalWidth / img.naturalHeight;
         const containerRatio = containerWidth / containerHeight;
         
