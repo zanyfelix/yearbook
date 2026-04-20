@@ -1,6 +1,8 @@
 package com.mbiz.yearbook.controller;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,6 +19,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -46,8 +52,10 @@ import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.ContentsService;
+import com.mbiz.yearbook.service.HeadlessBrowserRenderService;
 import com.mbiz.yearbook.service.ThemeService;
 import com.mbiz.yearbook.service.ThumbnailRenderingService;
+import com.mbiz.yearbook.service.TextPreviewSessionService;
 import com.mbiz.yearbook.service.YearbookService;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -55,6 +63,8 @@ import jakarta.servlet.http.HttpSession;
 
 @Controller
 public class EditController {
+
+	private static final Logger logger = LoggerFactory.getLogger(EditController.class);
 
 	// --- 서비스 및 레포지토리 (기존과 동일) ---
 	@Autowired
@@ -73,6 +83,10 @@ public class EditController {
 	private UserThemeRepository userThemeRepository;
 	@Autowired
 	private ThumbnailRenderingService thumbnailRenderingService;
+	@Autowired
+	private HeadlessBrowserRenderService headlessBrowserRenderService;
+	@Autowired
+	private TextPreviewSessionService textPreviewSessionService;
 
 	@Value("${file.path.user-photos}")
 	private String userPhotosPath;
@@ -275,22 +289,85 @@ public class EditController {
 	@ResponseBody
 	public List<FontDto> getFonts(HttpSession session) {
 		User loginUser = (User) session.getAttribute("loginUser");
-		if (loginUser == null)
+		return getFontsForUser(loginUser);
+	}
+
+	private List<FontDto> getFontsForUser(User loginUser) {
+		if (loginUser == null) {
 			return Collections.emptyList();
+		}
 
 		List<UserTheme> userThemes = userThemeRepository.findByUserId(loginUser.getId());
-		if (userThemes.isEmpty() || userThemes.get(0).getFontIds() == null)
+		if (userThemes.isEmpty() || userThemes.get(0).getFontIds() == null) {
 			return Collections.emptyList();
+		}
 
 		try {
-			List<Long> fontIds = Arrays.stream(userThemes.get(0).getFontIds().split(",")).map(String::trim)
-					.map(Long::parseLong).collect(Collectors.toList());
+			List<Long> fontIds = Arrays.stream(userThemes.get(0).getFontIds().split(","))
+					.map(String::trim)
+					.filter(value -> !value.isBlank())
+					.map(Long::parseLong)
+					.collect(Collectors.toList());
 			List<Theme> themes = themeRepository.findAllById(fontIds);
-			return themes.stream().map(theme -> new FontDto(theme.getId(), theme.getFilename(), theme.getFontPath()))
+			return themes.stream()
+					.map(theme -> new FontDto(theme.getId(), theme.getFilename(), theme.getFontPath()))
 					.collect(Collectors.toList());
 		} catch (NumberFormatException e) {
 			return Collections.emptyList();
 		}
+	}
+
+	private String sanitizePreviewId(String previewId) {
+		if (previewId == null) {
+			return null;
+		}
+
+		String sanitized = previewId.replaceAll("[^a-zA-Z0-9_-]", "");
+		return sanitized.isBlank() ? null : sanitized;
+	}
+
+	private String cleanFontName(String filename) {
+		if (filename == null || filename.isBlank()) {
+			return "";
+		}
+
+		return filename
+				.replaceAll("\\.(ttf|otf|woff2?|eot)$", "")
+				.replaceAll("^[^a-zA-Z]+", "")
+				.replaceAll("[_-]+", " ")
+				.trim();
+	}
+
+	private String normalizeFontKey(String value) {
+		if (value == null || value.isBlank()) {
+			return "";
+		}
+
+		return value.replace("\"", "")
+				.replace("'", "")
+				.replaceAll("[\\s_-]+", "")
+				.toLowerCase();
+	}
+
+	private List<FontDto> getPreviewFontsForUser(User loginUser, String requestedFontFamily) {
+		List<FontDto> fonts = getFontsForUser(loginUser);
+		String requestedKey = normalizeFontKey(requestedFontFamily);
+		if (requestedKey.isBlank()) {
+			return fonts;
+		}
+
+		List<FontDto> matchedFonts = fonts.stream()
+				.filter(font -> {
+					String filename = font.getFilename();
+					String cleanedName = cleanFontName(filename);
+					String rawName = filename == null ? "" : filename.replaceAll("\\.(ttf|otf|woff2?|eot)$", "");
+					return requestedKey.equals(normalizeFontKey(cleanedName))
+							|| requestedKey.equals(normalizeFontKey(rawName))
+							|| requestedKey.equals(normalizeFontKey(filename));
+				})
+				.collect(Collectors.toList());
+
+		return matchedFonts.isEmpty() ? fonts : matchedFonts;
 	}
 
 	// --- 이미지 업로드 API (기존과 동일) ---
@@ -893,6 +970,95 @@ public class EditController {
 			errorResponse.put("success", false);
 			errorResponse.put("message", "Error processing request: " + e.getMessage());
 			return errorResponse;
+		}
+	}
+
+	@PostMapping("/edit/renderTextPreview")
+	@ResponseBody
+	public Map<String, Object> renderTextPreview(@RequestBody Map<String, Object> requestBody, HttpSession session) {
+		Map<String, Object> response = new HashMap<>();
+		long startedAt = System.currentTimeMillis();
+
+		try {
+			if (!canEdit(session)) {
+				response.put("success", false);
+				response.put("message", "This has already been submitted and cannot be edited.");
+				return response;
+			}
+
+			User loginUser = (User) session.getAttribute("loginUser");
+			if (loginUser == null) {
+				response.put("success", false);
+				response.put("message", "User not logged in.");
+				return response;
+			}
+
+			Map<String, Object> textBox = requestBody == null
+					? Collections.emptyMap()
+					: (Map<String, Object>) requestBody.getOrDefault("textBox", Collections.emptyMap());
+			Map<String, Object> styles = textBox.isEmpty()
+					? Collections.emptyMap()
+					: (Map<String, Object>) textBox.getOrDefault("styles", Collections.emptyMap());
+
+			String previewId = requestBody == null ? null : (String) requestBody.get("previewId");
+			previewId = sanitizePreviewId(previewId);
+			if (previewId == null || previewId.isBlank()) {
+				previewId = UUID.randomUUID().toString();
+			}
+
+			Map<String, Object> previewPayload = new HashMap<>();
+			Map<String, Object> previewTextBox = new HashMap<>();
+			previewTextBox.put("html", textBox.getOrDefault("html", ""));
+			previewTextBox.put("textType", textBox.getOrDefault("textType", "text"));
+
+			Map<String, Object> previewStyles = new HashMap<>();
+			previewStyles.put("color", styles.getOrDefault("color", "rgb(33, 37, 41)"));
+			previewStyles.put("fontSize", styles.getOrDefault("fontSize", 12));
+			previewStyles.put("fontWeight", styles.getOrDefault("fontWeight", "400"));
+			previewStyles.put("textAlign", styles.getOrDefault("textAlign", "left"));
+			previewStyles.put("fontFamily", styles.getOrDefault("fontFamily", ""));
+			previewTextBox.put("styles", previewStyles);
+			previewPayload.put("textBox", previewTextBox);
+			String requestedFontFamily = String.valueOf(previewStyles.getOrDefault("fontFamily", ""));
+			List<FontDto> fonts = getPreviewFontsForUser(loginUser, requestedFontFamily);
+			previewPayload.put("fonts", fonts);
+
+			String previewToken = textPreviewSessionService.createSession(previewPayload);
+			HeadlessBrowserRenderService.RenderedTextPreview renderedPreview = headlessBrowserRenderService
+					.renderTextPreview(previewToken);
+			if (renderedPreview == null || renderedPreview.image() == null) {
+				response.put("success", false);
+				response.put("message", "Failed to render text preview.");
+				return response;
+			}
+
+			Path textImagesDir = Paths.get(userPhotosPath, "text-images");
+			Files.createDirectories(textImagesDir);
+
+			String fileName = previewId + ".png";
+			Path outputPath = textImagesDir.resolve(fileName);
+			BufferedImage previewImage = renderedPreview.image();
+			ImageIO.write(previewImage, "png", outputPath.toFile());
+
+			double widthPercent = (renderedPreview.cssWidth() / 786.0d) * 100.0d;
+			double heightPercent = (renderedPreview.cssHeight() / 1011.0d) * 100.0d;
+			String renderImagePath = "/photo/text-images/" + fileName;
+
+			response.put("success", true);
+			response.put("previewId", previewId);
+			response.put("renderImage", renderImagePath);
+			response.put("cssWidth", renderedPreview.cssWidth());
+			response.put("cssHeight", renderedPreview.cssHeight());
+			response.put("widthPercent", widthPercent);
+			response.put("heightPercent", heightPercent);
+			logger.info("Text preview rendered in {} ms using {} font(s) for previewId={}",
+					System.currentTimeMillis() - startedAt, fonts.size(), previewId);
+			return response;
+		} catch (Exception e) {
+			e.printStackTrace();
+			response.put("success", false);
+			response.put("message", "Error rendering text preview: " + e.getMessage());
+			return response;
 		}
 	}
 

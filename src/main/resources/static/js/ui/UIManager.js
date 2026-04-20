@@ -270,9 +270,15 @@ class UIManager {
 
 	// 텍스트 툴바 동기화
 	static syncTextToolbar(textBox) {
-		const currentSize = textBox.data('originalFontSize') || this.getDefaultFontSize(textBox);
-		const currentAlign = this.normalizeTextAlign(textBox.css('text-align'));
-		const currentColor = this.rgbToHex(textBox.css('color'));
+		const previewState = window.textPreviewManager
+			&& typeof window.textPreviewManager.getEffectiveState === 'function'
+			? window.textPreviewManager.getEffectiveState(textBox)
+			: null;
+		const currentSize = previewState?.baseFontSize
+			|| textBox.data('originalFontSize')
+			|| this.getDefaultFontSize(textBox);
+		const currentAlign = previewState?.textAlign || this.normalizeTextAlign(textBox.css('text-align'));
+		const currentColor = previewState?.color || this.rgbToHex(textBox.css('color'));
 
 		const sizeValue = parseInt(currentSize);
 		const selectOption = $('#tooltip-size-select option[value="' + sizeValue + '"]');
@@ -323,7 +329,7 @@ class UIManager {
 		this.bindTextRotationEvents(textBox);
 
 		$('#tooltip-color').on('input', function() {
-			textBox.css('color', $(this).val());
+			TextManager.updateTextColor($(this).val());
 		});
 
 		$('#tooltip-size').on('change', function() {

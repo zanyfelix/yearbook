@@ -2,9 +2,11 @@ package com.mbiz.yearbook.service;
 
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -12,16 +14,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
 
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class HeadlessBrowserRenderService {
@@ -33,8 +42,12 @@ public class HeadlessBrowserRenderService {
 	private static final int DEVICE_SCALE = 1;
 	private static final int OUTPUT_WIDTH = CSS_WIDTH * DEVICE_SCALE;
 	private static final int OUTPUT_HEIGHT = CSS_HEIGHT * DEVICE_SCALE;
+	private static final int EDITOR_CSS_WIDTH = 786;
+	private static final int EDITOR_CSS_HEIGHT = 1011;
+	private static final double TEXT_PREVIEW_DEVICE_SCALE = 4.0d;
 
 	private final BrowserRenderTokenService browserRenderTokenService;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Value("${server.port:8080}")
 	private int serverPort;
@@ -79,9 +92,17 @@ public class HeadlessBrowserRenderService {
 	private int browserWindowInsetHeight;
 
 	private volatile Path extractedScriptPath;
+	private volatile Path extractedTextPreviewWorkerScriptPath;
+	private final Object textPreviewWorkerLock = new Object();
+	private volatile TextPreviewWorker textPreviewWorker;
 
 	public HeadlessBrowserRenderService(BrowserRenderTokenService browserRenderTokenService) {
 		this.browserRenderTokenService = browserRenderTokenService;
+	}
+
+	@PreDestroy
+	public void shutdown() {
+		stopTextPreviewWorker();
 	}
 
 	public BufferedImage renderPage(Long yearbookId) {
@@ -199,6 +220,241 @@ public class HeadlessBrowserRenderService {
 					logger.debug("Failed to delete temporary browser render output: {}", outputPath, e);
 				}
 			}
+		}
+	}
+
+	public RenderedTextPreview renderTextPreview(String previewToken) {
+		RenderedTextPreview workerPreview = renderTextPreviewWithWorker(previewToken);
+		if (workerPreview != null) {
+			return workerPreview;
+		}
+
+		return renderTextPreviewOnce(previewToken);
+	}
+
+	private RenderedTextPreview renderTextPreviewWithWorker(String previewToken) {
+		if (!enabled || previewToken == null || previewToken.isBlank()) {
+			return null;
+		}
+
+		String browserPath = resolveBrowserPath();
+		if (browserPath == null || browserPath.isBlank()) {
+			return null;
+		}
+
+		String nodePath = resolveNodePath();
+		if (nodePath == null || nodePath.isBlank()) {
+			return null;
+		}
+
+		Path tempDir = null;
+		try {
+			TextPreviewWorker worker = getOrStartTextPreviewWorker(nodePath, browserPath);
+			if (worker == null) {
+				return null;
+			}
+
+			tempDir = Files.createTempDirectory("yearbook-text-preview-");
+			Path outputPath = tempDir.resolve("preview.png");
+			Path metricsPath = tempDir.resolve("preview-metrics.json");
+			long virtualTimeBudgetMs = resolveVirtualTimeBudgetMs();
+			long effectiveWaitMs = resolveEffectiveWaitMs(virtualTimeBudgetMs);
+
+			boolean rendered = worker.render(new TextPreviewWorkerRequest(
+					buildTextPreviewUrl(previewToken),
+					outputPath,
+					metricsPath,
+					EDITOR_CSS_WIDTH,
+					EDITOR_CSS_HEIGHT,
+					TEXT_PREVIEW_DEVICE_SCALE,
+					effectiveWaitMs,
+					"#text-preview-target"));
+			if (!rendered) {
+				stopTextPreviewWorker();
+				return null;
+			}
+
+			return loadRenderedTextPreview(outputPath, metricsPath, TEXT_PREVIEW_DEVICE_SCALE);
+		} catch (Exception e) {
+			logger.warn("Persistent text preview worker failed, falling back to one-shot render", e);
+			stopTextPreviewWorker();
+			return null;
+		} finally {
+			deleteDirectoryIfExists(tempDir, "temporary text preview render directory");
+		}
+	}
+
+	private RenderedTextPreview renderTextPreviewOnce(String previewToken) {
+		if (!enabled || previewToken == null || previewToken.isBlank()) {
+			return null;
+		}
+
+		String browserPath = resolveBrowserPath();
+		if (browserPath == null || browserPath.isBlank()) {
+			logger.info("Skipping headless text preview render because no browser executable was found.");
+			return null;
+		}
+
+		String nodePath = resolveNodePath();
+		if (nodePath == null || nodePath.isBlank()) {
+			logger.info("Skipping headless text preview render because no Node.js executable was found.");
+			return null;
+		}
+
+		Path tempDir = null;
+		Process process = null;
+		StringBuilder commandOutput = new StringBuilder();
+		Thread logThread = null;
+
+		try {
+			Path scriptPath = ensureScriptExtracted();
+			tempDir = Files.createTempDirectory("yearbook-text-preview-");
+			Path outputPath = tempDir.resolve("preview.png");
+			Path metricsPath = tempDir.resolve("preview-metrics.json");
+			long virtualTimeBudgetMs = resolveVirtualTimeBudgetMs();
+			long effectiveWaitMs = resolveEffectiveWaitMs(virtualTimeBudgetMs);
+
+			List<String> command = new ArrayList<>();
+			command.add(nodePath);
+			command.add(scriptPath.toString());
+			command.add("--browser-path");
+			command.add(browserPath);
+			command.add("--url");
+			command.add(buildTextPreviewUrl(previewToken));
+			command.add("--output");
+			command.add(outputPath.toString());
+			command.add("--width");
+			command.add(String.valueOf(EDITOR_CSS_WIDTH));
+			command.add("--height");
+			command.add(String.valueOf(EDITOR_CSS_HEIGHT));
+			command.add("--device-scale");
+			command.add(String.valueOf(TEXT_PREVIEW_DEVICE_SCALE));
+			command.add("--timeout-ms");
+			command.add(String.valueOf(effectiveWaitMs));
+			command.add("--clip-selector");
+			command.add("#text-preview-target");
+			command.add("--metrics-output");
+			command.add(metricsPath.toString());
+			command.add("--transparent-background");
+			command.add("true");
+
+			ProcessBuilder processBuilder = new ProcessBuilder(command);
+			processBuilder.redirectErrorStream(true);
+			process = processBuilder.start();
+
+			Process currentProcess = process;
+			logThread = new Thread(() -> consumeProcessOutput(currentProcess.getInputStream(), commandOutput),
+					"text-preview-render-script-output");
+			logThread.setDaemon(true);
+			logThread.start();
+
+			boolean finished = process.waitFor(effectiveWaitMs + 2000L, TimeUnit.MILLISECONDS);
+			if (!finished) {
+				process.destroyForcibly();
+				logger.warn("Script-based text preview render timed out output={}", summarizeOutput(commandOutput));
+				return null;
+			}
+
+			if (logThread != null) {
+				logThread.join(1000);
+			}
+
+			if (process.exitValue() != 0) {
+				logger.warn("Script-based text preview render failed exitCode={} output={}",
+						process.exitValue(), summarizeOutput(commandOutput));
+				return null;
+			}
+
+			if (!Files.exists(outputPath) || Files.size(outputPath) == 0) {
+				logger.warn("Script-based text preview render finished without an output file.");
+				return null;
+			}
+
+			return loadRenderedTextPreview(outputPath, metricsPath, TEXT_PREVIEW_DEVICE_SCALE);
+		} catch (Exception e) {
+			logger.warn("Script-based text preview render could not be completed", e);
+			return null;
+		} finally {
+			if (process != null && process.isAlive()) {
+				process.destroyForcibly();
+			}
+			deleteDirectoryIfExists(tempDir, "temporary text preview render directory");
+		}
+	}
+
+	private RenderedTextPreview loadRenderedTextPreview(Path outputPath, Path metricsPath, double deviceScale)
+			throws IOException {
+		if (outputPath == null || !Files.exists(outputPath) || Files.size(outputPath) == 0) {
+			return null;
+		}
+
+		BufferedImage previewImage = ImageIO.read(outputPath.toFile());
+		if (previewImage == null) {
+			return null;
+		}
+
+		double cssWidth = previewImage.getWidth() / deviceScale;
+		double cssHeight = previewImage.getHeight() / deviceScale;
+		if (metricsPath != null && Files.exists(metricsPath) && Files.size(metricsPath) > 0) {
+			JsonNode metricsNode = objectMapper.readTree(metricsPath.toFile());
+			JsonNode rectNode = metricsNode.path("rect");
+			if (rectNode.isObject()) {
+				cssWidth = rectNode.path("width").asDouble(cssWidth);
+				cssHeight = rectNode.path("height").asDouble(cssHeight);
+			}
+		}
+
+		return new RenderedTextPreview(previewImage, cssWidth, cssHeight);
+	}
+
+	private TextPreviewWorker getOrStartTextPreviewWorker(String nodePath, String browserPath) throws IOException {
+		TextPreviewWorker existingWorker = textPreviewWorker;
+		if (existingWorker != null && existingWorker.isRunning()) {
+			return existingWorker;
+		}
+
+		synchronized (textPreviewWorkerLock) {
+			if (textPreviewWorker != null && textPreviewWorker.isRunning()) {
+				return textPreviewWorker;
+			}
+
+			stopTextPreviewWorker();
+			Path workerScriptPath = ensureTextPreviewWorkerScriptExtracted();
+			TextPreviewWorker worker = new TextPreviewWorker(nodePath, browserPath, workerScriptPath);
+			worker.start();
+			textPreviewWorker = worker;
+			return worker;
+		}
+	}
+
+	private void stopTextPreviewWorker() {
+		synchronized (textPreviewWorkerLock) {
+			if (textPreviewWorker == null) {
+				return;
+			}
+
+			textPreviewWorker.stop();
+			textPreviewWorker = null;
+		}
+	}
+
+	private void deleteDirectoryIfExists(Path directory, String label) {
+		if (directory == null) {
+			return;
+		}
+
+		try {
+			Files.walk(directory)
+					.sorted(java.util.Comparator.reverseOrder())
+					.forEach(path -> {
+						try {
+							Files.deleteIfExists(path);
+						} catch (IOException e) {
+							logger.debug("Failed to delete {} path: {}", label, path, e);
+						}
+					});
+		} catch (IOException e) {
+			logger.debug("Failed to clean {}: {}", label, directory, e);
 		}
 	}
 
@@ -486,6 +742,12 @@ public class HeadlessBrowserRenderService {
 				+ java.net.URLEncoder.encode(token, StandardCharsets.UTF_8);
 	}
 
+	private String buildTextPreviewUrl(String token) {
+		return resolveBaseUrl()
+				+ "/render/browser/text-preview?token="
+				+ java.net.URLEncoder.encode(token, StandardCharsets.UTF_8);
+	}
+
 	private boolean canReachRenderEndpoint(Long yearbookId, String token) {
 		HttpURLConnection connection = null;
 		try {
@@ -623,6 +885,27 @@ public class HeadlessBrowserRenderService {
 		}
 	}
 
+	private Path ensureTextPreviewWorkerScriptExtracted() throws IOException {
+		Path currentPath = extractedTextPreviewWorkerScriptPath;
+		if (currentPath != null && Files.exists(currentPath)) {
+			return currentPath;
+		}
+
+		synchronized (this) {
+			if (extractedTextPreviewWorkerScriptPath != null && Files.exists(extractedTextPreviewWorkerScriptPath)) {
+				return extractedTextPreviewWorkerScriptPath;
+			}
+
+			ClassPathResource resource = new ClassPathResource("browser/browser-text-preview-worker.mjs");
+			Path tempFile = Files.createTempFile("yearbook-browser-text-preview-worker-", ".mjs");
+			try (InputStream inputStream = resource.getInputStream()) {
+				Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
+			}
+			extractedTextPreviewWorkerScriptPath = tempFile;
+			return tempFile;
+		}
+	}
+
 	private String summarizeOutput(StringBuilder output) {
 		if (output == null || output.isEmpty()) {
 			return "";
@@ -642,5 +925,222 @@ public class HeadlessBrowserRenderService {
 			normalized = normalized.substring(0, normalized.length() - 1);
 		}
 		return normalized;
+	}
+
+	private record TextPreviewWorkerRequest(
+			String url,
+			Path outputPath,
+			Path metricsPath,
+			int width,
+			int height,
+			double deviceScale,
+			long timeoutMs,
+			String clipSelector) {
+	}
+
+	private final class TextPreviewWorker {
+
+		private static final String READY_TYPE = "ready";
+		private static final String RESULT_TYPE = "result";
+		private static final String STREAM_CLOSED = "__STREAM_CLOSED__";
+
+		private final String nodePath;
+		private final String browserPath;
+		private final Path scriptPath;
+		private final LinkedBlockingQueue<String> stdoutLines = new LinkedBlockingQueue<>();
+		private Process process;
+		private BufferedWriter writer;
+		private Thread stdoutThread;
+		private Thread stderrThread;
+		private final StringBuilder stderrOutput = new StringBuilder();
+		private long requestSequence = 0L;
+
+		private TextPreviewWorker(String nodePath, String browserPath, Path scriptPath) {
+			this.nodePath = nodePath;
+			this.browserPath = browserPath;
+			this.scriptPath = scriptPath;
+		}
+
+		private synchronized void start() throws IOException {
+			if (isRunning()) {
+				return;
+			}
+
+			stdoutLines.clear();
+			stderrOutput.setLength(0);
+
+			List<String> command = new ArrayList<>();
+			command.add(nodePath);
+			command.add(scriptPath.toString());
+			command.add("--browser-path");
+			command.add(browserPath);
+			command.add("--width");
+			command.add(String.valueOf(EDITOR_CSS_WIDTH));
+			command.add("--height");
+			command.add(String.valueOf(EDITOR_CSS_HEIGHT));
+			command.add("--device-scale");
+			command.add(String.valueOf(TEXT_PREVIEW_DEVICE_SCALE));
+
+			ProcessBuilder processBuilder = new ProcessBuilder(command);
+			processBuilder.redirectErrorStream(false);
+			process = processBuilder.start();
+			writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
+			startStdoutThread(process);
+			startStderrThread(process);
+			awaitReady();
+		}
+
+		private synchronized boolean render(TextPreviewWorkerRequest request) {
+			if (!isRunning() || request == null) {
+				return false;
+			}
+
+			try {
+				long requestId = ++requestSequence;
+				Map<String, Object> payload = new HashMap<>();
+				payload.put("requestId", requestId);
+				payload.put("url", request.url());
+				payload.put("output", request.outputPath().toString());
+				payload.put("metricsOutput", request.metricsPath().toString());
+				payload.put("width", request.width());
+				payload.put("height", request.height());
+				payload.put("deviceScale", request.deviceScale());
+				payload.put("timeoutMs", request.timeoutMs());
+				payload.put("clipSelector", request.clipSelector());
+				payload.put("transparentBackground", true);
+
+				writer.write(objectMapper.writeValueAsString(payload));
+				writer.newLine();
+				writer.flush();
+
+				JsonNode response = awaitResponse(RESULT_TYPE, request.timeoutMs() + 5000L);
+				if (response == null) {
+					logger.warn("Text preview worker timed out waiting for requestId={}", requestId);
+					return false;
+				}
+
+				if (response.path("requestId").asLong(-1L) != requestId) {
+					logger.warn("Text preview worker response mismatch. expectedRequestId={} actualResponse={}",
+							requestId, response.toString());
+					return false;
+				}
+
+				if (!response.path("success").asBoolean(false)) {
+					logger.warn("Text preview worker returned an error for requestId={}: {}",
+							requestId, response.path("error").asText("unknown error"));
+					return false;
+				}
+
+				return true;
+			} catch (Exception e) {
+				logger.warn("Text preview worker request failed", e);
+				return false;
+			}
+		}
+
+		private synchronized boolean isRunning() {
+			return process != null && process.isAlive();
+		}
+
+		private synchronized void stop() {
+			if (process == null) {
+				return;
+			}
+
+			try {
+				if (writer != null) {
+					writer.close();
+				}
+			} catch (IOException e) {
+				logger.debug("Failed to close text preview worker stdin", e);
+			}
+
+			if (process.isAlive()) {
+				process.destroy();
+				try {
+					if (!process.waitFor(1500, TimeUnit.MILLISECONDS)) {
+						process.destroyForcibly();
+					}
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					process.destroyForcibly();
+				}
+			}
+
+			if (stdoutThread != null) {
+				stdoutThread.interrupt();
+			}
+			if (stderrThread != null) {
+				stderrThread.interrupt();
+			}
+
+			process = null;
+			writer = null;
+			stdoutThread = null;
+			stderrThread = null;
+			stdoutLines.clear();
+		}
+
+		private void startStdoutThread(Process currentProcess) {
+			stdoutThread = new Thread(() -> {
+				try (BufferedReader reader = new BufferedReader(
+						new InputStreamReader(currentProcess.getInputStream(), StandardCharsets.UTF_8))) {
+					String line;
+					while ((line = reader.readLine()) != null) {
+						stdoutLines.offer(line);
+					}
+				} catch (IOException e) {
+					logger.debug("Text preview worker stdout reader stopped", e);
+				} finally {
+					stdoutLines.offer(STREAM_CLOSED);
+				}
+			}, "text-preview-worker-stdout");
+			stdoutThread.setDaemon(true);
+			stdoutThread.start();
+		}
+
+		private void startStderrThread(Process currentProcess) {
+			stderrThread = new Thread(() -> consumeProcessOutput(currentProcess.getErrorStream(), stderrOutput),
+					"text-preview-worker-stderr");
+			stderrThread.setDaemon(true);
+			stderrThread.start();
+		}
+
+		private void awaitReady() throws IOException {
+			try {
+				JsonNode ready = awaitResponse(READY_TYPE, 20000L);
+				if (ready == null) {
+					throw new IOException("Text preview worker did not become ready. stderr=" + summarizeOutput(stderrOutput));
+				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new IOException("Interrupted while waiting for text preview worker startup", e);
+			}
+		}
+
+		private JsonNode awaitResponse(String expectedType, long timeoutMs) throws IOException, InterruptedException {
+			long deadline = System.currentTimeMillis() + Math.max(timeoutMs, 1000L);
+			while (System.currentTimeMillis() < deadline) {
+				long remaining = Math.max(1L, deadline - System.currentTimeMillis());
+				String line = stdoutLines.poll(remaining, TimeUnit.MILLISECONDS);
+				if (line == null) {
+					continue;
+				}
+
+				if (STREAM_CLOSED.equals(line)) {
+					throw new IOException("Text preview worker stream closed. stderr=" + summarizeOutput(stderrOutput));
+				}
+
+				JsonNode node = objectMapper.readTree(line);
+				if (expectedType.equals(node.path("type").asText())) {
+					return node;
+				}
+			}
+
+			return null;
+		}
+	}
+
+	public record RenderedTextPreview(BufferedImage image, double cssWidth, double cssHeight) {
 	}
 }

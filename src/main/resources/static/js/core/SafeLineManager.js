@@ -191,15 +191,48 @@ class SafeLineManager {
         const containerWidth = $imgElement.width();
         const containerHeight = $imgElement.height();
         const containerPosition = $imgElement.position();
+        const preview = $('#page-preview')[0];
+        const previewRect = preview?.getBoundingClientRect();
+        const imgRect = img?.getBoundingClientRect?.();
 
         if (!img.naturalWidth || !img.naturalHeight) return null;
 
-        if (window.__IS_BROWSER_RENDER === true) {
+        // Browser final render scales the entire preview with CSS transform.
+        // In that mode we need logical editor coordinates, not transformed screen pixels.
+        if (window.__IS_BROWSER_RENDER === true && window.__IS_EDITOR_PREVIEW_RENDER !== true) {
             return {
                 left: containerPosition?.left || 0,
                 top: containerPosition?.top || 0,
                 width: containerWidth,
                 height: containerHeight
+            };
+        }
+
+        if (previewRect && imgRect && imgRect.width > 0 && imgRect.height > 0) {
+            const naturalRatio = img.naturalWidth / img.naturalHeight;
+            const renderedRatio = imgRect.width / imgRect.height;
+            const objectFit = window.getComputedStyle(img).objectFit || 'fill';
+
+            let actualWidth = imgRect.width;
+            let actualHeight = imgRect.height;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (objectFit === 'contain' || objectFit === 'scale-down') {
+                if (naturalRatio > renderedRatio) {
+                    actualHeight = imgRect.width / naturalRatio;
+                    offsetY = (imgRect.height - actualHeight) / 2;
+                } else if (naturalRatio < renderedRatio) {
+                    actualWidth = imgRect.height * naturalRatio;
+                    offsetX = (imgRect.width - actualWidth) / 2;
+                }
+            }
+
+            return {
+                left: (imgRect.left - previewRect.left) + offsetX,
+                top: (imgRect.top - previewRect.top) + offsetY,
+                width: actualWidth,
+                height: actualHeight
             };
         }
 

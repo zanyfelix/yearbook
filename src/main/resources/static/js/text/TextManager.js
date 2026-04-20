@@ -25,6 +25,10 @@ class TextManager {
 
 		EventManager.setupTextEvents(textBox);
 		window.selectionManager.selectTextBox(textBox);
+		if (window.textPreviewManager) {
+			window.textPreviewManager.registerTextBox(textBox);
+			window.textPreviewManager.queuePreview(textBox, 'New text box added. Click Text Save to create the preview image.');
+		}
 
 		this.updateUIControls(textStyles, selectedFont, param);
 	}
@@ -71,9 +75,13 @@ class TextManager {
 
 	// 텍스트박스 엘리먼트 생성
 	static createTextBoxElement(param, styles) {
-		return $('<div class="text-box" contenteditable="false"></div>')
-			.text('Enter ' + param + ' Here')
-			.css(styles);
+		const textBox = $('<div class="text-box" contenteditable="false"></div>').css(styles);
+		if (window.setTextBoxHtml) {
+			window.setTextBoxHtml(textBox, `Enter ${param} Here`);
+		} else {
+			textBox.text('Enter ' + param + ' Here');
+		}
+		return textBox;
 	}
 
 	// 텍스트박스 위치 설정
@@ -247,6 +255,7 @@ class TextManager {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (!selectedBox || selectedBox.length === 0) return;
 
+
 		// ✨ 입력값 검증 및 정제
 		let numericSize = parseInt(fontSize);
 
@@ -283,6 +292,14 @@ class TextManager {
 
 		// 폰트 크기 적용
 		selectedBox.css('font-size', scaledFontSize + 'px');
+		const shouldPreservePreviewGeometry = !!selectedBox.data('renderImagePath');
+		if (shouldPreservePreviewGeometry) {
+			$('#tooltip-size').val(numericSize);
+			if (window.textPreviewManager) {
+				window.textPreviewManager.onTextStyleChanged(selectedBox);
+			}
+			return;
+		}
 
 		// ⭐ resize 이벤트 임시 비활성화
 		selectedBox.off('resize.selection');
@@ -333,6 +350,9 @@ class TextManager {
 		}
 
 		$('#tooltip-size').val(numericSize);
+		if (window.textPreviewManager) {
+			window.textPreviewManager.onTextStyleChanged(selectedBox);
+		}
 	}
 
 	// 새로운 메서드: 줄바꿈을 유지하면서 박스 크기 조정
@@ -345,7 +365,7 @@ class TextManager {
 			const measuredSize = window.measureTextBoxContentSize(textBox, fontSize);
 
 			// 줄바꿈 여부 판정 (white-space 설정에 사용)
-			const rawHtml = textBox.html();
+			const rawHtml = window.getTextBoxHtml ? window.getTextBoxHtml(textBox) : textBox.html();
 			const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 			const strippedHtmlForCheck = htmlContent
 				.replace(/<br\s*\/?>\s*$/gi, '')
@@ -368,7 +388,7 @@ class TextManager {
 
 	// resizeTextBox는 줄바꿈 없는 경우에만 사용
 	static resizeTextBox(textBox, fontSize) {
-		const htmlContent = textBox.html();
+		const htmlContent = window.getTextBoxHtml ? window.getTextBoxHtml(textBox) : textBox.html();
 
 		// 현재 transform 저장
 		const currentTransform = textBox.css('transform');
@@ -406,6 +426,9 @@ class TextManager {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (selectedBox && selectedBox.length > 0) {
 			selectedBox.css('text-align', alignment);
+			if (window.textPreviewManager) {
+				window.textPreviewManager.onTextStyleChanged(selectedBox);
+			}
 		}
 	}
 
@@ -413,7 +436,14 @@ class TextManager {
 	static updateTextColor(color) {
 		const selectedBox = DataLoader.getCurrentSelectedTextBox();
 		if (selectedBox && selectedBox.length > 0) {
+			if (window.textPreviewManager && typeof window.textPreviewManager.updateDraftState === 'function') {
+				window.textPreviewManager.updateDraftState(selectedBox, { color: color });
+				return;
+			}
 			selectedBox.css('color', color);
+			if (window.textPreviewManager) {
+				window.textPreviewManager.onTextStyleChanged(selectedBox);
+			}
 		}
 	}
 
@@ -424,6 +454,9 @@ class TextManager {
 
 		selectedBox.css('font-family', fontFamily);
 		selectedBox.data('savedFontFamily', fontFamily);
+		if (window.textPreviewManager) {
+			window.textPreviewManager.onTextStyleChanged(selectedBox);
+		}
 	}
 
 	// 폰트 로드 완료 처리
@@ -443,6 +476,9 @@ $(document).ready(function() {
 	DataLoader.setupFontEventListeners = function() {
 		originalSetupFontEventListeners.call(this);
 		TextManager.onFontsLoaded();
+		if (window.textPreviewManager) {
+			window.textPreviewManager.syncFontOptionsFromToolbar();
+		}
 	};
 
 	// Select 변경 이벤트

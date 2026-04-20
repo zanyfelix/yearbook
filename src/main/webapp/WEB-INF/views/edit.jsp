@@ -199,6 +199,53 @@
 										<button id="add-text-btn" class="btn btn-outline-primary w-50">Click
 											here to insert "Text"</button>
 									</div>
+									<div id="text-side-editor-card" class="text-side-editor-card d-none">
+										<div class="text-side-editor-header">Selected Text</div>
+										<textarea id="text-side-editor-input" class="form-control"
+											rows="8" placeholder="Select a text box and edit it here."></textarea>
+										<div class="text-side-editor-grid">
+											<select id="text-side-font" class="form-select form-select-sm">
+												<option value="">Font</option>
+											</select>
+											<select id="text-side-size-select" class="form-select form-select-sm">
+												<option value="">Custom</option>
+												<option value="10">10px</option>
+												<option value="12">12px</option>
+												<option value="14">14px</option>
+												<option value="16">16px</option>
+												<option value="18">18px</option>
+												<option value="20">20px</option>
+												<option value="24">24px</option>
+												<option value="28">28px</option>
+												<option value="32">32px</option>
+												<option value="36">36px</option>
+												<option value="40">40px</option>
+												<option value="48">48px</option>
+												<option value="56">56px</option>
+												<option value="64">64px</option>
+												<option value="72">72px</option>
+												<option value="80">80px</option>
+												<option value="96">96px</option>
+											</select>
+											<input type="number" id="text-side-size" class="form-control form-control-sm d-none"
+												min="8" max="200" placeholder="px">
+											<select id="text-side-align" class="form-select form-select-sm">
+												<option value="left">Left</option>
+												<option value="center">Center</option>
+												<option value="right">Right</option>
+											</select>
+											<input type="color" id="text-side-color" class="form-control form-control-color"
+												title="Text Color">
+										</div>
+										<div class="text-side-editor-actions">
+											<button id="text-side-save" type="button" class="btn btn-primary btn-sm w-100" disabled>
+												Text Save
+											</button>
+										</div>
+										<div id="text-side-editor-status" class="text-side-editor-status">
+											Edit the text here, then click Text Save.
+										</div>
+									</div>
 								</div>
 								<!-- Element 패널 추가 -->
 								<div id="element-panel" class="d-none row row-cols-3 g-3">
@@ -617,6 +664,8 @@
 		<script
 			src="<c:url value='/js/frame/FrameManager.js?v=${jsVersion}'/>"></script>
 		<script src="<c:url value='/js/text/TextManager.js?v=${jsVersion}'/>"></script>
+		<script
+			src="<c:url value='/js/text/TextPreviewManager.js?v=${jsVersion}'/>"></script>
 
 		<!-- Events & Utils (이벤트 및 유틸리티) -->
 		<script src="<c:url value='/js/utils/DataLoader.js?v=${jsVersion}'/>"></script>

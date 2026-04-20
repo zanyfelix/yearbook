@@ -38,11 +38,13 @@ import com.mbiz.yearbook.repository.ThemeRepository;
 import com.mbiz.yearbook.repository.UserThemeRepository;
 import com.mbiz.yearbook.repository.YearbookRepository;
 import com.mbiz.yearbook.service.BrowserRenderTokenService;
+import com.mbiz.yearbook.service.TextPreviewSessionService;
 
 @Controller
 public class BrowserRenderController {
 
 	private final BrowserRenderTokenService browserRenderTokenService;
+	private final TextPreviewSessionService textPreviewSessionService;
 	private final YearbookRepository yearbookRepository;
 	private final UserThemeRepository userThemeRepository;
 	private final ThemeRepository themeRepository;
@@ -62,10 +64,12 @@ public class BrowserRenderController {
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public BrowserRenderController(BrowserRenderTokenService browserRenderTokenService,
+			TextPreviewSessionService textPreviewSessionService,
 			YearbookRepository yearbookRepository,
 			UserThemeRepository userThemeRepository,
 			ThemeRepository themeRepository) {
 		this.browserRenderTokenService = browserRenderTokenService;
+		this.textPreviewSessionService = textPreviewSessionService;
 		this.yearbookRepository = yearbookRepository;
 		this.userThemeRepository = userThemeRepository;
 		this.themeRepository = themeRepository;
@@ -80,6 +84,35 @@ public class BrowserRenderController {
 		model.addAttribute("token", token);
 		model.addAttribute("jsVersion", System.currentTimeMillis());
 		return "render-browser";
+	}
+
+	@GetMapping("/render/browser/editor-preview")
+	public String renderBrowserEditorPreview(@RequestParam("yearbookId") Long yearbookId,
+			@RequestParam("token") String token,
+			Model model) {
+		validateToken(token, yearbookId);
+		model.addAttribute("yearbookId", yearbookId);
+		model.addAttribute("token", token);
+		model.addAttribute("jsVersion", System.currentTimeMillis());
+		return "render-browser-editor-preview";
+	}
+
+	@GetMapping("/render/browser/text-preview")
+	public String renderBrowserTextPreview(@RequestParam("token") String token, Model model) {
+		validateTextPreviewToken(token);
+		model.addAttribute("token", token);
+		model.addAttribute("jsVersion", System.currentTimeMillis());
+		return "render-browser-text-preview";
+	}
+
+	@GetMapping("/render/browser/text-preview/data")
+	@ResponseBody
+	public Map<String, Object> getTextPreviewData(@RequestParam("token") String token) {
+		Map<String, Object> payload = textPreviewSessionService.getPayload(token);
+		if (payload == null) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid text preview token");
+		}
+		return payload;
 	}
 
 	@GetMapping("/render/browser/pageData")
@@ -165,6 +198,12 @@ public class BrowserRenderController {
 	private void validateToken(String token, Long yearbookId) {
 		if (!browserRenderTokenService.isValid(token, yearbookId)) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid browser render token");
+		}
+	}
+
+	private void validateTextPreviewToken(String token) {
+		if (!textPreviewSessionService.isValid(token)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid text preview token");
 		}
 	}
 

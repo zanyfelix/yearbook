@@ -21,6 +21,7 @@ $(document).ready(function() {
 	window.selectionManager = new SelectionManager();
 	window.safeLineManager = new SafeLineManager();
 	window.panelManager = new PanelManager();
+	window.textPreviewManager = new TextPreviewManager();
 
 	// ========================================================================
 	// 다중 선택 및 정렬 매니저 초기화
@@ -123,6 +124,31 @@ $(document).ready(function() {
 	window.clearSelection = () => window.selectionManager.clearSelection();
 	window.selectFrame = (frame) => window.selectionManager.selectFrame(frame);
 	window.selectPhoto = (photo, frame) => window.selectionManager.selectPhoto(photo, frame);
+	window.ensureTextBoxContentWrapper = function($textBox) {
+		if (!$textBox || !$textBox.length) {
+			return $();
+		}
+
+		let $content = $textBox.children('.text-box-content').first();
+		if ($content.length) {
+			return $content;
+		}
+
+		const existingHtml = $textBox.html();
+		$textBox.empty();
+		$content = $('<div class="text-box-content"></div>');
+		$content.html(existingHtml);
+		$textBox.append($content);
+		return $content;
+	};
+	window.getTextBoxHtml = function($textBox) {
+		const $content = window.ensureTextBoxContentWrapper($textBox);
+		return $content.length ? ($content.html() || '') : '';
+	};
+	window.setTextBoxHtml = function($textBox, html) {
+		const $content = window.ensureTextBoxContentWrapper($textBox);
+		$content.html(html);
+	};
 
 	function resolveTextBoxCaptureLayout(captureInfo, actualBgRect) {
 		if (!captureInfo || !captureInfo.absolutePixels || !actualBgRect) {
@@ -150,6 +176,24 @@ $(document).ready(function() {
 			width: Math.max(1, editorWidth * scaleX),
 			height: Math.max(1, editorHeight * scaleY)
 		};
+	}
+
+	async function waitForTextBoxFonts(textBoxes) {
+		if (!Array.isArray(textBoxes) || textBoxes.length === 0) {
+			return;
+		}
+
+		const fontFamilies = textBoxes
+			.map(boxData => boxData?.styles?.fontFamily)
+			.filter(fontFamily => typeof fontFamily === 'string' && fontFamily.trim() !== '');
+
+		if (fontFamilies.length === 0) {
+			return;
+		}
+
+		if (typeof DataLoader !== 'undefined' && DataLoader.ensureFontsLoaded) {
+			await DataLoader.ensureFontsLoaded(fontFamilies);
+		}
 	}
 
 	window.updateElementPosition = function($element, state) {
@@ -194,10 +238,11 @@ $(document).ready(function() {
 			const TEMPLATE_WEB_BG_WIDTH = 786;
 			const scaleRatio = actualBgRect.width / TEMPLATE_WEB_BG_WIDTH;
 			const scaledFontSize = Math.round(baseFontSize * scaleRatio * 10) / 10;
+			const useRenderPreview = $element.data('useRenderPreview') === true || $element.hasClass('render-preview-active');
 
 			// ✅ 줄바꿈 여부 먼저 확인 (white-space 결정에 사용)
 			// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
-			const rawHtml = $element.html();
+			const rawHtml = window.getTextBoxHtml ? window.getTextBoxHtml($element) : $element.html();
 			const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 			const strippedHtmlForCheck = htmlContent
 				.replace(/<br\s*\/?>\s*$/gi, '')
@@ -213,17 +258,23 @@ $(document).ready(function() {
 			});
 
 			// 저장된 백분율 기반 크기
-			const savedWidth = (relativeState.size.width / 100) * actualBgRect.width;
-			const savedHeight = (relativeState.size.height / 100) * actualBgRect.height;
+			const savedWidth = (relativeState.size?.width / 100) * actualBgRect.width;
+			const savedHeight = (relativeState.size?.height / 100) * actualBgRect.height;
+			const hasSavedSize = Number.isFinite(savedWidth) && savedWidth > 0
+				&& Number.isFinite(savedHeight) && savedHeight > 0;
 
 			// ✅ 회전이 있으면 저장된 크기 사용 (위치 일관성 우선)
 			if (captureLayout) {
 				elementWidth = captureLayout.width;
 				elementHeight = captureLayout.height;
-			} else if (relativeState.rotation && relativeState.rotation !== 0) {
+			} else if (useRenderPreview && hasSavedSize) {
 				elementWidth = savedWidth;
 				elementHeight = savedHeight;
-			} else if (hasLineBreaks) {
+			} else if ($element.hasClass('editing')) {
+				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
+				elementWidth = measuredSize.width;
+				elementHeight = measuredSize.height;
+			} else if (hasSavedSize) {
 				// ✅ 줄바꿈 있는 텍스트: 가장 긴 줄 기준 측정 너비 사용
 				// measureTextBoxContentSize에 +15px 버퍼 포함되어 서브픽셀 오차 보정됨
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
@@ -234,6 +285,11 @@ $(document).ready(function() {
 				const measuredSize = measureTextBoxContentSize($element, scaledFontSize);
 				elementWidth = measuredSize.width;
 				elementHeight = measuredSize.height;
+			}
+
+			if (!captureLayout && !$element.hasClass('editing') && hasSavedSize) {
+				elementWidth = savedWidth;
+				elementHeight = savedHeight;
 			}
 
 		} else {
@@ -413,7 +469,7 @@ $(document).ready(function() {
 	 */
 	function measureTextBoxContentSize($textBox, fontSize) {
 		// 회전 핸들 div 제거하여 줄바꿈 오감지 방지
-		const rawHtml = $textBox.html();
+		const rawHtml = window.getTextBoxHtml ? window.getTextBoxHtml($textBox) : $textBox.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const strippedHtmlForCheck = htmlContent
 			.replace(/<br\s*\/?>\s*$/gi, '')
@@ -877,6 +933,9 @@ $(document).ready(function() {
 
 	// 강력한 완전 초기화 함수
 	function forceCompleteReset() {
+		if (window.textPreviewManager && typeof window.textPreviewManager.reset === 'function') {
+			window.textPreviewManager.reset();
+		}
 
 		// Step 1: 모든 DOM 요소 강제 제거
 		$('#frame-container').empty().html('');
@@ -995,7 +1054,7 @@ $(document).ready(function() {
 		}
 
 		// ✅ renderElements는 design 객체에 접근해야 하므로 내부에 유지
-		function renderElements() {
+		async function renderElements() {
 			const totalFrames = design.frames?.length || 0;
 			const totalTextBoxes = design.textBoxes?.length || 0;
 			let renderedCount = 0;
@@ -1014,6 +1073,12 @@ $(document).ready(function() {
 				elementsRendered = true;
 				checkAllComplete();
 				return;
+			}
+
+			try {
+				await waitForTextBoxFonts(design.textBoxes || []);
+			} catch (fontError) {
+				console.warn('[renderPage] text font preload failed:', fontError);
 			}
 
 			// 프레임 렌더링
@@ -1123,7 +1188,7 @@ $(document).ready(function() {
 						});
 
 						// ⭐ 스타일 적용 후 HTML 설정
-						$box.html(htmlContent);
+						window.setTextBoxHtml($box, htmlContent);
 
 						// DOM에 추가
 						$('#frame-container').append($box);
@@ -1140,6 +1205,16 @@ $(document).ready(function() {
 							$box.css({
 								'width': measuredSize.width + 'px',
 								'height': measuredSize.height + 'px'
+							});
+						}
+
+						const savedBoxWidth = (boxData.size?.width / 100) * actualBgRect.width;
+						const savedBoxHeight = (boxData.size?.height / 100) * actualBgRect.height;
+						if (!captureLayout && Number.isFinite(savedBoxWidth) && savedBoxWidth > 0
+							&& Number.isFinite(savedBoxHeight) && savedBoxHeight > 0) {
+							$box.css({
+								'width': savedBoxWidth + 'px',
+								'height': savedBoxHeight + 'px'
 							});
 						}
 
@@ -1182,6 +1257,9 @@ $(document).ready(function() {
 						$box.data('captureInfo', boxData.captureInfo || null);
 
 						EventManager.setupTextEvents($box);
+						if (window.textPreviewManager) {
+							window.textPreviewManager.registerTextBox($box, boxData);
+						}
 
 						checkCompletion();
 
@@ -1538,6 +1616,9 @@ $(document).ready(function() {
 		$('#editModal').data('page-category', pageCategory);
 
 		showLoader();
+		if (window.textPreviewManager) {
+			await window.textPreviewManager.ensurePreviewsReady();
+		}
 
 		try {
 			// ✅ 병렬 로딩: 폰트와 페이지 데이터를 동시에 로드
@@ -1813,7 +1894,7 @@ $(document).ready(function() {
 			}
 
 			// ⭐ 핵심: 저장 전 white-space를 nowrap으로 강제 설정하여 줄바꿈 방지
-			const htmlContent = $box.html();
+			const htmlContent = window.getTextBoxHtml ? window.getTextBoxHtml($box) : $box.html();
 			const strippedHtmlForCheck = htmlContent.replace(/<br\s*\/?>\s*$/gi, '').replace(/<div>\s*<\/div>\s*$/gi, '');
 			const hasLineBreaks = strippedHtmlForCheck.includes('<br>') || strippedHtmlForCheck.includes('<div>');
 			if (!hasLineBreaks) {
@@ -1861,7 +1942,7 @@ $(document).ready(function() {
 			// 그래도 0이면 콘텐츠 기반으로 계산
 			if (boxH <= 0) {
 				const lineHeight = parseInt($box.css('line-height')) || parseInt($box.css('font-size')) * 1.2;
-				const lines = $box.html().split(/<br>|<div>/).length;
+				const lines = htmlContent.split(/<br>|<div>/).length;
 				boxH = lineHeight * lines + 20; // padding 추가
 				console.warn('높이 계산 실패, 예상값 사용:', boxH);
 			}
@@ -1884,7 +1965,7 @@ $(document).ready(function() {
 			const alignmentBounds = relativeState.alignmentBounds || null;
 
 			const textBoxData = {
-				html: normalizeTextBoxHtml($box.html()),  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
+				html: normalizeTextBoxHtml(htmlContent),  // ✅ 저장 전 HTML 정규화 (trailing <br>, 불필요 태그 제거)
 				textType: textType,
 				position: {
 					left: ((boxPos.left - actualBgRect.left) / actualBgRect.width) * 100,
@@ -1930,7 +2011,8 @@ $(document).ready(function() {
 						h: boxH
 					}
 				},
-				isModified: true
+				renderImage: $box.data('renderImagePath') || null,
+				isModified: !!$box.data('renderPreviewDirty')
 			};
 
 			// 높이 확인 로그
@@ -1938,6 +2020,7 @@ $(document).ready(function() {
 			console.log(`저장된 크기: width=${textBoxData.size.width}%, height=${textBoxData.size.height}%`);
 
 			designData.textBoxes.push(textBoxData);
+			const hasCanonicalPreview = !!($box.data('renderImagePath') && !$box.data('renderPreviewDirty'));
 
 			// 원상 복구
 			$box.css({
@@ -1945,6 +2028,10 @@ $(document).ready(function() {
 				'transform-origin': boxTransformOrigin,
 				'white-space': originalWhiteSpace
 			});
+
+			if (hasCanonicalPreview) {
+				continue;
+			}
 
 			// 텍스트박스를 이미지로 캡처 (고해상도로)
 			try {
@@ -2783,14 +2870,19 @@ $(document).ready(function() {
 	}
 
 	// 윈도우 리사이즈 이벤트
-	$(window).on('resize', debounce(function() {
+	const refreshPreviewLayout = debounce(function() {
 		console.log("resize");
 		if ($('#editModal').is(':visible')) {
 			window.safeLineManager.update();
 			window.updateAllPositions();
 			updateAllPhotosPosition();
 		}
-	}, 250));
+	}, 250);
+
+	$(window).on('resize', refreshPreviewLayout);
+	if (window.visualViewport) {
+		window.visualViewport.addEventListener('resize', refreshPreviewLayout);
+	}
 
 	// Menu dots 버튼 클릭 - 페이지 리셋
 	$('.content').on('click', '.menu-dots-btn', function(e) {

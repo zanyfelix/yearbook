@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c \"netstat -ano | findstr LISTENING | findstr -E \"\"8080 8443 80 \"\"\")",
+      "Bash(where:*)",
+      "Bash(cmd /c \"where mvn\")",
+      "Bash(dir:*)",
+      "Bash(find \"E:\\\\spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64\\\\workspace\\\\yearbook\\\\src\\\\main\\\\java\\\\com\\\\mbiz\\\\yearbook\"\" -type f -name \"*.java \")",
+      "Bash(find \"E:\\\\spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64\\\\workspace\\\\yearbook\\\\src\\\\main\\\\resources\\\\templates\\\\content\" -name \"*.html\" -exec grep -l \"edit\" {} ;)",
+      "Bash(find \"E:\\\\spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64\\\\workspace\\\\yearbook\\\\src\\\\main\\\\resources\\\\templates\" -name \"*.html\" -type f -exec grep -l \"sidebar\\\\|toggle\" {} ;)",
+      "Bash(python \"E:\\\\spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64\\\\workspace\\\\yearbook\\\\src\\\\main\\\\resources\\\\static\\\\js\\\\frame\\\\FrameManager.js.py\")",
+      "Bash(python3 -:*)",
+      "Bash(mysql -h 127.0.0.1 -P 3306 -u root -proot!23 yearbook -e \"SHOW TABLES;\")",
+      "Bash(pip install pymysql -q)",
+      "Bash(pip3 install pymysql)",
+      "Bash(/c/Users/PKH/AppData/Local/Programs/Python/Python313/python.exe:*)",
+      "Bash(find \"E:\\\\spring-tools-for-eclipse-4.30.0.RELEASE-e4.35.0-win32.win32.x86_64\\\\workspace\\\\yearbook\\\\src\\\\main\\\\resources\\\\static\\\\js\"\" -type f -name \"*.js \")",
+      "Bash(python fix_payload_isempty.py)",
+      "Bash(python \"C:\\\\Users\\\\PKH\\\\fix_payload_isempty.py\")",
+      "Bash(python \"C:\\\\Users\\\\PKH\\\\find_section.py\")",
+      "Bash(python \"C:\\\\Users\\\\PKH\\\\fix_pagorder_alert.py\")",
+      "Bash(python \"C:\\\\Users\\\\PKH\\\\fix_pageorder_alert2.py\")",
+      "Bash(python \"C:\\\\Users\\\\PKH\\\\fix_drag_same_container.py\")"
+    ]
+  }
+}

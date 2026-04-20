@@ -301,6 +301,36 @@ class DataLoader {
             .replace(/\b\w/g, l => l.toUpperCase());
     }
     
+    static async ensureFontLoaded(fontFamily) {
+        if (!fontFamily || !document.fonts || typeof document.fonts.load !== 'function') {
+            return;
+        }
+
+        try {
+            await Promise.all([
+                document.fonts.load(`12px "${fontFamily}"`),
+                document.fonts.load(`bold 12px "${fontFamily}"`),
+                document.fonts.load(`italic 12px "${fontFamily}"`)
+            ]);
+        } catch (error) {
+            console.warn('Font load wait failed:', fontFamily, error);
+        }
+    }
+
+    static async ensureFontsLoaded(fontFamilies = []) {
+        const uniqueFamilies = [...new Set(
+            (fontFamilies || [])
+                .map(fontFamily => (fontFamily || '').trim())
+                .filter(Boolean)
+        )];
+
+        if (uniqueFamilies.length === 0) {
+            return;
+        }
+
+        await Promise.all(uniqueFamilies.map(fontFamily => this.ensureFontLoaded(fontFamily)));
+    }
+
     static setupFontEventListeners() {
         console.log('폰트 이벤트 리스너 설정 중...');
         
@@ -309,10 +339,11 @@ class DataLoader {
             const selectedFontFamily = $(e.target).val();
             const selectedBox = this.getCurrentSelectedTextBox();
             
-            if (selectedBox?.length) {
-                this.applyFontToTextBox(selectedBox, selectedFontFamily);
+            if (selectedBox?.length && selectedFontFamily) {
+                this.applyFontToTextBox(selectedBox, selectedFontFamily).then(() => {
+                    this.updateTextBoxState(selectedBox);
+                });
                 this.saveFontData(selectedBox, selectedFontFamily);
-                this.updateTextBoxState(selectedBox);
             }
         });
         
@@ -405,7 +436,7 @@ class DataLoader {
         }
         
         const value = matchingOption.length ? matchingOption.first().val() : fontSelect.find('option:first').val();
-        fontSelect.val(value).trigger('change');
+        fontSelect.val(value);
     }
     
     static updateFontSizeFromTextBox($textBox) {
@@ -446,11 +477,17 @@ class DataLoader {
         return null;
     }
     
-    static applyFontToTextBox($textBox, fontFamily) {
+    static async applyFontToTextBox($textBox, fontFamily) {
         if (!$textBox || !fontFamily) return;
+
+        await this.ensureFontLoaded(fontFamily);
         
         $textBox.css('font-family', fontFamily);
         $textBox[0].style.setProperty('font-family', fontFamily, 'important');
+
+        if (typeof TextManager !== 'undefined' && TextManager.adjustBoxSizeForLineBreaks) {
+            TextManager.adjustBoxSizeForLineBreaks($textBox);
+        }
         
         setTimeout(() => {
             const appliedFont = $textBox.css('font-family');
@@ -460,6 +497,9 @@ class DataLoader {
                 $textBox[0].style.setProperty('font-family', fontFamily, 'important');
             }
             this.updateFontDropdownFromTextBox($textBox);
+            if (window.textPreviewManager) {
+                window.textPreviewManager.onTextStyleChanged($textBox);
+            }
         }, 100);
     }
 }

@@ -1,29 +1,20 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yearbook Browser Render</title>
+<title>Yearbook Editor Preview Render</title>
 <link rel="stylesheet" href="<c:url value='/css/bootstrap.min.css'/>">
 <link rel="stylesheet" href="<c:url value='/css/edit.css'/>?v=${jsVersion}">
 <style>
- :root {
-	--editor-width: 786px;
-	--editor-height: 1011px;
-	--render-width: 2621px;
-	--render-height: 3371px;
-	--render-scale: 3.334322453;
-}
-
 html, body {
 	margin: 0;
 	padding: 0;
-	width: var(--render-width);
-	height: var(--render-height);
+	width: 100%;
+	height: 100%;
 	overflow: hidden;
-	background: #fff;
+	background: #f5f6f8;
 }
 
 body {
@@ -31,45 +22,36 @@ body {
 	display: block;
 }
 
-#render-root {
+#editModal {
+	display: block !important;
 	position: relative;
-	width: var(--render-width);
-	height: var(--render-height);
+	width: 100vw;
+	height: 100vh;
 	overflow: hidden;
 	background: #fff;
 }
 
-#page-preview {
-	position: absolute !important;
-	top: 0;
-	left: 0;
-	width: var(--editor-width) !important;
-	height: var(--editor-height) !important;
-	max-width: none !important;
-	min-height: 0 !important;
-	margin: 0 !important;
-	border: 0 !important;
-	border-radius: 0 !important;
-	transform: scale(var(--render-scale));
-	transform-origin: top left;
+#editModal .modal-dialog {
+	max-width: 100vw;
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
 }
 
-#page-preview .page-preview-container {
-	width: 100%;
-	height: 100%;
+#editModal .modal-content {
+	height: 100vh;
+	border: 0;
+	border-radius: 0;
+}
+
+#editModal .modal-body {
+	height: 100vh;
+	padding: 0;
 	display: flex;
-	justify-content: center;
-	align-items: center;
-	overflow: hidden;
 }
 
-#page-preview-img {
-	max-width: none !important;
-	max-height: none !important;
-	width: 100% !important;
-	height: 100% !important;
-	object-fit: fill !important;
-	display: block;
+#page-preview {
+	position: relative !important;
 }
 
 #page-preview-img:hover {
@@ -78,20 +60,19 @@ body {
 
 #safe-line-overlay,
 #safe-line-overlay .safe-area-hatched,
-.safe-area-hatched {
-	display: none !important;
-	opacity: 0 !important;
-	visibility: hidden !important;
-}
-
+.safe-area-hatched,
 .photo-selection-box,
 .rotate-handle,
 .rotate-line,
 .selection-handle,
 .element-resize-handle,
 #photo-full-overlay,
-.photo-silhouette {
+.photo-silhouette,
+#save-confirmation-message,
+#preview-loader {
 	display: none !important;
+	opacity: 0 !important;
+	visibility: hidden !important;
 }
 </style>
 </head>
@@ -100,20 +81,56 @@ body {
 	<input type="hidden" id="id" value="">
 	<select id="tooltip-font" style="display:none;"></select>
 	<div id="preview-loader" style="display:none;"></div>
-	<div id="save-confirmation-message" style="display:none;"></div>
 	<input type="file" id="image-upload-input" style="display:none;">
 
-	<div id="render-root">
-		<div id="page-preview" class="bg-white d-flex flex-row flex-nowrap" style="position: relative;">
-			<div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
-				<img id="page-preview-img"
-					src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-					alt="Yearbook page">
+	<div id="editModal">
+		<div class="modal-dialog">
+			<div class="modal-content border-0 rounded-0">
+				<div class="modal-body d-flex p-0">
+					<div class="left-button-area">
+						<div class="editor-panel-spacer"></div>
+						<div class="button-container"></div>
+					</div>
+
+					<div class="center-thumbnail-area">
+						<div class="editor-panel-spacer"></div>
+						<div id="thumbnail-area"></div>
+					</div>
+
+					<div class="d-flex flex-column" style="width: 60%; height: 100%;">
+						<div id="editor-toolbar" class="d-flex align-items-center">
+							<div class="context-controls d-flex align-items-center">
+								<div id="frame-controls" class="d-none w-100"></div>
+								<div id="photo-controls" class="d-none w-100"></div>
+								<div id="text-controls" class="d-none w-100"></div>
+								<div id="element-controls" class="d-none w-100"></div>
+								<div id="multi-selection-controls" class="d-none w-100"></div>
+							</div>
+							<div id="main-actions" class="d-flex align-items-center gap-2"
+								style="margin-right: 15px;">
+								<button id="btn-clear" class="btn btn-outline-secondary btn-sm" style="display:none;">Clear</button>
+								<button id="btn-save" class="btn btn-primary btn-sm" style="display:none;">Save</button>
+								<button id="btn-close-modal" class="btn btn-danger btn-sm" style="display:none;">Close</button>
+							</div>
+						</div>
+
+						<div id="page-preview"
+							class="bg-white d-flex flex-row h-100 w-100 flex-nowrap"
+							style="position: relative;">
+							<div class="page-preview-container flex-grow-1 d-flex justify-content-center h-100">
+								<img id="page-preview-img"
+									src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+									alt="Yearbook page">
+							</div>
+							<div id="frame-container"
+								style="position:absolute; top:0; left:0; width:100%; height:100%;"></div>
+							<div id="safe-line-overlay"
+								style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></div>
+						</div>
+						<div id="save-confirmation-message" class="d-flex align-items-center" style="display: none;"></div>
+					</div>
+				</div>
 			</div>
-			<div id="frame-container"
-				style="position:absolute; top:0; left:0; width:100%; height:100%;"></div>
-			<div id="safe-line-overlay"
-				style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></div>
 		</div>
 	</div>
 
@@ -123,7 +140,7 @@ body {
 		window.alert = function(message) {
 			window.__RENDER_ERROR = window.__RENDER_ERROR || String(message);
 			document.body.dataset.renderError = window.__RENDER_ERROR;
-			console.warn('render-browser alert:', message);
+			console.warn('render-browser-editor-preview alert:', message);
 		};
 	</script>
 	<script src="<c:url value='/js/core/SelectionManager.js'/>?v=${jsVersion}"></script>
@@ -147,6 +164,7 @@ body {
 		const ctx = '${pageContext.request.contextPath}';
 		const renderYearbookId = ${yearbookId};
 		const renderToken = '${token}';
+
 		window.resolveRenderAssetPath = function(rawPath) {
 			if (typeof rawPath !== 'string' || rawPath.length === 0) {
 				return rawPath;
@@ -168,7 +186,9 @@ body {
 			});
 			return window.location.origin + ctx + '/render/browser/asset?' + params.toString();
 		};
+
 		window.__IS_BROWSER_RENDER = true;
+		window.__IS_EDITOR_PREVIEW_RENDER = true;
 		window.__USE_ORIGINAL_PHOTOS_FOR_RENDER = true;
 		window.__USE_ORIGINAL_THEME_ASSETS_FOR_RENDER = true;
 		window.renderFontsUrl =
@@ -176,114 +196,15 @@ body {
 		window.__RENDER_READY = false;
 		window.__RENDER_ERROR = null;
 
-		function parseRenderCssSize(variableName, fallback) {
-			const raw = getComputedStyle(document.documentElement)
-				.getPropertyValue(variableName)
-				.trim()
-				.replace('px', '');
-			const parsed = Number.parseFloat(raw);
-			return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-		}
-
-		function getVisibleBackgroundBounds() {
-			const $bgImg = $('#page-preview-img');
-			if ($bgImg.length === 0) {
-				return null;
-			}
-
-			const width = $bgImg.width();
-			const height = $bgImg.height();
-			const position = $bgImg.position();
-			if (!position || width <= 0 || height <= 0) {
-				return null;
-			}
-
-			return {
-				left: position.left,
-				top: position.top,
-				width: width,
-				height: height
-			};
-		}
-
-		function expandBounds(baseBounds, candidateBounds) {
-			if (!candidateBounds || candidateBounds.width <= 0 || candidateBounds.height <= 0) {
-				return baseBounds;
-			}
-			if (!baseBounds) {
-				return {
-					left: candidateBounds.left,
-					top: candidateBounds.top,
-					width: candidateBounds.width,
-					height: candidateBounds.height
-				};
-			}
-
-			const left = Math.min(baseBounds.left, candidateBounds.left);
-			const top = Math.min(baseBounds.top, candidateBounds.top);
-			const right = Math.max(baseBounds.left + baseBounds.width, candidateBounds.left + candidateBounds.width);
-			const bottom = Math.max(baseBounds.top + baseBounds.height, candidateBounds.top + candidateBounds.height);
-			return {
-				left,
-				top,
-				width: right - left,
-				height: bottom - top
-			};
-		}
-
-		function getVisibleContentBounds() {
-			let bounds = getVisibleBackgroundBounds();
-			$('#frame-container .frame-group, #frame-container .text-box, #frame-container .element-frame').each(function() {
-				const $element = $(this);
-				if (!$element.is(':visible')) {
-					return;
-				}
-
-				const position = $element.position();
-				const width = $element.outerWidth();
-				const height = $element.outerHeight();
-				if (!position || width <= 0 || height <= 0) {
-					return;
-				}
-
-				bounds = expandBounds(bounds, {
-					left: position.left,
-					top: position.top,
-					width: width,
-					height: height
-				});
+		function updateViewportDiagnostics() {
+			const viewport = window.visualViewport;
+			document.body.dataset.editorViewport = JSON.stringify({
+				innerWidth: window.innerWidth,
+				innerHeight: window.innerHeight,
+				viewportWidth: viewport ? viewport.width : window.innerWidth,
+				viewportHeight: viewport ? viewport.height : window.innerHeight,
+				scale: viewport ? viewport.scale : 1
 			});
-
-			return bounds;
-		}
-
-		function alignViewportToBackgroundBounds() {
-			const editorWidth = parseRenderCssSize('--editor-width', 786);
-			const editorHeight = parseRenderCssSize('--editor-height', 1011);
-			const renderWidth = parseRenderCssSize('--render-width', 2621);
-			const renderHeight = parseRenderCssSize('--render-height', 3371);
-			const scaleX = renderWidth / editorWidth;
-			const scaleY = renderHeight / editorHeight;
-			if (![scaleX, scaleY].every((value) => Number.isFinite(value) && value > 0)) {
-				return false;
-			}
-
-			$('#page-preview').css({
-				left: '0px',
-				top: '0px',
-				transform: `scale(${scaleX}, ${scaleY})`,
-				transformOrigin: 'top left'
-			});
-
-			document.body.dataset.renderCrop = JSON.stringify({
-				left: 0,
-				top: 0,
-				width: editorWidth,
-				height: editorHeight,
-				scaleX: scaleX,
-				scaleY: scaleY
-			});
-			return true;
 		}
 
 		window.addEventListener('error', function(event) {
@@ -293,6 +214,8 @@ body {
 
 		$(document).ready(async function() {
 			try {
+				updateViewportDiagnostics();
+
 				await DataLoader.loadAndSetupFonts();
 
 				const pageData = await $.ajax({
@@ -330,7 +253,7 @@ body {
 
 				requestAnimationFrame(() => {
 					requestAnimationFrame(() => {
-						alignViewportToBackgroundBounds();
+						updateViewportDiagnostics();
 						window.__RENDER_READY = true;
 						document.body.dataset.renderReady = 'true';
 					});
@@ -338,9 +261,14 @@ body {
 			} catch (error) {
 				window.__RENDER_ERROR = error?.message || String(error);
 				document.body.dataset.renderError = window.__RENDER_ERROR;
-				console.error('Browser render bootstrap failed:', error);
+				console.error('Editor preview bootstrap failed:', error);
 			}
 		});
+
+		if (window.visualViewport) {
+			window.visualViewport.addEventListener('resize', updateViewportDiagnostics);
+		}
+		window.addEventListener('resize', updateViewportDiagnostics);
 	</script>
 </body>
 </html>

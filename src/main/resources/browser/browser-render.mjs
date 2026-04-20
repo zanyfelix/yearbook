@@ -210,6 +210,42 @@ async function stopBrowser(browserProcess) {
 	}
 }
 
+async function settleAfterLayoutChange(client, sessionId, delayMs = 300) {
+	await client.send(
+		'Runtime.evaluate',
+		{
+			expression: `(() => {
+				try {
+					if (window.safeLineManager && typeof window.safeLineManager.update === 'function') {
+						window.safeLineManager.update();
+					}
+					if (typeof window.updateAllPositions === 'function') {
+						window.updateAllPositions();
+					}
+					if (typeof window.updateAllPhotosPosition === 'function') {
+						window.updateAllPhotosPosition();
+					}
+				} catch (error) {
+					console.warn('layout refresh failed', error);
+				}
+				return true;
+			})()`,
+			returnByValue: true
+		},
+		sessionId
+	);
+	await delay(delayMs);
+	await client.send(
+		'Runtime.evaluate',
+		{
+			expression: `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+			awaitPromise: true,
+			returnByValue: true
+		},
+		sessionId
+	);
+}
+
 async function readProtocolStream(client, handle, sessionId) {
 	const chunks = [];
 	try {
@@ -243,7 +279,10 @@ async function captureScreenshot({
 	deviceScale,
 	timeoutMs,
 	clipSelector,
-	metricsOutput
+	metricsOutput,
+	pageScaleFactor,
+	metricsOnly,
+	transparentBackground
 }) {
 	if (!existsSync(browserPath) && !['msedge', 'chrome'].includes(browserPath)) {
 		throw new Error(`Browser executable not found: ${browserPath}`);
@@ -336,7 +375,9 @@ async function captureScreenshot({
 		await client.send(
 			'Emulation.setDefaultBackgroundColorOverride',
 			{
-				color: { r: 255, g: 255, b: 255, a: 1 }
+				color: transparentBackground
+					? { r: 255, g: 255, b: 255, a: 0 }
+					: { r: 255, g: 255, b: 255, a: 1 }
 			},
 			sessionId
 		);
@@ -347,6 +388,19 @@ async function captureScreenshot({
 		await client.send('Emulation.setEmulatedMedia', { media: 'screen' }, sessionId);
 		pushEvent('stage', 'screen-media-ready');
 
+		if (Number.isFinite(pageScaleFactor) && pageScaleFactor > 0 && Math.abs(pageScaleFactor - 1) > 0.001) {
+			await client.send(
+				'Emulation.setPageScaleFactor',
+				{
+					pageScaleFactor
+				},
+				sessionId
+			);
+			pushEvent('stage', `page-scale:${pageScaleFactor}`);
+			await settleAfterLayoutChange(client, sessionId, 350);
+			pushEvent('stage', 'page-scale-settled');
+		}
+
 		let clipRect = null;
 		let renderMetrics = null;
 		if (clipSelector) {
@@ -354,6 +408,23 @@ async function captureScreenshot({
 				'Runtime.evaluate',
 				{
 					expression: `(() => {
+						const toRect = (rect) => ({
+							x: rect.x,
+							y: rect.y,
+							width: rect.width,
+							height: rect.height
+						});
+						const toRelativeRect = (rect, originRect) => {
+							if (!rect || !originRect || originRect.width <= 0 || originRect.height <= 0) {
+								return null;
+							}
+							return {
+								left: ((rect.left - originRect.left) / originRect.width) * 100,
+								top: ((rect.top - originRect.top) / originRect.height) * 100,
+								width: (rect.width / originRect.width) * 100,
+								height: (rect.height / originRect.height) * 100
+							};
+						};
 						const selector = ${JSON.stringify(clipSelector)};
 						const element = document.querySelector(selector);
 						if (!element) {
@@ -361,38 +432,58 @@ async function captureScreenshot({
 						}
 
 						const rect = element.getBoundingClientRect();
+						const bg = document.getElementById('page-preview-img');
+						const bgRect = bg ? bg.getBoundingClientRect() : null;
+						const layoutElements = [];
+						const visibleElements = document.querySelectorAll('#frame-container .frame-group, #frame-container .text-box, #frame-container .element-frame');
+						visibleElements.forEach((node, index) => {
+							const nodeRect = node.getBoundingClientRect();
+							if (!nodeRect || nodeRect.width <= 0 || nodeRect.height <= 0) {
+								return;
+							}
+
+							layoutElements.push({
+								index,
+								type: node.classList.contains('text-box')
+									? 'text'
+									: node.classList.contains('element-frame')
+										? 'element'
+										: 'frame',
+								className: node.className,
+								rect: toRect(nodeRect),
+								relativeToBackground: toRelativeRect(nodeRect, bgRect)
+							});
+
+							const photo = node.querySelector('.uploaded-photo');
+							if (photo) {
+								const photoRect = photo.getBoundingClientRect();
+								if (photoRect && photoRect.width > 0 && photoRect.height > 0) {
+									layoutElements.push({
+										index,
+										type: 'photo',
+										className: photo.className,
+										rect: toRect(photoRect),
+										relativeToBackground: toRelativeRect(photoRect, bgRect)
+									});
+								}
+							}
+						});
 						return {
 							selector,
-							rect: {
-								x: rect.x,
-								y: rect.y,
-								width: rect.width,
-								height: rect.height
-							},
+							rect: toRect(rect),
 							renderCrop: document.body?.dataset?.renderCrop || null,
 							renderReady: document.body?.dataset?.renderReady || null,
 							pagePreviewRect: (() => {
 								const preview = document.getElementById('page-preview');
 								if (!preview) return null;
 								const previewRect = preview.getBoundingClientRect();
-								return {
-									x: previewRect.x,
-									y: previewRect.y,
-									width: previewRect.width,
-									height: previewRect.height
-								};
+								return toRect(previewRect);
 							})(),
 							backgroundRect: (() => {
-								const bg = document.getElementById('page-preview-img');
 								if (!bg) return null;
-								const bgRect = bg.getBoundingClientRect();
-								return {
-									x: bgRect.x,
-									y: bgRect.y,
-									width: bgRect.width,
-									height: bgRect.height
-								};
-							})()
+								return toRect(bgRect);
+							})(),
+							layoutElements
 						};
 					})()`,
 					returnByValue: true
@@ -405,6 +496,15 @@ async function captureScreenshot({
 			if (!clipRect) {
 				pushEvent('clip-selector-metrics', renderMetrics ?? 'unavailable');
 			}
+		}
+
+		if (metricsOutput && renderMetrics) {
+			await writeFile(metricsOutput, JSON.stringify(renderMetrics, null, 2), 'utf8');
+			pushEvent('stage', 'metrics-written');
+		}
+
+		if (metricsOnly) {
+			return;
 		}
 
 		const screenshot = await client.send(
@@ -433,11 +533,6 @@ async function captureScreenshot({
 
 		await writeFile(output, screenshotBuffer);
 		pushEvent('stage', 'file-written');
-
-		if (metricsOutput && renderMetrics) {
-			await writeFile(metricsOutput, JSON.stringify(renderMetrics, null, 2), 'utf8');
-			pushEvent('stage', 'metrics-written');
-		}
 	} catch (error) {
 		const diagnosticParts = [error?.stack || String(error)];
 		if (eventLog.length > 0) {
@@ -474,12 +569,15 @@ async function main() {
 	const width = asNumber(getArg('width'), 2621);
 	const height = asNumber(getArg('height'), 3371);
 	const deviceScale = asNumber(getArg('device-scale'), 2);
+	const pageScaleFactor = asNumber(getArg('page-scale-factor'), 1);
 	const timeoutMs = asNumber(getArg('timeout-ms'), 45000);
 	const clipSelector = getArg('clip-selector', '#page-preview');
 	const metricsOutput = getArg('metrics-output', undefined);
+	const metricsOnly = getArg('metrics-only', 'false') === 'true';
+	const transparentBackground = getArg('transparent-background', 'false') === 'true';
 
-	if (!browserPath || !url || !output) {
-		throw new Error('Missing required arguments: --browser-path, --url, --output');
+	if (!browserPath || !url || (!output && !metricsOnly)) {
+		throw new Error('Missing required arguments: --browser-path, --url, and --output unless --metrics-only=true');
 	}
 
 	await captureScreenshot({
@@ -491,7 +589,10 @@ async function main() {
 		deviceScale,
 		timeoutMs,
 		clipSelector,
-		metricsOutput
+		metricsOutput,
+		pageScaleFactor,
+		metricsOnly,
+		transparentBackground
 	});
 }
 

@@ -37,10 +37,13 @@ class PanelManager {
      * @param {jQuery} panelToShow - 보여줄 패널
      * @param {jQuery} buttonToActivate - 활성화할 버튼
      */
-    showPanel(panelToShow, buttonToActivate) {
-        window.selectionManager.clearSelection();
+    showPanel(panelToShow, buttonToActivate, options = {}) {
+        if (!options.preserveSelection && window.selectionManager) {
+            window.selectionManager.clearSelection();
+        }
 
         // 모든 버튼 비활성화 및 모든 패널 숨기기
+        this.buttons.forEach(btn => btn.removeClass('active'));
         this.buttons.forEach(btn => btn.removeClass('active'));
         this.panels.forEach(p => p.addClass('d-none'));
 
@@ -50,6 +53,10 @@ class PanelManager {
 
         // 데이터 로드가 필요한 패널인지 확인하고, 내용이 비어있으면 데이터 로드
         this.loadDataIfNeeded(panelToShow);
+    }
+
+    showTextPanelForSelection() {
+        this.showPanel(this.textPanel, this.btnText, { preserveSelection: true });
     }
 
     /**

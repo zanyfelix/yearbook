@@ -165,6 +165,9 @@ class SelectionManager {
 		UIManager.showTextTooltip(textBox);
 
 		TextManager.updateUIFromSelectedTextBox(textBox);
+		if (window.textPreviewManager) {
+			window.textPreviewManager.activateTextBox(textBox);
+		}
 
 		textBox.on('resize.selection', () => {
 			if (textBox.hasClass('selected')) {
@@ -254,7 +257,9 @@ class SelectionManager {
 			// 회전 핸들 먼저 제거 (html() 줄바꿈 오감지 방지)
 			this.currentTextBox.find('.text-rotate-handle, .text-rotate-line').remove();
 
-			const htmlContent = this.currentTextBox.html();
+			const htmlContent = window.getTextBoxHtml
+				? window.getTextBoxHtml(this.currentTextBox)
+				: this.currentTextBox.html();
 			const hasLineBreaks = htmlContent.includes('<br>') || htmlContent.includes('<div>');
 			if (!hasLineBreaks) {
 				this.currentTextBox.css('white-space', 'nowrap');
@@ -282,6 +287,13 @@ class SelectionManager {
 		window.selectedFrame = null;
 		window.selectedPhotoWrapper = null;
 		window.selectedBox = null;
+		if (window.textPreviewManager) {
+			window.textPreviewManager.activateTextBox(null);
+		}
+	}
+
+	getSelectedTextBox() {
+		return this.currentTextBox;
 	}
 
 	applySafeLineConstraints(newLeft, newTop, element) {

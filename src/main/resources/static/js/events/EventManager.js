@@ -269,7 +269,9 @@ class EventManager {
 		textBox.on('dblclick', (e) => {
 			e.stopPropagation();
 			if (textBox.hasClass('selected')) {
-				this.enterEditMode(textBox);
+				if (window.textPreviewManager) {
+					window.textPreviewManager.focusSelectedEditor(textBox);
+				}
 			}
 		});
 
@@ -999,11 +1001,13 @@ class EventManager {
 	}
 
 	static enterEditMode(textBox) {
-		textBox.attr('contenteditable', 'true');
-		textBox.addClass('editing');
-		textBox.focus();
-		// autoResizeTextBox 제거: selectTextBox에서 updateElementPosition으로 이미 올바른 크기 설정됨
-		// 텍스트 입력 시 handleTextInput → autoResizeTextBox가 실시간 크기 조정 처리
+		if (window.textPreviewManager) {
+			window.textPreviewManager.focusSelectedEditor(textBox);
+			return;
+		}
+
+		textBox.removeClass('editing');
+		textBox.attr('contenteditable', 'false');
 	}
 
 	static handleTextInput(textBox) {
@@ -1015,7 +1019,7 @@ class EventManager {
 	static handleTextBlur(textBox) {
 
 		// 회전 핸들 div 제거하여 정확한 줄바꿈 감지
-		const rawHtml = textBox.html();
+		const rawHtml = window.getTextBoxHtml ? window.getTextBoxHtml(textBox) : textBox.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		// ✅ autoResizeTextBox/updateElementPosition/measureTextBoxContentSize와 동일한 정규식
 		const strippedHtmlForCheck = htmlContent
@@ -1064,7 +1068,7 @@ class EventManager {
 
 	static autoResizeTextBox($box) {
 		// 회전 핸들 div 제거하여 클린 HTML로 줄바꿈 감지
-		const rawHtml = $box.html();
+		const rawHtml = window.getTextBoxHtml ? window.getTextBoxHtml($box) : $box.html();
 		const htmlContent = rawHtml.replace(/<div class="text-rotate-(?:handle|line)"[^>]*><\/div>/g, '');
 		const strippedHtmlForCheck = htmlContent
 			.replace(/<br\s*\/?>\s*$/gi, '')
