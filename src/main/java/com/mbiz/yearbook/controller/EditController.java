@@ -14,8 +14,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -122,6 +125,181 @@ public class EditController {
 		}
 
 		return true;
+	}
+
+	private boolean canEditTargetUser(HttpSession session, Long targetUserId) {
+		if (!canEdit(session) || targetUserId == null) {
+			return false;
+		}
+
+		User loginUser = (User) session.getAttribute("loginUser");
+		if ("ADMIN".equalsIgnoreCase(loginUser.getRole())
+				|| Boolean.TRUE.equals(session.getAttribute("isImpersonating"))) {
+			return true;
+		}
+
+		return Objects.equals(loginUser.getId(), targetUserId);
+	}
+
+	static boolean hasSavableBackground(Map<String, Object> designData) {
+		if (designData == null) {
+			return false;
+		}
+
+		Object backgroundValue = designData.get("background");
+		String background = backgroundValue instanceof String ? ((String) backgroundValue).trim() : "";
+		if (background.isBlank()) {
+			Object originalValue = designData.get("backgroundOriginal");
+			background = originalValue instanceof String ? ((String) originalValue).trim() : "";
+		}
+		if (background.isBlank()) {
+			return false;
+		}
+
+		String normalized = background.replace('\\', '/').toLowerCase(Locale.ROOT);
+		int queryIndex = normalized.indexOf('?');
+		int fragmentIndex = normalized.indexOf('#');
+		int suffixIndex = queryIndex < 0 ? fragmentIndex
+				: (fragmentIndex < 0 ? queryIndex : Math.min(queryIndex, fragmentIndex));
+		if (suffixIndex >= 0) {
+			normalized = normalized.substring(0, suffixIndex);
+		}
+
+		if (normalized.isBlank() || "null".equals(normalized) || "undefined".equals(normalized)
+				|| "none".equals(normalized) || "transparent".equals(normalized)
+				|| "about:blank".equals(normalized) || normalized.startsWith("data:")
+				|| normalized.startsWith("blob:")) {
+			return false;
+		}
+
+		return !(normalized.endsWith("/images/background.png")
+				|| normalized.equals("images/background.png")
+				|| normalized.endsWith("/images/placeholder.png")
+				|| normalized.equals("images/placeholder.png"));
+	}
+
+	private static Map<String, Object> backgroundRequiredResponse() {
+		Map<String, Object> response = new HashMap<>();
+		response.put("success", false);
+		response.put("code", "BACKGROUND_REQUIRED");
+		response.put("message", "A background image must be applied before saving. Blank pages cannot be saved.");
+		return response;
+	}
+
+	private static boolean isPageFormatOptionEnabled(Map<String, Object> formatOptions, String optionName) {
+		if (formatOptions == null || !formatOptions.containsKey(optionName)) {
+			return true;
+		}
+		Object value = formatOptions.get(optionName);
+		return value instanceof Boolean booleanValue
+				? booleanValue
+				: Boolean.parseBoolean(String.valueOf(value));
+	}
+
+	private static String normalizePageFormatToken(Object value) {
+		return value == null
+				? ""
+				: String.valueOf(value).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+	}
+
+	private static String getPageFormatFrameOption(Map<?, ?> frameMap, Map<?, ?> themeMap) {
+		String category = normalizePageFormatToken(themeMap.get("category"));
+		if (category.isBlank()) {
+			category = normalizePageFormatToken(frameMap.get("category"));
+		}
+
+		String type = normalizePageFormatToken(frameMap.get("type"));
+		if (type.isBlank()) {
+			type = normalizePageFormatToken(themeMap.get("type"));
+		}
+		String name = normalizePageFormatToken(themeMap.get("name"));
+
+		if ("element".equals(category) || "element".equals(type)) {
+			return "elements";
+		}
+		if ("textboxframe".equals(category) || "textbox".equals(type) || name.contains("text")) {
+			return "textFrames";
+		}
+		return "photoFrames";
+	}
+
+	private static Map<String, Object> copyStringKeyMap(Map<?, ?> source) {
+		Map<String, Object> copy = new LinkedHashMap<>();
+		source.forEach((key, value) -> copy.put(String.valueOf(key), value));
+		return copy;
+	}
+
+	static Map<String, Object> sanitizePastedPageFormat(Map<String, Object> designData) {
+		return sanitizePastedPageFormat(designData, Collections.emptyMap());
+	}
+
+	static Map<String, Object> sanitizePastedPageFormat(Map<String, Object> designData,
+			Map<String, Object> formatOptions) {
+		Map<String, Object> sanitized = new LinkedHashMap<>();
+		List<Map<String, Object>> frames = new ArrayList<>();
+		Object rawFrames = designData == null ? null : designData.get("frames");
+		if (rawFrames instanceof List<?> frameList) {
+			for (Object rawFrame : frameList) {
+				if (!(rawFrame instanceof Map<?, ?> frameMap)
+						|| !(frameMap.get("theme") instanceof Map<?, ?> themeMap)) {
+					continue;
+				}
+				String frameOption = getPageFormatFrameOption(frameMap, themeMap);
+				if (!isPageFormatOptionEnabled(formatOptions, frameOption)) {
+					continue;
+				}
+
+				Map<String, Object> frame = copyStringKeyMap(frameMap);
+				frame.put("photo", null);
+				frames.add(frame);
+			}
+		}
+
+		List<Map<String, Object>> textBoxes = new ArrayList<>();
+		Object rawTextBoxes = designData == null ? null : designData.get("textBoxes");
+		if (isPageFormatOptionEnabled(formatOptions, "text") && rawTextBoxes instanceof List<?> textBoxList) {
+			for (Object rawTextBox : textBoxList) {
+				if (!(rawTextBox instanceof Map<?, ?> textBoxMap)) {
+					continue;
+				}
+				Map<String, Object> textBox = copyStringKeyMap(textBoxMap);
+				textBox.put("renderImage", null);
+				textBox.put("isModified", true);
+				textBoxes.add(textBox);
+			}
+		}
+
+		sanitized.put("frames", frames);
+		sanitized.put("textBoxes", textBoxes);
+		if (designData != null) {
+			sanitized.put("background", designData.getOrDefault("background", ""));
+			sanitized.put("backgroundOriginal",
+					designData.getOrDefault("backgroundOriginal", designData.getOrDefault("background", "")));
+			if (designData.get("backgroundThemeId") != null) {
+				sanitized.put("backgroundThemeId", designData.get("backgroundThemeId"));
+			}
+		}
+		return sanitized;
+	}
+
+	private boolean isBlankFormatPasteTarget(Yearbook page, ObjectMapper mapper) {
+		String thumbnailPath = page.getThumbnailPath() == null
+				? ""
+				: page.getThumbnailPath().replace('\\', '/').toLowerCase(Locale.ROOT);
+		if (!thumbnailPath.isBlank() && !thumbnailPath.endsWith("/images/placeholder.png")
+				&& !thumbnailPath.equals("images/placeholder.png")) {
+			return false;
+		}
+		if (page.getDesignData() == null || page.getDesignData().isBlank()) {
+			return true;
+		}
+		try {
+			Map<String, Object> currentDesign = mapper.readValue(page.getDesignData(), Map.class);
+			return !hasSavableBackground(currentDesign);
+		} catch (Exception e) {
+			logger.warn("Refusing to overwrite a page with unreadable design data: yearbookId={}", page.getId());
+			return false;
+		}
 	}
 
 	// --- /edit (기존과 동일) ---
@@ -420,6 +598,21 @@ public class EditController {
 	public Map<String, Object> savePage(@RequestBody Map<String, Object> payload) {
 		Long yearbookId = parseId(payload.get("yearbookId"));
 		String designDataJson = (String) payload.get("designData");
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			Map<String, Object> designData = mapper.readValue(designDataJson, Map.class);
+			if (!hasSavableBackground(designData)) {
+				logger.warn("Rejected page save without a valid background: yearbookId={}", yearbookId);
+				return backgroundRequiredResponse();
+			}
+		} catch (Exception e) {
+			logger.warn("Rejected page save with invalid design data: yearbookId={}", yearbookId, e);
+			Map<String, Object> response = new HashMap<>();
+			response.put("success", false);
+			response.put("code", "INVALID_DESIGN_DATA");
+			response.put("message", "The page design data is invalid.");
+			return response;
+		}
 
 		Yearbook page = yearbookId != null ? updateExistingPage(yearbookId) : createNewPage(payload);
 
@@ -429,6 +622,113 @@ public class EditController {
 		Yearbook savedPage = yearbookRepository.saveAndFlush(page);
 
 		return createSaveResponse(savedPage, savedPage.getThumbnailPath());
+	}
+
+	@PostMapping("/edit/pastePageFormat")
+	@ResponseBody
+	public Map<String, Object> pastePageFormat(@RequestBody Map<String, Object> payload, HttpSession session) {
+		String generatedThumbnailPath = null;
+		boolean pagePersisted = false;
+		try {
+			Long yearbookId = parseId(payload.get("yearbookId"));
+			long requestedContentsId = Long.parseLong(payload.get("contentsId").toString());
+			int requestedPageNo = Integer.parseInt(payload.get("pageNo").toString());
+			long requestedUserId = Long.parseLong(payload.get("userId").toString());
+
+			if (!canEditTargetUser(session, requestedUserId)) {
+				Map<String, Object> response = new HashMap<>();
+				response.put("success", false);
+				response.put("code", "FORMAT_PASTE_FORBIDDEN");
+				response.put("message", "This page cannot be edited.");
+				return response;
+			}
+
+			Contents requestedContents = contentsRepository.findById(requestedContentsId)
+					.orElseThrow(() -> new IllegalArgumentException("Contents not found: " + requestedContentsId));
+			if (!Objects.equals(requestedContents.getUserId(), requestedUserId)
+					|| requestedPageNo < 1 || requestedPageNo > requestedContents.getPages()) {
+				Map<String, Object> response = new HashMap<>();
+				response.put("success", false);
+				response.put("code", "FORMAT_PASTE_TARGET_MISMATCH");
+				response.put("message", "The target page no longer matches the selected blank page.");
+				return response;
+			}
+
+			ObjectMapper mapper = new ObjectMapper();
+			Object rawDesignData = payload.get("designData");
+			Map<String, Object> designData = rawDesignData instanceof Map<?, ?>
+					? mapper.convertValue(rawDesignData, Map.class)
+					: mapper.readValue(String.valueOf(rawDesignData), Map.class);
+			Object rawFormatOptions = payload.get("formatOptions");
+			Map<String, Object> formatOptions = rawFormatOptions instanceof Map<?, ?>
+					? mapper.convertValue(rawFormatOptions, Map.class)
+					: Collections.emptyMap();
+			Map<String, Object> sanitizedFormat = sanitizePastedPageFormat(designData, formatOptions);
+			if (!hasSavableBackground(sanitizedFormat)) {
+				return backgroundRequiredResponse();
+			}
+
+			Yearbook targetPage = yearbookId != null ? updateExistingPage(yearbookId) : createNewPage(payload);
+			if (!Objects.equals(targetPage.getContentsId(), requestedContentsId)
+					|| targetPage.getPageNo() != requestedPageNo
+					|| !Objects.equals(targetPage.getUserId(), requestedUserId)) {
+				Map<String, Object> response = new HashMap<>();
+				response.put("success", false);
+				response.put("code", "FORMAT_PASTE_TARGET_MISMATCH");
+				response.put("message", "The target page no longer matches the selected blank page.");
+				return response;
+			}
+			if (!isBlankFormatPasteTarget(targetPage, mapper)) {
+				Map<String, Object> response = new HashMap<>();
+				response.put("success", false);
+				response.put("code", "FORMAT_PASTE_TARGET_NOT_BLANK");
+				response.put("message", "Page format can only be pasted onto a blank page.");
+				return response;
+			}
+
+			String designDataJson = mapper.writeValueAsString(sanitizedFormat);
+			generatedThumbnailPath = thumbnailRenderingService.generateThumbnail(designDataJson, targetPage.getId());
+			if (generatedThumbnailPath == null || generatedThumbnailPath.isBlank()) {
+				throw new IOException("The pasted page thumbnail could not be generated.");
+			}
+
+			targetPage.setDesignData(designDataJson);
+			targetPage.setThumbnailPath(generatedThumbnailPath);
+			targetPage.setBackupDesignData(null);
+			targetPage.setLastSaved(new Date());
+			Yearbook savedPage = yearbookRepository.saveAndFlush(targetPage);
+			pagePersisted = true;
+
+			Map<String, Object> response;
+			try {
+				response = createSaveResponse(savedPage, generatedThumbnailPath);
+			} catch (Exception responseError) {
+				logger.warn("Page format was saved, but the page count could not be refreshed: yearbookId={}",
+						savedPage.getId(), responseError);
+				response = new HashMap<>();
+				response.put("newImagePath", generatedThumbnailPath);
+				response.put("newYearbookId", savedPage.getId());
+				response.put("contentsId", savedPage.getContentsId());
+				response.put("lastSaved", savedPage.getLastSaved());
+			}
+			response.put("success", true);
+			response.put("message", "Page format pasted and saved.");
+			return response;
+		} catch (Exception e) {
+			if (!pagePersisted && generatedThumbnailPath != null) {
+				try {
+					thumbnailRenderingService.deleteThumbnailIfExists(generatedThumbnailPath);
+				} catch (IOException cleanupError) {
+					logger.warn("Failed to remove an unreferenced format thumbnail: {}", generatedThumbnailPath,
+							cleanupError);
+				}
+			}
+			logger.error("Failed to paste and save page format", e);
+			Map<String, Object> response = new HashMap<>();
+			response.put("success", false);
+			response.put("message", "Failed to paste and save the page format: " + e.getMessage());
+			return response;
+		}
 	}
 
 	// --- 페이지 데이터 로드, 리셋, 순서 변경 API (기존과 동일) ---
@@ -476,10 +776,25 @@ public class EditController {
 
 	@PostMapping("/edit/resetPage")
 	@ResponseBody
-	public Map<String, Object> resetPage(@RequestParam("id") Long id) {
+	public Map<String, Object> resetPage(@RequestParam("id") Long id, HttpSession session) {
 		Map<String, Object> response = new HashMap<>();
 		try {
+			Yearbook page = yearbookRepository.findById(id)
+					.orElseThrow(() -> new IllegalArgumentException("Page not found: " + id));
+			if (!canEditTargetUser(session, page.getUserId())) {
+				response.put("success", false);
+				response.put("code", "PAGE_RESET_FORBIDDEN");
+				response.put("message", "This page cannot be reset.");
+				return response;
+			}
+
 			yearbookRepository.deleteById(id);
+			try {
+				thumbnailRenderingService.deletePageArtifacts(id, page.getThumbnailPath());
+			} catch (IOException cleanupError) {
+				logger.warn("Page reset succeeded, but its generated files could not be fully removed: yearbookId={}",
+						id, cleanupError);
+			}
 			response.put("success", true);
 		} catch (Exception e) {
 			response.put("success", false);
@@ -959,6 +1274,13 @@ public class EditController {
 
 			ObjectMapper mapper = new ObjectMapper();
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
+			Map<String, Object> designData = mapper.readValue(payload.getDesignData(), Map.class);
+			if (!hasSavableBackground(designData)) {
+				logger.warn("Rejected page save without a valid background: yearbookId={}, userId={}",
+						payload.getYearbookId(), payload.getUserId());
+				return backgroundRequiredResponse();
+			}
+			payload.setEmptyPage(false);
 
 			Map<String, Object> result = yearbookService.savePageAndThumbnail(payload, thumbnailFile, null, null);
 
@@ -1083,6 +1405,12 @@ public class EditController {
 			PayloadDto payload = mapper.readValue(payloadJson, PayloadDto.class);
 
 			Map<String, Object> designData = mapper.readValue(payload.getDesignData(), Map.class);
+			if (!hasSavableBackground(designData)) {
+				logger.warn("Rejected page save without a valid background: yearbookId={}, userId={}",
+						payload.getYearbookId(), payload.getUserId());
+				return backgroundRequiredResponse();
+			}
+			payload.setEmptyPage(false);
 			List<Map<String, Object>> textBoxes = (List<Map<String, Object>>) designData.get("textBoxes");
 
 			Path textImagesDir = Paths.get(userPhotosPath, "text-images");

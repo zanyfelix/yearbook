@@ -2,12 +2,22 @@
 // 📁 js/utils/Helpers.js
 // ============================================================================
 class Helpers {
-    static createThumbnailItem(src, onClick) {
+    static createThumbnailItem(src, onClick, options = {}) {
         const col = $('<div class="col-4 text-center">');
         const wrapper = $('<div class="thumbnail-wrapper position-relative">');
         const img = $('<img class="img-thumbnail preview-img">').attr('src', ctx + src);
         const overlay = $('<div class="overlay d-flex justify-content-center align-items-center">');
-        const btn = $('<button class="btn btn-primary btn-sm">').text('Select').on('click', onClick);
+        const btn = $('<button class="btn btn-primary btn-sm" type="button">').text('Select').on('click', event => {
+            options.onMouseLeave?.(event);
+            onClick?.(event);
+        });
+
+        if (options.onMouseEnter) {
+            wrapper.on('mouseenter.thumbnailPreview', options.onMouseEnter);
+        }
+        if (options.onMouseLeave) {
+            wrapper.on('mouseleave.thumbnailPreview', options.onMouseLeave);
+        }
         
         return col.append(wrapper.append(img).append(overlay.append(btn)));
     }

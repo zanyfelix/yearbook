@@ -9,10 +9,13 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mbiz.yearbook.controller.EditController;
@@ -23,9 +26,11 @@ import com.mbiz.yearbook.repository.YearbookRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class YearbookService {
 
 	private final UserRepository userRepository;
@@ -100,6 +105,7 @@ public class YearbookService {
         
         // 1. Yearbook 엔티티 준비 (기존 페이지 or 새 페이지)
         Yearbook yearbook;
+        String previousThumbnailPath = null;
         // yearbookId가 null이거나 0이면 새 페이지로 간주합니다.
         boolean isNewPage = (payload.getYearbookId() == null || payload.getYearbookId() == 0);
 
@@ -120,6 +126,7 @@ public class YearbookService {
             // ID로 기존 Yearbook 데이터를 찾아옵니다. 데이터가 없으면 예외를 발생시킵니다.
             yearbook = yearbookRepository.findById(payload.getYearbookId())
                 .orElseThrow(() -> new RuntimeException("Yearbook not found with id: " + payload.getYearbookId()));
+            previousThumbnailPath = yearbook.getThumbnailPath();
         }
 
         // 2. 썸네일 파일 저장 및 경로 반환
@@ -128,6 +135,7 @@ public class YearbookService {
             // 썸네일 서비스에 파일 저장을 위임합니다.
             // 새 페이지인 경우 ID가 없으므로 null을 전달하고, 기존 페이지는 ID를 전달합니다.
             thumbnailRelativePath = thumbnailService.saveThumbnail(thumbnailFile, isNewPage ? null : yearbook.getId());
+            registerThumbnailReplacementCleanup(previousThumbnailPath, thumbnailRelativePath);
         }
         
         // 3. Yearbook 엔티티 데이터 업데이트
@@ -159,6 +167,36 @@ public class YearbookService {
         response.put("lastSaved", savedYearbook.getLastSaved());
 
         return response;
+    }
+
+    private void registerThumbnailReplacementCleanup(String previousPath, String newPath) {
+        if (newPath == null || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (previousPath != null && !Objects.equals(previousPath, newPath)) {
+                    deleteThumbnailQuietly(previousPath, "replaced");
+                }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != TransactionSynchronization.STATUS_COMMITTED) {
+                    deleteThumbnailQuietly(newPath, "rolled-back");
+                }
+            }
+        });
+    }
+
+    private void deleteThumbnailQuietly(String thumbnailPath, String reason) {
+        try {
+            thumbnailService.deleteThumbnailIfExists(thumbnailPath);
+        } catch (IOException e) {
+            log.warn("Failed to remove {} thumbnail file: {}", reason, thumbnailPath, e);
+        }
     }
 
     /**

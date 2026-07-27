@@ -20,8 +20,10 @@
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 	rel="stylesheet">
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" type="text/css"
-	href="${pageContext.request.contextPath}/css/edit.css" />
+	href="${pageContext.request.contextPath}/css/edit.css?v=${jsVersion}" />
 </head>
 <body>
 	<div id="page-loading-overlay"
@@ -100,7 +102,7 @@
 							</c:choose>
 							<div class="page-card" draggable="false" id="${cardId}">
 								<div class="menu-container">
-									<button class="menu-dots-btn" aria-label="More options"
+									<button type="button" class="menu-dots-btn" aria-label="More options"
 										data-yearbook-id="${yearbookId}">⋮</button>
 								</div>
 
@@ -503,6 +505,19 @@
 									style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
 								<div id="safe-line-overlay"
 									style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
+								<div id="page-navigation" class="page-navigation"
+									role="group" aria-label="Page navigation">
+									<button type="button" id="btn-page-before"
+										class="page-navigation-btn page-navigation-before"
+										title="Previous page" aria-label="Previous page" disabled>
+										<i class="bi bi-chevron-left" aria-hidden="true"></i>
+									</button>
+									<button type="button" id="btn-page-after"
+										class="page-navigation-btn page-navigation-after"
+										title="Next page" aria-label="Next page" disabled>
+										<i class="bi bi-chevron-right" aria-hidden="true"></i>
+									</button>
+								</div>
 								<input type="file" id="image-upload-input" accept="image/*"
 									style="display: none;">
 							</div>
@@ -573,6 +588,85 @@
 							data-bs-dismiss="modal">Cancel</button>
 						<button type="button" class="btn btn-danger"
 							id="btn-confirm-clear">Reset</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Page Format Copy Options Modal -->
+		<div class="modal fade" id="pageFormatCopyModal" tabindex="-1"
+			aria-labelledby="pageFormatCopyModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="pageFormatCopyModalLabel">Copy Format</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<p class="format-copy-description">Select the items to copy.</p>
+						<div class="format-copy-options">
+							<label class="format-copy-option format-copy-option-required"
+								for="copy-format-background">
+								<input class="form-check-input" type="checkbox"
+									id="copy-format-background" checked disabled>
+								<span>Background</span>
+								<span class="format-required-label">Required</span>
+							</label>
+							<label class="format-copy-option" for="copy-format-photo-frames">
+								<input class="form-check-input format-copy-toggle" type="checkbox"
+									id="copy-format-photo-frames" checked>
+								<span>Photo Frames</span>
+							</label>
+							<label class="format-copy-option" for="copy-format-text-frames">
+								<input class="form-check-input format-copy-toggle" type="checkbox"
+									id="copy-format-text-frames" checked>
+								<span>Text Frames</span>
+							</label>
+							<label class="format-copy-option" for="copy-format-text">
+								<input class="form-check-input format-copy-toggle" type="checkbox"
+									id="copy-format-text" checked>
+								<span>Text</span>
+							</label>
+							<label class="format-copy-option" for="copy-format-elements">
+								<input class="form-check-input format-copy-toggle" type="checkbox"
+									id="copy-format-elements" checked>
+								<span>Elements</span>
+							</label>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary"
+							id="btn-confirm-copy-format">Copy Format</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Page Navigation Save Confirmation Modal -->
+		<div class="modal fade" id="pageNavigationConfirmModal" tabindex="-1"
+			aria-labelledby="pageNavigationConfirmModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="pageNavigationConfirmModalLabel">Move Page</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<p id="page-navigation-confirm-message" class="mb-0">
+							Would you like to save this page before moving?
+						</p>
+					</div>
+					<div class="modal-footer page-navigation-modal-actions">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-outline-secondary"
+							id="btn-move-without-saving">Move without Saving</button>
+						<button type="button" class="btn btn-primary"
+							id="btn-save-and-move">Save &amp; Move</button>
 					</div>
 				</div>
 			</div>

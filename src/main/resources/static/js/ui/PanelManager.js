@@ -44,7 +44,6 @@ class PanelManager {
 
         // 모든 버튼 비활성화 및 모든 패널 숨기기
         this.buttons.forEach(btn => btn.removeClass('active'));
-        this.buttons.forEach(btn => btn.removeClass('active'));
         this.panels.forEach(p => p.addClass('d-none'));
 
         // 선택한 버튼 활성화 및 패널 보여주기
@@ -53,6 +52,10 @@ class PanelManager {
 
         // 데이터 로드가 필요한 패널인지 확인하고, 내용이 비어있으면 데이터 로드
         this.loadDataIfNeeded(panelToShow);
+    }
+
+    showDefaultPanelForPage() {
+        this.showPanel(this.bgPanel, this.btnBg, { preserveSelection: true });
     }
 
     showTextPanelForSelection() {

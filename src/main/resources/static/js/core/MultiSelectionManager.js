@@ -15,9 +15,13 @@ class MultiSelectionManager {
         
         // ✅ 라쏘 선택 완료 후 click 이벤트 무시를 위한 플래그
         this.justFinishedLasso = false;
+
+        // 다중 선택 그룹 드래그 상태
+        this.groupDragState = null;
+        this.suppressNextClick = false;
         
         // 선택 가능한 요소 셀렉터
-        this.selectableSelector = '.frame-group, .text-box, .element-frame';
+        this.selectableSelector = '.frame-group:not(.frame-hover-preview), .text-box';
         
         // 이벤트 바인딩
         this.init();
@@ -66,72 +70,35 @@ class MultiSelectionManager {
             }
             
             this._clickHandler = function(e) {
-                // 클릭 위치에 있는 모든 요소 찾기
-                const elementsAtPoint = document.elementsFromPoint(e.clientX, e.clientY);
-                
-                // 선택 가능한 요소들만 필터링
-                const selectableElements = [];
-                for (const el of elementsAtPoint) {
-                    const $el = $(el).closest(self.selectableSelector);
-                    if ($el.length > 0) {
-                        // 중복 방지
-                        let isDuplicate = false;
-                        for (const existing of selectableElements) {
-                            if (existing[0] === $el[0]) {
-                                isDuplicate = true;
-                                break;
-                            }
-                        }
-                        if (!isDuplicate) {
-                            selectableElements.push($el);
-                        }
-                    }
+                if (self.suppressNextClick) {
+                    self.suppressNextClick = false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return;
+                }
+
+                const selectableElements = self.getSelectableElementsAtPoint(e.clientX, e.clientY);
+
+                if (selectableElements.length === 0) return;
+
+                // 선택된 요소가 클릭을 가려도 아래의 미선택 요소를 찾아 양방향 선택한다.
+                if (e.ctrlKey || e.metaKey) {
+                    const targetElement = self.resolveMultiSelectTarget(e, selectableElements);
+                    if (!targetElement) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    self.toggleSelection(targetElement);
+                    return;
                 }
                 
                 // 겹친 요소가 2개 이상일 때만 특수 처리
                 if (selectableElements.length < 2) return;
                 
-                // ========================================
-                // Ctrl+클릭: 다중 선택 처리
-                // ========================================
-                if (e.ctrlKey || e.metaKey) {
-                    console.log('[MultiSelectionManager] Ctrl+클릭 - 겹친 요소 감지:', selectableElements.length);
-                    
-                    // 선택되지 않은 요소 중 하나를 찾기
-                    let targetElement = null;
-                    for (const $el of selectableElements) {
-                        const isAlreadySelected = self.findElementIndex($el) >= 0;
-                        const isSingleSelected = (window.selectionManager && 
-                            (window.selectionManager.currentFrame?.[0] === $el[0] ||
-                             window.selectionManager.currentTextBox?.[0] === $el[0] ||
-                             window.selectionManager.currentElement?.[0] === $el[0]));
-                        
-                        if (!isAlreadySelected && !isSingleSelected) {
-                            targetElement = $el;
-                            break;
-                        }
-                    }
-                    
-                    // 선택되지 않은 요소가 있고, 그것이 클릭한 요소가 아니면 가로채서 처리
-                    if (targetElement) {
-                        const clickedElement = $(e.target).closest(self.selectableSelector);
-                        
-                        // 클릭한 요소와 다른 요소(아래에 가려진 요소)를 선택해야 하는 경우
-                        if (clickedElement.length > 0 && clickedElement[0] !== targetElement[0]) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.stopImmediatePropagation();
-                            
-                            console.log('[MultiSelectionManager] 가려진 요소 선택:', targetElement[0].className);
-                            self.toggleSelection(targetElement);
-                            return;
-                        }
-                    }
-                }
-                // ========================================
                 // 일반 클릭: 단일 선택 처리 (텍스트 우선)
-                // ========================================
-                else {
+                {
                     // 현재 선택된 요소 확인
                     const currentSelected = window.selectionManager?.currentFrame ||
                                            window.selectionManager?.currentTextBox ||
@@ -169,6 +136,14 @@ class MultiSelectionManager {
             
             // 캡처 단계에서 이벤트 처리 (true = capture phase)
             pagePreviewEl.addEventListener('click', this._clickHandler, true);
+
+            if (this._groupDragMouseDownHandler) {
+                pagePreviewEl.removeEventListener('mousedown', this._groupDragMouseDownHandler, true);
+            }
+            this._groupDragMouseDownHandler = function(e) {
+                self.startGroupDrag(e);
+            };
+            pagePreviewEl.addEventListener('mousedown', this._groupDragMouseDownHandler, true);
         }
         
         // 드래그 선택 (라쏘) - 빈 영역에서만 시작
@@ -208,6 +183,218 @@ class MultiSelectionManager {
         });
         
         console.log('[MultiSelectionManager] 이벤트 바인딩 완료');
+    }
+
+    getSelectableElementsAtPoint(clientX, clientY) {
+        const selectableElements = [];
+        const seen = new Set();
+
+        for (const el of document.elementsFromPoint(clientX, clientY)) {
+            const $candidate = $(el).closest(this.selectableSelector).first();
+            if (!$candidate.length || !$candidate.closest('#frame-container').length) continue;
+            if ($candidate.hasClass('frame-hover-preview') || seen.has($candidate[0])) continue;
+
+            seen.add($candidate[0]);
+            selectableElements.push($candidate);
+        }
+
+        return selectableElements;
+    }
+
+    getSingleSelectedElement() {
+        if (!window.selectionManager) return null;
+        return window.selectionManager.currentTextBox ||
+               window.selectionManager.currentElement ||
+               window.selectionManager.currentFrame ||
+               null;
+    }
+
+    isSelected($element) {
+        const single = this.getSingleSelectedElement();
+        return this.findElementIndex($element) >= 0 || Boolean(single && single[0] === $element[0]);
+    }
+
+    resolveMultiSelectTarget(e, selectableElements) {
+        const $clicked = $(e.target).closest(this.selectableSelector).first();
+        const clickedIsSelectable = $clicked.length && $clicked.closest('#frame-container').length;
+
+        if (clickedIsSelectable && !this.isSelected($clicked)) {
+            return $clicked;
+        }
+
+        const unselected = selectableElements.find($element => !this.isSelected($element));
+        if (unselected) return unselected;
+
+        return clickedIsSelectable ? $clicked : selectableElements[0];
+    }
+
+    startGroupDrag(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || this.selectedElements.length < 2) return;
+        if ($('.text-box.editing').length > 0) return;
+        if ($(e.target).closest('a, button, input, textarea, select, .control-btn, .rotate-handle, .text-rotate-handle, .element-resize-handle, .photo-resize-handle').length) return;
+
+        const $target = $(e.target).closest(this.selectableSelector).first();
+        if (!$target.length || this.findElementIndex($target) < 0) return;
+
+        const items = this.selectedElements.map($element => ({
+            $element,
+            left: parseFloat($element.css('left')) || 0,
+            top: parseFloat($element.css('top')) || 0
+        }));
+        const groupBounds = this.getGroupBounds(items);
+        if (!groupBounds) return;
+
+        this.groupDragState = {
+            startX: e.clientX,
+            startY: e.clientY,
+            items,
+            groupBounds,
+            safeBounds: this.getSafeBounds(),
+            isDragging: false
+        };
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        $(document)
+            .off('.multiGroupDrag')
+            .on('mousemove.multiGroupDrag', event => this.updateGroupDrag(event))
+            .on('mouseup.multiGroupDrag', () => this.endGroupDrag());
+    }
+
+    getGroupBounds(items) {
+        const rects = items
+            .map(item => item.$element[0]?.getBoundingClientRect())
+            .filter(rect => rect && rect.width > 0 && rect.height > 0);
+        if (!rects.length) return null;
+
+        return {
+            left: Math.min(...rects.map(rect => rect.left)),
+            top: Math.min(...rects.map(rect => rect.top)),
+            right: Math.max(...rects.map(rect => rect.right)),
+            bottom: Math.max(...rects.map(rect => rect.bottom))
+        };
+    }
+
+    getSafeBounds() {
+        const preview = $('#page-preview')[0];
+        const actualBgRect = window.safeLineManager?.getActualImagePosition($('#page-preview-img'));
+        if (!preview || !actualBgRect || !window.safeLineManager) return null;
+
+        const previewRect = preview.getBoundingClientRect();
+        const marginX = (window.safeLineManager.safeMargin / window.safeLineManager.actualWidth) * actualBgRect.width;
+        const marginY = (window.safeLineManager.safeMargin / window.safeLineManager.actualHeight) * actualBgRect.height;
+
+        return {
+            left: previewRect.left + actualBgRect.left + marginX,
+            top: previewRect.top + actualBgRect.top + marginY,
+            right: previewRect.left + actualBgRect.left + actualBgRect.width - marginX,
+            bottom: previewRect.top + actualBgRect.top + actualBgRect.height - marginY
+        };
+    }
+
+    constrainGroupDelta(deltaX, deltaY, groupBounds, safeBounds) {
+        if (!safeBounds) return { deltaX, deltaY };
+
+        const constrainAxis = (delta, startMin, startMax, safeMin, safeMax) => {
+            let result = delta;
+
+            if (startMin >= safeMin) {
+                result = Math.max(result, safeMin - startMin);
+            } else if (result < 0) {
+                result = 0;
+            }
+
+            if (startMax <= safeMax) {
+                result = Math.min(result, safeMax - startMax);
+            } else if (result > 0) {
+                result = 0;
+            }
+
+            return result;
+        };
+
+        return {
+            deltaX: constrainAxis(deltaX, groupBounds.left, groupBounds.right, safeBounds.left, safeBounds.right),
+            deltaY: constrainAxis(deltaY, groupBounds.top, groupBounds.bottom, safeBounds.top, safeBounds.bottom)
+        };
+    }
+
+    getConstrainedDeltaForElements(elements, deltaX, deltaY) {
+        const items = elements
+            .filter($element => $element?.length && $element[0])
+            .map($element => ({ $element }));
+
+        // A partial group move would change spacing, so stop if any selection is invalid.
+        if (items.length !== elements.length || items.length === 0) {
+            return { deltaX: 0, deltaY: 0 };
+        }
+
+        const groupBounds = this.getGroupBounds(items);
+        if (!groupBounds) {
+            return { deltaX: 0, deltaY: 0 };
+        }
+
+        return this.constrainGroupDelta(
+            deltaX,
+            deltaY,
+            groupBounds,
+            this.getSafeBounds()
+        );
+    }
+
+    updateGroupDrag(e) {
+        const state = this.groupDragState;
+        if (!state) return;
+
+        const rawDeltaX = e.clientX - state.startX;
+        const rawDeltaY = e.clientY - state.startY;
+        if (!state.isDragging && Math.abs(rawDeltaX) <= 3 && Math.abs(rawDeltaY) <= 3) return;
+
+        if (!state.isDragging) {
+            state.isDragging = true;
+            $('body').addClass('multi-group-dragging');
+            state.items.forEach(item => item.$element.addClass('group-dragging'));
+        }
+
+        e.preventDefault();
+        const constrained = this.constrainGroupDelta(
+            rawDeltaX,
+            rawDeltaY,
+            state.groupBounds,
+            state.safeBounds
+        );
+
+        state.items.forEach(item => {
+            item.$element.css({
+                left: `${item.left + constrained.deltaX}px`,
+                top: `${item.top + constrained.deltaY}px`
+            });
+        });
+
+        if (window.selectionManager) {
+            window.selectionManager.safeConstraintsCache = null;
+        }
+    }
+
+    endGroupDrag() {
+        const state = this.groupDragState;
+        $(document).off('.multiGroupDrag');
+        $('body').removeClass('multi-group-dragging');
+
+        if (!state) return;
+
+        state.items.forEach(item => item.$element.removeClass('group-dragging'));
+        if (state.isDragging) {
+            state.items.forEach(item => EventManager.saveElementPosition(item.$element));
+            this.suppressNextClick = true;
+            setTimeout(() => {
+                this.suppressNextClick = false;
+            }, 0);
+        }
+
+        this.groupDragState = null;
     }
     
     // ========================================================================

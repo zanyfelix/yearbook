@@ -3,6 +3,30 @@
 // ============================================================================
 class DataLoader {
     static fontsLoaded = false;
+    static thumbnailLoadTokens = new Map();
+
+    static beginThumbnailLoad(targetPanel) {
+        const nextToken = (this.thumbnailLoadTokens.get(targetPanel) || 0) + 1;
+        this.thumbnailLoadTokens.set(targetPanel, nextToken);
+        return nextToken;
+    }
+
+    static isCurrentThumbnailLoad(targetPanel, token) {
+        return this.thumbnailLoadTokens.get(targetPanel) === token;
+    }
+
+    static invalidateThumbnailLoads(targetPanels = [
+        '#background-panel',
+        '#photoFrameList',
+        '#textboxFrameList',
+        '#element-panel'
+    ]) {
+        targetPanels.forEach(targetPanel => {
+            const nextToken = (this.thumbnailLoadTokens.get(targetPanel) || 0) + 1;
+            this.thumbnailLoadTokens.set(targetPanel, nextToken);
+        });
+        FrameManager.clearHoverPreview();
+    }
     
     // 공통 AJAX 요청 처리
     static async fetchData(url, data) {
@@ -51,10 +75,31 @@ class DataLoader {
             img.src = src.startsWith('http') || src.startsWith('/') ? src : `${ctx}${src}`;
         });
     }
+
+    static normalizeFrameCategory(category) {
+        const normalized = String(category || '').toLowerCase();
+        if (normalized === 'photoframe') return 'photoframe';
+        if (normalized === 'textboxframe') return 'textboxframe';
+        if (normalized === 'element') return 'element';
+        return null;
+    }
+
+    static createPreviewOptions(theme, category) {
+        const normalizedCategory = this.normalizeFrameCategory(category);
+        if (!normalizedCategory || !theme) return {};
+
+        const previewTheme = { ...theme, category: normalizedCategory };
+        return {
+            onMouseEnter: () => FrameManager.showHoverPreview(previewTheme),
+            onMouseLeave: () => FrameManager.clearHoverPreview()
+        };
+    }
     
     // 공통 썸네일 로드 로직 (로딩 표시 추가)
     static async loadThumbnails(category, gubun, targetPanel, modalHandler) {
+        const loadToken = this.beginThumbnailLoad(targetPanel);
         const userId = $("#id").val();
+        FrameManager.clearHoverPreview();
         const panel = $(targetPanel).empty();
         
         // 1. 로딩 스피너 표시
@@ -66,6 +111,8 @@ class DataLoader {
             const representativeData = await this.fetchData('/edit/theme', {
                 userId, category, gubun
             });
+
+            if (!this.isCurrentThumbnailLoad(targetPanel, loadToken)) return;
             
             if (!representativeData || representativeData.length === 0) {
                 $loader.remove();
@@ -79,6 +126,8 @@ class DataLoader {
             );
             
             await Promise.all(preloadPromises);
+
+            if (!this.isCurrentThumbnailLoad(targetPanel, loadToken)) return;
             
             // 4. 로딩 스피너 제거
             $loader.remove();
@@ -86,6 +135,7 @@ class DataLoader {
             // 5. 썸네일 아이템 생성 및 표시
             representativeData.forEach(result => {
                 const item = Helpers.createThumbnailItem(result.theme.thumbnailPath, async () => {
+                    FrameManager.clearHoverPreview();
                     if (modalHandler) {
                         try {
                             const fullListData = await this.fetchData('/edit/themesByParent', {
@@ -97,13 +147,18 @@ class DataLoader {
                         }
                     }
                     else {
-                        FrameManager.applyFrame(result.theme);
+                        const normalizedCategory = this.normalizeFrameCategory(category);
+                        FrameManager.applyFrame({
+                            ...result.theme,
+                            category: normalizedCategory || result.theme.category
+                        });
                     }
-                });
+                }, this.createPreviewOptions(result.theme, category));
                 panel.append(item);
             });
             
         } catch (error) {
+            if (!this.isCurrentThumbnailLoad(targetPanel, loadToken)) return;
             console.error(`${category} 로딩 실패:`, error);
             $loader.remove();
             panel.append('<div class="text-center text-danger py-3">Failed to load</div>');
@@ -142,7 +197,8 @@ class DataLoader {
     }
     
     // 모달 로드 공통 로직 (로딩 표시 추가)
-    static async loadModal(data, selectedIndex, listEl, applyHandler) {
+    static async loadModal(data, selectedIndex, listEl, applyHandler, previewMapper = null) {
+        FrameManager.clearHoverPreview();
         listEl.empty();
         
         // 데이터가 없으면 메시지 표시
@@ -169,10 +225,16 @@ class DataLoader {
             // 4. 썸네일 아이템 생성 및 표시
             data.forEach((result, index) => {
                 const item = Helpers.createThumbnailItem(result.thumbnailPath, () => {
+                    FrameManager.clearHoverPreview();
                     window.selectionManager.clearSelection();
                     applyHandler(result);
                     setTimeout(() => window.safeLineManager.update(), 500);
-                });
+                }, previewMapper
+                    ? {
+                        onMouseEnter: () => FrameManager.showHoverPreview(previewMapper(result)),
+                        onMouseLeave: () => FrameManager.clearHoverPreview()
+                    }
+                    : {});
                 
                 if (index === selectedIndex) {
                     item.find('.thumbnail-wrapper').addClass('selected-thumbnail');
@@ -212,7 +274,11 @@ class DataLoader {
             const frameData = { ...result, category };
             FrameManager.applyFrame(frameData);
             $('#frameModal').modal('hide');
-        });
+        }, result => ({ ...result, category }));
+
+        $('#frameModal')
+            .off('hidden.bs.modal.framePreview')
+            .on('hidden.bs.modal.framePreview', () => FrameManager.clearHoverPreview());
     }
     
     // 폰트 관련 메서드들

@@ -1392,6 +1392,9 @@ button:focus,
 
 /* 1. 툴바 메인 컨테이너: 고정 높이 설정 */
 #editor-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
     min-height: 57px; /* 툴바 공간을 항상 고정 */
     align-items: center;
     border: none;
@@ -1403,6 +1406,69 @@ button:focus,
 #editor-toolbar .context-controls {
     display: flex;
     align-items: center;
+    min-width: 0;
+    width: 100%;
+    justify-self: stretch;
+}
+
+#page-navigation {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+}
+
+.page-navigation-btn {
+    position: absolute;
+    top: 50%;
+    width: 42px;
+    height: 52px;
+    padding: 0;
+    border: 1px solid #0d6efd;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: 0;
+    transform: translateY(-50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    pointer-events: auto;
+}
+
+.page-navigation-before {
+    left: 12px;
+}
+
+.page-navigation-after {
+    right: 12px;
+}
+
+.page-navigation-btn:hover:not(:disabled),
+.page-navigation-btn:focus-visible:not(:disabled) {
+    background: #0d6efd;
+    color: #ffffff;
+    outline: none;
+}
+
+.page-navigation-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
+}
+
+.page-navigation-btn:disabled {
+    border-color: #adb5bd;
+    color: #adb5bd;
+    background: #f8f9fa;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+#main-actions {
+    justify-self: end;
+    min-width: max-content;
 }
 
 /* 3. 오른쪽 메인 액션 버튼 그룹 */
@@ -2034,9 +2100,39 @@ button:focus,
 
 /* 6. 마우스 오버 시 Edit 버튼과 메뉴 아이콘 나타남 */
 .page-card:hover .edit-btn,
-.page-card:hover .menu-container {
+.page-card:hover .menu-container,
+.page-card:focus-within .edit-btn,
+.page-card:focus-within .menu-container {
     opacity: 1;
     pointer-events: auto; /* 클릭 가능하도록 설정 */
+}
+
+.page-card.format-paste-pending .page-thumb {
+    filter: brightness(0.7);
+    opacity: 0.55;
+    transform: none;
+}
+
+.page-card.format-paste-pending .edit-btn,
+.page-card.format-paste-pending .menu-container {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.page-format-paste-loader {
+    position: absolute;
+    top: 75px;
+    left: 50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: #fff;
+    background: rgba(33, 37, 41, 0.78);
+    border-radius: 6px;
+    transform: translate(-50%, -50%);
 }
 
 /* Edit 버튼 호버 시 약간 밝아지는 효과 */
@@ -2061,6 +2157,49 @@ button:focus,
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.page-action-menu {
+    position: fixed;
+    z-index: 20000;
+    min-width: 156px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(33, 37, 41, 0.18);
+}
+
+.page-action-menu-item {
+    width: 100%;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #212529;
+    font-size: 13px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.page-action-menu-item:hover:not(:disabled),
+.page-action-menu-item:focus-visible:not(:disabled) {
+    background: #e9ecef;
+    outline: none;
+}
+
+.page-action-menu-item:disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.page-action-menu-item i {
+    width: 16px;
+    text-align: center;
 }
 
 /* 메뉴 드롭다운 */
@@ -2251,6 +2390,27 @@ input:checked + .slider-text .off-text {
     min-width: 80px;
 }
 
+#clearConfirmModal.save-options-modal .modal-dialog {
+    max-width: 600px;
+}
+
+#clearConfirmModal.save-options-modal .modal-footer {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+#clearConfirmModal.save-options-modal .modal-footer > * {
+    margin: 0;
+}
+
+#clearConfirmModal.save-options-modal .btn {
+    min-width: 0;
+    padding: 6px 9px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
 /* Loading spinner in button */
 #clearConfirmModal .spinner-border-sm {
     width: 14px;
@@ -2258,6 +2418,68 @@ input:checked + .slider-text .off-text {
     border-width: 2px;
     margin-right: 6px;
     vertical-align: middle;
+}
+
+#pageFormatCopyModal .modal-dialog,
+#pageNavigationConfirmModal .modal-dialog {
+    max-width: 480px;
+}
+
+.format-copy-description {
+    margin-bottom: 12px;
+    color: #495057;
+}
+
+.format-copy-options {
+    border-top: 1px solid #dee2e6;
+}
+
+.format-copy-option {
+    min-height: 45px;
+    margin: 0;
+    padding: 10px 2px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: #212529;
+}
+
+.format-copy-option .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.format-copy-option-required {
+    cursor: default;
+    font-weight: 600;
+}
+
+.format-copy-option-required .form-check-input:disabled {
+    opacity: 1;
+}
+
+.format-required-label {
+    margin-left: auto;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #e9ecef;
+    color: #495057;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.page-navigation-modal-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.page-navigation-modal-actions > * {
+    margin: 0;
+    white-space: nowrap;
 }
 
 /* Success/Error Alert Messages - Simple */
@@ -2273,6 +2495,18 @@ input:checked + .slider-text .off-text {
     #clearConfirmModal .modal-dialog {
         margin: 10px;
         max-width: calc(100% - 20px);
+    }
+
+    #clearConfirmModal.save-options-modal .modal-footer {
+        gap: 6px;
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    #clearConfirmModal.save-options-modal .btn {
+        padding-right: 7px;
+        padding-left: 7px;
+        font-size: 12px;
     }
 }
 
@@ -2402,6 +2636,50 @@ input:checked + .slider-text .off-text {
     outline: 2px dashed #007bff !important;
     outline-offset: 2px;
     box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15) !important;
+}
+
+.multi-group-dragging,
+.multi-group-dragging * {
+    cursor: grabbing !important;
+}
+
+.group-dragging {
+    will-change: left, top;
+}
+
+.frame-hover-preview {
+    opacity: 1;
+    outline: none;
+    pointer-events: none !important;
+    filter: none;
+}
+
+.frame-hover-preview > * {
+    opacity: 0.68;
+}
+
+.frame-hover-preview .place-image-here-link {
+    display: none !important;
+}
+
+.frame-hover-preview .photo-container {
+    background-color: #888888 !important;
+}
+
+.frame-hover-preview::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    z-index: 100;
+    border: 3px dashed #ffd000;
+    border-radius: 6px;
+    box-sizing: border-box;
+    box-shadow: 0 0 12px rgba(255, 208, 0, 0.65);
+    pointer-events: none;
+}
+
+.frame-hover-preview * {
+    pointer-events: none !important;
 }
 
 /* 라쏘 선택 박스 */

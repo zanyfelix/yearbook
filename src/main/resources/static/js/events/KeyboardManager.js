@@ -124,6 +124,35 @@ class KeyboardManager {
     // 요소들 이동
     // ========================================================================
     moveElements(elements, deltaX, deltaY) {
+        const multiSelectionManager = window.multiSelectionManager;
+        const canMoveAsGroup = elements.length > 1 &&
+            multiSelectionManager?.getConstrainedDeltaForElements &&
+            elements.every(item => item?.length && item[0] && item.type !== 'photo');
+
+        if (canMoveAsGroup) {
+            const constrained = multiSelectionManager.getConstrainedDeltaForElements(
+                elements,
+                deltaX,
+                deltaY
+            );
+
+            if (constrained.deltaX === 0 && constrained.deltaY === 0) return;
+
+            elements.forEach($element => {
+                this.moveSingleElement(
+                    $element,
+                    constrained.deltaX,
+                    constrained.deltaY,
+                    { applySafeLineConstraint: false }
+                );
+            });
+
+            if (window.selectionManager) {
+                window.selectionManager.safeConstraintsCache = null;
+            }
+            return;
+        }
+
         elements.forEach(item => {
             // ✅ 사진 타입인 경우 별도 처리
             if (item.type === 'photo') {
@@ -201,7 +230,7 @@ class KeyboardManager {
     // ========================================================================
     // 단일 요소 이동
     // ========================================================================
-    moveSingleElement($element, deltaX, deltaY) {
+    moveSingleElement($element, deltaX, deltaY, options = {}) {
         // 현재 CSS 위치 + transform translate 추출
         const currentTransform = $element.css('transform');
         let translateX = 0, translateY = 0, rotation = 0;
@@ -226,10 +255,9 @@ class KeyboardManager {
         let newLeft = currentLeft + deltaX;
         let newTop  = currentTop  + deltaY;
 
-        // SafeLine 제약 적용
-        const constrained = window.selectionManager.applySafeLineConstraints(
-            newLeft, newTop, $element
-        );
+        const constrained = options.applySafeLineConstraint === false
+            ? { left: newLeft, top: newTop }
+            : window.selectionManager.applySafeLineConstraints(newLeft, newTop, $element);
 
         // translate 없이 left/top으로만 위치 적용 (rotation만 유지)
         const rotationTransform = (rotation !== 0)

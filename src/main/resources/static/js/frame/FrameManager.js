@@ -27,6 +27,7 @@ class FrameManager {
 	}
 
 	static applyFrame(frameTheme, savedState = null) {
+		this.clearHoverPreview();
 		const frameContainer = $('#frame-container');
 		const frameType = this.getFrameType(frameTheme);
 		const frameGroup = this.createFrameGroup(frameType);
@@ -83,6 +84,49 @@ class FrameManager {
 		} else if (frameType.isElement) {
 			EventManager.setupElementEvents(frameGroup);
 		}
+	}
+
+	static showHoverPreview(frameTheme) {
+		this.clearHoverPreview();
+		if (!frameTheme) return null;
+
+		const actualBgRect = window.safeLineManager?.getActualImagePosition($('#page-preview-img'));
+		if (!actualBgRect) return null;
+
+		const frameType = this.getFrameType(frameTheme);
+		const previewGroup = this.createFrameGroup(frameType)
+			.addClass('frame-hover-preview')
+			.attr('aria-hidden', 'true');
+		const frameOverlay = frameType.isSimple
+			? this.createSimpleFrame(frameTheme, previewGroup, frameType)
+			: this.createPhotoFrame(frameTheme, previewGroup);
+
+		const frameAssetPath = this.resolveThemeAssetPath(frameTheme, 'image');
+		if (frameAssetPath) {
+			const overlaySrc = window.resolveRenderAssetPath
+				? window.resolveRenderAssetPath(frameAssetPath)
+				: frameAssetPath;
+			frameOverlay.attr('src', overlaySrc);
+		}
+
+		const dimensions = this.calculateFrameDimensions(frameTheme, actualBgRect);
+		const position = this.calculateCenterPosition(dimensions, actualBgRect);
+		previewGroup.css({
+			left: `${position.left}px`,
+			top: `${position.top}px`,
+			width: `${dimensions.width}px`,
+			height: `${dimensions.height}px`,
+			zIndex: 9000,
+			pointerEvents: 'none'
+		});
+		previewGroup.find('*').css('pointer-events', 'none');
+
+		$('#frame-container').append(previewGroup);
+		return previewGroup;
+	}
+
+	static clearHoverPreview() {
+		$('#frame-container .frame-hover-preview').remove();
 	}
 
 	// ▼▼▼ [핵심 수정] addRotationHandle 함수 내부 클래스 이름을 기존 이름으로 변경 ▼▼▼

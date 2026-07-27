@@ -2,6 +2,10 @@ $(document).ready(function() {
 
 	let activePageThumb = null;
 	let hasSaved = false;
+	let pendingPageFormatSourceCard = $();
+	let pendingPageNavigationCard = $();
+	const PAGE_FORMAT_STORAGE_KEY = `yearbook.pageFormatClipboard.v2.${$('#id').val() || 'anonymous'}`;
+	const BACKGROUND_REQUIRED_MESSAGE = 'Please apply a background image before saving. Blank pages cannot be saved.';
 
 	// ── 텍스트 드래그 선택(파란 영역) 방지 ──────────────────────────────
 	// 근본 차단: CSS user-select:none 을 .left-button-area, .center-thumbnail-area,
@@ -54,6 +58,7 @@ $(document).ready(function() {
 
 	// 모달이 닫힐 때 정리
 	$('#editModal').on('hidden.bs.modal', function() {
+		FrameManager.clearHoverPreview();
 		if (window.multiSelectionManager) {
 			window.multiSelectionManager.clearSelection();
 		}
@@ -982,6 +987,9 @@ $(document).ready(function() {
 		$('#editor-toolbar .context-controls > div').addClass('d-none');
 
 		// Step 7: 패널 상태 강제 초기화
+		if (typeof DataLoader !== 'undefined' && DataLoader.invalidateThumbnailLoads) {
+			DataLoader.invalidateThumbnailLoads();
+		}
 		$('#btn-background, #btn-photo-frame, #btn-textbox-frame, #btn-text, #btn-element').removeClass('active');
 		$('#background-panel, #frame-panel, #text-panel, #element-panel').addClass('d-none');
 		$('#photoFrameList, #textboxFrameList').addClass('d-none');
@@ -1363,6 +1371,11 @@ $(document).ready(function() {
 				this.logout();
 				return;
 			}
+			if (!hasAppliedCanvasBackground()) {
+				console.warn('배경 이미지가 없어 자동 저장을 건너뛰고 로그아웃합니다.');
+				this.logout();
+				return;
+			}
 
 			// executeSave 함수를 직접 호출 (window에 등록 필요)
 			if (window.executeSave) {
@@ -1454,6 +1467,11 @@ $(document).ready(function() {
 	}
 
 	// ✅ [핵심 수정] 이벤트 핸들러들을 전역으로 이동 (중복 바인딩 방지)
+	function ensureDefaultEditorPanelLoaded() {
+		if (window.panelManager?.showDefaultPanelForPage) {
+			window.panelManager.showDefaultPanelForPage();
+		}
+	}
 
 	// 모달 이벤트는 한 번만 바인딩
 	$('#editModal').on('show.bs.modal', function() {
@@ -1481,16 +1499,8 @@ $(document).ready(function() {
 			setTimeout(() => window.safeLineManager.update(), 200);
 		}
 		
-		// ✅ Background 패널 초기 데이터 로드
-		if (window.panelManager) {
-			const $bgPanel = $('#background-panel');
-			// 패널이 비어있으면 데이터 로드
-			if ($bgPanel.children().length === 0) {
-				const pageCategory = $('#editModal').data('page-category');
-				console.log('[shown.bs.modal] Background 패널 초기 데이터 로드:', pageCategory);
-				DataLoader.loadBackgrounds(pageCategory);
-			}
-		}
+		// 최초 진입과 상단 페이지 이동 모두 같은 패널 로딩 경로를 사용한다.
+		ensureDefaultEditorPanelLoaded();
 		
 		// ✅ 배경 이미지 크기 확인 후 모든 요소 위치 재계산
 		const $bgImg = $('#page-preview-img');
@@ -1593,6 +1603,7 @@ $(document).ready(function() {
 		const $message = $('#save-confirmation-message');
 		$message.removeClass('show');
 		activePageThumb = null;
+		updatePageNavigationButtons();
 
 		// 세션 관리 중지
 		console.log("모달이 닫혔습니다. 세션 관리를 중지합니다.");
@@ -1606,6 +1617,7 @@ $(document).ready(function() {
 
 		const $pageCard = $(this).closest('.page-card');
 		activePageThumb = $pageCard.find('.page-thumb');
+		updatePageNavigationButtons();
 		const yearbookId = activePageThumb.attr('data-yearbook-id');
 
 		console.log('Edit 버튼 클릭 - yearbookId:', yearbookId);
@@ -1650,10 +1662,11 @@ $(document).ready(function() {
 			});
 
 			// ✅ 폰트와 페이지 데이터 병렬 로드
-			const [_, pageData] = await Promise.all([
+			const [_, loadedPageData] = await Promise.all([
 				DataLoader.loadAndSetupFonts(),
 				pageDataPromise
 			]);
+			const pageData = loadedPageData;
 			
 			const loadTime = performance.now() - startTime;
 			console.log(`병렬 로딩 완료: ${loadTime.toFixed(0)}ms`);
@@ -1666,6 +1679,7 @@ $(document).ready(function() {
 					window.showSafeFitButtonIfNeeded(pageData);
 				}
 			});
+			ensureDefaultEditorPanelLoaded();
 
 			if (pageData && pageData.lastSaved) {
 				displayLastSaveTime(pageData.lastSaved);
@@ -1673,8 +1687,7 @@ $(document).ready(function() {
 
 			$('#editModal').modal('show');
 			
-			// ✅ 백그라운드 썸네일은 PanelManager가 패널 클릭 시 로드
-			// (지연 로딩으로 초기 로딩 시간 단축)
+			// 나머지 패널은 각 패널 버튼 클릭 시 지연 로딩한다.
 
 		} catch (error) {
 			console.error('An error occurred while preparing the page:', error);
@@ -1683,11 +1696,90 @@ $(document).ready(function() {
 		}
 	});
 
+	function getAdjacentPageCard(direction) {
+		if (!activePageThumb?.length) return $();
+		const $currentPageCard = activePageThumb.closest('.page-card');
+		return direction === 'before'
+			? $currentPageCard.prevAll('.page-card').first()
+			: $currentPageCard.nextAll('.page-card').first();
+	}
+
+	function updatePageNavigationButtons() {
+		const hasActivePage = !!activePageThumb?.length;
+		$('#btn-page-before').prop('disabled', !hasActivePage || !getAdjacentPageCard('before').length);
+		$('#btn-page-after').prop('disabled', !hasActivePage || !getAdjacentPageCard('after').length);
+	}
+
+	function openPageNavigationDialog(direction) {
+		const $targetPageCard = getAdjacentPageCard(direction);
+		if (!$targetPageCard.length) {
+			updatePageNavigationButtons();
+			return;
+		}
+
+		pendingPageNavigationCard = $targetPageCard;
+		const targetPageNo = $targetPageCard.find('.page-thumb').attr('data-page-no');
+		const directionLabel = direction === 'before' ? 'Previous' : 'Next';
+		$('#pageNavigationConfirmModalLabel').text(`Move to ${directionLabel} Page`);
+		$('#page-navigation-confirm-message').text(
+			targetPageNo
+				? `Would you like to save this page before moving to page ${targetPageNo}?`
+				: 'Would you like to save this page before moving?'
+		);
+		$('#pageNavigationConfirmModal').modal('show');
+	}
+
+	function moveToPendingPage() {
+		const $targetPageCard = pendingPageNavigationCard;
+		if (!$targetPageCard?.length) return;
+		pendingPageNavigationCard = $();
+
+		const $navigationModal = $('#pageNavigationConfirmModal');
+		$navigationModal.find('button').prop('disabled', true);
+		$navigationModal.one('hidden.bs.modal', function() {
+			if ($('#editModal').hasClass('show')) {
+				$('body').addClass('modal-open');
+			}
+			$targetPageCard.find('.edit-btn').trigger('click');
+		});
+		$navigationModal.modal('hide');
+	}
+
+	function hasAppliedCanvasBackground() {
+		const $background = $('#page-preview-img');
+		const image = $background[0];
+		if (!image || !image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+			return false;
+		}
+
+		const backgroundPath = String(
+			$background.data('backgroundEditPath') || ''
+		).trim().replace(/\\/g, '/').split(/[?#]/)[0].toLowerCase();
+		const isDefaultBackground = backgroundPath.endsWith('/images/background.png') ||
+			backgroundPath === 'images/background.png';
+		const isPlaceholderBackground = backgroundPath.endsWith('/images/placeholder.png') ||
+			backgroundPath === 'images/placeholder.png';
+		const isTransientBackground = backgroundPath.startsWith('data:') || backgroundPath.startsWith('blob:');
+		const isInvalidPath = !backgroundPath || backgroundPath === 'null' ||
+			backgroundPath === 'undefined' || backgroundPath === 'none' ||
+			backgroundPath === 'transparent' || backgroundPath === 'about:blank';
+
+		return !isInvalidPath && !isDefaultBackground && !isPlaceholderBackground && !isTransientBackground;
+	}
+
+	function ensureCanvasBackgroundForSave(showAlert = true) {
+		if (hasAppliedCanvasBackground()) return true;
+		if (showAlert) alert(BACKGROUND_REQUIRED_MESSAGE);
+		return false;
+	}
+
 	// Save 버튼 클릭 - 모달 표시
 	$('#btn-save').on('click', function(e) {
 		e.preventDefault();
+		if (!ensureCanvasBackgroundForSave()) return;
 
 		modalActionType = 'save';
+		$('#clearConfirmModal').addClass('save-options-modal');
 
 		// 모달 내용을 저장용으로 변경
 		$('#clearConfirmModalLabel').text('Save Page');
@@ -1706,8 +1798,17 @@ $(document).ready(function() {
 	});
 
 	// Save 버튼 클릭 이벤트
-	window.executeSave = async function executeSave(shouldClose) {
+	window.executeSave = async function executeSave(shouldClose, options = {}) {
+		if (!ensureCanvasBackgroundForSave(options.suppressValidationAlert !== true)) {
+			return {
+				success: false,
+				code: 'BACKGROUND_REQUIRED',
+				message: BACKGROUND_REQUIRED_MESSAGE
+			};
+		}
+
 		showLoader();
+		FrameManager.clearHoverPreview();
 
 		// ✅ [핵심 수정] clearSelection 호출 전에 모든 프레임의 현재 상태(rotation 포함)를 먼저 저장
 		// clearSelection()이 CSS transform을 초기화할 수 있으므로, 그 전에 relativeState를 갱신
@@ -1750,7 +1851,7 @@ $(document).ready(function() {
 		if (!actualBgRect) {
 			alert("Could not save because background information could not be found.");
 			hideLoader();
-			return;
+			return { success: false, message: 'Background information is unavailable.' };
 		}
 
 		// ✅ RENDER_SCALE: 실제 편집기 배경 너비 기반으로 계산 (백엔드 drawScale과 정확히 일치시켜 scaleAdjust=1.0 보장)
@@ -2511,17 +2612,22 @@ $(document).ready(function() {
 		});
 
 		// 서버로 전송
-		$.ajax({
+		let saveResult = { success: false };
+		let saveSucceeded = false;
+		return new Promise(resolve => {
+			$.ajax({
 			url: `${ctx}/edit/savePageWithTextImages`,
 			method: 'POST',
 			data: formData,
 			processData: false,
 			contentType: false,
 			success: function(response) {
-				if (response.success) {
+				saveResult = response || { success: false };
+				if (saveResult.success) {
+					saveSucceeded = true;
 					// 자동 저장 시에는 alert 표시하지 않음
 					const isAutoSave = SessionManager.timer === null;
-					if (!isAutoSave) {
+					if (!isAutoSave && !options.suppressSuccessAlert) {
 						alert("This page has been saved.");
 					}
 
@@ -2549,7 +2655,7 @@ $(document).ready(function() {
 						console.log('텍스트 이미지 저장됨:', response.textImagePaths);
 					}
 
-					if (!shouldClose) {
+					if (!shouldClose && !options.suppressConfirmation) {
 						// 메시지가 계속 표시되도록 함
 						$('#save-confirmation-message').show();
 					}
@@ -2564,17 +2670,26 @@ $(document).ready(function() {
 						}, 1000);
 					}
 				} else {
-					alert("Save failed: " + (response.message || "Unknown error"));
+					alert("Save failed: " + (saveResult.message || "Unknown error"));
 				}
 			},
 			error: function(err) {
+				saveResult = {
+					success: false,
+					status: err.status,
+					message: err.responseJSON?.message || err.statusText || 'Save failed.'
+				};
 				console.error("Save failed:", err);
 				alert("Save failed.");
 			},
 			complete: function() {
 				hideLoader();
-				$(document).trigger('saveComplete');
+				if (saveSucceeded) {
+					$(document).trigger('saveComplete', [saveResult]);
+				}
+				resolve(saveResult);
 			}
+			});
 		});
 	}
 
@@ -2850,7 +2965,7 @@ $(document).ready(function() {
 		$('#clearConfirmModalLabel').text('Reset Page Design');
 		$('#clearConfirmModal .modal-body').html(`
 	        <p>All designs on this page will be cleared.</p>
-	        <p>The changes will only be saved when you click the <strong>Save</strong> button.</p>
+	        <p>Select a background image before saving the cleared page.</p>
 	    `);
 
 		$('#clearConfirmModal').modal('show');
@@ -2884,34 +2999,336 @@ $(document).ready(function() {
 		window.visualViewport.addEventListener('resize', refreshPreviewLayout);
 	}
 
-	// Menu dots 버튼 클릭 - 페이지 리셋
-	$('.content').on('click', '.menu-dots-btn', function(e) {
-		e.stopPropagation();
-		const cardId = $(this).closest('.page-card').attr('id');
-		const yearbookId = cardId ? parseInt(cardId.split('-')[1], 10) : null;
+	function getPageCardYearbookId($pageCard) {
+		const rawId = $pageCard.find('.page-thumb').attr('data-yearbook-id');
+		const parsedId = Number.parseInt(rawId, 10);
+		return Number.isFinite(parsedId) ? parsedId : null;
+	}
 
-		if (!yearbookId) {
-			alert("This page has not been saved yet and cannot be reset.");
+	function isBlankPageCard($pageCard) {
+		const thumbnailSrc = $pageCard.find('.page-thumb').attr('src') || '';
+		return !getPageCardYearbookId($pageCard) || thumbnailSrc.includes('/images/placeholder.png');
+	}
+
+	function normalizePageFormatToken(value) {
+		return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+	}
+
+	function getPageFormatFrameType(frame) {
+		const theme = frame?.theme || {};
+		const category = normalizePageFormatToken(theme.category || frame?.category);
+		const type = normalizePageFormatToken(frame?.type || theme.type);
+		const name = normalizePageFormatToken(theme.name);
+
+		if (category === 'element' || type === 'element') return 'elements';
+		if (category === 'textboxframe' || type === 'textbox' || name.includes('text')) return 'textFrames';
+		return 'photoFrames';
+	}
+
+	function getSelectedPageFormatOptions() {
+		return {
+			background: true,
+			photoFrames: $('#copy-format-photo-frames').is(':checked'),
+			textFrames: $('#copy-format-text-frames').is(':checked'),
+			text: $('#copy-format-text').is(':checked'),
+			elements: $('#copy-format-elements').is(':checked')
+		};
+	}
+
+	function resetPageFormatOptions() {
+		$('#copy-format-background').prop({ checked: true, disabled: true });
+		$('#pageFormatCopyModal .format-copy-toggle').prop('checked', true);
+	}
+
+	function openPageFormatCopyDialog($pageCard) {
+		if (!getPageCardYearbookId($pageCard)) {
+			alert('Only a saved page can be copied.');
 			return;
 		}
 
+		pendingPageFormatSourceCard = $pageCard;
+		resetPageFormatOptions();
+		$('#pageFormatCopyModal').modal('show');
+	}
+
+	function sanitizePageFormat(design, options) {
+		if (!design || typeof design !== 'object') {
+			throw new Error('Invalid page design data.');
+		}
+
+		const selectedOptions = {
+			background: true,
+			photoFrames: options?.photoFrames !== false,
+			textFrames: options?.textFrames !== false,
+			text: options?.text !== false,
+			elements: options?.elements !== false
+		};
+		const frames = Array.isArray(design.frames)
+			? design.frames
+				.filter(frame => frame && frame.theme)
+				.filter(frame => selectedOptions[getPageFormatFrameType(frame)])
+				.map(frame => ({
+					...JSON.parse(JSON.stringify(frame)),
+					photo: null
+				}))
+			: [];
+		const textBoxes = selectedOptions.text && Array.isArray(design.textBoxes)
+			? design.textBoxes
+				.filter(textBox => textBox && typeof textBox === 'object')
+				.map(textBox => ({
+					...JSON.parse(JSON.stringify(textBox)),
+					renderImage: null,
+					isModified: true
+				}))
+			: [];
+		const format = {
+			frames,
+			textBoxes,
+			background: design.background || '',
+			backgroundOriginal: design.backgroundOriginal || design.background || ''
+		};
+
+		if (design.backgroundThemeId) {
+			format.backgroundThemeId = design.backgroundThemeId;
+		}
+		return format;
+	}
+
+	function savePageFormatClipboard(clipboard) {
+		try {
+			sessionStorage.setItem(PAGE_FORMAT_STORAGE_KEY, JSON.stringify(clipboard));
+			return true;
+		} catch (error) {
+			console.error('Failed to store page format clipboard:', error);
+			return false;
+		}
+	}
+
+	function loadPageFormatClipboard() {
+		try {
+			const rawClipboard = sessionStorage.getItem(PAGE_FORMAT_STORAGE_KEY);
+			if (!rawClipboard) return null;
+			const clipboard = JSON.parse(rawClipboard);
+			return clipboard?.designData ? clipboard : null;
+		} catch (error) {
+			console.error('Failed to read page format clipboard:', error);
+			return null;
+		}
+	}
+
+	async function copyPageFormat($pageCard, formatOptions) {
+		const yearbookId = getPageCardYearbookId($pageCard);
+		if (!yearbookId) {
+			alert('Only a saved page can be copied.');
+			return false;
+		}
+
+		try {
+			const pageData = await new Promise((resolve, reject) => {
+				$.ajax({
+					url: `${ctx}/edit/pageData`,
+					method: 'GET',
+					data: { id: yearbookId, _: Date.now() },
+					cache: false,
+					success: resolve,
+					error: reject
+				});
+			});
+			const design = JSON.parse(pageData.designData || '{}');
+			const clipboard = {
+				sourceYearbookId: yearbookId,
+				copiedAt: new Date().toISOString(),
+				formatOptions: { ...formatOptions, background: true },
+				designData: sanitizePageFormat(design, formatOptions)
+			};
+
+			if (!savePageFormatClipboard(clipboard)) {
+				throw new Error('The browser could not store the copied format.');
+			}
+			alert('Page format copied.');
+			return true;
+		} catch (error) {
+			console.error('Failed to copy page format:', error);
+			alert('Failed to copy the page format.');
+			return false;
+		}
+	}
+
+	async function pastePageFormat($pageCard) {
+		if (!isBlankPageCard($pageCard)) {
+			alert('Page format can only be pasted onto a blank page.');
+			return;
+		}
+
+		const clipboard = loadPageFormatClipboard();
+		if (!clipboard) {
+			alert('Copy a page format first.');
+			return;
+		}
+
+		const $pageThumb = $pageCard.find('.page-thumb');
+		const payload = {
+			userId: $('#id').val(),
+			yearbookId: getPageCardYearbookId($pageCard),
+			contentsId: $pageThumb.attr('data-contents-id'),
+			pageNo: $pageThumb.attr('data-page-no'),
+			formatOptions: { ...(clipboard.formatOptions || {}), background: true },
+			designData: JSON.parse(JSON.stringify(clipboard.designData))
+		};
+		const $loader = $(
+			'<div class="page-format-paste-loader" role="status">' +
+			'<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
+			'<span class="visually-hidden">Saving page format</span>' +
+			'</div>'
+		);
+
+		$pageCard
+			.addClass('format-paste-pending')
+			.attr('aria-busy', 'true')
+			.append($loader);
+		$pageCard.find('button').prop('disabled', true);
+
+		try {
+			const response = await $.ajax({
+				url: `${ctx}/edit/pastePageFormat`,
+				method: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify(payload)
+			});
+
+			if (!response?.success) {
+				throw new Error(response?.message || 'Failed to paste the page format.');
+			}
+
+			if (response.newImagePath) {
+				$pageThumb.attr('src', `${ctx}${response.newImagePath}?t=${Date.now()}`);
+			}
+			if (response.newYearbookId) {
+				$pageThumb.attr('data-yearbook-id', response.newYearbookId);
+				$pageCard
+					.attr('id', `card-${response.newYearbookId}`)
+					.find('.menu-dots-btn')
+					.attr('data-yearbook-id', response.newYearbookId);
+			}
+
+			const $pageCount = $(`#page-count-${response.contentsId || payload.contentsId}`);
+			if (Number.isFinite(Number(response.updatedSavedCount)) && $pageCount.length) {
+				$pageCount.text(`(${response.updatedSavedCount}/${$pageCount.data('total-pages')})`);
+			}
+
+			alert('Page format pasted and saved.');
+		} catch (error) {
+			console.error('Failed to paste and save the page format:', error);
+			alert(error.responseJSON?.message || error.message || 'Failed to paste and save the page format.');
+		} finally {
+			$loader.remove();
+			$pageCard.removeClass('format-paste-pending').removeAttr('aria-busy');
+			$pageCard.find('button').prop('disabled', false);
+		}
+	}
+
+	function openPageResetDialog(yearbookId) {
 		modalActionType = 'page';
 		pageIdToReset = yearbookId;
-
-		// 모달 내용 업데이트
 		$('#clearConfirmModalLabel').text('Reset Page');
 		$('#clearConfirmModal .modal-body').html(`
 	        <p>All designs on this page will be permanently reset.</p>
 	        <p>This action cannot be undone. Are you sure you want to proceed?</p>
 	    `);
-
 		$('#clearConfirmModal').modal('show');
+	}
+
+	function closePageActionMenu() {
+		$('.page-action-menu').remove();
+	}
+
+	function addPageAction($menu, iconClass, label, handler, disabled = false) {
+		const $button = $('<button type="button" class="page-action-menu-item" role="menuitem"></button>')
+			.prop('disabled', disabled)
+			.append($('<i aria-hidden="true"></i>').addClass(iconClass))
+			.append($('<span></span>').text(label));
+		$button.on('click', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (disabled) return;
+			closePageActionMenu();
+			handler();
+		});
+		$menu.append($button);
+	}
+
+	function showPageActionMenu($trigger) {
+		const $pageCard = $trigger.closest('.page-card');
+		const yearbookId = getPageCardYearbookId($pageCard);
+		const isBlankPage = isBlankPageCard($pageCard);
+		const clipboard = loadPageFormatClipboard();
+
+		closePageActionMenu();
+		const $menu = $('<div class="page-action-menu" role="menu"></div>');
+		if (!isBlankPage && yearbookId) {
+			addPageAction($menu, 'bi bi-copy', 'Copy Format', () => openPageFormatCopyDialog($pageCard));
+			addPageAction($menu, 'bi bi-trash', 'Reset Page', () => openPageResetDialog(yearbookId));
+		} else {
+			addPageAction(
+				$menu,
+				'bi bi-clipboard',
+				'Paste Format',
+				() => pastePageFormat($pageCard),
+				!clipboard
+			);
+			if (yearbookId) {
+				addPageAction($menu, 'bi bi-trash', 'Reset Page', () => openPageResetDialog(yearbookId));
+			}
+		}
+
+		$('body').append($menu);
+		const triggerRect = $trigger[0].getBoundingClientRect();
+		const menuWidth = $menu.outerWidth();
+		const menuHeight = $menu.outerHeight();
+		let left = Math.min(triggerRect.right - menuWidth, window.innerWidth - menuWidth - 8);
+		let top = triggerRect.bottom + 4;
+		left = Math.max(8, left);
+		if (top + menuHeight > window.innerHeight - 8) {
+			top = Math.max(8, triggerRect.top - menuHeight - 4);
+		}
+		$menu.css({ left: `${left}px`, top: `${top}px` });
+	}
+
+	// 페이지 카드 메뉴: 포맷 복사/붙여넣기 및 페이지 리셋
+	$('.content').on('click', '.menu-dots-btn', function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		showPageActionMenu($(this));
+	});
+	$(document).on('click.pageActionMenu', closePageActionMenu);
+	$(window).on('resize.pageActionMenu scroll.pageActionMenu', closePageActionMenu);
+	$('.slide-container').on('scroll.pageActionMenu', closePageActionMenu);
+
+	$(document).on('click', '#btn-confirm-copy-format', async function() {
+		if (!pendingPageFormatSourceCard?.length) return;
+
+		const $button = $(this);
+		const originalHtml = $button.html();
+		$button.prop('disabled', true)
+			.html('<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>Copying...');
+
+		try {
+			const copied = await copyPageFormat(pendingPageFormatSourceCard, getSelectedPageFormatOptions());
+			if (copied) {
+				$('#pageFormatCopyModal').modal('hide');
+			}
+		} finally {
+			$button.prop('disabled', false).html(originalHtml);
+		}
+	});
+
+	$('#pageFormatCopyModal').on('hidden.bs.modal', function() {
+		pendingPageFormatSourceCard = $();
+		resetPageFormatOptions();
 	});
 
 	// Save & Close 버튼 클릭 이벤트
 	$(document).on('click', '#btn-save-close', function() {
-		// Clear 후 빈 페이지 여부와 관계없이 항상 executeSave 호출
-		// (Clear 후 빈 상태도 서버에 저장해야 다음 열 때 빈 페이지로 복원됨)
 		$('#clearConfirmModal').modal('hide');
 		executeSave(true); // true = close after save
 	});
@@ -2920,6 +3337,55 @@ $(document).ready(function() {
 	$(document).on('click', '#btn-save-continue', function() {
 		$('#clearConfirmModal').modal('hide');
 		executeSave(false); // false = continue editing
+	});
+
+	$('#btn-page-before').on('click', function() {
+		openPageNavigationDialog('before');
+	});
+
+	$('#btn-page-after').on('click', function() {
+		openPageNavigationDialog('after');
+	});
+
+	$(document).on('click', '#btn-move-without-saving', function() {
+		moveToPendingPage();
+	});
+
+	$(document).on('click', '#btn-save-and-move', async function() {
+		if (!pendingPageNavigationCard?.length) return;
+		if (!ensureCanvasBackgroundForSave()) return;
+
+		const $modal = $('#pageNavigationConfirmModal');
+		const $buttons = $modal.find('button');
+		const $button = $(this);
+		const originalHtml = $button.html();
+		$buttons.prop('disabled', true);
+		$button.html('<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>Saving...');
+
+		try {
+			const result = await window.executeSave(false, {
+				suppressSuccessAlert: true,
+				suppressConfirmation: true
+			});
+			if (result?.success) {
+				$('#save-confirmation-message').hide();
+				moveToPendingPage();
+				return;
+			}
+		} catch (error) {
+			hideLoader();
+			console.error('Save and page move failed:', error);
+			alert('Save failed. The selected page was not opened.');
+		}
+
+		$buttons.prop('disabled', false);
+		$button.html(originalHtml);
+	});
+
+	$('#pageNavigationConfirmModal').on('hidden.bs.modal', function() {
+		pendingPageNavigationCard = $();
+		$(this).find('button').prop('disabled', false);
+		$('#btn-save-and-move').html('Save &amp; Move');
 	});
 
 	// Exit without Saving 버튼 클릭 이벤트
@@ -2991,6 +3457,7 @@ $(document).ready(function() {
 
 	// 모달이 닫힐 때 초기화
 	$('#clearConfirmModal').on('hidden.bs.modal', function() {
+		$(this).removeClass('save-options-modal');
 		modalActionType = null;
 		pageIdToReset = null;
 		// ⭐ 모달을 원본 상태로 복원

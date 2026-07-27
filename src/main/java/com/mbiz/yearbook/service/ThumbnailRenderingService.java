@@ -16,8 +16,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
 import java.util.Base64;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 import javax.imageio.ImageIO;
 
@@ -55,6 +57,11 @@ public class ThumbnailRenderingService {
     public String generateThumbnail(String designDataJson, Long yearbookId) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(designDataJson);
+        String bgPath = root.path("background").asText("");
+        if (bgPath.isBlank()) {
+            bgPath = root.path("backgroundOriginal").asText("");
+        }
+        BufferedImage bgImage = loadRequiredBackground(bgPath);
 
         BufferedImage canvas = new BufferedImage(THUMB_WIDTH, THUMB_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = canvas.createGraphics();
@@ -66,15 +73,7 @@ public class ThumbnailRenderingService {
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         // 1. 배경 렌더링
-        String bgPath = root.path("background").asText();
-        if (!bgPath.isEmpty() && !bgPath.contains("data:image")) {
-            try {
-                BufferedImage bgImage = ImageIO.read(new File(PathUtils.normalizePath(themePath + bgPath)));
-                g2d.drawImage(bgImage, 0, 0, THUMB_WIDTH, THUMB_HEIGHT, null);
-            } catch (IOException e) { 
-                System.err.println("배경 이미지 로드 실패: " + bgPath); 
-            }
-        }
+        g2d.drawImage(bgImage, 0, 0, THUMB_WIDTH, THUMB_HEIGHT, null);
 
         // 2. 프레임 및 사진 렌더링
         JsonNode frames = root.path("frames");
@@ -95,14 +94,64 @@ public class ThumbnailRenderingService {
         g2d.dispose();
 
         // 최종 썸네일 파일 저장
-        String filename = "thumbnail_" + yearbookId + "_" + System.currentTimeMillis() + ".png";
+        String idPart = yearbookId != null ? yearbookId.toString() : UUID.randomUUID().toString();
+        String filename = "thumbnail_" + idPart + "_" + System.currentTimeMillis() + ".png";
         Path destinationDir = Paths.get(thumbnailPath);
         Files.createDirectories(destinationDir);
         Path destinationFile = destinationDir.resolve(filename);
         
-        ImageIO.write(canvas, "png", destinationFile.toFile());
+        if (!ImageIO.write(canvas, "png", destinationFile.toFile())) {
+            throw new IOException("No PNG writer is available for the generated thumbnail.");
+        }
 
         return "/thumbnail/" + filename;
+    }
+
+    private BufferedImage loadRequiredBackground(String backgroundPath) throws IOException {
+        if (backgroundPath == null || backgroundPath.isBlank()) {
+            throw new IOException("A persistent background image is required to render the thumbnail.");
+        }
+
+        String cleanPath = backgroundPath.trim().replace('\\', '/');
+        int queryIndex = cleanPath.indexOf('?');
+        int fragmentIndex = cleanPath.indexOf('#');
+        int suffixIndex = queryIndex < 0 ? fragmentIndex
+                : (fragmentIndex < 0 ? queryIndex : Math.min(queryIndex, fragmentIndex));
+        if (suffixIndex >= 0) {
+            cleanPath = cleanPath.substring(0, suffixIndex);
+        }
+
+        String lowerPath = cleanPath.toLowerCase(Locale.ROOT);
+        if (lowerPath.startsWith("data:") || lowerPath.startsWith("blob:")
+                || lowerPath.contains("://")) {
+            throw new IOException("A local theme background image is required to render the thumbnail.");
+        }
+
+        while (cleanPath.startsWith("/")) {
+            cleanPath = cleanPath.substring(1);
+        }
+
+        Path themeRoot = Paths.get(themePath).toAbsolutePath().normalize();
+        Path rootName = themeRoot.getFileName();
+        if (rootName != null) {
+            String rootPrefix = rootName.toString() + "/";
+            if (cleanPath.regionMatches(true, 0, rootPrefix, 0, rootPrefix.length())) {
+                cleanPath = cleanPath.substring(rootPrefix.length());
+            }
+        }
+
+        Path backgroundFile = themeRoot.resolve(cleanPath).normalize();
+        if (!backgroundFile.startsWith(themeRoot)) {
+            throw new IOException("Background image path is outside the theme directory.");
+        }
+        if (!Files.isRegularFile(backgroundFile)) {
+            throw new IOException("Background image was not found: " + backgroundPath);
+        }
+        BufferedImage backgroundImage = ImageIO.read(backgroundFile.toFile());
+        if (backgroundImage == null) {
+            throw new IOException("Background image could not be decoded: " + backgroundPath);
+        }
+        return backgroundImage;
     }
     
     /**
@@ -119,13 +168,6 @@ public class ThumbnailRenderingService {
         int frameHeight = (int) Math.round(THUMB_HEIGHT * (frameNode.path("size").path("height").asDouble() / 100.0));
 
         // ✅ translateX/Y 적용 (position과 별도로 저장된 이동 오프셋)
-        double translateXPercent = frameNode.path("translateX").asDouble(0);
-        double translateYPercent = frameNode.path("translateY").asDouble(0);
-        if (translateXPercent != 0 || translateYPercent != 0) {
-            frameX += (int) Math.round(THUMB_WIDTH * (translateXPercent / 100.0));
-            frameY += (int) Math.round(THUMB_HEIGHT * (translateYPercent / 100.0));
-        }
-
         if (frameWidth <= 0 || frameHeight <= 0) return;
 
         // 프레임용 임시 캔버스 생성
@@ -204,11 +246,14 @@ public class ThumbnailRenderingService {
         AffineTransform savedCanvasTx = g2d.getTransform();
         try {
             // 1. CSS의 'position' 값 만큼 이동
-            g2d.translate(frameX, frameY);
+            double originX = frameWidth * (frameNode.path("transformOriginX").asDouble(50) / 100.0);
+            double originY = frameHeight * (frameNode.path("transformOriginY").asDouble(50) / 100.0);
+            g2d.translate(frameX + originX, frameY + originY);
             
             // 2. CSS의 'transform' matrix 값을 가져와 적용 (이 안에 모든 변형 정보가 담겨 있음)
-            AffineTransform frameTransform = getTransformFromMatrix(frameNode.path("transform").asText("none"));
+            AffineTransform frameTransform = getSavedFrameTransform(frameNode);
             g2d.transform(frameTransform);
+            g2d.translate(-originX, -originY);
             
             // 3. (0, 0) 위치에 프레임 이미지를 그리기
             g2d.drawImage(frameCanvas, 0, 0, frameWidth, frameHeight, null);
@@ -396,6 +441,19 @@ public class ThumbnailRenderingService {
         return new AffineTransform(); // 기본(단위) 행렬 반환
     }
 
+    private AffineTransform getSavedFrameTransform(JsonNode frameNode) {
+        if (!frameNode.has("rotation") && !frameNode.has("translateX") && !frameNode.has("translateY")) {
+            return getTransformFromMatrix(frameNode.path("transform").asText("none"));
+        }
+
+        double rotation = frameNode.path("rotation").asDouble(0);
+        double translateX = THUMB_WIDTH * (frameNode.path("translateX").asDouble(0) / 100.0);
+        double translateY = THUMB_HEIGHT * (frameNode.path("translateY").asDouble(0) / 100.0);
+        double cos = Math.cos(rotation);
+        double sin = Math.sin(rotation);
+        return new AffineTransform(cos, sin, -sin, cos, translateX, translateY);
+    }
+
     /**
      * EXIF 정보를 읽어 이미지 방향을 보정합니다.
      */
@@ -546,6 +604,55 @@ public class ThumbnailRenderingService {
                 .filter(Files::exists)
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void deleteThumbnailIfExists(String thumbnailRelativePath) throws IOException {
+        Path resolvedPath = resolveThumbnailPath(thumbnailRelativePath);
+        if (resolvedPath != null) {
+            Files.deleteIfExists(requireThumbnailRootPath(resolvedPath));
+        }
+    }
+
+    public void deletePageArtifacts(Long yearbookId, String thumbnailRelativePath) throws IOException {
+        IOException failure = null;
+
+        try {
+            deleteThumbnailIfExists(thumbnailRelativePath);
+        } catch (IOException e) {
+            failure = e;
+        }
+
+        Path[] artifactPaths = {
+                resolveRenderCapturePath(yearbookId),
+                resolveTextOverlayPath(yearbookId)
+        };
+        for (Path artifactPath : artifactPaths) {
+            if (artifactPath == null) {
+                continue;
+            }
+            try {
+                Files.deleteIfExists(requireThumbnailRootPath(artifactPath));
+            } catch (IOException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
+    private Path requireThumbnailRootPath(Path candidate) throws IOException {
+        Path thumbnailRoot = Paths.get(thumbnailPath).toAbsolutePath().normalize();
+        Path resolved = candidate.toAbsolutePath().normalize();
+        if (!resolved.startsWith(thumbnailRoot)) {
+            throw new IOException("Thumbnail path is outside the configured thumbnail directory.");
+        }
+        return resolved;
     }
 
     private BufferedImage normalizeRenderCapture(BufferedImage source) {
