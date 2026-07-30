@@ -62,8 +62,7 @@
 
 	<div class="content">
 		<input type="hidden" id="id" name="id"
-			value="${sessionScope.loginUser.id}" /> <input type="hidden"
-			id="userSafeMargin" value="${sessionScope.loginUser.safeMargin}" />
+			value="${sessionScope.loginUser.id}" />
 		<div class="top-bar">
 			<span class="badge bg-success text-dark">Yearbook Due: <fmt:formatDate
 					value="${deadline}" pattern="MMMM dd, yyyy" /> (D-${remainDays}
@@ -476,10 +475,6 @@
 								</div>
 								<div id="main-actions" class="d-flex align-items-center gap-2"
 									style="margin-right: 15px;">
-									<button id="btn-safe-margin-fit" class="btn btn-warning btn-sm"
-										style="display: none;" title="모든 요소를 6mm 안전선 안으로 축소 맞춤">SafeFit</button>
-									<button id="btn-restore-backup" class="btn btn-info btn-sm"
-										style="display: none;" title="SafeFit 적용 전 원본 레이아웃으로 복원">Restore</button>
 									<button id="btn-clear" class="btn btn-outline-secondary">Clear</button>
 									<button id="btn-save" class="btn btn-primary">Save</button>
 									<button id="btn-close-modal" class="btn btn-danger">Close</button>

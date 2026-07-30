@@ -77,7 +77,6 @@ body {
 </style>
 </head>
 <body>
-	<input type="hidden" id="userSafeMargin" value="3">
 	<input type="hidden" id="id" value="">
 	<select id="tooltip-font" style="display:none;"></select>
 	<div id="preview-loader" style="display:none;"></div>

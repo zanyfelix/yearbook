@@ -81,6 +81,6 @@ public class User {
     private boolean submitted = false;
 
     @Column(name = "safe_margin")
-    private int safeMargin = 3;  // 안전선 여백 (mm), 기본값 3mm
+    private int safeMargin = 6;  // 레거시 DB 컬럼 호환용. 편집기는 항상 6mm를 사용한다.
 
 }

@@ -224,53 +224,6 @@ button.btn-primary {
   background-color: #ffffff;
   color: #000000;
 }
-/* ── SafeMargin 토글 (3mm / 6mm) ── */
-.safe-margin-toggle {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 30px;
-}
-.safe-margin-toggle input {
-  position: absolute;  /* macOS: 시스템 최소 크기 강제 무력화 */
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.safe-margin-toggle .sm-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  border-radius: 30px;
-  transition: background-color 0.3s;
-}
-.safe-margin-toggle .sm-slider::before {
-  content: "3mm";
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 26px;
-  width: 26px;
-  left: 2px; bottom: 2px;
-  background-color: #fff;
-  color: #6c757d;
-  font-size: 8px;
-  font-weight: bold;
-  border-radius: 50%;
-  transition: all 0.3s;
-}
-.safe-margin-toggle input:checked + .sm-slider {
-  background-color: #007bff;
-}
-.safe-margin-toggle input:checked + .sm-slider::before {
-  transform: translateX(30px);
-  content: "6mm";
-  background-color: #ffffff;
-  color: #000000;
-}
-/* ────────────────────────────── */
 /* 전체 선택 / 개별 선택 체크박스 공통 */
 #selectAll,
 .selectBox {
@@ -324,13 +277,11 @@ button.btn-primary {
 
 
 /* 각 th(열)의 너비를 개별적으로 지정 */
-.user-table th:nth-child(1) { width: 5%; }   /* 체크박스 */
-.user-table th:nth-child(2) { width: 5%; }   /* No */
-.user-table th:nth-child(3) { width: 10%; }  /* USER_ID */
-.user-table th:nth-child(4) { width: 10%; }  /* PASSWORD */
-.user-table th:nth-child(5) { width: 10%; }  /* NAME */
-.user-table th:nth-child(6) { width: 15%; }  /* SCHOOL_NAME */
-.user-table th:nth-child(7) { width: 15%; }  /* MAIL */
-.user-table th:nth-child(8) { width: 10%; }  /* DEADLINE */
-.user-table th:nth-child(9) { width: 10%; }  /* ROLE */
-.user-table th:nth-child(10) { width: 10%; } /* ACTIVE */
+.user-table th:nth-child(1) { width: 5%; }  /* 체크박스 */
+.user-table th:nth-child(2) { width: 6%; }  /* No */
+.user-table th:nth-child(3) { width: 12%; } /* USER_ID */
+.user-table th:nth-child(4) { width: 12%; } /* PASSWORD */
+.user-table th:nth-child(5) { width: 22%; } /* SCHOOL_NAME */
+.user-table th:nth-child(6) { width: 18%; } /* DEADLINE */
+.user-table th:nth-child(7) { width: 12%; } /* ROLE */
+.user-table th:nth-child(8) { width: 13%; } /* ACTIVE */

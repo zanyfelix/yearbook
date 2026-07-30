@@ -1478,27 +1478,6 @@ button:focus,
     font-size: 13px;
 }
 
-/* SafeFit 버튼 전용 스타일 */
-#btn-safe-margin-fit {
-    width: auto;
-    padding: 0 10px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-#btn-safe-margin-fit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Restore 버튼 전용 스타일 */
-#btn-restore-backup {
-    width: auto;
-    padding: 0 10px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
 /* 2. 툴바 내부 모든 컨트롤 그룹을 한 줄(row)로 정렬 */
 #editor-toolbar .control-buttons,
 #editor-toolbar #text-controls {

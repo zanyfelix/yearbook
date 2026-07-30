@@ -48,15 +48,8 @@ public class Yearbook extends BaseTimeEntity {
     @Column(name = "subcategory")
     private String subcategory;
 
-    @JsonIgnore  // API 응답에 거대한 백업 JSON 포함 방지
+    // 레거시 SafeFit 데이터가 있는 운영 DB와의 스키마 호환을 위해 유지한다.
+    @JsonIgnore
     @Column(name = "backup_design_data", columnDefinition = "LONGTEXT")
     private String backupDesignData;
-
-    /**
-     * 백업 존재 여부 (Jackson이 hasBackup 필드로 직렬화)
-     * backupDesignData 자체는 @JsonIgnore로 응답에서 제외
-     */
-    public boolean getHasBackup() {
-        return backupDesignData != null && !backupDesignData.isEmpty();
-    }
 }
