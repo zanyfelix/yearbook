@@ -2077,11 +2077,13 @@ button:focus,
     transition: opacity 0.3s ease;
 }
 
-/* 6. 마우스 오버 시 Edit 버튼과 메뉴 아이콘 나타남 */
+/* 6. 마우스 오버 또는 키보드 포커스 시 Edit 버튼과 메뉴 아이콘 나타남 */
 .page-card:hover .edit-btn,
 .page-card:hover .menu-container,
-.page-card:focus-within .edit-btn,
-.page-card:focus-within .menu-container {
+.page-card:has(.edit-btn:focus-visible) .edit-btn,
+.page-card:has(.edit-btn:focus-visible) .menu-container,
+.page-card:has(.menu-dots-btn:focus-visible) .edit-btn,
+.page-card:has(.menu-dots-btn:focus-visible) .menu-container {
     opacity: 1;
     pointer-events: auto; /* 클릭 가능하도록 설정 */
 }

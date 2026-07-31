@@ -4,6 +4,7 @@ $(document).ready(function() {
 	let hasSaved = false;
 	let pendingPageFormatSourceCard = $();
 	let pendingPageNavigationCard = $();
+	let editModalOpenedWithKeyboard = false;
 	const PAGE_FORMAT_STORAGE_KEY = `yearbook.pageFormatClipboard.v2.${$('#id').val() || 'anonymous'}`;
 	const BACKGROUND_REQUIRED_MESSAGE = 'Please apply a background image before saving. Blank pages cannot be saved.';
 
@@ -1317,7 +1318,20 @@ $(document).ready(function() {
 		$('#clearConfirmModal').modal('show');
 	});
 
+	function releasePageCardActionFocus(preserveKeyboardFocus) {
+		if (preserveKeyboardFocus) return;
+
+		setTimeout(() => {
+			const focusedElement = document.activeElement;
+			if (focusedElement?.matches('.page-card .edit-btn, .page-card .menu-dots-btn')) {
+				focusedElement.blur();
+			}
+		}, 0);
+	}
+
 	$('#editModal').on('hidden.bs.modal', function() {
+		releasePageCardActionFocus(editModalOpenedWithKeyboard);
+		editModalOpenedWithKeyboard = false;
 		forceCompleteReset();
 
 		if (hasSaved) {
@@ -1339,6 +1353,10 @@ $(document).ready(function() {
 	// Edit 버튼 클릭 이벤트
 	$('.content').on('click', '.edit-btn', async function(e) {
 		e.preventDefault();
+
+		if (!$('#editModal').hasClass('show')) {
+			editModalOpenedWithKeyboard = e.originalEvent?.detail === 0;
+		}
 
 		const $pageCard = $(this).closest('.page-card');
 		activePageThumb = $pageCard.find('.page-thumb');
