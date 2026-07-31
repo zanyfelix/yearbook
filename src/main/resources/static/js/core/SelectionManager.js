@@ -459,13 +459,6 @@ class SelectionManager {
 		const element = this.getCurrentElement();
 		if (!element) return;
 
-		// ✅ 이미 수평 중앙 정렬된 상태면 스킵 (재계산 방지)
-		const existingState = element.data('relativeState') || {};
-		if (existingState.alignment?.horizontal === 'center') {
-			console.log('이미 수평 중앙 정렬 상태 - 스킵');
-			return;
-		}
-
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
 		if (!actualBgRect) return;
@@ -496,13 +489,6 @@ class SelectionManager {
 
 		const element = this.getCurrentElement();
 		if (!element) return;
-
-		// ✅ 이미 수직 중앙 정렬된 상태면 스킵 (재계산 방지)
-		const existingState = element.data('relativeState') || {};
-		if (existingState.alignment?.vertical === 'center') {
-			console.log('이미 수직 중앙 정렬 상태 - 스킵');
-			return;
-		}
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
@@ -536,14 +522,6 @@ class SelectionManager {
 
 		const element = this.getCurrentElement();
 		if (!element) return;
-
-		// ✅ 이미 완전 중앙 정렬된 상태면 스킵 (재계산 방지)
-		const existingState = element.data('relativeState') || {};
-		if (existingState.alignment?.horizontal === 'center' &&
-			existingState.alignment?.vertical === 'center') {
-			console.log('이미 완전 중앙 정렬 상태 - 스킵');
-			return;
-		}
 
 		const bg = $('#page-preview-img');
 		const actualBgRect = window.safeLineManager.getActualImagePosition(bg);
