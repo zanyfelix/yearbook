@@ -1186,6 +1186,18 @@ $(document).ready(function() {
 		}
 	}
 
+	function refreshSafeLineAfterPageRender() {
+		if (!window.safeLineManager) return;
+
+		const refreshSafeLine = () => window.safeLineManager.update();
+		if (typeof window.requestAnimationFrame === 'function') {
+			window.requestAnimationFrame(refreshSafeLine);
+		} else {
+			refreshSafeLine();
+		}
+		setTimeout(refreshSafeLine, 150);
+	}
+
 	// 모달 이벤트는 한 번만 바인딩
 	$('#editModal').on('show.bs.modal', function() {
 		console.log('모달 열리기 직전 - 추가 정리');
@@ -1387,6 +1399,7 @@ $(document).ready(function() {
 			// ✅ 둘 다 완료된 후 렌더링
 			renderPage(pageData, function() {
 				hideLoader();
+				refreshSafeLineAfterPageRender();
 			});
 			ensureDefaultEditorPanelLoaded();
 
