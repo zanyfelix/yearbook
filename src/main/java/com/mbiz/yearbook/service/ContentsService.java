@@ -49,6 +49,10 @@ public class ContentsService {
         if (StringUtils.hasText(contentForm.getTitle())) {
             persisted.setTitle(contentForm.getTitle());
         }
+
+        if (StringUtils.hasText(contentForm.getCategory())) {
+            persisted.setCategory(contentForm.getCategory());
+        }
         
         persisted.setPages(contentForm.getPages());
         
